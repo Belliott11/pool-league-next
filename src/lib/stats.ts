@@ -296,3 +296,74 @@ export function formatVideoTime(t: number | null | undefined): string {
   const s = Math.max(0, Math.round(t))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
 }
+
+// ---- Planner helpers (ported from app.js) ----
+
+// Same per-20 math as computeLeaderboard(), scoped to a specific subset of one player's games.
+export function computeRateSummaryForGames(playerId: string, games: Game[]) {
+  const totals: PlayerGameStats = { playerId, pts: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 }
+  const shooting: ShootingStats = { fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0 }
+  const defense: DefenseStats = { ptsAllowed: 0, timesBeaten: 0, stops: 0, blocksNotAlreadyStopped: 0 }
+  let combinedPoints = 0
+  games.forEach((g) => {
+    const s = g.stats.find((st) => st.playerId === playerId)
+    if (s) STAT_FIELDS.forEach((f) => (totals[f] += s[f]))
+    const sh = shootingStats(g, playerId)
+    ;(Object.keys(shooting) as (keyof ShootingStats)[]).forEach((k) => (shooting[k] += sh[k]))
+    const def = gameDefenseStats(g, playerId)
+    defense.ptsAllowed += def.ptsAllowed
+    defense.timesBeaten += def.timesBeaten
+    defense.stops += def.stops
+    defense.blocksNotAlreadyStopped += def.blocksNotAlreadyStopped
+    combinedPoints += gameTotalPoints(g)
+  })
+  const totalOffRating = offensiveRating(totals, shooting)
+  const totalTwoWay = totalOffRating + defensiveRating(totals, defense)
+  const per20 = (value: number) => (combinedPoints > 0 ? (value / combinedPoints) * 20 : 0)
+  return { gp: games.length, offRatingPer20: per20(totalOffRating), twoWayPer20: per20(totalTwoWay) }
+}
+
+// For each teammate this player has shared a team with, split their own games into "with" and
+// "without" that teammate and compare per-20 output across the split.
+export function computeTeammateSynergy(state: PooleanState, playerId: string) {
+  const qualifyingGames = qualifyingGamesForPlayer(state, playerId)
+  const teammateIds = new Set<string>()
+  qualifyingGames.forEach((g) => {
+    const myTeam = g.teamA.includes(playerId) ? g.teamA : g.teamB
+    myTeam.forEach((id) => {
+      if (id !== playerId) teammateIds.add(id)
+    })
+  })
+  return [...teammateIds]
+    .map((teammateId) => {
+      const withGames: Game[] = []
+      const withoutGames: Game[] = []
+      qualifyingGames.forEach((g) => {
+        const myTeam = g.teamA.includes(playerId) ? g.teamA : g.teamB
+        ;(myTeam.includes(teammateId) ? withGames : withoutGames).push(g)
+      })
+      return {
+        teammate: state.players.find((p) => p.id === teammateId),
+        with: computeRateSummaryForGames(playerId, withGames),
+        without: computeRateSummaryForGames(playerId, withoutGames),
+      }
+    })
+    .filter((r): r is typeof r & { teammate: Player } => !!r.teammate)
+    .sort((a, b) => b.with.gp - a.with.gp)
+}
+
+// League-wide scorer-vs-defender FG pairs (an event with several tagged defenders counts once per
+// defender), as app.js's computeMatchupGrid().
+export function computeMatchupCells(state: PooleanState) {
+  const cells: Record<string, { fgm: number; fga: number }> = {}
+  state.games.filter(isQualifyingGame).forEach((g) => {
+    g.scoringEvents.forEach((ev) => {
+      ;(ev.defenderIds || []).forEach((defenderId) => {
+        const cell = (cells[`${ev.scorerId}|${defenderId}`] ||= { fgm: 0, fga: 0 })
+        cell.fga++
+        if (ev.made !== false) cell.fgm++
+      })
+    })
+  })
+  return (scorerId: string, defenderId: string) => cells[`${scorerId}|${defenderId}`] ?? null
+}

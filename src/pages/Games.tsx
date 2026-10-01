@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
+import { BalanceAndPredict } from "./games/BalanceAndPredict"
 import { GamePage } from "./games/GamePage"
 import { GameLog } from "./games/GameLog"
 import { Section } from "./games/Section"
@@ -44,6 +45,9 @@ export function GamesPage({
         <GameLog state={state} update={update} onOpen={open} />
         <Section id="games-section-setup" title="Set Up Tonight" teaser="RSVP who's coming and log tonight's game">
           <SetUpTonight state={state} update={update} onCreated={open} />
+        </Section>
+        <Section id="games-section-balance" title="Balance & Predict" teaser="Even splits, matchup odds, and a full night's schedule">
+          <BalanceAndPredict state={state} update={update} onCreated={open} />
         </Section>
       </div>
       <Sidebar state={state} onOpenPlayer={onOpenPlayer} onOpenGame={open} />
