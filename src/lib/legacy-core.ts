@@ -4888,6 +4888,8 @@ function computeTurnoverTypeBreakdown(playerId) {
   };
 }
 
+const TURNOVER_TYPE_CSS_CLASS = { badPass: "tov-seg-badpass", lostHandle: "tov-seg-losthandle", decisionError: "tov-seg-decisionerror", stripped: "tov-seg-stripped" };
+
 function computeTurnoverTypeTaggedSummary() {
   let total = 0, tagged = 0;
   state.games.filter(isQualifyingGame).forEach(game => {
@@ -5439,4 +5441,184 @@ function computePoolDataDigest() {
   });
   return changes.length > 0 ? changes : null;
 }
-export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, ICONS, renderPlayerAvatar, PLAYER_PHOTO_FILES, avatarHueForPlayer, STORAGE_KEY, pct, POOL_DATA_SNAPSHOT_KEY, sameMomentDismissed, shotReviewNeeds, shotReviewPlayer, shotReviewShowSkipped, shotReviewSkipped, turnoverTypeReviewPlayer, turnoverTypeSkipped, shotTypeReviewMatches, shotTypeReviewPlayer, shotTypeSkipped, effShotType, shotTypeReviewMode, shotDistanceFromHoop, DRIVE_FAR_UNITS, trueShootingPct, LEAGUE_RANK_STATS, shotBand, threePtDeepThreshold, closeRangeThreshold, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, sameTeam, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, findShotBreakpoint, binomialLogLik, RESISTANCE_LEVEL_SCORE, OPP_ADJ_REBOUND_MIN, SELF_CREATION_FULL_MIN, gameTotalPoints, turnoverPct, effectiveFgPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, shootingStats, REAL_PLAYMAKING_MIN, defensiveRating, SHOT_ZONES, gamesForZoneShots, getOrCreatePlayerStats, median, gameDefenseStats, seasonVsRecentRate, trendNote, turnoverTypeLabel, CLIP_CURATION_PAD_SECONDS, headToHeadAsScorer, gamesForMatchup, headToHeadAsDefender, shotTypeTipCandidates, gamesForShotType, accumulateHeadToHeadFg, playerAttendedDate, includeImbalancedGames, playerGameResult, INCLUDE_IMBALANCED_KEY, STAT_FIELDS, offensiveRating, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, WIN_SHARES_FEATURES, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, xptsForShot, DEFENDER_QUALITY_GATE_FGA, SHOOTER_QUALITY_GATE_FGA, totalBandedAttempts, defensiveShootingStats, shotTypeLabel, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, PARTY_RANKINGS, AWARD_RESULTS, AWARD_NOT_FOUND_TEXT, ALL_AWARD_RESULTS, AWARD_TIER, milestoneCache, realSeasonsInOrder, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, ordinal, pooleanSeasonList, selectedPooleanSeason, poolNameOf, poolKnownSlug, awardIconSvg, AWARD_TIER_COLOR, AWARD_ICON_KEYS, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, clutchMarginThreshold, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, gameWinningShot, formatAstTov, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, formatDateDisplay, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, includeOutlierGames, quantile, INCLUDE_OUTLIER_GAMES_KEY, includePastSeasons, isCurrentSeasonGame, INCLUDE_PAST_SEASONS_KEY, PLAYER_REPUTATION_DATA };
+
+const __playerText = (id, name) => escapeHtml(name);
+function __withDisplay(cols, fns) { return cols.map((c, i) => (fns[i] ? { ...c, display: fns[i] } : c)); }
+export const TABLE_PANELS = [
+  (() => {
+    const oppFgCell = r => r.realContested === null
+    ? `Not enough contested volume yet<br><span class="hint" style="margin:0">was ${formatPct(r.oppFgPct)} any-tag</span>`
+    : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${r.realContested.made}/${r.realContested.attempts} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`;
+    return { section: "style", order: 52, fn: "renderDefensiveLoadPanel", title: "Defensive Load", bodyId: "defensiveLoadPanelBody", headerId: "defensiveLoadPanelHeaderRow",
+    columns: __withDisplay(DEFENSIVE_LOAD_COLUMNS, [(r) => `<button type="button" class="icon-btn defload-player-btn" data-player-id="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button>`, (r) => `${r.load.toFixed(2)}x`, (r) => `${oppFgCell(r)}`, (r) => `${r.defRtg.toFixed(1)}`, (r) => `${r.pointsAllowedUnderExpected === null ? "—" : `${r.pointsAllowedUnderExpected >= 0 ? "+" : ""}${r.pointsAllowedUnderExpected.toFixed(1)}`}`, (r) => `${escapeHtml(r.sentence)}`]),
+    rows: () => (computeDefensiveLoadPanelRows()),
+    sort: { key: "load", dir: "desc" },
+    empty: () => `Nobody has enough tagged defensive volume yet (needs ${DEFENSIVE_LOAD_MIN_SHARE}+ expected tagged possessions across enough games).`,
+    extra: [] };
+  })(),
+  { section: "style", order: 53, fn: "renderContestEngagementPanel", title: "Contest Level & Defensive Engagement", bodyId: "contestEngagementBody", headerId: "contestEngagementHeaderRow",
+    columns: __withDisplay(CONTEST_ENGAGEMENT_COLUMNS, [(r) => `<button type="button" class="icon-btn" data-contest-eng-player="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button>`, (r) => `${r.dist.engagementRate === null ? `—<br><span class="hint" style="margin:0">needs ${CONTEST_ENGAGEMENT_MIN_TAGGED}+ tagged</span>` : formatPct(r.dist.engagementRate)}`, (r) => `${r.dist.counts.light}`, (r) => `${r.dist.counts.medium}`, (r) => `${r.dist.counts.heavy}`, (r) => `${r.realContested === null ? "—" : formatPct(r.realContested.fgPct)}`]),
+    rows: () => (computeContestEngagementRows()),
+    sort: { key: "engagement", dir: "desc" },
+    empty: () => `Nobody has a tagged defensive assignment with a contest level yet.`,
+    extra: [{"id":"contestLevelSanityCheck","tag":"div","cls":"shot-selection-legend"}] },
+  { section: "style", order: 54, fn: "renderShooterQualityDefPanel", title: "Shooter-Quality-Adjusted Defense", bodyId: "shooterQualityDefBody", headerId: "shooterQualityDefHeaderRow",
+    columns: __withDisplay(SHOOTER_QUALITY_DEF_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.adj.n}`, (r) => `${formatPct(r.adj.shooterQualityFaced)}`, (r) => `${formatPct(r.adj.realContestedFgPct)}`, (r) => `${r.adj.defenseAboveExpected >= 0 ? "+" : ""}${r.adj.defenseAboveExpected.toFixed(1)}`]),
+    rows: () => (computeShooterQualityDefRows()),
+    sort: { key: "dae", dir: "desc" },
+    empty: () => `Nobody has enough real-contested defensive volume yet.`,
+    extra: [{"id":"shooterQualityGateStatus","tag":"p","cls":"hint"}] },
+  { section: "style", order: 55, fn: "renderDefenderQualityOffPanel", title: "Defender-Quality-Adjusted Offense", bodyId: "defenderQualityOffBody", headerId: "defenderQualityOffHeaderRow",
+    columns: __withDisplay(DEFENDER_QUALITY_OFF_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.adj.n}`, (r) => `${formatPct(r.adj.ownFgPct)}`, (r) => `${formatPct(r.adj.defenderQualityFaced)}`, (r) => `${r.adj.offenseAboveExpected >= 0 ? "+" : ""}${r.adj.offenseAboveExpected.toFixed(1)}`]),
+    rows: () => (computeDefenderQualityOffRows()),
+    sort: { key: "oae", dir: "desc" },
+    empty: () => `Nobody has enough real-contested offensive volume yet.`,
+    extra: [{"id":"defenderQualityGateStatus","tag":"p","cls":"hint"}] },
+  { section: "situational", order: 48, fn: "renderCloseGameShootingPanel", title: "Close-Game Shooting", bodyId: "closeGameShootingBody", headerId: "closeGameShootingHeaderRow",
+    columns: __withDisplay(CLOSE_GAME_SHOOTING_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.gp}`, (r) => `${r.attempts}`, (r) => `${formatPct(r.ts)}`]),
+    rows: () => (computeCloseGameShooting()),
+    sort: { key: "ts", dir: "desc" },
+    empty: () => `No games decided by ${clutchMarginThreshold()} points or fewer yet.`,
+    extra: [] },
+  { section: "situational", order: 49, fn: "renderCloseGameDefensePanel", title: "Close-Game Defense", bodyId: "closeGameDefenseBody", headerId: "closeGameDefenseHeaderRow",
+    columns: __withDisplay(CLOSE_GAME_DEFENSE_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.gp}`, (r) => `${r.attempts}`, (r) => `${formatPct(r.oppFgPct)}`]),
+    rows: () => (computeCloseGameDefense()),
+    sort: { key: "oppfg", dir: "asc" },
+    empty: () => `No games decided by ${clutchMarginThreshold()} points or fewer yet.`,
+    extra: [] },
+  { section: "shooting", order: 20, fn: "renderWideOpenShootingPanel", title: "Wide-Open Shooting", bodyId: "wideOpenBody", headerId: "wideOpenHeaderRow",
+    columns: __withDisplay(WIDE_OPEN_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.wideOpenFga}`, (r) => `${formatPct(r.share)}`, (r) => `${formatPct(r.ts)}`]),
+    rows: () => (computeWideOpenShooting()),
+    sort: { key: "ts", dir: "desc" },
+    empty: () => `No field goals without a tagged defender yet.`,
+    extra: [] },
+  { section: "matchups", order: 33, fn: "renderTeammateContextPanel", title: "Teammate Context", bodyId: "teammateContextBody", headerId: "teammateContextHeaderRow",
+    columns: __withDisplay(TEAMMATE_CONTEXT_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.gp}`, (r) => `${r.offRatingPer20.toFixed(1)}`, (r) => `${r.teammateQuality !== null ? r.teammateQuality.toFixed(1) : "—"}`, (r) => `${r.offMatchupDifficulty !== null ? r.offMatchupDifficulty.toFixed(1) : "—"}`, (r) => `${r.defMatchupDifficulty !== null ? r.defMatchupDifficulty.toFixed(1) : "—"}`, (r) => `${r.assistedPct !== null ? formatPct(r.assistedPct) : "—"}`, (r) => `${r.avgAssisterQuality !== null ? r.avgAssisterQuality.toFixed(1) : "—"}`]),
+    rows: () => (computeTeammateContext()),
+    sort: { key: "teammateQuality", dir: "desc" },
+    empty: () => `No games with players yet.`,
+    extra: [] },
+  { section: "shooting", order: 21, fn: "renderShotMakingAddedPanel", title: "Shot-Making Added (xPTS)", bodyId: "shotMakingAddedBody", headerId: "shotMakingAddedHeaderRow",
+    columns: __withDisplay(SHOT_MAKING_ADDED_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.sma.attempts}`, (r) => `${r.sma.actualPts}`, (r) => `${r.sma.xpts.toFixed(1)}`, (r) => `${r.sma.added >= 0 ? "+" : ""}${r.sma.added.toFixed(1)}`, (r) => `${r.sma.addedPerAttempt >= 0 ? "+" : ""}${r.sma.addedPerAttempt.toFixed(2)}`]),
+    rows: () => (computeShotMakingAddedRows()),
+    sort: { key: "addedper", dir: "desc" },
+    empty: () => `Nobody has ${SHOT_MAKING_ADDED_MIN_FGA}+ qualifying field goal attempts yet.`,
+    extra: [] },
+  { section: "situational", order: 37, fn: "renderPointsOffTakeawaysPanel", title: "Points off Takeaways", bodyId: "pointsOffTakeawaysBody", headerId: "pointsOffTakeawaysHeaderRow",
+    columns: __withDisplay(POINTS_OFF_TAKEAWAYS_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.pointsOffTakeaways.takeaways}`, (r) => `${r.pointsOffTakeaways.pointsOff}`, (r) => `${r.pointsOffTakeaways.perTakeaway.toFixed(2)}`]),
+    rows: () => (computeLeaderboard().filter(r => r.pointsOffTakeaways !== null)),
+    sort: { key: "pointsoff", dir: "desc" },
+    empty: () => `No steals logged yet.`,
+    extra: [{"id":"pointsOffTakeawaysSummary","tag":"p","cls":"hint"}] },
+  { section: "situational", order: 46, fn: "renderSecondChancePanel", title: "Second-Chance Conversion", bodyId: "secondChanceBody", headerId: "secondChanceHeaderRow",
+    columns: __withDisplay(SECOND_CHANCE_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.oreb}`, (r) => `${r.converted}`, (r) => `${formatPct(pct(r.converted, r.oreb))}`]),
+    rows: () => (computeSecondChanceConversions()),
+    sort: { key: "oreb", dir: "desc" },
+    empty: () => `No offensive rebounds logged yet.`,
+    extra: [{"id":"secondChanceSummary","tag":"p","cls":"hint"}] },
+  { section: "situational", order: 47, fn: "renderSecondChanceAllowedPanel", title: "Second-Chance Points Allowed", bodyId: "secondChanceAllowedBody", headerId: "secondChanceAllowedHeaderRow",
+    columns: __withDisplay(SECOND_CHANCE_ALLOWED_COLUMNS, [(r) => { const thin = r.situations < REBOUND_BATTLE_MIN_CONTESTS;
+const thinFlag = thin ? ` <span class="hint" style="margin:0" title="Fewer than ${REBOUND_BATTLE_MIN_CONTESTS} situations: too little data to treat as a settled number yet">(small sample)</span>` : "";
+ return `${__playerText(r.player.id, r.player.name)}`; }, (r) => { const thin = r.situations < REBOUND_BATTLE_MIN_CONTESTS;
+const thinFlag = thin ? ` <span class="hint" style="margin:0" title="Fewer than ${REBOUND_BATTLE_MIN_CONTESTS} situations: too little data to treat as a settled number yet">(small sample)</span>` : "";
+ return `${r.situations}${thinFlag}`; }, (r) => { const thin = r.situations < REBOUND_BATTLE_MIN_CONTESTS;
+const thinFlag = thin ? ` <span class="hint" style="margin:0" title="Fewer than ${REBOUND_BATTLE_MIN_CONTESTS} situations: too little data to treat as a settled number yet">(small sample)</span>` : "";
+ return `${r.allowed}`; }, (r) => { const thin = r.situations < REBOUND_BATTLE_MIN_CONTESTS;
+const thinFlag = thin ? ` <span class="hint" style="margin:0" title="Fewer than ${REBOUND_BATTLE_MIN_CONTESTS} situations: too little data to treat as a settled number yet">(small sample)</span>` : "";
+ return `${formatPct(pct(r.allowed, r.situations))}`; }]),
+    rows: () => (computeSecondChancePointsAllowed()),
+    sort: { key: "rate", dir: "asc" },
+    empty: () => `No real rebound-battle-losing defenders on an offensive board yet.`,
+    extra: [{"id":"secondChanceAllowedSummary","tag":"p","cls":"hint"}] },
+  { section: "situational", order: 36, fn: "renderOutOfBoundsPanel", title: "Out-of-Bounds Misses", bodyId: "outOfBoundsBody", headerId: "outOfBoundsHeaderRow",
+    columns: __withDisplay(OUT_OF_BOUNDS_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.misses}`, (r) => `${r.oob}`, (r) => `${formatPct(pct(r.oob, r.misses))}`]),
+    rows: () => (computeOutOfBoundsStats()),
+    sort: { key: "misses", dir: "desc" },
+    empty: () => `No missed shots logged yet.`,
+    extra: [{"id":"outOfBoundsSummary","tag":"p","cls":"hint"}] },
+  { section: "situational", order: 38, fn: "renderTurnoverTypeBreakdownPanel", title: "Turnover Type Breakdown", bodyId: "turnoverTypeBreakdownBody", headerId: "turnoverTypeBreakdownHeaderRow",
+    columns: __withDisplay(TURNOVER_TYPE_BREAKDOWN_COLUMNS, [(r) => { const b = r.breakdown;
+const mix = TURNOVER_TYPES.map(t => {
+      const n = b.counts[t.key];
+      return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${escapeHtml(r.player.name)}: ${n} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+ return `${__playerText(r.player.id, r.player.name)}`; }, (r) => { const b = r.breakdown;
+const mix = TURNOVER_TYPES.map(t => {
+      const n = b.counts[t.key];
+      return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${escapeHtml(r.player.name)}: ${n} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+ return `${b.counts.badPass}`; }, (r) => { const b = r.breakdown;
+const mix = TURNOVER_TYPES.map(t => {
+      const n = b.counts[t.key];
+      return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${escapeHtml(r.player.name)}: ${n} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+ return `${b.counts.lostHandle}`; }, (r) => { const b = r.breakdown;
+const mix = TURNOVER_TYPES.map(t => {
+      const n = b.counts[t.key];
+      return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${escapeHtml(r.player.name)}: ${n} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+ return `${b.counts.stripped}`; }, (r) => { const b = r.breakdown;
+const mix = TURNOVER_TYPES.map(t => {
+      const n = b.counts[t.key];
+      return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${escapeHtml(r.player.name)}: ${n} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+ return `${b.counts.decisionError}`; }, (r) => { const b = r.breakdown;
+const mix = TURNOVER_TYPES.map(t => {
+      const n = b.counts[t.key];
+      return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${escapeHtml(r.player.name)}: ${n} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+ return `${b.tagged}`; }, (r) => { const b = r.breakdown;
+const mix = TURNOVER_TYPES.map(t => {
+      const n = b.counts[t.key];
+      return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${escapeHtml(r.player.name)}: ${n} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+ return `${b.selfInflictedPct === null ? "—" : formatPct(b.selfInflictedPct)}`; }, (r) => { const b = r.breakdown;
+const mix = TURNOVER_TYPES.map(t => {
+      const n = b.counts[t.key];
+      return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${escapeHtml(r.player.name)}: ${n} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+ return `<div class="shot-selection-bar">${mix}</div>`; }]),
+    rows: () => (computeTurnoverTypeBreakdownRows()),
+    sort: { key: "selfinflicted", dir: "desc" },
+    empty: () => `No live-ball turnovers with a type tagged yet (Export, Review Turnover Types).`,
+    extra: [{"id":"turnoverTypeLegend","tag":"div","cls":"shot-selection-legend"},{"id":"turnoverTypeBreakdownSummary","tag":"p","cls":"hint"}] },
+  { section: "situational", order: 39, fn: "renderTovRecomputedPanel", title: "TOV Recomputed", bodyId: "tovRecomputedBody", headerId: "tovRecomputedHeaderRow",
+    columns: __withDisplay(TOV_RECOMPUTED_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.totals.tov}`, (r) => `${r.tovSplit.liveBall}`, (r) => `${r.tovSplit.shotBased}`, (r) => `${r.oldTovPct === null ? "—" : formatPct(r.oldTovPct)}`, (r) => `${r.tovPct === null ? "—" : formatPct(r.tovPct)}`]),
+    rows: () => (computeTovRecomputedRows()),
+    sort: { key: "newpct", dir: "desc" },
+    empty: () => `No turnovers logged yet.`,
+    extra: [] },
+  { section: "situational", order: 41, fn: "renderTurnoverTypeMixPanel", title: "Turnover Type Mix", bodyId: "turnoverTypeMixBody", headerId: "turnoverTypeMixHeaderRow",
+    columns: __withDisplay(TURNOVER_TYPE_MIX_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${formatPct(pct(r.breakdown.counts.badPass, r.breakdown.tagged))}`, (r) => `${formatPct(pct(r.breakdown.counts.lostHandle, r.breakdown.tagged))}`, (r) => `${formatPct(pct(r.breakdown.counts.stripped, r.breakdown.tagged))}`, (r) => `${formatPct(pct(r.breakdown.counts.decisionError, r.breakdown.tagged))}`]),
+    rows: () => (computeTurnoverTypeBreakdownRows()),
+    sort: { key: "player", dir: "asc" },
+    empty: () => `No live-ball turnovers with a type tagged yet.`,
+    extra: [{"id":"turnoverTypeMixSummary","tag":"p","cls":"hint"}] },
+  { section: "situational", order: 42, fn: "renderForcedTurnoverCreditPanel", title: "Forced Turnover Credit", bodyId: "forcedTurnoverCreditBody", headerId: "forcedTurnoverCreditHeaderRow",
+    columns: __withDisplay(FORCED_TURNOVER_CREDIT_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.credit.strips}`, (r) => `${r.credit.stripsPer20.toFixed(2)}`]),
+    rows: () => (computeForcedTurnoverCreditRows()),
+    sort: { key: "strips", dir: "desc" },
+    empty: () => `No strips with a defender credited yet.`,
+    extra: [{"id":"forcedTurnoverCreditSummary","tag":"p","cls":"hint"}] },
+  { section: "situational", order: 43, fn: "renderTurnoverVsShotTypePanel", title: "Turnover Type vs. Shot Type", bodyId: "turnoverVsShotTypeBody", headerId: "turnoverVsShotTypeHeaderRow",
+    columns: __withDisplay(TURNOVER_VS_SHOT_TYPE_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.cross.duringSelfCreation}`, (r) => `${r.cross.otherwise}`]),
+    rows: () => (computeTurnoverVsShotTypeRows()),
+    sort: { key: "during", dir: "desc" },
+    empty: () => `Nobody has ${TURNOVER_TYPE_MIN_TAGGED}+ tagged live-ball turnovers yet.`,
+    extra: [{"id":"turnoverVsShotTypeSummary","tag":"p","cls":"hint"}] },
+  { section: "situational", order: 45, fn: "renderSelfCreationFullPanel", title: "Self-Creation Full Accounting", bodyId: "selfCreationFullBody", headerId: "selfCreationFullHeaderRow",
+    columns: __withDisplay(SELF_CREATION_FULL_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.full.selfCreatedFga}`, (r) => `${r.full.selfCreatedTov}`, (r) => `${r.full.possessions}`, (r) => `${formatPct(r.full.successRate)}`, (r) => `${r.full.ptsPerPossession.toFixed(2)}`]),
+    rows: () => (computeSelfCreationFullRows()),
+    sort: { key: "poss", dir: "desc" },
+    empty: () => `Nobody has ${SELF_CREATION_FULL_MIN}+ self-creation possessions yet.`,
+    extra: [] },
+  { section: "matchups", order: 30, fn: "renderOppAdjReboundPanel", title: "Opportunity-Adjusted Rebounding", bodyId: "oppAdjReboundBody", headerId: "oppAdjReboundHeaderRow",
+    columns: __withDisplay(OPP_ADJ_REBOUND_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.adj.totalReb}`, (r) => `${r.adj.opportunities}`, (r) => `${formatPct(r.adj.rate)}`, (r) => `${r.adj.rawRpg.toFixed(1)}`]),
+    rows: () => (computeOppAdjReboundRows()),
+    sort: { key: "rate", dir: "desc" },
+    empty: () => `Nobody has ${OPP_ADJ_REBOUND_MIN}+ rebound opportunities yet.`,
+    extra: [] }
+];
+
+
+export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, clutchMarginThreshold, pct, TURNOVER_TYPE_CSS_CLASS, SELF_CREATION_FULL_MIN, OPP_ADJ_REBOUND_MIN, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, sameTeam, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, STORAGE_KEY, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, shotDistanceFromHoop, findShotBreakpoint, binomialLogLik, ICONS, renderPlayerAvatar, PLAYER_PHOTO_FILES, avatarHueForPlayer, POOL_DATA_SNAPSHOT_KEY, sameMomentDismissed, shotReviewNeeds, shotReviewPlayer, shotReviewShowSkipped, shotReviewSkipped, turnoverTypeReviewPlayer, turnoverTypeSkipped, shotTypeReviewMatches, shotTypeReviewPlayer, shotTypeSkipped, effShotType, shotTypeReviewMode, DRIVE_FAR_UNITS, trueShootingPct, LEAGUE_RANK_STATS, shotBand, threePtDeepThreshold, closeRangeThreshold, RESISTANCE_LEVEL_SCORE, gameTotalPoints, turnoverPct, effectiveFgPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, shootingStats, REAL_PLAYMAKING_MIN, defensiveRating, SHOT_ZONES, gamesForZoneShots, getOrCreatePlayerStats, median, gameDefenseStats, seasonVsRecentRate, trendNote, turnoverTypeLabel, CLIP_CURATION_PAD_SECONDS, headToHeadAsScorer, gamesForMatchup, headToHeadAsDefender, shotTypeTipCandidates, gamesForShotType, accumulateHeadToHeadFg, playerAttendedDate, includeImbalancedGames, playerGameResult, INCLUDE_IMBALANCED_KEY, STAT_FIELDS, offensiveRating, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, WIN_SHARES_FEATURES, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, xptsForShot, DEFENDER_QUALITY_GATE_FGA, SHOOTER_QUALITY_GATE_FGA, totalBandedAttempts, defensiveShootingStats, shotTypeLabel, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, PARTY_RANKINGS, AWARD_RESULTS, AWARD_NOT_FOUND_TEXT, ALL_AWARD_RESULTS, AWARD_TIER, milestoneCache, realSeasonsInOrder, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, ordinal, pooleanSeasonList, selectedPooleanSeason, poolNameOf, poolKnownSlug, awardIconSvg, AWARD_TIER_COLOR, AWARD_ICON_KEYS, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, gameWinningShot, formatAstTov, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, formatDateDisplay, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, includeOutlierGames, quantile, INCLUDE_OUTLIER_GAMES_KEY, includePastSeasons, isCurrentSeasonGame, INCLUDE_PAST_SEASONS_KEY, PLAYER_REPUTATION_DATA };

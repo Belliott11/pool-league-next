@@ -1,0 +1,216 @@
+{
+ "Season Rates (Individual)": {
+  "hint": "Each stat is per 20 combined points, so 16- and 21-point games compare fairly. Only fully logged, even-sided games count. Two-Way is offense plus defense in one number. Click a name for their page, or a column to sort. Turning off Outlier Games drops each player's most extreme nights (needs 4+ games)."
+ },
+ "Player Comparison": {
+  "hint": "Pick two players to see every stat side by side. Green marks the better number where better is clear, like fewer turnovers. Share stats aren't colored, since they reflect a role, not quality."
+ },
+ "Awards vs. Stats": {
+  "hint": "Each voted award next to the closest stat from logged games. The vote and the numbers are allowed to disagree; that's the point of comparing them."
+ },
+ "Power Ranking vs. Performance": {
+  "hint": "Each party night's real power ranking next to how that player actually played in that night's logged games. Only nights with logged film show up, and games stopped early are left out."
+ },
+ "Two-Way Quadrant": {
+  "hint": "Off Rating/20 (offense) vs. Def Rating/20 for every player who's played, plotted separately instead of pre-summed into Two-Way Score, so \"who's good\" splits into \"good at what.\" Quadrant lines are drawn at zero on each axis."
+ },
+ "Volume vs. Efficiency": {
+  "hint": "How much each player shoots (attempts per 20) against how efficiently (TS%). High-volume and high-efficiency players end up in opposite corners."
+ },
+ "TS% by Shot Distance": {
+  "hint": "League-wide scoring efficiency at each shot distance, to see where shooting drops off. Free throws and shots without a marked spot aren't included."
+ },
+ "League TS% Over Time": {
+  "hint": "True Shooting % pooled across every player, per date with a reviewed game: a single league-wide efficiency line, useful for spotting drift over the season or checking the effect of a future rule change. Not a player-comparison stat."
+ },
+ "League Shot Heatmap": {
+  "hint": "Every marked shot, grouped by court zone. Color is FG% (red low, green high) and the number is attempts. Backfill Shot Locations in Export fills in unmarked shots."
+ },
+ "Two-Way/20 Rank Over the Season": {
+  "hint": "Where each player would rank if the season had ended on each date, based on every game up to then. A rising line means their standing is improving, not just one good night."
+ },
+ "Closed Seasons in This App (League)": {
+  "hint": "Full standings for one closed season at a time. Pick a season, and click a name for their page. The Include Past Seasons switch above blends old seasons into the current numbers instead."
+ },
+ "Consistency": {
+  "hint": "How much each player's game-to-game output swings. Lower is steadier, not necessarily better. Needs 2+ games. With Outlier Games off, each player's most extreme nights are left out."
+ },
+ "Shot Distance": {
+  "hint": "Each player's shots split by distance: Close and Midrange 2s, Line and Deep 3s. Each zone shows FG% and its share of their shots, and Mix shows the split as a bar. Only shots with a marked spot count, so early numbers are small."
+ },
+ "Defensive Shot Distance": {
+  "hint": "The same zones for shots this player defended: how well opponents shoot against them from each distance. Free throws aren't included. Early numbers are small."
+ },
+ "Shot Type Efficiency": {
+  "hint": "How each player's shots were created: catch-and-shoot, drive, move (spin, hesitation or pump fake), deep heave, or dunk. Each shows TS% and share of shots once there are 5 of that type. Tag older shots in Export, Review Shot Types."
+ },
+ "Deep Shot Check": {
+  "hint": "How much of the league's deep 3-point volume is the rushed heave off a check or rebound, compared with a deep shot taken after a real possession, and how each one goes. Only tagged deep shots count, and at least 10 are needed to show a split."
+ },
+ "Is the Move Working?": {
+  "hint": "For players with 5+ Move shots, compares TS% on those against their other shots. A gap of 10 points or more counts as working or trailing. Samples are small, so treat it as a first look."
+ },
+ "Shot Types: Open vs. Contested": {
+  "hint": "Each shot type open versus guarded (a percentage shows once there are 5 shots). The second table compares catch-and-shoots at matching distances, since open shots tend to be longer."
+ },
+ "Calibrated Thresholds": {
+  "hint": "The cutoffs other panels use, set from logged games and rechecked as data comes in. Each shows its value and history: Kept (no clear signal yet), Stayed (confirmed) or Moved."
+ },
+ "Shooting & Wins by Direction": {
+  "hint": "Does the team shooting at one hoop do better? League-wide shooting and win rate by direction, from games where the direction is set in Stat Entry."
+ },
+ "Wide-Open Shooting": {
+  "hint": "Shots with no defender tagged. Free throws aren't counted. Share of FGA shows how much of each player's shooting was wide open. Click a column to sort."
+ },
+ "Shot-Making Added (xPTS)": {
+  "hint": "A shot's real difficulty depends on zone, shot type, AND contest level together -- a heavily-contested drive to the rim and a wide-open catch-and-shoot from the same zone aren't equally hard, but zone alone (Points Over Expected, in the advanced columns above) gives them the same expected value. xPTS is the league average points-per-attempt for that shot's exact zone x shot type x contest level combination, falling back to the zone-only average whenever a specific combination has too few logged shots to trust on its own. Shot-Making Added is actual points minus xPTS, summed across attempts -- separates \"scores a lot because the shots are easy\" from \"scores efficiently on hard shots.\" Sorted by Added per Attempt."
+ },
+ "Shot-Making Added, Cumulative Over the Season": {
+  "hint": "Same shape as the Two-Way/20 Rank Over the Season chart -- running Shot-Making Added by date, one line per player, showing who's trending toward outperforming their shot difficulty versus drifting the other way."
+ },
+ "Rivalries": {
+  "hint": "League-wide superlatives from the real Poolean site's full pairwise history: the most-played pairing, the best real record together, the tightest real head-to-head, and the most lopsided one, each needing at least 5 real games to count.",
+  "tag": "Real site data"
+ },
+ "Head to Head": {
+  "hint": "Pick any two players to see their real record together and against each other, their season lines, and both players' nightly power rankings on one chart.",
+  "tag": "Real site data"
+ },
+ "Real Rivalry Matrix": {
+  "hint": "Every real together-win% at once, not just the four superlatives above: every player down one side, every player across the other, cell color follows red-low/green-high, opacity ramping up with real games shared. Click a name for their own page.",
+  "tag": "Real site data"
+ },
+ "Head-to-Head Matchup Grid": {
+  "hint": "Each scorer's FG% against each defender. Red is low, green is high, and fainter cells have fewer shots. Blank means that pairing has never been tagged."
+ },
+ "Passing Chemistry: Pair Detail": {
+  "hint": "What actually happens when one specific player passes to another -- shots created, real difficulty-adjusted value (xPTS/Shot-Making Added), how open the resulting looks tend to be, and the shot type it usually leads to. Shown for both directions of a pair side by side (A passing to B, and B passing to A), since -- same convention as the Teammate Lift Matrix -- these are two different facts, not mirror images."
+ },
+ "League Passing Chemistry Grid": {
+  "hint": "Same shape as the Head-to-Head Matchup Grid above -- passer down one axis, scorer across the other, cell is xPTS created per pass for that pair (how good the shots this passer sets this scorer up with tend to be), color-scaled, opacity by sample size. Blank means that pairing has never happened."
+ },
+ "Rebound Battle Record": {
+  "hint": "Who wins contested rebounds. A win is grabbing it while someone fights you for it; a loss is fighting for it and not getting it. Contest Rate is how many of their rebounds were contested. Needs 5+ contests."
+ },
+ "Opportunity-Adjusted Rebounding": {
+  "hint": "OREB/DREB are raw counts with no denominator -- a player who's played fewer games will always show fewer rebounds regardless of real rebounding ability. Rebound Opportunities is every missed shot (by either team) in games this player appears in, using game participation as a stand-in for playing time (Poolean has no substitutions, so anyone rostered for a game is on the floor for the whole thing). Approximation, not a precise rate -- still a real improvement over an unadjusted raw count. Raw RPG shown alongside for comparison."
+ },
+ "Rebound Battle Head-to-Head": {
+  "hint": "Each player's contested-rebound win rate against each other player. Fainter cells have fewer battles, and blank means they've never battled. Only players with 5+ contests appear."
+ },
+ "Teammate Lift Matrix": {
+  "hint": "How much each player (row) lifts or drags each teammate's (column) Two-Way/20. Green helps, red hurts. Blank means not enough games with and without each other. Row and column aren't mirror images."
+ },
+ "Teammate Context": {
+  "hint": "For each player: how good their teammates are, how tough the defenders they shoot over are, and how tough the scorers they guard are. Helps tell someone carried by good teammates from someone doing it alone."
+ },
+ "Assist Connections": {
+  "hint": "Who sets up whom the most, by assists. Each direction is its own row. A player's own page has their full list."
+ },
+ "Comeback Tracker": {
+  "hint": "Reviewed games ranked by the biggest deficit the eventual winner ever faced, from this app's own timestamped shot log (not the real site's data, which only records final results). Replays every made shot in order and tracks the score gap at each one."
+ },
+ "Out-of-Bounds Misses": {
+  "hint": "How often a player's missed shot goes out of bounds, which gives up the ball. Only misses count. Sorted by number of misses."
+ },
+ "Points off Takeaways": {
+  "hint": "Points a player's team scores within 15 seconds of that player's steal. Only steals count, not every turnover."
+ },
+ "Turnover Type Breakdown": {
+  "hint": "Bad Pass, Lost Handle, and Possession/Decision Error are self-inflicted -- the player's own execution or decision caused it. Stripped is the one genuinely defense-forced category: credit belongs at least partly to the defender, not solely a mark against the offensive player. Only live-ball turnovers with a type tagged count here (Export, Review Turnover Types) -- a turnover that's really just a missed shot going out of bounds is excluded entirely. Sorted by Self-Inflicted % (worst ball security first). Needs 5+ tagged turnovers to show a row."
+ },
+ "TOV Recomputed": {
+  "hint": "A missed shot ruled out of bounds isn't a ball-security failure the way giving the ball away live is, so TOV% and A/TO now count only live-ball turnovers (bad pass, lost handle, stripped, decision/drive error, or untyped). The old blended number (which counted both) is kept here alongside the new one so the change is visible, not silent."
+ },
+ "Self-Inflicted vs. Forced Turnover Rate": {
+  "hint": "Same self-inflicted/forced split as Turnover Type Breakdown above, as one bar per player instead of a table -- the fastest way to scan the whole roster for whose ball-security problem is really theirs, and whose is partly the defense's doing. Bar length reflects total tagged volume, not just the self-inflicted/forced split, so a player with a handful of turnovers and one with many don't look the same size just because both happen to split the same way. Sorted by total turnovers, most first."
+ },
+ "Turnover Type Mix": {
+  "hint": "Same shape as Shot Selection's Mix column -- what KIND of mistake a player tends to make, not just how many. Mostly Bad Pass points at a passing/decision problem; mostly Lost Handle points at a ball-security-under-pressure problem. These call for different fixes and shouldn't flatten into one TOV number."
+ },
+ "Forced Turnover Credit": {
+  "hint": "Stripped turnovers used to carry no defensive attribution at all -- they counted against the offensive player's TOV but credited no defender. Stat Entry's own turnover-logging flow asks who forced or recovered it, so this is a real, deliberately-entered answer, not a guess: the same treatment Rebound Battle Record already gives contested rebounds. No minimum sample -- this is a counting/credit stat like Game-Winning Buckets, not a rate that needs volume to mean something."
+ },
+ "Turnover Type vs. Shot Type": {
+  "hint": "Whether a player's turnovers cluster around trying to create their own offense versus simple ball-security lapses unrelated to any creation attempt. Uses the same definition as Self-Creation Full Accounting: a self-inflicted turnover (Bad Pass, Lost Handle, Possession/Decision Error, Drive/Finish Error) counts as happening during a self-creation attempt; a Stripped turnover doesn't, since a defense-forced loss isn't a self-creation failure regardless of what the player was trying to do. This is the raw-count diagnostic behind that stat's single rate number."
+ },
+ "Turnover Type Over Time": {
+  "hint": "League-wide share of each turnover type by date. Useful for exactly one thing: checking whether a future rule change (e.g. around on-ball contact) shows up here as a real shift in Stripped's share -- a direct, checkable signal using data this system already collects. This only becomes meaningful once there's enough date-range history to show a real trend, not just a season's average as a flat line -- that history doesn't exist yet. Shown early anyway, for the future, not as a settled read.",
+  "tag": "Early / Experimental"
+ },
+ "Self-Creation Full Accounting": {
+  "hint": "True Self-Creation Rate (Leaderboard, advanced columns) only counts self-created possessions that ended in a shot attempt -- a self-creation attempt that instead ends in a lost handle or bad pass just vanishes from that rate's denominator, silently flattering anyone whose creation attempts frequently end in a turnover instead of a shot. This adds every self-inflicted turnover (Bad Pass, Lost Handle, Possession/Decision Error, Drive/Finish Error) back into the denominator as a failed self-creation possession -- a stricter, more honest number worth reading alongside the shots-only rate, not instead of it, since they answer slightly different questions."
+ },
+ "Second-Chance Conversion": {
+  "hint": "Offensive rebounds that turn into points: the rebounder scores or assists soon after the miss (the time window is in Calibrated Thresholds). Needs video times on both plays."
+ },
+ "Second-Chance Points Allowed": {
+  "hint": "How often a defender who loses a contested rebound then gives up points. Lower is better. Rows under 5 situations are marked as small samples. Needs video times."
+ },
+ "Close-Game Shooting": {
+  "hint": "TS% counting only shots from the closest third of games, to show who shoots well when it's tight. Click a column to sort."
+ },
+ "Close-Game Defense": {
+  "hint": "The defensive side of Close-Game Shooting: Opp FG% on shots this player defended in close games (the closest-finishing third of games). Lower is better, so it sorts lowest first. Tied games count. Click any column header to sort."
+ },
+ "Game-Winning Buckets": {
+  "hint": "Who scored the last basket in wins. In a race to a score the winner always scores last, so this counts who tends to close games, not rare heroics. Needs a video time on that shot."
+ },
+ "Play Style Clusters": {
+  "hint": "Groups players whose stat lines look alike (offense, defense, assists, rebounds, steals and blocks), not by anyone's labels. Needs at least 4 players."
+ },
+ "Defensive Load": {
+  "hint": "How much of their team's defending each player does: 1.0 is an even share, and above is more. Opp FG% is now Real Contested Opp FG% -- restricted to shots with a medium or heavy contest level, since a nominally-tagged defender and one who actually challenged the shot aren't the same thing. The old any-tag number is shown alongside it for comparison this first time it ships. Read it with Pts Allowed Under Exp (how they did against what they faced), not on its own."
+ },
+ "Contest Level & Defensive Engagement": {
+  "hint": "Real Contested Opp FG% (quality) and Engagement Rate (how often that quality is even brought to bear) should always be read side by side -- a high-quality, low-engagement defender and a high-quality, high-engagement one look identical on Opp FG% alone but mean completely different things. Engagement Rate is the share of a player's own tagged assignments that are genuinely competitive (medium/heavy) rather than just going through the motions (light). \"None\" (no defender at all) can't attach to a specific player, so the league-wide FG% by contest level below is the permanent sanity check that contestLevel is being tagged meaningfully: looser contest should mean higher FG%."
+ },
+ "Shooter-Quality-Adjusted Defense": {
+  "hint": "A defender who mostly guards the league's best shooters and holds them to a modest FG% is doing more than one who puts up the same number against the league's weakest shooters. Shooter Quality Faced is the season TS% of the shooters a defender actually faced on real-contested (medium/heavy) shots, averaged; Defense Above Expected is that number minus their own Real Contested Opp FG% -- positive means holding shooters below their own normal output. This stacks a third adjustment on a number that's already a further slice of the data, and the recommended 30+ tagged shots per shooter to trust as a real quality baseline isn't met leaguewide yet -- shown for the future, not as a settled read. Trust the direction, not the exact numbers.",
+  "tag": "Early / Experimental"
+ },
+ "Defender-Quality-Adjusted Offense": {
+  "hint": "The direct mirror of Shooter-Quality-Adjusted Defense above: a scorer who stays efficient specifically against the league's best defenders is doing more than one whose efficiency comes mostly against weak ones. Defender Quality Faced is the average Real Contested Opp FG% of the defenders on a scorer's own real-contested attempts; Offense Above Expected is the scorer's own Real Contested FG% minus that number. Same gate as the defensive version above (this one needs ~8-10+ real-contested volume per defender), also not met leaguewide yet -- these two ship together per the spec, both marked early.",
+  "tag": "Early / Experimental"
+ },
+ "Win Shares Model (beta)": {
+  "hint": "Checks on the model behind the Win Shares column: which stats it weighs and how well it predicts games it wasn't trained on. There isn't enough data yet to trust it for anything important."
+ },
+ "Season Timeline": {
+  "hint": "The real season's story in order: who held the crown each real party night, and any upsets that same night. The same facts Season Recap and Upset Tracker show as static summaries, read here as one continuous timeline.",
+  "tag": "Real site data"
+ },
+ "Season Recap": {
+  "hint": "The real season on one screen: the champion, every award winner, the top of the final power rankings, and the biggest risers and fallers from the first party to the end of the season.",
+  "tag": "Real site data"
+ },
+ "Award Race": {
+  "hint": "Who the numbers point to for each award, top 3. The vote is what counts: once results are in, each award shows the real winner and whether the stats called it. DPOY, Clutch and Best Teammate use logged games.",
+  "tag": "Real site data"
+ },
+ "Trophy Case": {
+  "hint": "Every player with a real award win, gold first. Ring color and thickness match the avatar ring on each player's own profile page.",
+  "tag": "Real site data"
+ },
+ "Iron Man": {
+  "hint": "Everyone tied for the longest streak of real parties attended in a row.",
+  "tag": "Real site data"
+ },
+ "Upset Tracker": {
+  "hint": "Real games the lower-ranked side won anyway (by that night's power rankings), biggest surprise first. Uneven teams are adjusted for the extra player.",
+  "tag": "Real site data"
+ },
+ "Party Recap": {
+  "hint": "One real party night at a time: everyone's record that night, any upsets, the biggest climber in the rankings, and milestones. Download it as an image, or copy it as text for the group chat.",
+  "tag": "Real site data"
+ },
+ "Best & Worst Individual Games": {
+  "hint": "The best and worst single-game performances, by that game's own score. Switch between overall, offense and defense. Games stopped early are left out."
+ },
+ "Play Search": {
+  "hint": "Pick a player and a play type to see every one of them across every game -- Ben's steals, Zach's missed 3s, whatever you're after -- newest first, with a jump straight to the moment. Shot type and defender narrow it further for any made or missed shot."
+ },
+ "Highlights & Lowlights (League)": {
+  "hint": "Every clip tagged to any player, newest first. Clips come from the Highlight / Lowlight Reel in Stat Entry."
+ }
+}

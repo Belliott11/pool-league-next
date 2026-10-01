@@ -1,0 +1,55 @@
+/* Styles for markup produced by the classic site's formatters (generated panel cells and mounted
+   charts). Same class names as dashboard/style.css, mapped onto this app's shadcn tokens. */
+
+.hint {
+  display: block;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+}
+
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.shot-selection-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
+}
+.legend-swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.shot-selection-bar {
+  flex: 1;
+  display: flex;
+  height: 16px;
+  min-width: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--muted);
+}
+.shot-seg { height: 100%; }
+
+.shot-seg-close, .legend-swatch.shot-seg-close { background: var(--chart-2); }
+.shot-seg-mid, .legend-swatch.shot-seg-mid { background: var(--chart-3); }
+.shot-seg-line, .legend-swatch.shot-seg-line { background: var(--accent); }
+.shot-seg-deep, .legend-swatch.shot-seg-deep { background: var(--destructive); }
+
+.shot-seg-type-cs, .legend-swatch.shot-seg-type-cs { background: var(--accent); }
+.shot-seg-type-heave, .legend-swatch.shot-seg-type-heave { background: var(--destructive); }
+.shot-seg-type-drive, .legend-swatch.shot-seg-type-drive { background: var(--chart-2); }
+.shot-seg-type-move, .legend-swatch.shot-seg-type-move { background: var(--chart-3); }
+.shot-seg-type-dunk, .legend-swatch.shot-seg-type-dunk { background: var(--muted-foreground); }
+
+.tov-seg-badpass, .legend-swatch.tov-seg-badpass { background: var(--destructive); }
+.tov-seg-losthandle, .legend-swatch.tov-seg-losthandle { background: var(--chart-3); }
+.tov-seg-decisionerror, .legend-swatch.tov-seg-decisionerror { background: var(--accent); }
+.tov-seg-stripped, .legend-swatch.tov-seg-stripped { background: var(--chart-5); }
+
+.tov-hbar-chart { display: flex; flex-direction: column; gap: 6px; }
+.tov-hbar-row { display: flex; align-items: center; gap: 10px; }
+.tov-hbar-label { flex: 0 0 110px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 0.86rem; }
+.tov-hbar-track { display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: var(--muted); min-width: 24px; }
+.tov-hbar-seg { height: 100%; }
+.tov-hbar-self, .legend-swatch.tov-hbar-self { background: var(--destructive); }
+.tov-hbar-forced, .legend-swatch.tov-hbar-forced { background: var(--chart-5); }
+.tov-hbar-total { flex: 0 0 auto; font-size: 0.8rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }

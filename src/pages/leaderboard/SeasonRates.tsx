@@ -72,7 +72,7 @@ export function SeasonRates({
           />
         </div>
       </details>
-      <DataTable
+      <DataTable<any>
         key={showAdvanced ? "adv" : "basic"}
         columns={columns}
         rows={rows}

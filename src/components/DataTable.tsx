@@ -22,7 +22,7 @@ export interface Sort {
 interface Props<R> {
   columns: Column<R>[]
   rows: R[]
-  rowKey: (r: R) => string
+  rowKey: (r: R, i: number) => string
   defaultSort?: Sort
   // The first column (usually the player) renders custom content, e.g. an avatar and link.
   renderFirst?: (r: R) => ReactNode
@@ -37,6 +37,13 @@ function cellText<R>(col: Column<R>, r: R): string {
   if (col.display) return col.display(r)
   const v = col.accessor(r)
   return v === null || v === undefined ? "—" : String(v)
+}
+
+// The classic site's cell formatters sometimes return small HTML snippets (a line break and a hint
+// span). They are built from our own numbers and escaped names, so they are rendered as markup.
+function Cell<R>({ col, r }: { col: Column<R>; r: R }) {
+  const text = cellText(col, r)
+  return text.includes("<") ? <span dangerouslySetInnerHTML={{ __html: text }} /> : <>{text}</>
 }
 
 export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, heroKey, highlight, empty }: Props<R>) {
@@ -94,13 +101,13 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.map((r) => (
-              <TableRow key={rowKey(r)}>
+            {sorted.map((r, i) => (
+              <TableRow key={rowKey(r, i)}>
                 {columns.map((col, i) => {
                   if (i === 0) {
                     return (
                       <TableCell key={col.key} className="sticky left-0 z-10 bg-card font-medium">
-                        {renderFirst ? renderFirst(r) : cellText(col, r)}
+                        {renderFirst ? renderFirst(r) : <Cell col={col} r={r} />}
                       </TableCell>
                     )
                   }
@@ -113,7 +120,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                       title={isBest ? "Season leader in this column" : isWorst ? "Season worst in this column" : undefined}
                       className={`tabular-nums ${sort?.key === col.key ? "bg-muted/50" : ""} ${isBest ? "bg-chart-2/15 text-chart-2 font-semibold" : ""} ${isWorst ? "bg-destructive/15 text-destructive" : ""}`}
                     >
-                      {cellText(col, r)}
+                      <Cell col={col} r={r} />
                     </TableCell>
                   )
                 })}
@@ -124,14 +131,14 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
       </div>
 
       <div className="flex flex-col gap-3 md:hidden">
-        {sorted.map((r) => (
-          <Card key={rowKey(r)}>
+        {sorted.map((r, i) => (
+          <Card key={rowKey(r, i)}>
             <CardContent className="flex flex-col gap-2">
-              <div className="font-medium">{renderFirst ? renderFirst(r) : cellText(first, r)}</div>
+              <div className="font-medium">{renderFirst ? renderFirst(r) : <Cell col={first} r={r} />}</div>
               {hero && hero.key !== first.key && (
                 <div className="flex items-baseline justify-between rounded-md bg-accent/10 px-3 py-2">
                   <span className="text-xs text-muted-foreground">{hero.label}</span>
-                  <span className="font-display text-2xl font-bold tabular-nums text-accent">{cellText(hero, r)}</span>
+                  <span className="font-display text-2xl font-bold tabular-nums text-accent"><Cell col={hero} r={r} /></span>
                 </div>
               )}
               {columns
@@ -139,7 +146,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                 .map((c) => (
                   <div key={c.key} className="flex items-center justify-between gap-3 text-sm">
                     <span className="text-muted-foreground">{c.label}</span>
-                    <span className="text-right tabular-nums font-medium">{cellText(c, r)}</span>
+                    <span className="text-right tabular-nums font-medium"><Cell col={c} r={r} /></span>
                   </div>
                 ))}
             </CardContent>
