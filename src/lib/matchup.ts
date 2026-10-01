@@ -1,0 +1,304 @@
+// Real matchup predictor, ported verbatim from app.js ("Real matchup predictor" section).
+// Win odds for any two teams, from a small logistic model trained on every real game in every
+// imported season. Three inputs, each measured only from what was known BEFORE that game:
+//   1. power rankings, 2. extra player (team size difference), 3. history together and against.
+// No intercept, so swapping which side is "A" just flips the odds.
+import { realSeasonsInOrder, type PairRecord, type RealGame } from "./real"
+
+export const REAL_MATCHUP_MIN_GAMES = 15
+const REAL_MATCHUP_L2 = 0.05
+const REAL_MATCHUP_FACTOR_LABELS = ["Power rankings", "Extra player", "History together and against"]
+
+// Real percentile assumed for a player with literally no track record at all (see app.js).
+export const UNKNOWN_PLAYER_PCT = 10
+
+type Features = [number, number, number]
+type Rec = { w: number; gp: number } | undefined
+type Lookup2 = (p: string, q: string) => Rec
+
+const sigmoid = (z: number) => 1 / (1 + Math.exp(-z))
+
+// Real play order: by date, then CREATED timestamp, then game number.
+const byPlayOrder = (x: RealGame, y: RealGame) =>
+  x.date.localeCompare(y.date) ||
+  (x.created && y.created ? x.created.localeCompare(y.created) : 0) ||
+  x.n - y.n
+
+const shrunkEdge = (rec: Rec) => (rec ? (rec.w + 2.5) / (rec.gp + 5) - 0.5 : 0)
+
+function realMatchupFeatures(
+  a: string[],
+  b: string[],
+  pctOf: (id: string) => number,
+  togetherOf: Lookup2,
+  againstOf: Lookup2,
+): Features {
+  const avg = (ids: string[]) => ids.reduce((sum, id) => sum + pctOf(id), 0) / ids.length
+  const chem = (ids: string[]) => {
+    let sum = 0
+    let n = 0
+    for (let i = 0; i < ids.length; i++)
+      for (let j = i + 1; j < ids.length; j++) {
+        sum += shrunkEdge(togetherOf(ids[i], ids[j]))
+        n++
+      }
+    return n ? sum / n : 0
+  }
+  let h2h = 0
+  let n = 0
+  a.forEach((x) =>
+    b.forEach((y) => {
+      h2h += shrunkEdge(againstOf(x, y))
+      n++
+    }),
+  )
+  return [(avg(a) - avg(b)) / 10, a.length - b.length, 10 * (chem(a) - chem(b) + (n ? h2h / n : 0))]
+}
+
+interface Row {
+  x: Features
+  y: 0 | 1
+}
+
+function buildRealMatchupRows(): Row[] {
+  const rows: Row[] = []
+  const together: Record<string, { w: number; gp: number }> = {}
+  const against: Record<string, { w: number; gp: number }> = {}
+  const bump = (map: Record<string, { w: number; gp: number }>, key: string, won: boolean) => {
+    const r = map[key] || (map[key] = { w: 0, gp: 0 })
+    r.gp++
+    if (won) r.w++
+  }
+  let prevCards: Record<string, { powerPct: number }> | null = null
+  realSeasonsInOrder().forEach((season) => {
+    const nightPcts: Record<string, number[]> = {}
+    const rankings = [...season.rankings].sort((x, y) => x.date.localeCompare(y.date))
+    let ri = 0
+    ;[...season.games].sort(byPlayOrder).forEach((g) => {
+      while (ri < rankings.length && rankings[ri].date < g.date) {
+        rankings[ri].players.forEach((p) => (nightPcts[p.slug] = nightPcts[p.slug] || []).push(p.pct))
+        ri++
+      }
+      const pctOf = (id: string) => {
+        const v = nightPcts[id]
+        if (v && v.length) return v.reduce((x, y) => x + y, 0) / v.length
+        return prevCards && prevCards[id] ? prevCards[id].powerPct : UNKNOWN_PLAYER_PCT
+      }
+      const x = realMatchupFeatures(
+        g.a,
+        g.b,
+        pctOf,
+        (p, q) => together[[p, q].sort().join("|")],
+        (p, q) => against[`${p}|${q}`],
+      )
+      const aWon = g.w === "A"
+      rows.push({ x, y: aWon ? 1 : 0 })
+      const pairs = (ids: string[]) =>
+        ids.flatMap((p, i) => ids.slice(i + 1).map((q) => [p, q].sort().join("|")))
+      pairs(g.a).forEach((k) => bump(together, k, aWon))
+      pairs(g.b).forEach((k) => bump(together, k, !aWon))
+      g.a.forEach((p) =>
+        g.b.forEach((q) => {
+          bump(against, `${p}|${q}`, aWon)
+          bump(against, `${q}|${p}`, !aWon)
+        }),
+      )
+    })
+    prevCards = season.cards
+  })
+  return rows
+}
+
+function fitRealMatchupWeights(rows: Row[], start: Features = [0, 0, 0], iterations = 1500): Features {
+  const w: Features = [...start]
+  const lr = 0.1
+  for (let it = 0; it < iterations; it++) {
+    const g = [0, 0, 0]
+    rows.forEach((r) => {
+      const err = sigmoid(w[0] * r.x[0] + w[1] * r.x[1] + w[2] * r.x[2]) - r.y
+      for (let k = 0; k < 3; k++) g[k] += err * r.x[k]
+    })
+    for (let k = 0; k < 3; k++) w[k] -= lr * (g[k] / rows.length + REAL_MATCHUP_L2 * w[k])
+  }
+  return w
+}
+
+// Where everyone stands right now: latest season's power ranking % (earlier season's for anyone
+// not ranked this season), and every season's together/against records summed.
+function realMatchupLookups() {
+  const pct: Record<string, number> = {}
+  const together: Record<string, { w: number; gp: number }> = {}
+  const against: Record<string, { w: number; gp: number }> = {}
+  const add = (map: Record<string, { w: number; gp: number }>, src: Record<string, PairRecord>) =>
+    Object.entries(src).forEach(([k, v]) => {
+      const r = map[k] || (map[k] = { w: 0, gp: 0 })
+      r.w += v.w
+      r.gp += v.gp
+    })
+  realSeasonsInOrder().forEach((season) => {
+    Object.entries(season.cards).forEach(([slug, c]) => {
+      pct[slug] = c.powerPct
+    })
+    add(together, season.together)
+    add(against, season.against)
+  })
+  return {
+    pctOf: (id: string) => pct[id] ?? UNKNOWN_PLAYER_PCT,
+    hasPct: (id: string) => id in pct,
+    togetherOf: ((p: string, q: string) => together[[p, q].sort().join("|")]) as Lookup2,
+    againstOf: ((p: string, q: string) => against[`${p}|${q}`]) as Lookup2,
+  }
+}
+
+export interface RealMatchupModel {
+  w: Features
+  n: number
+  looCorrect: number
+  looN: number
+  lookups: ReturnType<typeof realMatchupLookups>
+}
+
+let modelCache: RealMatchupModel | false | null = null
+
+export function getRealMatchupModel(): RealMatchupModel | null {
+  if (modelCache !== null) return modelCache || null
+  const rows = buildRealMatchupRows()
+  if (rows.length < REAL_MATCHUP_MIN_GAMES) {
+    modelCache = false
+    return null
+  }
+  const w = fitRealMatchupWeights(rows)
+  let looCorrect = 0
+  let looN = 0
+  rows.forEach((r, i) => {
+    // Starting from the full fit: dropping one game barely moves the answer, so a short refit
+    // lands in the same place as a from-scratch one at a fraction of the cost.
+    const wi = fitRealMatchupWeights(rows.filter((_, j) => j !== i), w, 150)
+    const p = sigmoid(wi[0] * r.x[0] + wi[1] * r.x[1] + wi[2] * r.x[2])
+    if (p === 0.5) return
+    looN++
+    if (p > 0.5 === (r.y === 1)) looCorrect++
+  })
+  modelCache = { w, n: rows.length, looCorrect, looN, lookups: realMatchupLookups() }
+  return modelCache
+}
+
+export interface MatchupPrediction {
+  pA: number
+  factors: { label: string; lean: number }[]
+  unranked: string[]
+  model: RealMatchupModel
+}
+
+// Team A's chance to win, plus how much each input leans the game on its own (in percentage
+// points above 50, positive toward A). null until there are enough real games to train on.
+export function predictRealMatchup(teamA: string[], teamB: string[]): MatchupPrediction | null {
+  const model = getRealMatchupModel()
+  if (!model || teamA.length === 0 || teamB.length === 0) return null
+  const L = model.lookups
+  const x = realMatchupFeatures(teamA, teamB, L.pctOf, L.togetherOf, L.againstOf)
+  const pA = sigmoid(model.w[0] * x[0] + model.w[1] * x[1] + model.w[2] * x[2])
+  const factors = x.map((v, k) => ({
+    label: REAL_MATCHUP_FACTOR_LABELS[k],
+    lean: (sigmoid(model.w[k] * v) - 0.5) * 100,
+  }))
+  const unranked = [...teamA, ...teamB].filter((id) => !L.hasPct(id))
+  return { pA, factors, unranked, model }
+}
+
+export function realMatchupAccuracyText(model: RealMatchupModel): string {
+  return model.looN
+    ? `Tested on real games it wasn't trained on, it picked the winner in ${model.looCorrect} of ${model.looN} (${Math.round((model.looCorrect / model.looN) * 100)}%).`
+    : ""
+}
+
+// For a lopsided matchup (odds more than 5 points from 50/50), the single trade of one player
+// from each side that brings the odds closest to even. null when no trade helps by 2+ points.
+export function bestEvenSwap(teamA: string[], teamB: string[]) {
+  const now = predictRealMatchup(teamA, teamB)
+  if (!now) return null
+  const gapNow = Math.abs(now.pA - 0.5)
+  if (gapNow <= 0.05) return null
+  let best: { a: string; b: string; pA: number; gap: number } | null = null
+  teamA.forEach((a) =>
+    teamB.forEach((b) => {
+      const newA = teamA.map((id) => (id === a ? b : id))
+      const newB = teamB.map((id) => (id === b ? a : id))
+      const p = predictRealMatchup(newA, newB)!.pA
+      const gap = Math.abs(p - 0.5)
+      if (!best || gap < best.gap) best = { a, b, pA: p, gap }
+    }),
+  )
+  const b = best as { a: string; b: string; pA: number; gap: number } | null
+  return b && gapNow - b.gap >= 0.02 ? b : null
+}
+
+// Track record: before each party night, refit on only the games played before it and call that
+// night's games. Nights before it has REAL_MATCHUP_MIN_GAMES to learn from are skipped.
+export interface TrackRecord {
+  nights: { date: string; correct: number; called: number }[]
+  total: { correct: number; called: number }
+  early: { correct: number; called: number }
+  late: { correct: number; called: number }
+}
+
+let trackCache: TrackRecord | null = null
+export function computeRealMatchupTrackRecord(): TrackRecord {
+  if (trackCache) return trackCache
+  const rows = buildRealMatchupRows()
+  const games = realSeasonsInOrder().flatMap((season) => [...season.games].sort(byPlayOrder))
+  const nights: TrackRecord["nights"] = []
+  let i = 0
+  while (i < games.length) {
+    let j = i
+    while (j < games.length && games[j].date === games[i].date) j++
+    if (i >= REAL_MATCHUP_MIN_GAMES) {
+      const w = fitRealMatchupWeights(rows.slice(0, i))
+      let correct = 0
+      let called = 0
+      for (let k = i; k < j; k++) {
+        const p = sigmoid(w[0] * rows[k].x[0] + w[1] * rows[k].x[1] + w[2] * rows[k].x[2])
+        if (p === 0.5) continue
+        called++
+        if (p > 0.5 === (rows[k].y === 1)) correct++
+      }
+      nights.push({ date: games[i].date, correct, called })
+    }
+    i = j
+  }
+  const sum = (list: TrackRecord["nights"]) =>
+    list.reduce((acc, n) => ({ correct: acc.correct + n.correct, called: acc.called + n.called }), {
+      correct: 0,
+      called: 0,
+    })
+  const half = Math.floor(nights.length / 2)
+  trackCache = { nights, total: sum(nights), early: sum(nights.slice(0, half)), late: sum(nights.slice(half)) }
+  return trackCache
+}
+
+// ---------- Balance Teams: win chances ----------
+// Each team's chance to win. Two teams play one game, so the two chances sum to 100%. With three
+// or more teams, each team's number is its average chance against every other team in the split.
+export function predictTeamWinChances(teams: string[][]): number[] | null {
+  if (teams.length < 2 || !getRealMatchupModel()) return null
+  const vs: number[][] = teams.map(() => [])
+  for (let i = 0; i < teams.length; i++) {
+    for (let j = i + 1; j < teams.length; j++) {
+      const p = predictRealMatchup(teams[i], teams[j])!.pA
+      vs[i].push(p)
+      vs[j].push(1 - p)
+    }
+  }
+  return vs.map((v) => v.reduce((a, b) => a + b, 0) / v.length)
+}
+
+// How far the least even pairing in a split sits from 50/50, in percentage points.
+export function worstPairingGap(teams: string[][]): number {
+  let worst = 0
+  for (let i = 0; i < teams.length; i++) {
+    for (let j = i + 1; j < teams.length; j++) {
+      worst = Math.max(worst, Math.abs(predictRealMatchup(teams[i], teams[j])!.pA - 0.5) * 100)
+    }
+  }
+  return worst
+}

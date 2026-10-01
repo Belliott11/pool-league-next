@@ -286,3 +286,13 @@ export function isLiveScoreOnly(game: Game): boolean {
 export function isCurrentSeasonGame(state: PooleanState, game: Game): boolean {
   return !state.currentSeasonStartedAt || (game.date || "") >= state.currentSeasonStartedAt
 }
+
+export function effectiveFgPct(fgm: number, tpm: number, fga: number): number | null {
+  return fga > 0 ? Math.round(((fgm + 0.5 * tpm) / fga) * 100) : null
+}
+
+export function formatVideoTime(t: number | null | undefined): string {
+  if (t === null || t === undefined) return "—"
+  const s = Math.max(0, Math.round(t))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
-import { GameDetailDialog } from "./games/GameDetailDialog"
+import { GamePage } from "./games/GamePage"
 import { GameLog } from "./games/GameLog"
 import { Section } from "./games/Section"
 import { SetUpTonight } from "./games/SetUpTonight"
@@ -25,6 +25,19 @@ export function GamesPage({
   const openGame = state.games.find((g) => g.id === openId) ?? null
   const open = (g: Game) => setOpenId(g.id)
 
+  if (openGame) {
+    return (
+      <GamePage
+        state={state}
+        game={openGame}
+        onBack={() => {
+          setOpenId(null)
+          if (location.hash) history.replaceState(null, "", location.pathname + location.search)
+        }}
+      />
+    )
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div className="flex min-w-0 flex-col gap-4">
@@ -34,7 +47,6 @@ export function GamesPage({
         </Section>
       </div>
       <Sidebar state={state} onOpenPlayer={onOpenPlayer} onOpenGame={open} />
-      <GameDetailDialog state={state} game={openGame} onClose={() => setOpenId(null)} />
     </div>
   )
 }

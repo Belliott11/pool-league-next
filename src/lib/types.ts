@@ -31,6 +31,10 @@ export interface ScoringEvent {
   rebounderId?: string | null
   shotLocation?: { x: number; y: number } | null
   videoTime?: number | null
+  shotType?: string | null
+  dunk?: boolean
+  contestLevel?: "none" | "light" | "medium" | "heavy" | null
+  passerId?: string | null
 }
 
 export interface TurnoverEvent {
@@ -40,6 +44,7 @@ export interface TurnoverEvent {
   stealEventId?: string | null
   missEventId?: string | null
   videoTime?: number | null
+  turnoverType?: string | null
 }
 
 export interface Game {
@@ -59,6 +64,8 @@ export interface Game {
   masterVideoId?: string | null
   liveInProgress?: boolean
   liveScores?: { pid: string; points: number }[]
+  matchups?: { id: string; defenderId: string; offenderId: string; note?: string; videoTime?: number | null }[]
+  plays?: { id: string; type: "highlight" | "lowlight"; start: number; end: number; playerId?: string | null; note?: string }[]
   // every other field (matchups, plays, videoUrl, masterVideoId, …) round-trips via this index
   [key: string]: unknown
 }
