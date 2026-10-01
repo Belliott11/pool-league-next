@@ -1,8 +1,9 @@
+import { useMemo } from "react"
 import { Section } from "@/components/Section"
 import type { Toggles } from "@/lib/legacy"
 import { computeLeaderboardSectionTeasers } from "@/lib/legacy-core"
 import type { PooleanState } from "@/lib/types"
-import { LegacyTablePanels } from "./leaderboard/LegacyTablePanels"
+import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
 import { SeasonRates } from "./leaderboard/SeasonRates"
 
 // Same six groups, in the same order, as the classic Leaderboard tab.
@@ -26,13 +27,14 @@ export function LeaderboardPage({
   setToggles: (t: Toggles) => void
   onOpenPlayer: (id: string) => void
 }) {
+  const version = useMemo(() => ({ state, toggles }), [state, toggles])
   const teasers = computeLeaderboardSectionTeasers() as Record<string, string>
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
       {SECTIONS.map((s) => (
         <Section key={s.key} id={`lb-section-${s.key}`} title={s.title} teaser={teasers[s.key] ?? ""}>
-          <LegacyTablePanels section={s.key} onOpenPlayer={onOpenPlayer} />
+          <LegacyPanels section={s.key} onOpenPlayer={onOpenPlayer} version={version} />
         </Section>
       ))}
     </div>

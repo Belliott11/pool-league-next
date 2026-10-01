@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useRef, useState } from "react"
 import { Panel } from "@/components/Panel"
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { DataTable } from "@/components/DataTable"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import hints from "@/data/panel-hints.json"
-import { TABLE_PANELS } from "@/lib/legacy-core"
+import { MOUNT_PANELS, TABLE_PANELS } from "@/lib/legacy-core"
 
-interface Spec {
+interface TableSpec {
   section: string
   order: number
   title: string
@@ -17,12 +18,21 @@ interface Spec {
   empty: () => string
 }
 
-const SPECS = TABLE_PANELS as Spec[]
+interface MountSpec {
+  section: string
+  order: number
+  title: string
+  html: string
+  render: () => void
+}
+
+const TABLES = TABLE_PANELS as TableSpec[]
+const MOUNTS = MOUNT_PANELS as MountSpec[]
 const HINTS = hints as Record<string, { hint: string; tag?: string }>
 
 // One table panel generated from the classic site's own render function (rows, sort, per-column
 // formatting and empty-state text all come from there, so the numbers match exactly).
-function LegacyTablePanel({ spec, onOpenPlayer }: { spec: Spec; onOpenPlayer: (id: string) => void }) {
+function LegacyTablePanel({ spec, onOpenPlayer }: { spec: TableSpec; onOpenPlayer: (id: string) => void }) {
   const rows = spec.rows()
   const meta = HINTS[spec.title]
   return (
@@ -31,7 +41,7 @@ function LegacyTablePanel({ spec, onOpenPlayer }: { spec: Spec; onOpenPlayer: (i
         <DataTable<any>
           columns={spec.columns}
           rows={rows}
-          rowKey={(r: { player?: { id: string } }, i?: number) => r.player?.id ?? String(i)}
+          rowKey={(r: { player?: { id: string } }, i: number) => r.player?.id ?? String(i)}
           defaultSort={spec.sort}
           empty={spec.empty()}
           renderFirst={(r: { player?: { id: string; name: string } }) =>
@@ -48,20 +58,52 @@ function LegacyTablePanel({ spec, onOpenPlayer }: { spec: Spec; onOpenPlayer: (i
   )
 }
 
-export function LegacyTablePanels({ section, onOpenPlayer }: { section: string; onOpenPlayer: (id: string) => void }) {
+// Every other panel is drawn by its classic render function into the panel's original markup.
+// The markup sits under .legacy (the classic stylesheet, scoped) and the function re-runs whenever
+// the data or a toggle changes.
+function LegacyMountPanel({ spec, version }: { spec: MountSpec; version: unknown }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  const meta = HINTS[spec.title]
+  useEffect(() => {
+    try {
+      spec.render()
+      setError(null)
+    } catch (e) {
+      console.error(`Panel "${spec.title}" failed`, e)
+      setError(String(e))
+    }
+  }, [spec, version])
   return (
-    <>
-      {SPECS.filter((s) => s.section === section)
-        .sort((a, b) => a.order - b.order)
-        .map((s) => (
-          <PanelBoundary key={s.bodyId} title={s.title}>
-            <LegacyTablePanel spec={s} onOpenPlayer={onOpenPlayer} />
-          </PanelBoundary>
-        ))}
-    </>
+    <div data-mount={spec.title}>
+      <Panel title={spec.title} hint={meta?.hint} tag={meta?.tag}>
+        {error && <p className="text-sm text-destructive">This panel hit an error: {error}</p>}
+        <div ref={ref} className="legacy" dangerouslySetInnerHTML={{ __html: spec.html }} />
+      </Panel>
+    </div>
   )
 }
 
-export function legacyPanelTitles(): string[] {
-  return SPECS.map((s) => s.title)
+export function LegacyPanels({
+  section,
+  onOpenPlayer,
+  version,
+}: {
+  section: string
+  onOpenPlayer: (id: string) => void
+  version: unknown
+}) {
+  const items = [
+    ...TABLES.filter((s) => s.section === section).map((s) => ({ order: s.order, node: <LegacyTablePanel spec={s} onOpenPlayer={onOpenPlayer} />, title: s.title })),
+    ...MOUNTS.filter((s) => s.section === section).map((s) => ({ order: s.order, node: <LegacyMountPanel spec={s} version={version} />, title: s.title })),
+  ].sort((a, b) => a.order - b.order)
+  return (
+    <>
+      {items.map((it) => (
+        <PanelBoundary key={it.title} title={it.title}>
+          {it.node}
+        </PanelBoundary>
+      ))}
+    </>
+  )
 }

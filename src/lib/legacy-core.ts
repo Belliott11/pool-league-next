@@ -22,6 +22,15 @@ export function normalizeLegacyState(s) {
   return s;
 }
 
+
+function openPlayerDetail(id) { window.dispatchEvent(new CustomEvent("legacy-open-player", { detail: id })); }
+function openGame(id) { window.dispatchEvent(new CustomEvent("legacy-open-game", { detail: id })); }
+function showTab() {}
+function startLiveGame() {}
+function openLiveGameOverlay() {}
+function scrollBelowStickyNav() {}
+function wireSectionNavExtras() {}
+
 const STORAGE_KEY = "poolLeagueStatTracker";
 
 const ICONS = {
@@ -293,6 +302,11 @@ function renderPlayerAvatar(player, size = "normal", ringClass = "") {
   return `<span class="player-avatar player-avatar-${size}${ring}" style="background:hsl(${hue}, 55%, 42%)">${escapeHtml(initial)}</span>`;
 }
 
+function playerAvatarRingClass(playerId) {
+  const t = computePlayerAwardTier(playerId);
+  return t ? `player-avatar-ring-${t.color}-${t.isCurrent ? "current" : "past"}` : "";
+}
+
 function buildGameShareText(game) {
   const scoreA = teamScore(game, game.teamA);
   const scoreB = teamScore(game, game.teamB);
@@ -558,6 +572,12 @@ function predictRealMatchup(teamA, teamB) {
   return { pA, factors, unranked, model };
 }
 
+function realMatchupPlayerPool() {
+  const ids = new Set(state.players.map(p => p.id));
+  if (typeof POOLEAN_SEASONS !== "undefined") realSeasonsInOrder().forEach(s => Object.keys(s.names || {}).forEach(id => ids.add(id)));
+  return [...ids].map(id => ({ id, name: poolNameOf(id) })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 let realMatchupTrackCache = null;
 
 function computeRealMatchupTrackRecord() {
@@ -728,6 +748,14 @@ function sameTeam(game, playerIdA, playerIdB) {
     (game.teamB.includes(playerIdA) && game.teamB.includes(playerIdB));
 }
 
+const SHOT_CHART_VIEWBOX_W = 100;
+
+const SHOT_CHART_VIEWBOX_H = 200;
+
+function shotChartVbX(storedX) { return (storedX / 100) * SHOT_CHART_VIEWBOX_W; }
+
+function shotChartVbY(storedY) { return SHOT_CHART_VIEWBOX_H - (storedY / 100) * SHOT_CHART_VIEWBOX_H; }
+
 const HEATMAP_COLS = 5;
 
 const HEATMAP_ROW_BOUNDARIES = [0, 15, 30, 45, 60, 80, 100];
@@ -759,6 +787,73 @@ function computeHeatmapCells(shots) {
     if (ev.made !== false) cell.makes++;
   });
   return cells;
+}
+
+function heatmapCellColor(cell) {
+  const fgFrac = cell.makes / cell.attempts;
+  const hue = fgFrac * 120;
+  const opacity = Math.min(0.85, 0.32 + cell.attempts * 0.1);
+  return `hsla(${hue}, 85%, 42%, ${opacity})`;
+}
+
+function renderHeatmapSvg(shots, colorFn = heatmapCellColor) {
+  if (shots.length === 0) return null;
+  const cells = computeHeatmapCells(shots);
+  const cellsSvg = cells.filter(cell => cell.attempts > 0).map(cell => {
+    const vbX = shotChartVbX(cell.x);
+    const vbW = (cell.w / 100) * SHOT_CHART_VIEWBOX_W;
+    const vbYTop = shotChartVbY(cell.y + cell.h); // farther from the hoop = smaller stored y-span end = higher up once flipped
+    const vbYBottom = shotChartVbY(cell.y);
+    const vbH = vbYBottom - vbYTop;
+    const cx = vbX + vbW / 2;
+    const cy = vbYTop + vbH / 2;
+    const fgPct = Math.round((cell.makes / cell.attempts) * 100);
+    return `
+      <rect x="${vbX}" y="${vbYTop}" width="${vbW}" height="${vbH}" fill="${colorFn(cell)}" stroke="var(--panel-bg)" stroke-width="0.5" />
+      <text x="${cx}" y="${cy - 1}" text-anchor="middle" class="heatmap-cell-label">${cell.attempts}</text>
+      <text x="${cx}" y="${cy + 7}" text-anchor="middle" class="heatmap-cell-pct">${fgPct}%</text>
+    `;
+  }).join("");
+
+  const threePtVbY = shotChartVbY(60);
+  const hoopVbY = shotChartVbY(7);
+
+  // Hoop marker drawn BEFORE the cell grid (not after) so it never sits on top of a cell's
+  // attempt count — it only shows through in a cell with no data there, which is the point of
+  // a background reference marker in the first place.
+  return `
+    <svg class="shot-chart heatmap-chart" viewBox="0 0 ${SHOT_CHART_VIEWBOX_W} ${SHOT_CHART_VIEWBOX_H}">
+      <rect x="1" y="1" width="${SHOT_CHART_VIEWBOX_W - 2}" height="${SHOT_CHART_VIEWBOX_H - 2}" rx="4" class="shot-chart-court" />
+      <circle cx="${SHOT_CHART_VIEWBOX_W / 2}" cy="${hoopVbY}" r="4" class="shot-chart-hoop" />
+      ${cellsSvg}
+      <line x1="1" y1="${threePtVbY}" x2="${SHOT_CHART_VIEWBOX_W - 1}" y2="${threePtVbY}" class="shot-chart-3pt-line" />
+      <text x="${SHOT_CHART_VIEWBOX_W - 3}" y="${threePtVbY - 3}" class="shot-chart-label" text-anchor="end">3PT</text>
+    </svg>
+  `;
+}
+
+function renderHeatmapInto(containerId, allFieldGoals, colorFn = heatmapCellColor) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const withLocation = allFieldGoals.filter(ev => ev.shotLocation);
+  const svg = renderHeatmapSvg(withLocation, colorFn);
+  if (!svg) {
+    container.innerHTML = '<p class="empty-state">No shots with a location marked yet.</p>';
+    return;
+  }
+  const missing = allFieldGoals.length - withLocation.length;
+  container.innerHTML = `
+    <div class="shot-chart-wrap">${svg}</div>
+    <p class="hint" style="margin:0">${withLocation.length} of ${allFieldGoals.length} field goal${allFieldGoals.length === 1 ? "" : "s"} plotted${missing > 0 ? ` (${missing} still missing a location)` : ""}.</p>
+  `;
+}
+
+function renderLeagueHeatmap() {
+  const shots = [];
+  state.games.filter(isQualifyingGame).forEach(g => g.scoringEvents.forEach(ev => {
+    if (ev.points === 2 || ev.points === 3) shots.push(ev);
+  }));
+  renderHeatmapInto("leagueHeatmap", shots);
 }
 
 function recomputeDerivedStats(game) {
@@ -950,6 +1045,37 @@ function shotBand(loc, points) {
   return distance > closeRangeThreshold() ? "mid" : "close";
 }
 
+function renderCalibrationPanel() {
+  const wrap = document.getElementById("calibrationPanel");
+  if (!wrap) return;
+  const cal = getCalibrations();
+  const sections = [
+    { title: "Close/Midrange boundary (2-point shots)", c: cal.closeRange },
+    { title: "Line/Deep boundary (3-point shots)", c: cal.threePtDeep },
+    { title: "Close-game margin", c: cal.clutchMargin },
+    { title: "Second-chance window", c: cal.secondChanceWindow }
+  ];
+  wrap.innerHTML = sections.map(({ title, c }) => {
+    const head = `<h3 style="margin:16px 0 4px;font-size:1rem">${escapeHtml(title)}</h3>`;
+    if (c.history.length === 0) {
+      return `${head}<p class="hint" style="margin-top:0">Using ${c.defaultValue} ${c.unit} until enough data is logged (${c.total} ${c.noun} so far, first check at ${c.nextAt}).</p>`;
+    }
+    const rows = c.history.map(h => {
+      const result = !h.strong ? `Kept ${h.previous} (no clear signal yet)`
+        : h.value === h.previous ? `Stayed at ${h.value}`
+        : `Moved from ${h.previous} to ${h.value}`;
+      return `<tr><td>${h.n}</td><td>${result}</td><td>${escapeHtml(h.detail)}</td></tr>`;
+    }).join("");
+    const started = c.history[0].previous;
+    return `${head}
+      <p class="hint" style="margin-top:0">Now <strong>${c.current}</strong> ${c.unit}${c.current !== started ? ` (started at ${started})` : ""}. Next check at ${c.nextAt} ${c.noun}.</p>
+      <div class="table-scroll"><table class="matchup-table">
+        <thead><tr><th>${escapeHtml(c.noun.charAt(0).toUpperCase() + c.noun.slice(1))} used</th><th>Result</th><th>Detail</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+  }).join("");
+}
+
 function shootingStats(game, playerId) {
   const shots = game.scoringEvents.filter(ev => ev.scorerId === playerId);
   const made = ev => ev.made !== false;
@@ -1029,6 +1155,10 @@ function effectiveFgPct(fgm, tpm, fga) {
 
 function formatPct(v) {
   return v === null ? "—" : `${Math.round(v)}%`;
+}
+
+function directionLabel(dir) {
+  return dir === "left" ? "Deck" : dir === "right" ? "Bushes" : "?";
 }
 
 function playerShotDirection(game, playerId) {
@@ -1389,6 +1519,34 @@ function computeConsistencyStandings() {
   }).sort((a, b) => a.stdDev - b.stdDev);
 }
 
+function renderConsistencyStandings() {
+  const wrap = document.getElementById("consistencyStandings");
+  if (!wrap) return;
+  const rows = computeConsistencyStandings();
+  if (rows.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">Nobody has 2+ qualifying games yet.</p>';
+    return;
+  }
+  const rowsHtml = rows.map((r, i) => `<tr>
+    <td>${i + 1}</td>
+    <td><button type="button" class="icon-btn consistency-player-btn" style="color:var(--accent);font-weight:700" data-player-id="${r.player.id}">${escapeHtml(r.player.name)}</button></td>
+    <td>${r.stdDev.toFixed(1)}</td>
+    <td>${r.twoWayPer20.toFixed(1)}</td>
+    <td>${r.gp}</td>
+  </tr>`).join("");
+  wrap.innerHTML = `
+    <div class="table-scroll">
+      <table class="matchup-table">
+        <thead><tr><th>#</th><th>Player</th><th>Two-Way Std Dev</th><th>Two-Way/20</th><th>GP</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+  wrap.querySelectorAll(".consistency-player-btn").forEach(btn => {
+    btn.addEventListener("click", () => openPlayerDetail(btn.dataset.playerId));
+  });
+}
+
 function computeAssistConnections() {
   const totals = {}; // "passerId|scorerId" -> count
   state.games.filter(isQualifyingGame).forEach(g => {
@@ -1434,6 +1592,15 @@ function computeGameWinningBuckets() {
     .map(([playerId, count]) => ({ player: state.players.find(p => p.id === playerId), count }))
     .filter(r => r.player)
     .sort((a, b) => b.count - a.count);
+}
+
+function renderGameWinningBucketsPanel() {
+  const body = document.getElementById("gameWinningBucketsBody");
+  if (!body) return;
+  const rows = computeGameWinningBuckets();
+  body.innerHTML = rows.length === 0
+    ? '<tr><td colspan="2" class="empty-state">No game-winning buckets identified yet. Needs a timestamped make that closes out a decided game.</td></tr>'
+    : rows.map(r => `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.count}</td></tr>`).join("");
 }
 
 function computeDefensiveLoadPanelRows() {
@@ -1612,6 +1779,69 @@ function computeIndividualGamePerformances() {
     });
   });
   return rows;
+}
+
+const INDIVIDUAL_GAMES_MODES = {
+  twoway: { label: "Overall", valueOf: r => r.twoWay, unit: "Two-Way" },
+  offense: { label: "Offense", valueOf: r => r.offRtg, unit: "Off Rating" },
+  defense: { label: "Defense", valueOf: r => r.defRtg, unit: "Def Rating" },
+};
+
+let individualGamesMode = "twoway";
+
+function renderIndividualGamePerformances() {
+  const wrap = document.getElementById("individualGamePerformances");
+  if (!wrap) return;
+  const rows = computeIndividualGamePerformances();
+  if (rows.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games logged yet.</p>';
+    return;
+  }
+  const mode = INDIVIDUAL_GAMES_MODES[individualGamesMode];
+  const sorted = [...rows].sort((a, b) => mode.valueOf(b) - mode.valueOf(a));
+  // Capped so best/worst never overlap on a thin season — with few enough rows, showing the same
+  // handful of games in both lists (just reversed) would read as a bug, not a real result.
+  const n = Math.min(10, Math.max(1, Math.floor(sorted.length / 2)));
+  const best = sorted.slice(0, n);
+  const worst = sorted.slice(-n).reverse();
+  const li = r => {
+    const val = mode.valueOf(r);
+    return `
+    <li>
+      <span class="award-standings-name"><button type="button" class="icon-btn indiv-game-player-btn" data-player-id="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button> <button type="button" class="icon-btn indiv-game-date-btn" data-game-id="${r.game.id}" style="padding:0;font-weight:600;color:var(--accent)">(${escapeHtml(formatDateDisplay(r.game.date))})</button></span>
+      <span>${val >= 0 ? "+" : ""}${val.toFixed(1)} ${mode.unit} <span class="hint" style="margin:0">(${r.pts} pts)</span></span>
+    </li>
+  `;
+  };
+  wrap.innerHTML = `
+    <div class="button-row" style="margin-bottom:10px">
+      ${Object.entries(INDIVIDUAL_GAMES_MODES).map(([key, m]) =>
+        `<button type="button" class="secondary-btn indiv-games-mode-btn${key === individualGamesMode ? " selected" : ""}" data-mode="${key}">${m.label}</button>`
+      ).join("")}
+    </div>
+    <div class="award-standings-wrap">
+      <div class="award-standings-col">
+        <h4 class="award-standings-heading">Best</h4>
+        <ol class="award-standings">${best.map(li).join("")}</ol>
+      </div>
+      <div class="award-standings-col">
+        <h4 class="award-standings-heading">Worst</h4>
+        <ol class="award-standings">${worst.map(li).join("")}</ol>
+      </div>
+    </div>
+  `;
+  wrap.querySelectorAll(".indiv-games-mode-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      individualGamesMode = btn.dataset.mode;
+      renderIndividualGamePerformances();
+    });
+  });
+  wrap.querySelectorAll(".indiv-game-player-btn").forEach(btn => {
+    btn.addEventListener("click", () => openPlayerDetail(btn.dataset.playerId));
+  });
+  wrap.querySelectorAll(".indiv-game-date-btn").forEach(btn => {
+    btn.addEventListener("click", () => openGame(btn.dataset.gameId));
+  });
 }
 
 const AWARD_LABELS = {
@@ -1820,6 +2050,25 @@ function pooleanSeasonList() {
   return [...years].sort((a, b) => Number(a) - Number(b));
 }
 
+function setPooleanSeason(year) {
+  const list = pooleanSeasonList();
+  selectedPooleanSeason = list.includes(String(year)) ? String(year) : list[list.length - 1] || null;
+  AWARD_RESULTS = ALL_AWARD_RESULTS.filter(a => String(a.season) === selectedPooleanSeason);
+  if (typeof POOLEAN_SEASONS === "undefined") return;
+  const d = POOLEAN_SEASONS[selectedPooleanSeason];
+  // A season with awards but no imported site data leaves these undefined, so every real-data
+  // panel shows its normal "no real-site data" empty state instead of another season's numbers.
+  window.POOLEAN_RANKINGS = d ? d.rankings : undefined;
+  window.POOLEAN_RECORD = d ? d.record : undefined;
+  window.POOLEAN_TOGETHER = d ? d.together : undefined;
+  window.POOLEAN_AGAINST = d ? d.against : undefined;
+  window.POOLEAN_SEASON_CARDS = d ? d.cards : undefined;
+  window.POOLEAN_GAMES = d ? d.games : undefined;
+  if (d) window.POOLEAN_NAMES = d.names;
+  // Power Rankings and Power Ranking vs. Performance read this copy; keep it on the same season.
+  PARTY_RANKINGS = d ? d.rankings : [];
+}
+
 function computePlayerRealSeasons(playerId) {
   if (typeof POOLEAN_SEASONS === "undefined") return [];
   let prev = null;
@@ -1872,6 +2121,42 @@ function computeSeasonRecap() {
   return { champion, mvpAward: mvp, awardRows, topPower, riser, faller };
 }
 
+function renderSeasonRecap() {
+  const wrap = document.getElementById("seasonRecap");
+  if (!wrap) return;
+  const recap = computeSeasonRecap();
+  if (!recap) {
+    wrap.innerHTML = '<p class="empty-state">No real-site season data loaded yet.</p>';
+    return;
+  }
+  const championHtml = recap.champion ? `
+    <div class="award-marquee">
+      <span class="award-marquee-icon">${icon("trophy")}</span>
+      <span class="award-marquee-text"><strong>${escapeHtml(recap.champion.name)}</strong><span>Season Champion · ${escapeHtml(recap.mvpAward.label)}</span></span>
+    </div>` : "";
+  const awardsHtml = recap.awardRows.map(a => `
+    <span class="award-badge${a.color ? ` award-badge-${a.color}` : " award-badge-untiered"}">
+      <span class="award-badge-icon">${a.icon}</span>
+      <span class="award-badge-label">${escapeHtml(a.label)}</span>
+      <span class="award-badge-sub">${a.winners.map(w => escapeHtml(w.name)).join(" + ") || "—"}</span>
+    </span>`).join("");
+  const topPowerHtml = recap.topPower.map((r, i) => `
+    <li>${i + 1}. ${poolPlayerLink(r.slug)} <span class="hint" style="margin:0">${r.card.powerPct}% · ${r.card.crowns}× #1</span></li>`).join("");
+  const mover = (label, m) => !m ? "" : `<div class="real-partner-tile">
+      <span class="real-partner-label">${label}</span>
+      ${poolPlayerLink(m.slug)}
+      <span class="real-partner-pct">${ordinal(m.from)} of ${m.fromOf} on Day 1 → ${ordinal(m.to)} overall (${m.delta >= 0 ? "+" : ""}${m.delta})</span>
+    </div>`;
+  wrap.innerHTML = `
+    ${championHtml}
+    <h4 style="margin:14px 0 8px">Season awards</h4>
+    <div class="award-badge-grid">${awardsHtml}</div>
+    <h4 style="margin:14px 0 8px">Final power rankings, top 3</h4>
+    <ol class="award-standings">${topPowerHtml}</ol>
+    <h4 style="margin:14px 0 8px">Biggest movers</h4>
+    <div class="real-partner-grid">${mover("Biggest riser", recap.riser)}${mover("Biggest faller", recap.faller)}</div>`;
+}
+
 function computePlayerStreaks(playerId) {
   if (typeof POOLEAN_GAMES === "undefined") return null;
   const games = POOLEAN_GAMES.filter(g => g.a.includes(playerId) || g.b.includes(playerId)).sort(byPlayOrder);
@@ -1893,6 +2178,11 @@ function poolNameOf(slug) {
   const p = state.players.find(x => x.id === slug);
   if (p) return p.name;
   return typeof POOLEAN_NAMES !== "undefined" ? POOLEAN_NAMES[slug] || slug : slug;
+}
+
+function poolPlayerLink(slug) {
+  const p = state.players.find(x => x.id === slug);
+  return p ? playerLink(p.id, p.name) : escapeHtml(poolNameOf(slug));
 }
 
 function poolKnownSlug(slug) {
@@ -1922,6 +2212,25 @@ function computeRivalries() {
   });
   if (!mostPlayed && !bestTeam && !fiercestRivalry && !mostLopsided) return null;
   return { mostPlayed, bestTeam, fiercestRivalry, mostLopsided, pairLabel };
+}
+
+function renderRivalries() {
+  const wrap = document.getElementById("rivalriesPanel");
+  if (!wrap) return;
+  const r = computeRivalries();
+  if (!r) { wrap.innerHTML = '<p class="empty-state">No real-site pairwise data loaded yet.</p>'; return; }
+  const tile = (label, entry, verb) => !entry ? "" : `<div class="real-partner-tile">
+      <span class="real-partner-label">${label}</span>
+      <span>${escapeHtml(r.pairLabel(entry.key).join(verb))}</span>
+      <span class="real-partner-record">${entry.w}-${entry.l}</span>
+      <span class="real-partner-pct">${entry.gp} games</span>
+    </div>`;
+  wrap.innerHTML = `<div class="real-partner-grid">
+    ${tile("Most-played pairing", r.mostPlayed, " & ")}
+    ${tile(`Best record together (${RIVALRY_MIN_GP}+ games)`, r.bestTeam, " & ")}
+    ${tile(`Fiercest rivalry (${RIVALRY_MIN_GP}+ games)`, r.fiercestRivalry, " vs. ")}
+    ${tile(`Most lopsided matchup (${RIVALRY_MIN_GP}+ games)`, r.mostLopsided, " vs. ")}
+  </div>`;
 }
 
 function computeTeamSizeAdvantagePct() {
@@ -1970,6 +2279,27 @@ function computeUpsets() {
   });
   upsets.sort((a, b) => b.gap - a.gap);
   return upsets;
+}
+
+function renderUpsetTracker() {
+  const wrap = document.getElementById("upsetTracker");
+  if (!wrap) return;
+  const upsets = computeUpsets();
+  if (!upsets) { wrap.innerHTML = '<p class="empty-state">No real-site game/ranking data loaded yet.</p>'; return; }
+  if (upsets.length === 0) { wrap.innerHTML = '<p class="empty-state">No upsets: the favorite won every game.</p>'; return; }
+  const nameOf = poolPlayerLink;
+  const rows = upsets.slice(0, 10).map(u => `
+    <tr>
+      <td>${escapeHtml(formatDateDisplay(u.date))}</td>
+      <td>${u.winners.map(nameOf).join(" & ")}</td>
+      <td>${u.losers.map(nameOf).join(" & ")}</td>
+      <td>${u.winOdds !== null ? `${u.winOdds}% predicted vs. ${100 - u.winOdds}%` : `${Math.round(u.winPct)}% vs. ${Math.round(u.losePct)}% <span class="hint" style="margin:0">(power ranking, not enough real games yet for predicted odds)</span>`}${u.uneven ? ` <span class="hint" style="margin:0">(uneven teams, size-adjusted)</span>` : ""}</td>
+    </tr>`).join("");
+  const unevenCount = upsets.filter(u => u.uneven).length;
+  wrap.innerHTML = `<div class="table-scroll"><table class="matchup-table">
+    <thead><tr><th>Date</th><th>Won</th><th>Beat (the favorite)</th><th>Predicted odds (winner vs. favorite)</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <p class="hint" style="margin:10px 0 0">${upsets.length} upset${upsets.length === 1 ? "" : "s"} total, biggest gap first${unevenCount > 0 ? ` (${unevenCount} on uneven teams, adjusted for the extra player)` : ""}.</p>`;
 }
 
 function computePartyRecap(date) {
@@ -2100,6 +2430,100 @@ function computeAwardRace() {
   });
 }
 
+function renderAwardRace() {
+  const wrap = document.getElementById("awardRace");
+  if (!wrap) return;
+  const rows = computeAwardRace();
+  const withLeaders = rows.filter(r => r.leaders.length || r.empty);
+  if (withLeaders.length === 0) { wrap.innerHTML = '<p class="empty-state">No real-site season data or logged games yet.</p>'; return; }
+  const names = ids => ids.map(poolPlayerLink).join(" + ");
+  const hits = rows.filter(r => r.hit !== null);
+  wrap.innerHTML = `<div class="award-race-grid">${withLeaders.map(r => {
+    const color = AWARD_TIER_COLOR[AWARD_TIER[r.key]];
+    const leaders = r.leaders.length
+      ? `<ol class="award-race-leaders">${r.leaders.map(l => `<li>${names(l.ids)} <span class="hint" style="margin:0">${escapeHtml(l.value)}</span></li>`).join("")}</ol>`
+      : `<p class="hint" style="margin:6px 0 0">${escapeHtml(r.empty || "Not enough data yet.")}</p>`;
+    const mark = r.teamMatched !== null && !r.hit ? `${r.teamMatched} of ${r.voted.winners.length} · ` : r.hit === true ? "✓ " : r.hit === false ? "✗ " : "";
+    const voted = r.voted ? `<p class="award-race-voted">${mark}Voted: ${r.voted.winners.map(poolPlayerLink).join(" + ")}</p>` : "";
+    return `<div class="award-race-card${color ? ` award-race-${color}` : ""}">
+      <div class="award-race-head"><span>${awardIconSvg(r.key)}</span><strong>${escapeHtml(r.label)}</strong></div>
+      <span class="award-race-basis">${escapeHtml(r.basis)}${r.local ? " · logged games" : ""}</span>
+      ${r.note ? `<span class="award-race-basis">${escapeHtml(r.note)}</span>` : ""}
+      ${leaders}${voted}
+    </div>`;
+  }).join("")}</div>
+  ${hits.length ? `<p class="hint" style="margin:10px 0 0">The stats picked the actual winner for ${hits.filter(r => r.hit).length} of ${hits.length} awards this season${hits.some(r => r.teamMatched && !r.hit) ? `, and got ${hits.filter(r => r.teamMatched !== null && !r.hit).map(r => `${r.teamMatched} of ${r.voted.winners.length} on ${r.label}`).join(" and ")}` : ""}.</p>` : `<p class="hint" style="margin:10px 0 0">No votes in yet for this season, so this is the stats' best guess.</p>`}`;
+}
+
+function playerNightlyPcts(slug) {
+  return [...PARTY_RANKINGS].sort((a, b) => a.date.localeCompare(b.date))
+    .map(n => ({ date: n.date, p: n.players.find(x => x.slug === slug) }))
+    .filter(e => e.p).map(e => ({ date: e.date, pct: e.p.pct }));
+}
+
+function renderPctChart(series, options = {}) {
+  const withPoints = series.filter(s => s.points.length > 0);
+  if (withPoints.length === 0) return "";
+  const dates = [...new Set(PARTY_RANKINGS.map(n => n.date))].sort();
+  if (dates.length < 2) return "";
+  const W = 600, H = 190, L = 36, R = 12, T = 12, B = 26;
+  const x = d => L + (dates.indexOf(d) / (dates.length - 1)) * (W - L - R);
+  const y = v => T + (1 - v / 100) * (H - T - B);
+  const grid = [0, 50, 100].map(v => `<line class="pct-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="pct-axis" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join("");
+  const avg = options.average !== undefined && withPoints.length === 1
+    ? `<line class="pct-avg" x1="${L}" x2="${W - R}" y1="${y(options.average)}" y2="${y(options.average)}"/>` : "";
+  const lines = withPoints.map(s => `<g class="${s.cls}">
+      <polyline fill="none" points="${s.points.map(p => `${x(p.date)},${y(p.pct)}`).join(" ")}"/>
+      ${s.points.map(p => `<circle cx="${x(p.date)}" cy="${y(p.pct)}" r="3.5"><title>${escapeHtml(s.label)}, ${escapeHtml(formatDateDisplay(p.date))}: ${Math.round(p.pct)}%</title></circle>`).join("")}
+    </g>`).join("");
+  const axis = `<text class="pct-axis" x="${L}" y="${H - 6}">${escapeHtml(formatDateDisplay(dates[0]))}</text><text class="pct-axis" x="${W - R}" y="${H - 6}" text-anchor="end">${escapeHtml(formatDateDisplay(dates[dates.length - 1]))}</text>`;
+  const legend = withPoints.length > 1 || avg
+    ? `<div class="pct-legend">${withPoints.map(s => `<span class="${s.cls}"><i></i>${escapeHtml(s.label)}</span>`).join("")}${avg ? '<span class="pct-legend-avg"><i></i>Season average</span>' : ""}</div>` : "";
+  const summary = withPoints.map(s => `${s.label}: ${s.points.length} nights`).join("; ");
+  return `<div class="pct-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Nightly power ranking percentile. ${escapeHtml(summary)}">${grid}${avg}${lines}${axis}</svg>${legend}</div>`;
+}
+
+let headToHeadPair = [null, null];
+
+function renderRealHeadToHead() {
+  const wrap = document.getElementById("realHeadToHead");
+  if (!wrap) return;
+  if (typeof POOLEAN_TOGETHER === "undefined") { wrap.innerHTML = '<p class="empty-state">No real-site data for this season.</p>'; return; }
+  const pool = realMatchupPlayerPool();
+  const [a, b] = headToHeadPair;
+  const options = sel => `<option value="">Pick a player</option>` + pool.map(p => `<option value="${escapeHtml(p.id)}"${p.id === sel ? " selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+  let body = "";
+  if (a && b && a !== b) {
+    const together = POOLEAN_TOGETHER[[a, b].sort().join("|")];
+    const against = POOLEAN_AGAINST[`${a}|${b}`];
+    const cardOf = id => (typeof POOLEAN_SEASON_CARDS !== "undefined" && POOLEAN_SEASON_CARDS[id]) || null;
+    const line = id => {
+      const c = cardOf(id);
+      return c ? `${Math.round(c.powerPct)}% power · ${c.w}-${c.l} · ${c.crowns} #1 night${c.crowns === 1 ? "" : "s"}` : "No season line yet";
+    };
+    body = `<div class="h2h-grid">
+        <div class="h2h-player h2h-a">${poolPlayerLink(a)}<span>${escapeHtml(line(a))}</span></div>
+        <div class="h2h-mid">
+          <div><span class="h2h-num">${together ? `${together.w}-${together.l}` : "0-0"}</span><span class="h2h-label">together</span></div>
+          <div><span class="h2h-num">${against ? `${against.w}-${against.l}` : "0-0"}</span><span class="h2h-label">${escapeHtml(poolNameOf(a))} vs. ${escapeHtml(poolNameOf(b))}</span></div>
+        </div>
+        <div class="h2h-player h2h-b">${poolPlayerLink(b)}<span>${escapeHtml(line(b))}</span></div>
+      </div>
+      ${renderPctChart([
+        { label: poolNameOf(a), cls: "pct-line-a", points: playerNightlyPcts(a) },
+        { label: poolNameOf(b), cls: "pct-line-b", points: playerNightlyPcts(b) }
+      ]) || '<p class="hint" style="margin:10px 0 0">Not enough party nights this season to chart.</p>'}`;
+  } else {
+    body = '<p class="hint" style="margin:10px 0 0">Pick two different players.</p>';
+  }
+  wrap.innerHTML = `<div class="balance-controls">
+      <select id="h2hPickA" aria-label="First player">${options(a)}</select>
+      <select id="h2hPickB" aria-label="Second player">${options(b)}</select>
+    </div>${body}`;
+  document.getElementById("h2hPickA").addEventListener("change", e => { headToHeadPair[0] = e.target.value || null; renderRealHeadToHead(); });
+  document.getElementById("h2hPickB").addEventListener("change", e => { headToHeadPair[1] = e.target.value || null; renderRealHeadToHead(); });
+}
+
 const MILESTONE_WINS = [10, 25, 50, 75, 100, 150, 200, 300];
 
 const MILESTONE_GAMES = [25, 50, 100, 150, 200, 300];
@@ -2161,6 +2585,50 @@ function computeTrophyCase() {
     .sort((a, b) => a.tier.tier - b.tier.tier);
 }
 
+function renderTrophyCase() {
+  const wrap = document.getElementById("trophyCase");
+  if (!wrap) return;
+  const rows = computeTrophyCase();
+  if (rows.length === 0) { wrap.innerHTML = '<p class="empty-state">Nobody has a real award win yet.</p>'; return; }
+  wrap.innerHTML = `<div class="trophy-case-grid">${rows.map(r => {
+    const local = state.players.find(p => p.id === r.slug);
+    const avatarPlayer = local || { id: r.slug, name: poolNameOf(r.slug) };
+    return `
+    <div class="trophy-case-tile">
+      ${renderPlayerAvatar(avatarPlayer, "large", playerAvatarRingClass(r.slug))}
+      ${poolPlayerLink(r.slug)}
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function renderRealRivalryMatrix() {
+  const wrap = document.getElementById("realRivalryMatrix");
+  if (!wrap) return;
+  if (typeof POOLEAN_TOGETHER === "undefined") { wrap.innerHTML = '<p class="empty-state">No real-site pairwise data loaded yet.</p>'; return; }
+  // Every real slug that appears in POOLEAN_TOGETHER, whether or not they're in this browser's
+  // own local roster -- a real player not yet added locally still gets a row/column, by name.
+  const activeSlugs = [...new Set(Object.keys(POOLEAN_TOGETHER).flatMap(k => k.split("|")))];
+  if (activeSlugs.length < 2) { wrap.innerHTML = '<p class="empty-state">Not enough real-site pairwise data yet.</p>'; return; }
+  const slugs = activeSlugs.sort((a, b) => poolNameOf(a).localeCompare(poolNameOf(b)));
+  const maxGp = Math.max(1, ...Object.values(POOLEAN_TOGETHER).map(v => v.gp));
+  const headerHtml = slugs.map(s => `<th>${poolPlayerLink(s)}</th>`).join("");
+  const rows = slugs.map(rowSlug => {
+    const cells = slugs.map(colSlug => {
+      if (rowSlug === colSlug) return `<td class="matchup-grid-cell"></td>`;
+      const v = POOLEAN_TOGETHER[[rowSlug, colSlug].sort().join("|")];
+      if (!v) return `<td class="matchup-grid-cell matchup-grid-empty"></td>`;
+      const pct = Math.round((v.w / v.gp) * 100);
+      const hue = pct >= 50 ? 140 : 0;
+      const opacity = 0.2 + 0.6 * (v.gp / maxGp);
+      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 70%, 42%, ${opacity})" title="${escapeHtml(poolNameOf(rowSlug))} &amp; ${escapeHtml(poolNameOf(colSlug))}: ${v.w}-${v.l} together">${pct}%</td>`;
+    }).join("");
+    return `<tr><td class="sticky-col">${poolPlayerLink(rowSlug)}</td>${cells}</tr>`;
+  }).join("");
+  wrap.innerHTML = `<div class="table-scroll"><table class="matchup-table">
+    <thead><tr><th></th>${headerHtml}</tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
 function computePlayerAttendanceStreak(playerId) {
   if (typeof POOLEAN_RANKINGS === "undefined") return null;
   const attended = POOLEAN_RANKINGS.map(party => party.players.some(x => x.slug === playerId));
@@ -2183,6 +2651,19 @@ function computeIronMan() {
   if (all.length === 0) return null;
   const longest = Math.max(...all.map(r => r.streak.longest));
   return { holders: all.filter(r => r.streak.longest === longest), longest, of: all[0].streak.of };
+}
+
+function renderIronMan() {
+  const wrap = document.getElementById("ironManPanel");
+  if (!wrap) return;
+  const result = computeIronMan();
+  if (!result) { wrap.innerHTML = '<p class="empty-state">No real-site attendance data loaded yet.</p>'; return; }
+  const names = result.holders.map(r => poolPlayerLink(r.slug)).join(", ");
+  wrap.innerHTML = `<div class="real-partner-tile">
+    <span class="real-partner-label">Iron Man${result.holders.length > 1 ? " (tied)" : ""}</span>
+    <span>${names}</span>
+    <span class="real-partner-pct">${result.longest} real part${result.longest === 1 ? "y" : "ies"} in a row, out of ${result.of} total</span>
+  </div>`;
 }
 
 function computeComebacks() {
@@ -2215,6 +2696,26 @@ function computeComebacks() {
   return results;
 }
 
+function renderComebackTracker() {
+  const wrap = document.getElementById("comebackTracker");
+  if (!wrap) return;
+  const results = computeComebacks();
+  if (results.length === 0) { wrap.innerHTML = '<p class="empty-state">No reviewed games with a timestamped comeback yet.</p>'; return; }
+  const teamNames = ids => ids.map(id => { const p = state.players.find(x => x.id === id); return p ? playerLink(p.id, p.name) : "?"; }).join(" & ");
+  const rows = results.slice(0, 10).map(r => `
+    <tr>
+      <td>${escapeHtml(formatDateDisplay(r.game.date))}</td>
+      <td>${teamNames(r.winner)}</td>
+      <td>${teamNames(r.loser)}</td>
+      <td>down ${r.deficit}</td>
+      <td>${r.finalWinner}-${r.finalLoser}</td>
+    </tr>`).join("");
+  wrap.innerHTML = `<div class="table-scroll"><table class="matchup-table">
+    <thead><tr><th>Date</th><th>Came back</th><th>Against</th><th>Biggest deficit</th><th>Final</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <p class="hint" style="margin:10px 0 0">${results.length} game${results.length === 1 ? "" : "s"} with a real comeback, biggest deficit first.</p>`;
+}
+
 function computeSeasonTimeline() {
   if (typeof POOLEAN_RANKINGS === "undefined") return null;
   const upsetsByDate = {};
@@ -2223,6 +2724,21 @@ function computeSeasonTimeline() {
     const crown = party.players.find(p => p.rank === 1);
     return { date: party.date, crownSlug: crown ? crown.slug : null, fieldSize: party.players.length, upsets: upsetsByDate[party.date] || [] };
   });
+}
+
+function renderSeasonTimeline() {
+  const wrap = document.getElementById("seasonTimeline");
+  if (!wrap) return;
+  const entries = computeSeasonTimeline();
+  if (!entries) { wrap.innerHTML = '<p class="empty-state">No real-site data loaded yet.</p>'; return; }
+  wrap.innerHTML = `<ul class="season-timeline-list">${entries.map(e => `
+    <li class="season-timeline-item">
+      <span class="season-timeline-date">${escapeHtml(formatDateDisplay(e.date))}</span>
+      <span class="season-timeline-body">
+        ${e.crownSlug ? `${icon("crown")} ${poolPlayerLink(e.crownSlug)} took the crown (${e.fieldSize} ranked)` : `${e.fieldSize} players ranked`}
+        ${e.upsets.length > 0 ? `<br><span class="hint" style="margin:0">${icon("dice")} ${e.upsets.length} upset${e.upsets.length === 1 ? "" : "s"} that night</span>` : ""}
+      </span>
+    </li>`).join("")}</ul>`;
 }
 
 const REAL_PARTNER_MIN_GP = 3;
@@ -2268,6 +2784,58 @@ function computeAwardsVsStats() {
       duoDetail = total > 0 ? `${total} assist${total === 1 ? "" : "s"} between them, either direction` : "No assist connections between them logged yet";
     }
     return { ...award, winners, duoDetail, standings: ranking || [] };
+  });
+}
+
+let expandedAwards = new Set();
+
+function renderAwardsVsStats() {
+  const wrap = document.getElementById("awardsVsStats");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  computeAwardsVsStats().forEach(award => {
+    const row = document.createElement("div");
+    row.className = "award-row";
+    const isExpanded = expandedAwards.has(award.key);
+    const winnersHtml = award.winners.map(w => `
+      <div class="award-winner">
+        <span class="award-winner-name">${w.player ? playerLink(w.player.id, w.player.name) : `${escapeHtml(w.slug)} (not in current roster)`}</span>
+        <span class="hint" style="margin:0">${escapeHtml(w.detail)}</span>
+      </div>
+    `).join("");
+    const votedHtml = award.votedStandings && award.votedStandings.length > 0
+      ? `<ol class="award-standings">${award.votedStandings.map(v => { const vp = state.players.find(pl => pl.id === v.slug); return `<li><span class="award-standings-name">${vp ? playerLink(vp.id, v.name) : escapeHtml(v.name)}</span><span class="hint" style="margin:0">${v.points} pt${v.points === 1 ? "" : "s"}</span></li>`; }).join("")}</ol>`
+      : '<p class="empty-state" style="margin:0">No ballot data for this award.</p>';
+    const statHtml = award.standings.length > 0
+      ? `<ol class="award-standings">${award.standings.map(s => `<li><span class="award-standings-name">${playerLink(s.player.id, s.player.name)}</span><span class="hint" style="margin:0">${escapeHtml(s.display)}</span></li>`).join("")}</ol>`
+      : '<p class="empty-state" style="margin:0">No standings yet for this stat.</p>';
+    const standingsHtml = isExpanded
+      ? `
+        <div class="award-standings-col">
+          <h4 class="award-standings-heading">How the vote went</h4>
+          ${votedHtml}
+        </div>
+        <div class="award-standings-col">
+          <h4 class="award-standings-heading">Stat standings</h4>
+          ${statHtml}
+        </div>
+      `
+      : "";
+    row.innerHTML = `
+      <button type="button" class="award-toggle" aria-expanded="${isExpanded}">
+        <span class="award-label">${escapeHtml(award.label)}</span>
+        <span class="award-toggle-icon">${isExpanded ? "▲ Hide standings" : "▼ See standings"}</span>
+      </button>
+      <div class="award-winners">${winnersHtml}</div>
+      ${award.duoDetail ? `<div class="hint" style="margin:4px 0 0">${escapeHtml(award.duoDetail)}</div>` : ""}
+      <div class="award-standings-wrap">${standingsHtml}</div>
+    `;
+    row.querySelector(".award-toggle").addEventListener("click", () => {
+      if (expandedAwards.has(award.key)) expandedAwards.delete(award.key);
+      else expandedAwards.add(award.key);
+      renderAwardsVsStats();
+    });
+    wrap.appendChild(row);
   });
 }
 
@@ -2332,10 +2900,108 @@ function computePowerRankingVsPerformance() {
   }).filter(party => party.players.some(r => r.perf !== null));
 }
 
+function renderPowerRankingVsPerformance() {
+  const wrap = document.getElementById("powerRankingVsPerformance");
+  if (!wrap) return;
+  const parties = computePowerRankingVsPerformance();
+  if (parties.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games reviewed yet for any night with a power ranking.</p>';
+    return;
+  }
+  wrap.innerHTML = "";
+  parties.forEach(party => {
+    const section = document.createElement("div");
+    section.className = "power-ranking-night";
+    const rowsHtml = party.players.map(r => `
+      <tr>
+        <td>${r.rank} <span class="hint" style="margin:0">(of ${r.fieldSize})</span></td>
+        <td>${r.player ? playerLink(r.player.id, r.player.name) : `${escapeHtml(r.slug)} (not in current roster)`}</td>
+        <td>${r.pct}%</td>
+        <td>${r.perf ? `${r.perf.twoWayPer20.toFixed(1)} <span class="hint" style="margin:0">(${r.perf.gp} game${r.perf.gp === 1 ? "" : "s"})</span>` : "—"}</td>
+      </tr>
+    `).join("");
+    section.innerHTML = `
+      <h4>${escapeHtml(formatDateDisplay(party.date))}</h4>
+      <div class="table-scroll">
+        <table class="matchup-table">
+          <thead><tr><th>Power Rank</th><th>Player</th><th>Power %</th><th>Two-Way/20 That Night</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+    wrap.appendChild(section);
+  });
+}
+
+function svgAvatarDot(player, cx, cy, r = 9, label = null) {
+  const hue = avatarHueForPlayer(player.id);
+  const photoFile = label === null ? PLAYER_PHOTO_FILES[player.id] : null;
+  if (photoFile) {
+    const clipId = `avatarClip-${player.id}-${Math.random().toString(36).slice(2, 8)}`;
+    // The border ring uses its own .quadrant-dot-ring class, not .quadrant-dot — CSS `fill`
+    // beats an SVG presentation attribute in the cascade, so a plain `fill="none"` on a
+    // `.quadrant-dot`-classed circle would still paint solid (that class sets `fill:
+    // var(--accent)`), completely covering the photo underneath. Learned this the hard way: it
+    // rendered as a plain colored dot with the image invisibly stuck behind it.
+    return `
+      <clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${r}" /></clipPath>
+      <image href="photos/${photoFile}" x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice" />
+      <circle cx="${cx}" cy="${cy}" r="${r}" class="quadrant-dot-ring" />
+    `;
+  }
+  const displayLabel = label !== null ? String(label) : (player.name.trim().charAt(0) || "?").toUpperCase();
+  return `
+    <circle cx="${cx}" cy="${cy}" r="${r}" style="fill:hsl(${hue}, 55%, 42%)" class="quadrant-dot" />
+    <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" class="quadrant-dot-initial">${escapeHtml(displayLabel)}</text>
+  `;
+}
+
 function computeQuadrantData() {
   return computeLeaderboard()
     .filter(r => r.gp > 0)
     .map(r => ({ player: r.player, offRtg: r.offRatingPer20, defRtg: defensiveRating(r.rate, r.rateDefense) }));
+}
+
+function renderQuadrantChart() {
+  const wrap = document.getElementById("quadrantChart");
+  if (!wrap) return;
+  const data = computeQuadrantData();
+  if (data.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games logged yet.</p>';
+    return;
+  }
+  const W = 340, H = 340, PAD = 46;
+  const plotW = W - PAD * 2, plotH = H - PAD * 2;
+  const maxAbsX = Math.max(1, ...data.map(d => Math.abs(d.offRtg))) * 1.15;
+  const maxAbsY = Math.max(1, ...data.map(d => Math.abs(d.defRtg))) * 1.15;
+  const xScale = v => PAD + ((v + maxAbsX) / (2 * maxAbsX)) * plotW;
+  const yScale = v => PAD + plotH - ((v + maxAbsY) / (2 * maxAbsY)) * plotH;
+  const zeroX = xScale(0), zeroY = yScale(0);
+
+  const dotsSvg = data.map(d => {
+    const cx = xScale(d.offRtg), cy = yScale(d.defRtg);
+    return `
+      <g>
+        <title>${escapeHtml(d.player.name)}: ${d.offRtg.toFixed(1)} Off Rating/20, ${d.defRtg.toFixed(1)} Def Rating/20</title>
+        ${svgAvatarDot(d.player, cx, cy)}
+      </g>
+      <text x="${cx}" y="${cy - 12}" text-anchor="middle" class="quadrant-label">${escapeHtml(d.player.name)}</text>
+    `;
+  }).join("");
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="quadrant-svg">
+      <text x="${PAD + 4}" y="${PAD + 14}" class="quadrant-corner-label">Defense-first</text>
+      <text x="${W - PAD - 4}" y="${PAD + 14}" text-anchor="end" class="quadrant-corner-label">Two-way standout</text>
+      <text x="${PAD + 4}" y="${H - PAD - 6}" class="quadrant-corner-label">Below average both</text>
+      <text x="${W - PAD - 4}" y="${H - PAD - 6}" text-anchor="end" class="quadrant-corner-label">Offense-first</text>
+      <line x1="${PAD}" y1="${zeroY}" x2="${W - PAD}" y2="${zeroY}" class="quadrant-axis" />
+      <line x1="${zeroX}" y1="${PAD}" x2="${zeroX}" y2="${H - PAD}" class="quadrant-axis" />
+      ${dotsSvg}
+      <text x="${W - PAD}" y="${H - PAD + 16}" text-anchor="end" class="quadrant-axis-label">Off Rating/20 &#8594;</text>
+      <text x="4" y="${PAD - 10}" text-anchor="start" class="quadrant-axis-label">&#8593; Def Rating/20</text>
+    </svg>
+  `;
 }
 
 function computeVolumeEfficiencyData() {
@@ -2343,6 +3009,45 @@ function computeVolumeEfficiencyData() {
     .filter(r => r.gp > 0)
     .map(r => ({ player: r.player, volume: r.rateShooting.fga, ts: trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta) }))
     .filter(r => r.ts !== null);
+}
+
+function renderVolumeEfficiencyChart() {
+  const wrap = document.getElementById("volumeEfficiencyChart");
+  if (!wrap) return;
+  const data = computeVolumeEfficiencyData();
+  if (data.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No field goals logged yet.</p>';
+    return;
+  }
+  const W = 380, H = 340, PAD_L = 40, PAD_R = 20, PAD_T = 20, PAD_B = 34;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const maxVolume = Math.max(1, ...data.map(d => d.volume)) * 1.15;
+  // TS% for a small enough sample isn't capped at 100 (see computeLeagueTsByZone's comment) —
+  // scale to whatever the data actually produced rather than assuming a fixed 0-100 range.
+  const maxTs = Math.max(100, ...data.map(d => d.ts)) * 1.08;
+  const xScale = v => PAD_L + (v / maxVolume) * plotW;
+  const yScale = v => PAD_T + plotH - (v / maxTs) * plotH;
+
+  const dotsSvg = data.map(d => {
+    const cx = xScale(d.volume), cy = yScale(d.ts);
+    return `
+      <g>
+        <title>${escapeHtml(d.player.name)}: ${d.volume.toFixed(1)} FGA/20, ${d.ts}% TS</title>
+        ${svgAvatarDot(d.player, cx, cy)}
+      </g>
+      <text x="${cx}" y="${cy - 12}" text-anchor="middle" class="quadrant-label">${escapeHtml(d.player.name)}</text>
+    `;
+  }).join("");
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="quadrant-svg">
+      <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H - PAD_B}" class="quadrant-axis" />
+      <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" class="quadrant-axis" />
+      ${dotsSvg}
+      <text x="${W - PAD_R}" y="${H - PAD_B + 16}" text-anchor="end" class="quadrant-axis-label">FGA/20 &#8594;</text>
+      <text x="${PAD_L - 10}" y="${PAD_T + 4}" text-anchor="end" class="quadrant-axis-label">&#8593; TS%</text>
+    </svg>
+  `;
 }
 
 const PLAY_STYLE_FEATURES = [
@@ -2476,6 +3181,27 @@ function computePlayerStyleClusters() {
     .sort((a, b) => b.members.length - a.members.length);
 }
 
+function renderPlayStyleClusters() {
+  const wrap = document.getElementById("playStyleClusters");
+  if (!wrap) return;
+  const clusters = computePlayerStyleClusters();
+  if (!clusters) {
+    wrap.innerHTML = `<p class="empty-state">Needs at least ${PLAY_STYLE_MIN_PLAYERS} players with ${PLAY_STYLE_MIN_GP}+ qualifying games to cluster yet.</p>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="play-style-clusters">
+      ${clusters.map(c => `
+        <div class="play-style-cluster">
+          <h4>${escapeHtml(c.label)} <span class="hint" style="margin:0">(${c.members.length})</span></h4>
+          <p class="hint play-style-explain">${escapeHtml(c.explain)}</p>
+          <ul>${c.members.map(m => `<li>${playerLink(m.player.id, m.player.name)}</li>`).join("")}</ul>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 function computeTwoWayRankOverSeason() {
   const qualifyingGames = state.games.filter(isQualifyingGame);
   const dates = [...new Set(qualifyingGames.map(g => g.date).filter(Boolean))].sort();
@@ -2536,6 +3262,72 @@ function computeNightClimber(date) {
   return best;
 }
 
+function renderTwoWayRankChart() {
+  const wrap = document.getElementById("twoWayRankChart");
+  if (!wrap) return;
+  const { dates, series } = computeTwoWayRankOverSeason();
+  const playerIds = Object.keys(series);
+  if (dates.length === 0 || playerIds.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games logged yet.</p>';
+    return;
+  }
+  // H bumped up from an earlier 360 — this chart lives paired in a .panel-row (half-width) next
+  // to League Shot Heatmap, and at that squeezed width the old H rendered genuinely tiny (an SVG
+  // with width:100% scales its height to match its own viewBox aspect ratio, so a wide, short
+  // viewBox stays short no matter how little width it actually gets). Taller viewBox, same W,
+  // means more vertical room between rank rows too — a real readability win, not just a size one.
+  const W = 680, H = 520, PAD_L = 32, PAD_R = 96, PAD_T = 16, PAD_B = 34;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const maxRank = Math.max(1, ...playerIds.flatMap(pid => series[pid].map(p => p.rank)));
+  const xScale = i => dates.length === 1 ? PAD_L + plotW / 2 : PAD_L + (i / (dates.length - 1)) * plotW;
+  // Rank 1 at the top — a "climbing" line reads as improving, matching how a real standings
+  // table already reads (1st at the top), not an arbitrary choice of which way is "up."
+  const yScale = rank => PAD_T + ((rank - 1) / Math.max(1, maxRank - 1)) * plotH;
+  const dateIndex = {};
+  dates.forEach((d, i) => dateIndex[d] = i);
+
+  const linesSvg = playerIds.map(pid => {
+    const player = state.players.find(p => p.id === pid);
+    if (!player) return "";
+    const points = series[pid];
+    const hue = avatarHueForPlayer(pid);
+    const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${xScale(dateIndex[p.date])},${yScale(p.rank)}`).join(" ");
+    const dotsSvg = points.map(p => `
+      <g>
+        <title>${escapeHtml(player.name)}: #${p.rank} as of ${escapeHtml(formatDateDisplay(p.date))} (${p.twoWay.toFixed(1)} Two-Way/20)</title>
+        ${svgAvatarDot(player, xScale(dateIndex[p.date]), yScale(p.rank), 8, p.rank)}
+      </g>
+    `).join("");
+    const last = points[points.length - 1];
+    // Lighter/more saturated than the 55%/42% used for avatars and the quadrant-scatter dots
+    // elsewhere — those sit on colored circles with a contrasting ring, but a thin line has to
+    // read against the raw dark panel background on its own, and 42% lightness is genuinely hard
+    // to see for the blue/purple end of the hue wheel specifically, which sits close in tone to
+    // this app's own dark navy background.
+    const labelSvg = `<text x="${xScale(dateIndex[last.date]) + 12}" y="${yScale(last.rank)}" dominant-baseline="central" class="rank-line-label" style="fill:hsl(${hue}, 70%, 62%)">${escapeHtml(player.name)}</text>`;
+    return `<path d="${pathD}" style="stroke:hsl(${hue}, 70%, 62%)" class="rank-line-path" />${dotsSvg}${labelSvg}`;
+  }).join("");
+
+  const labelEvery = Math.max(1, Math.ceil(dates.length / 6));
+  const xLabelsSvg = dates.map((d, i) => (i % labelEvery !== 0 && i !== dates.length - 1) ? "" : `
+    <text x="${xScale(i)}" y="${H - PAD_B + 16}" text-anchor="middle" class="quadrant-axis-label">${escapeHtml(formatDateDisplay(d))}</text>
+  `).join("");
+  const yTicksSvg = Array.from({ length: maxRank }, (_, i) => i + 1).map(r =>
+    `<text x="${PAD_L - 8}" y="${yScale(r) + 3}" text-anchor="end" class="quadrant-axis-label">${r}</text>`
+  ).join("");
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="quadrant-svg">
+      <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H - PAD_B}" class="quadrant-axis" />
+      <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" class="quadrant-axis" />
+      ${yTicksSvg}
+      ${linesSvg}
+      ${xLabelsSvg}
+      <text x="${PAD_L - 10}" y="${PAD_T - 4}" text-anchor="end" class="quadrant-axis-label">Rank</text>
+    </svg>
+  `;
+}
+
 function computeMatchupGrid() {
   const cellTotals = {}; // "scorerId|defenderId" -> { fgm, fga }
   const scorerTotals = {}; // scorerId -> attempts, for sorting rows by sample size
@@ -2565,6 +3357,36 @@ function computeMatchupGrid() {
     defenders,
     cellFor: (scorerId, defenderId) => cellTotals[`${scorerId}|${defenderId}`] || null
   };
+}
+
+function renderMatchupGrid() {
+  const wrap = document.getElementById("matchupGrid");
+  if (!wrap) return;
+  const { scorers, defenders, cellFor } = computeMatchupGrid();
+  if (scorers.length === 0 || defenders.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No shots with a tagged defender yet.</p>';
+    return;
+  }
+  const headerHtml = defenders.map(d => `<th>${playerLink(d.id, d.name)}</th>`).join("");
+  const rowsHtml = scorers.map(scorer => {
+    const cellsHtml = defenders.map(defender => {
+      const cell = cellFor(scorer.id, defender.id);
+      if (!cell) return `<td class="matchup-grid-cell matchup-grid-empty">&#8212;</td>`;
+      const fgPct = pct(cell.fgm, cell.fga);
+      const hue = (fgPct / 100) * 120;
+      const opacity = Math.min(0.85, 0.32 + cell.fga * 0.08);
+      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 85%, 42%, ${opacity})" title="${escapeHtml(scorer.name)} vs. ${escapeHtml(defender.name)}: ${cell.fgm}/${cell.fga}">${fgPct}%</td>`;
+    }).join("");
+    return `<tr><td class="sticky-col">${playerLink(scorer.id, scorer.name)}</td>${cellsHtml}</tr>`;
+  }).join("");
+  wrap.innerHTML = `
+    <div class="table-scroll">
+      <table class="matchup-table matchup-grid-table">
+        <thead><tr><th class="sticky-col">Scorer &#8595; / Defender &#8594;</th>${headerHtml}</tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 function computePassingChemistryPair(passerId, scorerId, combos, zonePpa) {
@@ -2615,6 +3437,40 @@ function computePassingChemistryGrid(combos, zonePpa) {
   return { passers, scorers, cellFor: (passerId, scorerId) => cellTotals[`${passerId}|${scorerId}`] || null };
 }
 
+const PASSING_CHEMISTRY_GRID_SCALE_MAX = 1.6;
+
+function renderPassingChemistryGrid() {
+  const wrap = document.getElementById("passingChemistryGrid");
+  if (!wrap) return;
+  const zonePpa = computeLeagueZonePointsPerAttempt();
+  const combos = computeXptsCombos();
+  const { passers, scorers, cellFor } = computePassingChemistryGrid(combos, zonePpa);
+  if (passers.length === 0 || scorers.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No shots with a passer credited yet.</p>';
+    return;
+  }
+  const headerHtml = scorers.map(s => `<th>${playerLink(s.id, s.name)}</th>`).join("");
+  const rowsHtml = passers.map(passer => {
+    const cellsHtml = scorers.map(scorer => {
+      const cell = cellFor(passer.id, scorer.id);
+      if (!cell) return `<td class="matchup-grid-cell matchup-grid-empty">&#8212;</td>`;
+      const avgXpts = cell.xptsSum / cell.shots;
+      const hue = Math.max(0, Math.min(1, avgXpts / PASSING_CHEMISTRY_GRID_SCALE_MAX)) * 120;
+      const opacity = Math.min(0.85, 0.32 + cell.shots * 0.08);
+      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 85%, 42%, ${opacity})" title="${escapeHtml(passer.name)} &#8594; ${escapeHtml(scorer.name)}: ${avgXpts.toFixed(2)} xPTS/pass over ${cell.shots} shot${cell.shots === 1 ? "" : "s"}">${avgXpts.toFixed(2)}</td>`;
+    }).join("");
+    return `<tr><td class="sticky-col">${playerLink(passer.id, passer.name)}</td>${cellsHtml}</tr>`;
+  }).join("");
+  wrap.innerHTML = `
+    <div class="table-scroll">
+      <table class="matchup-table matchup-grid-table">
+        <thead><tr><th class="sticky-col">Passer &#8595; / Scorer &#8594;</th>${headerHtml}</tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 function computeWideOpenShooting() {
   const totals = {}; // playerId -> { pts, fga, totalFga }
   state.games.filter(isQualifyingGame).forEach(game => {
@@ -2646,6 +3502,15 @@ const WIDE_OPEN_COLUMNS = [
   { key: "ts", label: "TS%", accessor: r => r.ts }
 ];
 
+function renderAssistSynergy() {
+  const body = document.getElementById("assistSynergyBody");
+  const rowLimit = Math.max(1, computeLeaderboard().filter(r => r.gp > 0).length);
+  const rows = computeAssistConnections().slice(0, rowLimit);
+  body.innerHTML = rows.length === 0
+    ? '<tr><td colspan="3" class="empty-state">No assists logged yet.</td></tr>'
+    : rows.map(r => `<tr><td>${playerLink(r.passer.id, r.passer.name)}</td><td>${playerLink(r.scorer.id, r.scorer.name)}</td><td>${r.count}</td></tr>`).join("");
+}
+
 function computeTeammateLiftMatrix() {
   const synergyByPlayer = {};
   state.players.forEach(p => { synergyByPlayer[p.id] = computeTeammateSynergy(p.id); });
@@ -2668,6 +3533,38 @@ function computeTeammateLiftMatrix() {
     maxAbsLift,
     cellFor: (rowId, colId) => cells[`${rowId}|${colId}`] || null
   };
+}
+
+function renderTeammateLiftMatrix() {
+  const wrap = document.getElementById("teammateLiftMatrix");
+  if (!wrap) return;
+  const { players, cellFor, maxAbsLift } = computeTeammateLiftMatrix();
+  if (players.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">Not enough With/Without games logged yet for any pairing.</p>';
+    return;
+  }
+  const headerHtml = players.map(p => `<th>${playerLink(p.id, p.name)}</th>`).join("");
+  const rowsHtml = players.map(rowP => {
+    const cellsHtml = players.map(colP => {
+      if (rowP.id === colP.id) return '<td class="matchup-grid-cell matchup-grid-empty">&#8212;</td>';
+      const cell = cellFor(rowP.id, colP.id);
+      if (!cell) return '<td class="matchup-grid-cell matchup-grid-empty">&#8212;</td>';
+      const magnitude = maxAbsLift > 0 ? Math.abs(cell.lift) / maxAbsLift : 0;
+      const opacity = 0.18 + magnitude * 0.62;
+      const hue = cell.lift >= 0 ? 120 : 0;
+      const sign = cell.lift >= 0 ? "+" : "";
+      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 70%, 45%, ${opacity})" title="With ${escapeHtml(rowP.name)} on their team, ${escapeHtml(colP.name)}'s Two-Way/20 is ${sign}${cell.lift.toFixed(1)} (${cell.withGp} with / ${cell.withoutGp} without)">${sign}${cell.lift.toFixed(1)}</td>`;
+    }).join("");
+    return `<tr><td class="sticky-col">${playerLink(rowP.id, rowP.name)}</td>${cellsHtml}</tr>`;
+  }).join("");
+  wrap.innerHTML = `
+    <div class="table-scroll">
+      <table class="matchup-table matchup-grid-table">
+        <thead><tr><th class="sticky-col">On team with &#8595; / Stat shown for &#8594;</th>${headerHtml}</tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 const TEAMMATE_CONTEXT_COLUMNS = [
@@ -2710,6 +3607,8 @@ const SHOT_ZONE_COLUMNS = [
   { key: "attempts", label: "Attempts", accessor: r => totalBandedAttempts(r) }
 ];
 
+let shotZoneSort = { key: "attempts", dir: "desc" };
+
 const LEAGUE_DIRECTION_MIN_FGA = 5;
 
 function computeLeagueDirectionSplits() {
@@ -2750,6 +3649,76 @@ function computeLeagueDirectionSplits() {
   return { left: build("left"), right: build("right") };
 }
 
+function renderLeagueDirectionSplits() {
+  const wrap = document.getElementById("leagueDirectionSplits");
+  if (!wrap) return;
+  const { left, right } = computeLeagueDirectionSplits();
+  if (left.fga === 0 && right.fga === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games with a set direction yet. Set it per game in Stat Entry: "Where is Team A shooting?"</p>';
+    return;
+  }
+  const recordText = r => `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}`;
+  const row = (label, r) => `<tr>
+    <td>${label}</td>
+    <td>${r.fga}</td>
+    <td>${formatPct(r.fgPct)}</td>
+    <td>${formatPct(r.tsPct)}</td>
+    <td>${recordText(r)}</td>
+    <td>${formatPct(r.winPct)}</td>
+  </tr>`;
+  let note = "";
+  if (left.winPct !== null && right.winPct !== null) {
+    const diff = left.winPct - right.winPct;
+    if (Math.abs(diff) >= 15) {
+      const better = diff > 0 ? directionLabel("left") : directionLabel("right");
+      note = `<p class="hint" style="margin:8px 0 0">${Math.abs(diff)} points higher win rate shooting toward the ${escapeHtml(better.toLowerCase())} so far, worth watching if it holds up as more games get a direction set.</p>`;
+    }
+  }
+  wrap.innerHTML = `
+    <table class="matchup-table">
+      <thead><tr><th>Direction</th><th>FGA</th><th>FG%</th><th>TS%</th><th>Record</th><th>Win%</th></tr></thead>
+      <tbody>${row(directionLabel("left"), left)}${row(directionLabel("right"), right)}</tbody>
+    </table>
+    ${note}
+  `;
+}
+
+function renderShotZonePanel() {
+  const headerRow = document.getElementById("shotZoneHeaderRow");
+  renderSortableHeader(headerRow, SHOT_ZONE_COLUMNS, shotZoneSort, renderShotZonePanel);
+  // The Mix column is purely visual (a stacked bar has no single sortable number), so it's
+  // appended after renderSortableHeader builds the real sortable headers rather than being one
+  // of them.
+  const mixTh = document.createElement("th");
+  mixTh.textContent = "Mix";
+  headerRow.appendChild(mixTh);
+
+  const body = document.getElementById("shotZoneBody");
+  const rows = computeLeaderboard().filter(r => totalBandedAttempts(r) > 0);
+  const sortCol = SHOT_ZONE_COLUMNS.find(c => c.key === shotZoneSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), shotZoneSort.dir));
+
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="${SHOT_ZONE_COLUMNS.length + 1}" class="empty-state">No field goals with a marked shot location yet.</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map(r => {
+    const total = totalBandedAttempts(r);
+    const zoneCellsHtml = SHOT_ZONES.map(z => {
+      const a = z.attempts(r);
+      const share = total > 0 ? Math.round((a / total) * 100) : 0;
+      return `<td>${formatShootingSplit(z.makes(r), a)}${a > 0 ? `<br><span class="hint" style="margin:0">${share}% of shots</span>` : ""}</td>`;
+    }).join("");
+    const mixHtml = SHOT_ZONES.map(z => {
+      const a = z.attempts(r);
+      if (a === 0) return "";
+      const share = (a / total) * 100;
+      return `<div class="shot-seg ${z.cssClass}" style="width:${share}%"><title>${escapeHtml(r.player.name)}: ${a} ${escapeHtml(z.label)} attempt${a === 1 ? "" : "s"} (${Math.round(share)}%)</title></div>`;
+    }).join("");
+    return `<tr><td>${playerLink(r.player.id, r.player.name)}</td>${zoneCellsHtml}<td>${total}</td><td><div class="shot-selection-bar">${mixHtml}</div></td></tr>`;
+  }).join("");
+}
+
 function computeDefensiveShotZoneRows() {
   const totals = {};
   state.players.forEach(p => {
@@ -2775,6 +3744,42 @@ const DEFENSIVE_SHOT_ZONE_COLUMNS = [
   { key: "attempts", label: "Attempts", accessor: r => totalBandedAttempts(r) }
 ];
 
+let defensiveShotZoneSort = { key: "attempts", dir: "desc" };
+
+function renderDefensiveShotZonePanel() {
+  const headerRow = document.getElementById("defensiveShotZoneHeaderRow");
+  if (!headerRow) return;
+  renderSortableHeader(headerRow, DEFENSIVE_SHOT_ZONE_COLUMNS, defensiveShotZoneSort, renderDefensiveShotZonePanel);
+  const mixTh = document.createElement("th");
+  mixTh.textContent = "Mix";
+  headerRow.appendChild(mixTh);
+
+  const body = document.getElementById("defensiveShotZoneBody");
+  const rows = computeDefensiveShotZoneRows().filter(r => totalBandedAttempts(r) > 0);
+  const sortCol = DEFENSIVE_SHOT_ZONE_COLUMNS.find(c => c.key === defensiveShotZoneSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), defensiveShotZoneSort.dir));
+
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="${DEFENSIVE_SHOT_ZONE_COLUMNS.length + 1}" class="empty-state">No defended field goals with a marked shot location yet.</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map(r => {
+    const total = totalBandedAttempts(r);
+    const zoneCellsHtml = SHOT_ZONES.map(z => {
+      const a = z.attempts(r);
+      const share = total > 0 ? Math.round((a / total) * 100) : 0;
+      return `<td>${formatShootingSplit(z.makes(r), a)}${a > 0 ? `<br><span class="hint" style="margin:0">${share}% of shots</span>` : ""}</td>`;
+    }).join("");
+    const mixHtml = SHOT_ZONES.map(z => {
+      const a = z.attempts(r);
+      if (a === 0) return "";
+      const share = (a / total) * 100;
+      return `<div class="shot-seg ${z.cssClass}" style="width:${share}%"><title>${escapeHtml(r.player.name)}: ${a} ${escapeHtml(z.label)} attempt${a === 1 ? "" : "s"} allowed (${Math.round(share)}%)</title></div>`;
+    }).join("");
+    return `<tr><td>${playerLink(r.player.id, r.player.name)}</td>${zoneCellsHtml}<td>${total}</td><td><div class="shot-selection-bar">${mixHtml}</div></td></tr>`;
+  }).join("");
+}
+
 function computeLeagueTsOverTime() {
   const byDate = {};
   state.games.filter(isQualifyingGame).forEach(game => {
@@ -2798,6 +3803,48 @@ function computeLeagueTsOverTime() {
     .map(([date, v]) => ({ date, ts: trueShootingPct(v.pts, v.fga, v.fta) }))
     .filter(d => d.ts !== null)
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function renderLeagueTsChart() {
+  const wrap = document.getElementById("leagueTsChart");
+  if (!wrap) return;
+  const points = computeLeagueTsOverTime();
+  if (points.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games logged yet.</p>';
+    return;
+  }
+  const W = 560, H = 220, PAD_L = 34, PAD_R = 16, PAD_T = 16, PAD_B = 34;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const values = points.map(p => p.ts);
+  const rawMin = Math.min(...values), rawMax = Math.max(...values);
+  const span = Math.max(1, rawMax - rawMin);
+  const yMin = Math.max(0, rawMin - span * 0.15);
+  const yMax = Math.min(100, rawMax + span * 0.15 || rawMax + 5);
+  const xScale = i => points.length === 1 ? PAD_L + plotW / 2 : PAD_L + (i / (points.length - 1)) * plotW;
+  const yScale = v => PAD_T + plotH - ((v - yMin) / (yMax - yMin || 1)) * plotH;
+
+  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${xScale(i)},${yScale(p.ts)}`).join(" ");
+  const dotsSvg = points.map((p, i) => `
+    <circle cx="${xScale(i)}" cy="${yScale(p.ts)}" r="3.5" class="ts-line-dot">
+      <title>${escapeHtml(formatDateDisplay(p.date))}: ${p.ts}% TS</title>
+    </circle>
+  `).join("");
+  const labelEvery = Math.max(1, Math.ceil(points.length / 6));
+  const xLabelsSvg = points.map((p, i) => (i % labelEvery !== 0 && i !== points.length - 1) ? "" : `
+    <text x="${xScale(i)}" y="${H - PAD_B + 16}" text-anchor="middle" class="ts-line-axis-label">${escapeHtml(formatDateDisplay(p.date))}</text>
+  `).join("");
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="ts-line-svg">
+      <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H - PAD_B}" class="ts-line-axis" />
+      <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" class="ts-line-axis" />
+      <text x="${PAD_L - 6}" y="${yScale(yMax) + 4}" text-anchor="end" class="ts-line-axis-label">${Math.round(yMax)}%</text>
+      <text x="${PAD_L - 6}" y="${yScale(yMin) + 4}" text-anchor="end" class="ts-line-axis-label">${Math.round(yMin)}%</text>
+      <path d="${pathD}" class="ts-line-path" />
+      ${dotsSvg}
+      ${xLabelsSvg}
+    </svg>
+  `;
 }
 
 const LEAGUE_TS_ZONES = [
@@ -3087,6 +4134,62 @@ function computeShotMakingAddedOverSeason(combos, zonePpa) {
   return { dates, series };
 }
 
+function renderShotMakingAddedChart() {
+  const wrap = document.getElementById("shotMakingAddedChart");
+  if (!wrap) return;
+  const zonePpa = computeLeagueZonePointsPerAttempt();
+  const combos = computeXptsCombos();
+  const { dates, series } = computeShotMakingAddedOverSeason(combos, zonePpa);
+  const playerIds = Object.keys(series);
+  if (dates.length === 0 || playerIds.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games logged yet.</p>';
+    return;
+  }
+  const W = 680, H = 460, PAD_L = 44, PAD_R = 96, PAD_T = 16, PAD_B = 34;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const allAdded = playerIds.flatMap(pid => series[pid].map(p => p.added));
+  const minAdded = Math.min(0, ...allAdded), maxAdded = Math.max(0, ...allAdded);
+  const range = Math.max(1, maxAdded - minAdded);
+  const xScale = i => dates.length === 1 ? PAD_L + plotW / 2 : PAD_L + (i / (dates.length - 1)) * plotW;
+  const yScale = added => PAD_T + (1 - (added - minAdded) / range) * plotH;
+  const dateIndex = {};
+  dates.forEach((d, i) => dateIndex[d] = i);
+
+  const linesSvg = playerIds.map(pid => {
+    const player = state.players.find(p => p.id === pid);
+    if (!player) return "";
+    const points = series[pid];
+    const hue = avatarHueForPlayer(pid);
+    const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${xScale(dateIndex[p.date])},${yScale(p.added)}`).join(" ");
+    const dotsSvg = points.map(p => `
+      <g>
+        <title>${escapeHtml(player.name)}: ${p.added >= 0 ? "+" : ""}${p.added.toFixed(1)} as of ${escapeHtml(formatDateDisplay(p.date))}</title>
+        ${svgAvatarDot(player, xScale(dateIndex[p.date]), yScale(p.added), 8, null)}
+      </g>
+    `).join("");
+    const last = points[points.length - 1];
+    const labelSvg = `<text x="${xScale(dateIndex[last.date]) + 12}" y="${yScale(last.added)}" dominant-baseline="central" class="rank-line-label" style="fill:hsl(${hue}, 70%, 62%)">${escapeHtml(player.name)}</text>`;
+    return `<path d="${pathD}" style="stroke:hsl(${hue}, 70%, 62%)" class="rank-line-path" />${dotsSvg}${labelSvg}`;
+  }).join("");
+
+  const labelEvery = Math.max(1, Math.ceil(dates.length / 6));
+  const xLabelsSvg = dates.map((d, i) => (i % labelEvery !== 0 && i !== dates.length - 1) ? "" : `
+    <text x="${xScale(i)}" y="${H - PAD_B + 16}" text-anchor="middle" class="quadrant-axis-label">${escapeHtml(formatDateDisplay(d))}</text>
+  `).join("");
+  const zeroY = yScale(0);
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="quadrant-svg">
+      <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H - PAD_B}" class="quadrant-axis" />
+      <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" class="quadrant-axis" />
+      <line x1="${PAD_L}" y1="${zeroY}" x2="${W - PAD_R}" y2="${zeroY}" class="quadrant-axis" stroke-dasharray="4 4" />
+      ${linesSvg}
+      ${xLabelsSvg}
+      <text x="${PAD_L - 10}" y="${PAD_T - 4}" text-anchor="end" class="quadrant-axis-label">Added</text>
+    </svg>
+  `;
+}
+
 const SHOT_CREATION_MIN_FGA = 5;
 
 function computeTrueSelfCreationRate(playerId) {
@@ -3317,6 +4420,64 @@ const REBOUND_BATTLE_RECORD_COLUMNS = [
   { key: "winpct", label: "Win%", accessor: r => r.winPct },
   { key: "contestrate", label: "Contest Rate", accessor: r => r.contestRate === null ? -1 : r.contestRate },
 ];
+
+let reboundBattleRecordSort = { key: "winpct", dir: "desc" };
+
+function renderReboundBattleRecordPanel() {
+  const headerRow = document.getElementById("reboundBattleRecordHeaderRow");
+  if (!headerRow) return;
+  renderSortableHeader(headerRow, REBOUND_BATTLE_RECORD_COLUMNS, reboundBattleRecordSort, renderReboundBattleRecordPanel);
+  const body = document.getElementById("reboundBattleRecordBody");
+  const rows = computeReboundBattleRecord().map(r => {
+    const rate = computeReboundContestRate(r.player.id);
+    return { ...r, contestRate: rate ? rate.contestRate : null };
+  });
+  const sortCol = REBOUND_BATTLE_RECORD_COLUMNS.find(c => c.key === reboundBattleRecordSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), reboundBattleRecordSort.dir));
+  body.innerHTML = rows.length === 0
+    ? `<tr><td colspan="6" class="empty-state">Nobody has ${REBOUND_BATTLE_MIN_CONTESTS}+ real rebound contests yet.</td></tr>`
+    : rows.map(r => `<tr>
+        <td><button type="button" class="icon-btn rebound-battle-player-btn" data-player-id="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button></td>
+        <td>${r.wins}</td>
+        <td>${r.losses}</td>
+        <td>${r.total}</td>
+        <td>${formatPct(r.winPct)}</td>
+        <td>${r.contestRate === null ? "—" : formatPct(r.contestRate)}</td>
+      </tr>`).join("");
+  body.querySelectorAll(".rebound-battle-player-btn").forEach(btn => {
+    btn.addEventListener("click", () => openPlayerDetail(btn.dataset.playerId));
+  });
+}
+
+function renderReboundBattleGridPanel() {
+  const wrap = document.getElementById("reboundBattleGrid");
+  if (!wrap) return;
+  const { players, cellFor } = computeReboundBattleGrid();
+  if (players.length === 0) {
+    wrap.innerHTML = `<p class="empty-state">Nobody has ${REBOUND_BATTLE_MIN_CONTESTS}+ real rebound contests yet.</p>`;
+    return;
+  }
+  const headerHtml = players.map(p => `<th>${playerLink(p.id, p.name)}</th>`).join("");
+  const rowsHtml = players.map(row => {
+    const cellsHtml = players.map(col => {
+      if (row.id === col.id) return `<td class="matchup-grid-cell matchup-grid-empty">&#8212;</td>`;
+      const cell = cellFor(row.id, col.id);
+      if (!cell) return `<td class="matchup-grid-cell matchup-grid-empty">&#8212;</td>`;
+      const hue = (cell.winPct / 100) * 120;
+      const opacity = Math.min(0.85, 0.32 + cell.total * 0.08);
+      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 85%, 42%, ${opacity})" title="${escapeHtml(row.name)} vs. ${escapeHtml(col.name)}: ${cell.wins}-${cell.losses}">${cell.winPct}%</td>`;
+    }).join("");
+    return `<tr><td class="sticky-col">${playerLink(row.id, row.name)}</td>${cellsHtml}</tr>`;
+  }).join("");
+  wrap.innerHTML = `
+    <div class="table-scroll">
+      <table class="matchup-table matchup-grid-table">
+        <thead><tr><th class="sticky-col">Wins &#8595; / Against &#8594;</th>${headerHtml}</tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
 
 function computePaceAndPpp(playerId) {
   const games = qualifyingGamesForPlayer(playerId).filter(g => !g.stoppedEarly);
@@ -3567,6 +4728,30 @@ function computeWinShares(playerId, weights) {
   return { gp: games.length, winShares: total };
 }
 
+function renderWinSharesModelPanel() {
+  const wrap = document.getElementById("winSharesModelPanel");
+  if (!wrap) return;
+  const weights = computeWinSharesWeights();
+  if (!weights) {
+    wrap.innerHTML = '<p class="empty-state">Not enough reviewed, non-stopped-early games yet to fit this model.</p>';
+    return;
+  }
+  const rows = WIN_SHARES_FEATURES.map(f => {
+    const w = weights.weights[f.key];
+    const atFloor = Math.abs(w) < 1e-6;
+    return `<tr><td>${escapeHtml(f.label)}</td><td>${w >= 0 ? "+" : ""}${w.toFixed(3)}${atFloor ? ' <span class="hint" style="margin:0">(0: no independent signal yet)</span>' : ""}</td></tr>`;
+  }).join("");
+  wrap.innerHTML = `
+    <p class="hint" style="margin-top:0">Fit from <strong>${weights.n}</strong> player-games. Alpha (regularization strength): <strong>${weights.alpha}</strong>, except Assists, which gets its own separately-tuned strength (<strong>${weights.astAlpha}</strong>) so its prior can have real pull rather than being technically present but functionally inert. Leave-one-out R&sup2;: <strong>${weights.looR2.toFixed(2)}</strong>. Leave-one-out correlation (predicted vs. actual margin): <strong>${weights.looCorrelation.toFixed(2)}</strong>.</p>
+    <div class="table-scroll">
+      <table class="matchup-table">
+        <thead><tr><th>Stat</th><th>Fitted Weight</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 function computeLeagueTsByZone() {
   const totals = {};
   LEAGUE_TS_ZONES.forEach(z => totals[z.key] = { pts: 0, fga: 0 });
@@ -3585,6 +4770,47 @@ function computeLeagueTsByZone() {
     fga: totals[z.key].fga,
     ts: totals[z.key].fga > 0 ? trueShootingPct(totals[z.key].pts, totals[z.key].fga, 0) : null
   }));
+}
+
+function renderLeagueTsByZoneChart() {
+  const wrap = document.getElementById("leagueTsByZoneChart");
+  if (!wrap) return;
+  const zones = computeLeagueTsByZone();
+  if (zones.every(z => z.fga === 0)) {
+    wrap.innerHTML = '<p class="empty-state">No field goals with a marked shot location yet.</p>';
+    return;
+  }
+  const W = 420, H = 220, PAD_L = 16, PAD_R = 16, PAD_T = 26, PAD_B = 32;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const gap = 18;
+  const barW = (plotW - gap * (zones.length - 1)) / zones.length;
+  // TS% is mathematically uncapped at 100 — a small, hot-from-three sample can clear it (e.g. 1
+  // make on 1 three-point attempt is pts/(2*fga) = 3/2 = 150%). The ceiling scales up to fit
+  // whatever the data actually produced instead of assuming 100 is always the max.
+  const ceiling = Math.max(100, ...zones.map(z => z.ts ?? 0)) * 1.08;
+  const yScale = v => PAD_T + plotH - (v / ceiling) * plotH;
+
+  const barsSvg = zones.map((z, i) => {
+    const x = PAD_L + i * (barW + gap);
+    const val = z.ts ?? 0;
+    const y = yScale(val);
+    const h = (PAD_T + plotH) - y;
+    const fill = z.ts === null ? "var(--surface-muted)" : `hsl(${Math.min(120, (val / 100) * 120)}, 85%, 42%)`;
+    return `
+      <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="3" fill="${fill}">
+        <title>${escapeHtml(z.label)}: ${z.ts === null ? "no data" : `${z.ts}% TS`} (${z.fga} attempt${z.fga === 1 ? "" : "s"})</title>
+      </rect>
+      <text x="${x + barW / 2}" y="${y - 6}" text-anchor="middle" class="ts-zone-value-label">${z.ts === null ? "&#8212;" : `${z.ts}%`}</text>
+      <text x="${x + barW / 2}" y="${PAD_T + plotH + 16}" text-anchor="middle" class="ts-zone-axis-label">${escapeHtml(z.label)}</text>
+    `;
+  }).join("");
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="ts-zone-svg">
+      <line x1="${PAD_L}" y1="${PAD_T + plotH}" x2="${W - PAD_R}" y2="${PAD_T + plotH}" class="ts-line-axis" />
+      ${barsSvg}
+    </svg>
+  `;
 }
 
 function computeSecondChanceConversions() {
@@ -4619,6 +5845,27 @@ function compareForSort(a, b, dir) {
   return dir === "asc" ? cmp : -cmp;
 }
 
+function renderSortableHeader(headerRowEl, columns, sortState, onChange) {
+  headerRowEl.innerHTML = "";
+  columns.forEach(col => {
+    const th = document.createElement("th");
+    th.className = "sortable-th";
+    const active = sortState.key === col.key;
+    th.textContent = col.label + (active ? (sortState.dir === "desc" ? " ▼" : " ▲") : "");
+    if (active) th.classList.add("sorted");
+    th.addEventListener("click", () => {
+      if (sortState.key === col.key) {
+        sortState.dir = sortState.dir === "desc" ? "asc" : "desc";
+      } else {
+        sortState.key = col.key;
+        sortState.dir = "desc";
+      }
+      onChange();
+    });
+    headerRowEl.appendChild(th);
+  });
+}
+
 const COMPARISON_NEUTRAL_KEYS = new Set(["gp", "shotpct", "astpct", "orebpct", "drebpct", "trebpct"]);
 
 const COMPARISON_LOWER_IS_BETTER_KEYS = new Set(["l", "tov", "pf", "ptsAllowed", "oppfg", "oppefg", "beaten", "tovpct"]);
@@ -4839,6 +6086,8 @@ function effShotType(ev) {
 
 const SHOT_TYPE_MIN_ATTEMPTS = 5;
 
+const SHOT_TYPE_DEEP_CHECK_MIN = 10;
+
 function shotTypeLabel(key) {
   const t = SHOT_TYPES.find(s => s.key === key);
   return t ? t.label : "";
@@ -4902,6 +6151,11 @@ function computeTurnoverTypeTaggedSummary() {
   return { total, tagged, pct: pct(tagged, total) };
 }
 
+function turnoverTypeTaggedSummaryText() {
+  const s = computeTurnoverTypeTaggedSummary();
+  return s.total === 0 ? "No live-ball turnovers logged yet." : `${s.tagged} of ${s.total} turnovers tagged (${formatPct(s.pct)}).`;
+}
+
 const TURNOVER_TYPE_BREAKDOWN_COLUMNS = [
   { key: "player", label: "Player", accessor: r => r.player.name },
   { key: "badpass", label: "Bad Pass", accessor: r => r.breakdown.counts.badPass },
@@ -4937,6 +6191,37 @@ function computeTovRecomputedRows() {
       oldTovPct: turnoverPct(r.totals.tov, r.shooting.fga, r.shooting.fta),
     }))
     .filter(r => r.totals.tov > 0);
+}
+
+function renderSelfInflictedVsForcedChart() {
+  const wrap = document.getElementById("selfInflictedVsForcedChart");
+  const summaryEl = document.getElementById("selfInflictedVsForcedSummary");
+  if (!wrap) return;
+  if (summaryEl) summaryEl.textContent = turnoverTypeTaggedSummaryText();
+  const rows = computeTurnoverTypeBreakdownRows().sort((a, b) => b.breakdown.tagged - a.breakdown.tagged);
+  if (rows.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No live-ball turnovers with a type tagged yet.</p>';
+    return;
+  }
+  const maxTagged = Math.max(...rows.map(r => r.breakdown.tagged));
+  wrap.innerHTML = `<div class="tov-hbar-chart">${rows.map(r => {
+    const b = r.breakdown;
+    const barWidthPct = (b.tagged / maxTagged) * 100;
+    const selfShare = b.tagged > 0 ? (b.selfInflicted / b.tagged) * 100 : 0;
+    const forcedShare = b.tagged > 0 ? (b.forced / b.tagged) * 100 : 0;
+    return `<div class="tov-hbar-row">
+      <div class="tov-hbar-label">${playerLink(r.player.id, r.player.name)}</div>
+      <div class="tov-hbar-track" style="width:${barWidthPct}%">
+        <div class="tov-hbar-seg tov-hbar-self" style="width:${selfShare}%" title="${escapeHtml(r.player.name)}: ${b.selfInflicted} self-inflicted"></div>
+        <div class="tov-hbar-seg tov-hbar-forced" style="width:${forcedShare}%" title="${escapeHtml(r.player.name)}: ${b.forced} forced (stripped)"></div>
+      </div>
+      <div class="tov-hbar-total">${b.tagged}</div>
+    </div>`;
+  }).join("")}</div>
+  <div class="shot-selection-legend" style="margin-top:10px">
+    <span class="legend-item"><span class="legend-swatch tov-hbar-self"></span>Self-Inflicted</span>
+    <span class="legend-item"><span class="legend-swatch tov-hbar-forced"></span>Forced (Stripped)</span>
+  </div>`;
 }
 
 const TURNOVER_TYPE_MIX_COLUMNS = [
@@ -5026,6 +6311,59 @@ function computeTurnoverTypeOverSeason() {
   // 0% line the whole season would just be visual noise, not a real absence worth a line for.
   Object.keys(series).forEach(type => { if (series[type].every(p => p.share === 0)) delete series[type]; });
   return { dates, series };
+}
+
+function renderTurnoverTypeOverSeasonChart() {
+  const wrap = document.getElementById("turnoverTypeOverSeasonChart");
+  const gateEl = document.getElementById("turnoverTypeOverSeasonGate");
+  if (!wrap) return;
+  const { dates, series } = computeTurnoverTypeOverSeason();
+  if (gateEl) {
+    gateEl.textContent = dates.length < 8
+      ? `Only ${dates.length} game date${dates.length === 1 ? "" : "s"} logged so far -- too little date-range history for a real trend yet. Read this as a placeholder for the shape the chart will take, not a signal.`
+      : `${dates.length} game dates logged.`;
+  }
+  const types = Object.keys(series);
+  if (dates.length === 0 || types.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No tagged live-ball turnovers yet.</p>';
+    return;
+  }
+  const W = 680, H = 400, PAD_L = 40, PAD_R = 110, PAD_T = 16, PAD_B = 34;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const xScale = i => dates.length === 1 ? PAD_L + plotW / 2 : PAD_L + (i / (dates.length - 1)) * plotW;
+  const yScale = share => PAD_T + (1 - share / 100) * plotH;
+  const dateIndex = {};
+  dates.forEach((d, i) => dateIndex[d] = i);
+  const colorVar = { badPass: "var(--danger)", lostHandle: "var(--warning)", decisionError: "var(--accent)", stripped: "var(--tag-defender-text)", driveError: "var(--success)", other: "var(--muted)" };
+
+  const linesSvg = types.map(type => {
+    const points = series[type];
+    const color = colorVar[type] || "var(--muted)";
+    const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${xScale(dateIndex[p.date])},${yScale(p.share)}`).join(" ");
+    const last = points[points.length - 1];
+    const dotsSvg = points.map(p => `<circle cx="${xScale(dateIndex[p.date])}" cy="${yScale(p.share)}" r="4" style="fill:${color}"><title>${escapeHtml(turnoverTypeLabel(type))}: ${p.share.toFixed(0)}% as of ${escapeHtml(formatDateDisplay(p.date))}</title></circle>`).join("");
+    const labelSvg = `<text x="${xScale(dateIndex[last.date]) + 12}" y="${yScale(last.share)}" dominant-baseline="central" class="rank-line-label" style="fill:${color}">${escapeHtml(turnoverTypeLabel(type))}</text>`;
+    return `<path d="${pathD}" style="stroke:${color}" class="rank-line-path" />${dotsSvg}${labelSvg}`;
+  }).join("");
+
+  const labelEvery = Math.max(1, Math.ceil(dates.length / 6));
+  const xLabelsSvg = dates.map((d, i) => (i % labelEvery !== 0 && i !== dates.length - 1) ? "" : `
+    <text x="${xScale(i)}" y="${H - PAD_B + 16}" text-anchor="middle" class="quadrant-axis-label">${escapeHtml(formatDateDisplay(d))}</text>
+  `).join("");
+  const yTicksSvg = [0, 25, 50, 75, 100].map(v =>
+    `<text x="${PAD_L - 8}" y="${yScale(v) + 3}" text-anchor="end" class="quadrant-axis-label">${v}%</text>`
+  ).join("");
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="quadrant-svg">
+      <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H - PAD_B}" class="quadrant-axis" />
+      <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" class="quadrant-axis" />
+      ${yTicksSvg}
+      ${linesSvg}
+      ${xLabelsSvg}
+      <text x="${PAD_L - 10}" y="${PAD_T - 4}" text-anchor="end" class="quadrant-axis-label">Share</text>
+    </svg>
+  `;
 }
 
 const SELF_CREATION_FULL_MIN = 5;
@@ -5139,6 +6477,83 @@ function computeShotTypeStats() {
   return { rows, league: withResistance(league) };
 }
 
+function shotTypeCellHtml(b, tagged) {
+  if (b.a === 0) return "<td>—</td>";
+  const share = tagged > 0 ? Math.round((b.a / tagged) * 100) : 0;
+  if (b.a < SHOT_TYPE_MIN_ATTEMPTS) return `<td>—<br><span class="hint" style="margin:0">${b.a} shot${b.a === 1 ? "" : "s"}, too few</span></td>`;
+  return `<td>${Math.round((b.pts / (2 * b.a)) * 100)}% TS<br><span class="hint" style="margin:0">${b.m}/${b.a} · ${share}% of shots</span></td>`;
+}
+
+function renderShotTypePanel() {
+  const wrap = document.getElementById("shotTypePanel");
+  if (!wrap) return;
+  const { rows, league } = computeShotTypeStats();
+  if (league.tagged === 0) {
+    wrap.innerHTML = '<p class="empty-state">No shots have a type yet. Tag new shots as they are logged in Stat Entry, or go through the older ones in Export, Review Shot Types.</p>';
+    return;
+  }
+  const legend = SHOT_TYPES.map(t => `<span class="legend-item"><span class="legend-swatch ${t.cssClass}"></span>${escapeHtml(t.label)}</span>`).join("");
+  const rowHtml = (name, r) => {
+    const mix = SHOT_TYPES.map(t => {
+      const a = r.types[t.key].a;
+      return a === 0 ? "" : `<div class="shot-seg ${t.cssClass}" style="width:${(a / r.tagged) * 100}%" title="${escapeHtml(name)}: ${a} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+    const resistCell = r.avgResistance === null ? "—" : `${r.avgResistance.toFixed(2)}<br><span class="hint" style="margin:0">${r.resistN} shots</span>`;
+    return `<tr><td>${escapeHtml(name)}</td>${SHOT_TYPES.map(t => shotTypeCellHtml(r.types[t.key], r.tagged)).join("")}<td>${r.tagged} of ${r.fga}</td><td><div class="shot-selection-bar">${mix}</div></td><td>${resistCell}</td></tr>`;
+  };
+  wrap.innerHTML = `
+    <div class="shot-selection-legend">${legend}</div>
+    <div class="table-scroll">
+      <table class="matchup-table">
+        <thead><tr><th>Player</th>${SHOT_TYPES.map(t => `<th>${escapeHtml(t.label)}</th>`).join("")}<th>Tagged</th><th>Mix</th><th title="How much real defensive resistance this player faces when they score, scored none=0 / light=1 / medium=2 / heavy=3 and averaged across every attempt with a contest level reviewed.">Avg Resistance Faced</th></tr></thead>
+        <tbody>${rowHtml("League", league)}${rows.map(r => rowHtml(r.player.name, r)).join("")}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderDeepShotCheckPanel() {
+  const wrap = document.getElementById("deepShotCheckPanel");
+  if (!wrap) return;
+  const counts = Object.fromEntries(SHOT_TYPES.map(t => [t.key, { a: 0, m: 0 }]));
+  let deepTotal = 0, tagged = 0;
+  state.games.filter(isQualifyingGame).forEach(game => {
+    game.scoringEvents.forEach(ev => {
+      if (ev.points !== 3 || !ev.shotLocation || shotBand(ev.shotLocation, 3) !== "deep") return;
+      deepTotal++;
+      const b = effShotType(ev) ? counts[effShotType(ev)] : null;
+      if (!b) return;
+      tagged++;
+      b.a++;
+      if (ev.made !== false) b.m++;
+    });
+  });
+  if (tagged < SHOT_TYPE_DEEP_CHECK_MIN) {
+    wrap.innerHTML = `<p class="empty-state">${tagged} of ${deepTotal} deep 3-pointers have a shot type so far. This needs ${SHOT_TYPE_DEEP_CHECK_MIN} to show a split.</p>`;
+    return;
+  }
+  const heave = counts.deepHeave;
+  const otherA = tagged - heave.a, otherM = SHOT_TYPES.reduce((s, t) => s + (t.key === "deepHeave" ? 0 : counts[t.key].m), 0);
+  const p = (m, a) => a > 0 ? `${m}/${a} (${Math.round((m / a) * 100)}%)` : "no shots";
+  const rows = TAGGABLE_SHOT_TYPES.map(t => {
+    const b = counts[t.key];
+    return `<tr><td>${escapeHtml(t.label)}</td><td>${b.a}</td><td>${Math.round((b.a / tagged) * 100)}%</td><td>${b.a > 0 ? Math.round((b.m / b.a) * 100) + "%" : "—"}</td></tr>`;
+  }).join("");
+  wrap.innerHTML = `
+    <p class="hint" style="margin-top:0">${tagged} of ${deepTotal} deep 3-pointers are tagged. <strong>${heave.a}</strong> (${Math.round((heave.a / tagged) * 100)}%) were deep heaves off a check or rebound. Those went ${p(heave.m, heave.a)}, against ${p(otherM, otherA)} for deep shots taken any other way.</p>
+    <div class="table-scroll">
+      <table class="matchup-table">
+        <thead><tr><th>Shot type</th><th>Deep attempts</th><th>Share of tagged</th><th>FG%</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function shotTypeFgCell(m, a) {
+  if (a === 0) return "<td>—</td>";
+  if (a < SHOT_TYPE_MIN_ATTEMPTS) return `<td>${m}/${a}<br><span class="hint" style="margin:0">too few</span></td>`;
+  return `<td>${Math.round((m / a) * 100)}%<br><span class="hint" style="margin:0">${m}/${a}</span></td>`;
+}
+
 function computeShotTypeCuts() {
   const contest = {};
   SHOT_TYPES.forEach(t => { contest[t.key] = { open: { a: 0, m: 0 }, contested: { a: 0, m: 0 } }; });
@@ -5161,6 +6576,69 @@ function computeShotTypeCuts() {
     });
   });
   return { contest, byZone };
+}
+
+function renderShotTypeContestPanel() {
+  const wrap = document.getElementById("shotTypeContestPanel");
+  if (!wrap) return;
+  const { contest, byZone } = computeShotTypeCuts();
+  const total = SHOT_TYPES.reduce((s, t) => s + contest[t.key].open.a + contest[t.key].contested.a, 0);
+  if (total === 0) {
+    wrap.innerHTML = '<p class="empty-state">No tagged shots yet.</p>';
+    return;
+  }
+  const rows = SHOT_TYPES.map(t => {
+    const o = contest[t.key].open, c = contest[t.key].contested;
+    const gap = o.a >= SHOT_TYPE_MIN_ATTEMPTS && c.a >= SHOT_TYPE_MIN_ATTEMPTS
+      ? `${Math.round((o.m / o.a - c.m / c.a) * 100) > 0 ? "+" : ""}${Math.round((o.m / o.a - c.m / c.a) * 100)} pts`
+      : "—";
+    return `<tr><td>${escapeHtml(t.label)}</td>${shotTypeFgCell(o.m, o.a)}${shotTypeFgCell(c.m, c.a)}<td>${gap}</td></tr>`;
+  }).join("");
+  const zoneLabels = { close: "Close", mid: "Midrange", arc: "3PT Line", deep: "3PT Deep" };
+  const zoneRows = Object.keys(zoneLabels).map(z => {
+    const o = byZone[z].open, c = byZone[z].contested;
+    const gap = o.a >= SHOT_TYPE_MIN_ATTEMPTS && c.a >= SHOT_TYPE_MIN_ATTEMPTS ? `${Math.round((o.m / o.a - c.m / c.a) * 100) > 0 ? "+" : ""}${Math.round((o.m / o.a - c.m / c.a) * 100)} pts` : "—";
+    return `<tr><td>${zoneLabels[z]}</td>${shotTypeFgCell(o.m, o.a)}${shotTypeFgCell(c.m, c.a)}<td>${gap}</td></tr>`;
+  }).join("");
+  wrap.innerHTML = `<div class="table-scroll"><table class="matchup-table">
+    <thead><tr><th>Shot type</th><th>Open</th><th>Contested</th><th>Open minus contested</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <h3 style="margin:14px 0 4px;font-size:1rem">Catch-and-shoot at the same distance</h3>
+    <div class="table-scroll"><table class="matchup-table">
+    <thead><tr><th>Distance</th><th>Open</th><th>Contested</th><th>Open minus contested</th></tr></thead>
+    <tbody>${zoneRows}</tbody></table></div>`;
+}
+
+const MOVE_CHECK_EDGE_PTS = 10;
+
+function renderMoveCheckPanel() {
+  const wrap = document.getElementById("moveCheckPanel");
+  if (!wrap) return;
+  const { rows, league } = computeShotTypeStats();
+  const tsOf = b => (b.a > 0 ? (b.pts / (2 * b.a)) * 100 : null);
+  const combine = (r, excludeKey) => {
+    const acc = { a: 0, m: 0, pts: 0 };
+    TAGGABLE_SHOT_TYPES.forEach(t => { if (t.key !== excludeKey) { acc.a += r.types[t.key].a; acc.m += r.types[t.key].m; acc.pts += r.types[t.key].pts; } });
+    return acc;
+  };
+  const verdict = gap => (gap >= MOVE_CHECK_EDGE_PTS ? "Move is working" : gap <= -MOVE_CHECK_EDGE_PTS ? "Move is trailing" : "About the same");
+  const rowHtml = (name, r) => {
+    const mv = r.types.move, other = combine(r, "move"), cs = r.types.catchAndShoot;
+    if (mv.a < SHOT_TYPE_MIN_ATTEMPTS || other.a < SHOT_TYPE_MIN_ATTEMPTS) return null;
+    const gap = tsOf(mv) - tsOf(other);
+    return `<tr><td>${escapeHtml(name)}</td><td>${Math.round(tsOf(mv))}% TS<br><span class="hint" style="margin:0">${mv.m}/${mv.a}</span></td>
+      <td>${Math.round(tsOf(other))}% TS<br><span class="hint" style="margin:0">${other.m}/${other.a}</span></td>
+      <td>${cs.a >= SHOT_TYPE_MIN_ATTEMPTS ? Math.round(tsOf(cs)) + "% TS" : "—"}</td>
+      <td>${gap > 0 ? "+" : ""}${Math.round(gap)}</td><td>${verdict(gap)}</td></tr>`;
+  };
+  const body = [rowHtml("League", league), ...rows.map(r => rowHtml(r.player.name, r))].filter(Boolean);
+  if (body.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">Nobody has enough tagged Move shots yet. It needs 5 Move shots and 5 other tagged shots from the same player.</p>';
+    return;
+  }
+  wrap.innerHTML = `<div class="table-scroll"><table class="matchup-table">
+    <thead><tr><th>Player</th><th>Move</th><th>All other tagged shots (no dunks)</th><th>Catch-and-shoot</th><th>Move minus other (pts of TS%)</th><th>Read</th></tr></thead>
+    <tbody>${body.join("")}</tbody></table></div>`;
 }
 
 function gamesForShotType(playerId, typeKey, made) {
@@ -5621,4 +7099,50 @@ const mix = TURNOVER_TYPES.map(t => {
 ];
 
 
-export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, clutchMarginThreshold, pct, TURNOVER_TYPE_CSS_CLASS, SELF_CREATION_FULL_MIN, OPP_ADJ_REBOUND_MIN, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, sameTeam, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, STORAGE_KEY, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, shotDistanceFromHoop, findShotBreakpoint, binomialLogLik, ICONS, renderPlayerAvatar, PLAYER_PHOTO_FILES, avatarHueForPlayer, POOL_DATA_SNAPSHOT_KEY, sameMomentDismissed, shotReviewNeeds, shotReviewPlayer, shotReviewShowSkipped, shotReviewSkipped, turnoverTypeReviewPlayer, turnoverTypeSkipped, shotTypeReviewMatches, shotTypeReviewPlayer, shotTypeSkipped, effShotType, shotTypeReviewMode, DRIVE_FAR_UNITS, trueShootingPct, LEAGUE_RANK_STATS, shotBand, threePtDeepThreshold, closeRangeThreshold, RESISTANCE_LEVEL_SCORE, gameTotalPoints, turnoverPct, effectiveFgPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, shootingStats, REAL_PLAYMAKING_MIN, defensiveRating, SHOT_ZONES, gamesForZoneShots, getOrCreatePlayerStats, median, gameDefenseStats, seasonVsRecentRate, trendNote, turnoverTypeLabel, CLIP_CURATION_PAD_SECONDS, headToHeadAsScorer, gamesForMatchup, headToHeadAsDefender, shotTypeTipCandidates, gamesForShotType, accumulateHeadToHeadFg, playerAttendedDate, includeImbalancedGames, playerGameResult, INCLUDE_IMBALANCED_KEY, STAT_FIELDS, offensiveRating, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, WIN_SHARES_FEATURES, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, xptsForShot, DEFENDER_QUALITY_GATE_FGA, SHOOTER_QUALITY_GATE_FGA, totalBandedAttempts, defensiveShootingStats, shotTypeLabel, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, PARTY_RANKINGS, AWARD_RESULTS, AWARD_NOT_FOUND_TEXT, ALL_AWARD_RESULTS, AWARD_TIER, milestoneCache, realSeasonsInOrder, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, ordinal, pooleanSeasonList, selectedPooleanSeason, poolNameOf, poolKnownSlug, awardIconSvg, AWARD_TIER_COLOR, AWARD_ICON_KEYS, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, gameWinningShot, formatAstTov, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, formatDateDisplay, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, includeOutlierGames, quantile, INCLUDE_OUTLIER_GAMES_KEY, includePastSeasons, isCurrentSeasonGame, INCLUDE_PAST_SEASONS_KEY, PLAYER_REPUTATION_DATA };
+export const MOUNT_PANELS = [
+  { title: "Awards vs. Stats", section: "comparison", order: 2, html: "\r\n        <div id=\"awardsVsStats\" class=\"awards-grid\"></div>\r\n      ", render: () => { renderAwardsVsStats(); } },
+  { title: "Power Ranking vs. Performance", section: "comparison", order: 3, html: "\r\n        <div id=\"powerRankingVsPerformance\"></div>\r\n      ", render: () => { renderPowerRankingVsPerformance(); } },
+  { title: "Two-Way Quadrant", section: "comparison", order: 4, html: "\r\n        <div id=\"quadrantChart\"></div>\r\n      ", render: () => { renderQuadrantChart(); } },
+  { title: "Volume vs. Efficiency", section: "comparison", order: 5, html: "\r\n        <div id=\"volumeEfficiencyChart\"></div>\r\n      ", render: () => { renderVolumeEfficiencyChart(); } },
+  { title: "TS% by Shot Distance", section: "comparison", order: 6, html: "\r\n        <div id=\"leagueTsByZoneChart\"></div>\r\n      ", render: () => { renderLeagueTsByZoneChart(); } },
+  { title: "League TS% Over Time", section: "comparison", order: 7, html: "\r\n        <div id=\"leagueTsChart\"></div>\r\n      ", render: () => { renderLeagueTsChart(); } },
+  { title: "League Shot Heatmap", section: "comparison", order: 8, html: "\r\n        <div id=\"leagueHeatmap\"></div>\r\n      ", render: () => { renderLeagueHeatmap(); } },
+  { title: "Two-Way/20 Rank Over the Season", section: "comparison", order: 9, html: "\r\n        <div id=\"twoWayRankChart\"></div>\r\n      ", render: () => { renderTwoWayRankChart(); } },
+  { title: "Consistency", section: "comparison", order: 11, html: "\r\n        <div class=\"table-scroll\">\r\n          <div id=\"consistencyStandings\"></div>\r\n        </div>\r\n      ", render: () => { renderConsistencyStandings(); } },
+  { title: "Shot Distance", section: "shooting", order: 12, html: "\r\n      <div class=\"shot-selection-legend\">\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-close\"></span>Close</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-mid\"></span>Midrange</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-line\"></span>3PT Line</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-deep\"></span>3PT Deep</span>\r\n      </div>\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"shotZoneTable\">\r\n          <thead><tr id=\"shotZoneHeaderRow\"></tr></thead>\r\n          <tbody id=\"shotZoneBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderShotZonePanel(); } },
+  { title: "Defensive Shot Distance", section: "shooting", order: 13, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"defensiveShotZoneTable\">\r\n          <thead><tr id=\"defensiveShotZoneHeaderRow\"></tr></thead>\r\n          <tbody id=\"defensiveShotZoneBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderDefensiveShotZonePanel(); } },
+  { title: "Shot Type Efficiency", section: "shooting", order: 14, html: "\r\n      <div id=\"shotTypePanel\"></div>\r\n    ", render: () => { renderShotTypePanel(); } },
+  { title: "Deep Shot Check", section: "shooting", order: 15, html: "\r\n      <div id=\"deepShotCheckPanel\"></div>\r\n    ", render: () => { renderDeepShotCheckPanel(); } },
+  { title: "Is the Move Working?", section: "shooting", order: 16, html: "\r\n      <div id=\"moveCheckPanel\"></div>\r\n    ", render: () => { renderMoveCheckPanel(); } },
+  { title: "Shot Types: Open vs. Contested", section: "shooting", order: 17, html: "\r\n      <div id=\"shotTypeContestPanel\"></div>\r\n    ", render: () => { renderShotTypeContestPanel(); } },
+  { title: "Calibrated Thresholds", section: "shooting", order: 18, html: "\r\n      <div id=\"calibrationPanel\"></div>\r\n    ", render: () => { renderCalibrationPanel(); } },
+  { title: "Shooting & Wins by Direction", section: "shooting", order: 19, html: "\r\n      <div id=\"leagueDirectionSplits\"></div>\r\n    ", render: () => { renderLeagueDirectionSplits(); } },
+  { title: "Shot-Making Added, Cumulative Over the Season", section: "shooting", order: 22, html: "\r\n      <div id=\"shotMakingAddedChart\"></div>\r\n    ", render: () => { renderShotMakingAddedChart(); } },
+  { title: "Rivalries", section: "matchups", order: 23, html: "\r\n      <div id=\"rivalriesPanel\"></div>\r\n    ", render: () => { renderRivalries(); } },
+  { title: "Head to Head", section: "matchups", order: 24, html: "\r\n      <div id=\"realHeadToHead\"></div>\r\n    ", render: () => { renderRealHeadToHead(); } },
+  { title: "Real Rivalry Matrix", section: "matchups", order: 25, html: "\r\n      <div id=\"realRivalryMatrix\"></div>\r\n    ", render: () => { renderRealRivalryMatrix(); } },
+  { title: "Head-to-Head Matchup Grid", section: "matchups", order: 26, html: "\r\n      <div id=\"matchupGrid\"></div>\r\n    ", render: () => { renderMatchupGrid(); } },
+  { title: "League Passing Chemistry Grid", section: "matchups", order: 28, html: "\r\n      <div id=\"passingChemistryGrid\"></div>\r\n    ", render: () => { renderPassingChemistryGrid(); } },
+  { title: "Rebound Battle Record", section: "matchups", order: 29, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"reboundBattleRecordTable\">\r\n          <thead><tr id=\"reboundBattleRecordHeaderRow\"></tr></thead>\r\n          <tbody id=\"reboundBattleRecordBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderReboundBattleRecordPanel(); } },
+  { title: "Rebound Battle Head-to-Head", section: "matchups", order: 31, html: "\r\n      <div id=\"reboundBattleGrid\"></div>\r\n    ", render: () => { renderReboundBattleGridPanel(); } },
+  { title: "Teammate Lift Matrix", section: "matchups", order: 32, html: "\r\n      <div id=\"teammateLiftMatrix\"></div>\r\n    ", render: () => { renderTeammateLiftMatrix(); } },
+  { title: "Assist Connections", section: "matchups", order: 34, html: "\r\n        <div class=\"table-scroll\">\r\n          <table class=\"matchup-table\" id=\"assistSynergyTable\">\r\n            <thead><tr><th>Passer</th><th>Scorer</th><th>Assists</th></tr></thead>\r\n            <tbody id=\"assistSynergyBody\"></tbody>\r\n          </table>\r\n        </div>\r\n      ", render: () => { renderAssistSynergy(); } },
+  { title: "Comeback Tracker", section: "situational", order: 35, html: "\r\n      <div id=\"comebackTracker\"></div>\r\n    ", render: () => { renderComebackTracker(); } },
+  { title: "Self-Inflicted vs. Forced Turnover Rate", section: "situational", order: 40, html: "\r\n      <p class=\"hint\" id=\"selfInflictedVsForcedSummary\" style=\"margin-top:0\"></p>\r\n      <div id=\"selfInflictedVsForcedChart\"></div>\r\n    ", render: () => { renderSelfInflictedVsForcedChart(); } },
+  { title: "Turnover Type Over Time", section: "situational", order: 44, html: "\r\n      <p class=\"hint\" id=\"turnoverTypeOverSeasonGate\" style=\"margin-top:0\"></p>\r\n      <div id=\"turnoverTypeOverSeasonChart\"></div>\r\n    ", render: () => { renderTurnoverTypeOverSeasonChart(); } },
+  { title: "Game-Winning Buckets", section: "situational", order: 50, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"gameWinningBucketsTable\">\r\n          <thead><tr><th>Player</th><th>Game-Winning Buckets</th></tr></thead>\r\n          <tbody id=\"gameWinningBucketsBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderGameWinningBucketsPanel(); } },
+  { title: "Play Style Clusters", section: "style", order: 51, html: "\r\n      <div id=\"playStyleClusters\"></div>\r\n    ", render: () => { renderPlayStyleClusters(); } },
+  { title: "Win Shares Model (beta)", section: "style", order: 56, html: "\r\n      <div id=\"winSharesModelPanel\"></div>\r\n    ", render: () => { renderWinSharesModelPanel(); } },
+  { title: "Season Timeline", section: "media", order: 57, html: "\r\n      <div id=\"seasonTimeline\"></div>\r\n    ", render: () => { renderSeasonTimeline(); } },
+  { title: "Season Recap", section: "media", order: 58, html: "\r\n      <div id=\"seasonRecap\"></div>\r\n    ", render: () => { renderSeasonRecap(); } },
+  { title: "Award Race", section: "media", order: 59, html: "\r\n      <div id=\"awardRace\"></div>\r\n    ", render: () => { renderAwardRace(); } },
+  { title: "Trophy Case", section: "media", order: 60, html: "\r\n      <div id=\"trophyCase\"></div>\r\n    ", render: () => { renderTrophyCase(); } },
+  { title: "Iron Man", section: "media", order: 61, html: "\r\n      <div id=\"ironManPanel\"></div>\r\n    ", render: () => { renderIronMan(); } },
+  { title: "Upset Tracker", section: "media", order: 62, html: "\r\n      <div id=\"upsetTracker\"></div>\r\n    ", render: () => { renderUpsetTracker(); } },
+  { title: "Best & Worst Individual Games", section: "media", order: 64, html: "\r\n      <div id=\"individualGamePerformances\"></div>\r\n    ", render: () => { renderIndividualGamePerformances(); } }
+];
+export const MOUNT_NO_RENDER = [];
+
+
+if (typeof POOLEAN_SEASONS !== "undefined") setPooleanSeason(pooleanSeasonList().slice(-1)[0]);
+export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, setPooleanSeason, pooleanSeasonList, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, clutchMarginThreshold, pct, TURNOVER_TYPE_CSS_CLASS, SELF_CREATION_FULL_MIN, OPP_ADJ_REBOUND_MIN, renderAwardsVsStats, renderPowerRankingVsPerformance, renderQuadrantChart, renderVolumeEfficiencyChart, renderLeagueTsByZoneChart, renderLeagueTsChart, renderLeagueHeatmap, renderTwoWayRankChart, renderConsistencyStandings, renderShotZonePanel, renderDefensiveShotZonePanel, renderShotTypePanel, renderDeepShotCheckPanel, renderMoveCheckPanel, renderShotTypeContestPanel, renderCalibrationPanel, renderLeagueDirectionSplits, renderShotMakingAddedChart, renderRivalries, renderRealHeadToHead, renderRealRivalryMatrix, renderMatchupGrid, renderPassingChemistryGrid, renderReboundBattleRecordPanel, renderReboundBattleGridPanel, renderTeammateLiftMatrix, renderAssistSynergy, renderComebackTracker, renderSelfInflictedVsForcedChart, renderTurnoverTypeOverSeasonChart, renderGameWinningBucketsPanel, renderPlayStyleClusters, renderWinSharesModelPanel, renderSeasonTimeline, renderSeasonRecap, renderAwardRace, renderTrophyCase, renderIronMan, renderUpsetTracker, renderIndividualGamePerformances, INDIVIDUAL_GAMES_MODES, individualGamesMode, formatDateDisplay, poolPlayerLink, poolNameOf, STORAGE_KEY, renderPlayerAvatar, playerAvatarRingClass, PLAYER_PHOTO_FILES, avatarHueForPlayer, AWARD_TIER_COLOR, AWARD_TIER, awardIconSvg, AWARD_ICON_KEYS, ordinal, WIN_SHARES_FEATURES, turnoverTypeLabel, turnoverTypeTaggedSummaryText, renderSortableHeader, reboundBattleRecordSort, PASSING_CHEMISTRY_GRID_SCALE_MAX, realMatchupPlayerPool, headToHeadPair, renderPctChart, playerNightlyPcts, PARTY_RANKINGS, realSeasonsInOrder, svgAvatarDot, directionLabel, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, sameTeam, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, shotDistanceFromHoop, findShotBreakpoint, binomialLogLik, shotTypeFgCell, MOVE_CHECK_EDGE_PTS, shotBand, effShotType, SHOT_TYPE_DEEP_CHECK_MIN, threePtDeepThreshold, closeRangeThreshold, shotTypeCellHtml, defensiveShotZoneSort, totalBandedAttempts, SHOT_ZONES, shotZoneSort, renderHeatmapInto, heatmapCellColor, renderHeatmapSvg, shotChartVbX, SHOT_CHART_VIEWBOX_W, shotChartVbY, SHOT_CHART_VIEWBOX_H, expandedAwards, ICONS, ALL_AWARD_RESULTS, selectedPooleanSeason, AWARD_RESULTS, POOL_DATA_SNAPSHOT_KEY, sameMomentDismissed, shotReviewNeeds, shotReviewPlayer, shotReviewShowSkipped, shotReviewSkipped, turnoverTypeReviewPlayer, turnoverTypeSkipped, shotTypeReviewMatches, shotTypeReviewPlayer, shotTypeSkipped, shotTypeReviewMode, DRIVE_FAR_UNITS, trueShootingPct, LEAGUE_RANK_STATS, RESISTANCE_LEVEL_SCORE, gameTotalPoints, turnoverPct, effectiveFgPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, shootingStats, REAL_PLAYMAKING_MIN, defensiveRating, gamesForZoneShots, getOrCreatePlayerStats, median, gameDefenseStats, seasonVsRecentRate, trendNote, CLIP_CURATION_PAD_SECONDS, headToHeadAsScorer, gamesForMatchup, headToHeadAsDefender, shotTypeTipCandidates, gamesForShotType, accumulateHeadToHeadFg, playerAttendedDate, includeImbalancedGames, playerGameResult, INCLUDE_IMBALANCED_KEY, STAT_FIELDS, offensiveRating, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, xptsForShot, DEFENDER_QUALITY_GATE_FGA, SHOOTER_QUALITY_GATE_FGA, defensiveShootingStats, shotTypeLabel, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, AWARD_NOT_FOUND_TEXT, milestoneCache, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, poolKnownSlug, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, gameWinningShot, formatAstTov, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, includeOutlierGames, quantile, INCLUDE_OUTLIER_GAMES_KEY, includePastSeasons, isCurrentSeasonGame, INCLUDE_PAST_SEASONS_KEY, PLAYER_REPUTATION_DATA };

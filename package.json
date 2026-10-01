@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "extract-legacy": "node scripts/extract-legacy.mjs ../dashboard/app.js src/lib/legacy-core.ts"
+    "extract-legacy": "node scripts/extract-legacy.mjs ../dashboard/app.js src/lib/legacy-core.ts ../dashboard/index.html",
+    "scope-legacy-css": "node scripts/scope-legacy-css.mjs ../dashboard/theme.css ../dashboard/style.css src/legacy-style.css"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -30,6 +31,7 @@
     "acorn": "^8.18.0",
     "acorn-walk": "^8.3.5",
     "oxlint": "^1.81.0",
+    "postcss": "^8.5.28",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
   }

@@ -57,7 +57,7 @@ items.forEach((it) => {
   }
 })
 // the leaderboard row builder and a few helpers the UI calls directly
-;["computeLeaderboard", "formatPct", "formatShootingSplit", "playerLink", "icon", "escapeHtml", "compareForSort"].forEach((n) => decls.has(n) && entryNames.add(n))
+;["setPooleanSeason", "pooleanSeasonList", "computeLeaderboard", "formatPct", "formatShootingSplit", "playerLink", "icon", "escapeHtml", "compareForSort"].forEach((n) => decls.has(n) && entryNames.add(n))
 
 
 // ---- table panel analysis: derive each leaderboard table panel from its classic render function ----
@@ -213,6 +213,48 @@ panelSpecs.forEach((p) => {
   }
 })
 
+
+// ---- mount panels: every other Leaderboard panel is drawn by a classic render function into a
+// container with fixed ids. We keep that function and the panel's own markup, and run it in place.
+const MANUAL_PANELS = new Set(["Player Comparison", "Passing Chemistry: Pair Detail", "Party Recap", "Play Search", "Closed Seasons in This App (League)", "Highlights & Lowlights (League)", "Season Rates (Individual)"])
+const mountSpecs = []
+{
+  const coveredTitles = new Set(panelSpecs.map((p) => p.title))
+  const renderFns = items.filter((it) => it.node.type === "FunctionDeclaration" && /^render/.test(it.node.id.name))
+  const fnIds = renderFns.map((it) => {
+    const ids = new Set()
+    walk.full(it.node.body, (n) => { if (gebi(n)) ids.add(gebi(n)) })
+    return { name: it.node.id.name, ids }
+  })
+  const re2 = /<h2>([\s\S]*?)<\/h2>/g
+  let m2
+  while ((m2 = re2.exec(lbHtml))) {
+    const title = stripTags(m2[1])
+    if (coveredTitles.has(title) || MANUAL_PANELS.has(title)) continue
+    // enclosing panel div: walk back to its opening tag, forward by depth to its end
+    const open = lbHtml.lastIndexOf('<div class="panel', m2.index)
+    if (open < 0) continue
+    let depth = 0, end = -1
+    const tagRe = /<(\/?)div\b[^>]*>/g
+    tagRe.lastIndex = open
+    let t
+    while ((t = tagRe.exec(lbHtml))) {
+      depth += t[1] ? -1 : 1
+      if (depth === 0) { end = t.index; break }
+    }
+    if (end < 0) continue
+    let inner = lbHtml.slice(m2.index + m2[0].length, end)
+    inner = inner.replace(/^\s*<p class="hint"[^>]*>[\s\S]*?<\/p>/, "")
+    const ids = [...inner.matchAll(/\sid="([^"]+)"/g)].map((x) => x[1])
+    const OVERRIDE = { "League Shot Heatmap": ["renderLeagueHeatmap"] }
+    const fns = OVERRIDE[title] ?? fnIds.filter((f) => ids.some((id) => f.ids.has(id))).map((f) => f.name)
+    const block = panelBlocks.find((b) => b.title === title)
+    if (!fns.length) { mountSpecs.push({ title, fns: [], inner, section: block?.section, order: block?.order, noRender: true }); continue }
+    mountSpecs.push({ title, fns, inner, section: block?.section ?? "overview", order: block?.order ?? 0 })
+  }
+}
+mountSpecs.forEach((m) => m.fns.forEach((f) => entryNames.add(f)))
+
 // DOM taint: an item is tainted if it references a DOM global, or references a tainted item.
 const tainted = new Set()
 {
@@ -230,10 +272,12 @@ const tainted = new Set()
   }
 }
 
+const STUB_NAMES = new Set(["openPlayerDetail", "openGame", "showTab", "startLiveGame", "openLiveGameOverlay", "scrollBelowStickyNav", "wireSectionNavExtras"])
 // closure
 const included = new Set()
 const queue = []
 const addName = (name) => {
+  if (STUB_NAMES.has(name)) return
   const it = decls.get(name)
   if (it && !included.has(it)) {
     included.add(it)
@@ -300,6 +344,21 @@ const tableSpecSrc = panelSpecs
     return "  " + wrap(obj)
   })
   .join(",\n")
+const mountBlock = `
+export const MOUNT_PANELS = [
+${mountSpecs.filter((m) => !m.noRender).map((m) => `  { title: ${JSON.stringify(m.title)}, section: ${JSON.stringify(m.section)}, order: ${m.order}, html: ${JSON.stringify(m.inner)}, render: () => { ${m.fns.map((f) => f + "();").join(" ")} } }`).join(",\n")}
+];
+export const MOUNT_NO_RENDER = ${JSON.stringify(mountSpecs.filter((m) => m.noRender).map((m) => m.title))};
+`
+const stubBlock = `
+function openPlayerDetail(id) { window.dispatchEvent(new CustomEvent("legacy-open-player", { detail: id })); }
+function openGame(id) { window.dispatchEvent(new CustomEvent("legacy-open-game", { detail: id })); }
+function showTab() {}
+function startLiveGame() {}
+function openLiveGameOverlay() {}
+function scrollBelowStickyNav() {}
+function wireSectionNavExtras() {}
+`
 const tableBlock = `
 const __playerText = (id, name) => escapeHtml(name);
 function __withDisplay(cols, fns) { return cols.map((c, i) => (fns[i] ? { ...c, display: fns[i] } : c)); }
@@ -335,13 +394,14 @@ export function normalizeLegacyState(s) {
 
 // export every top-level function and const that is an entry or referenced externally by name
 const exportNames = [...included].flatMap((it) => it.names)
-const footer = `\nexport { ${[...new Set(exportNames)].join(", ")} };\n`
+const footer = `\nif (typeof POOLEAN_SEASONS !== "undefined") setPooleanSeason(pooleanSeasonList().slice(-1)[0]);\nexport { ${[...new Set(exportNames)].join(", ")} };\n`
 
-fs.writeFileSync(outPath, [header, chunks.join("\n\n"), tableBlock, footer].join("\n"))
+fs.writeFileSync(outPath, [header, stubBlock, chunks.join("\n\n"), tableBlock, mountBlock, footer].join("\n"))
 const detected = new Set(panelSpecs.map((p) => p.fn))
 const undetected = items.filter((it) => it.node.type === "FunctionDeclaration" && /^render/.test(it.node.id.name) && src.slice(it.node.start, it.node.end).includes("renderSortableHeader(") && !detected.has(it.node.id.name)).map((it) => it.node.id.name)
 console.log("undetected sortable renders:", undetected.join(", "))
 console.log(`table panels: ${panelSpecs.length}, skipped: ${JSON.stringify(panelSkipped)}`)
+console.log(`mount panels: ${mountSpecs.length} (no render fn: ${mountSpecs.filter((m) => m.noRender).map((m) => m.title).join(', ')})`)
 console.log(`extracted ${chunks.length} top-level items, ${exportNames.length} names, ${(fs.statSync(outPath).size / 1024).toFixed(0)} KB`)
 const missing = []
 included.forEach((it) => refsOf(it).forEach((r) => { if (decls.has(r) && !included.has(decls.get(r))) missing.push(r) }))

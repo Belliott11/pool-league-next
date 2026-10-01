@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -63,6 +63,15 @@ function AppShell({ initial }: { initial: PooleanState }) {
   }
   // The classic compute layer keeps its own copy of the state; refresh it before anything renders.
   useMemo(() => syncLegacy(state, toggles), [state, toggles])
+  // The classic panels announce "open this player" through a window event.
+  useEffect(() => {
+    const onPlayer = (e: Event) => {
+      setPlayerId((e as CustomEvent<string>).detail)
+      setTab("player")
+    }
+    window.addEventListener("legacy-open-player", onPlayer)
+    return () => window.removeEventListener("legacy-open-player", onPlayer)
+  }, [])
   const update: Update = (fn) => {
     const next = fn(state)
     saveState(next)
