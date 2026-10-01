@@ -1,7 +1,8 @@
-import { useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { loadToggles, saveToggles, syncLegacy, type Toggles } from "@/lib/legacy"
 import { importStateFromJson, loadState, saveState } from "@/lib/state"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
@@ -55,6 +56,13 @@ function AppShell({ initial }: { initial: PooleanState }) {
   const [state, setState] = useState(initial)
   const [tab, setTab] = useState("games")
   const [playerId, setPlayerId] = useState<string | null>(initial.players[0]?.id ?? null)
+  const [toggles, setTogglesState] = useState<Toggles>(loadToggles)
+  const setToggles = (t: Toggles) => {
+    saveToggles(t)
+    setTogglesState(t)
+  }
+  // The classic compute layer keeps its own copy of the state; refresh it before anything renders.
+  useMemo(() => syncLegacy(state, toggles), [state, toggles])
   const update: Update = (fn) => {
     const next = fn(state)
     saveState(next)
@@ -66,7 +74,7 @@ function AppShell({ initial }: { initial: PooleanState }) {
       <h1 className="font-display text-2xl font-bold">
         Poolean <span className="text-accent">Intel</span>
       </h1>
-      <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
+      <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList>
           <TabsTrigger value="games">Games</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
@@ -83,7 +91,15 @@ function AppShell({ initial }: { initial: PooleanState }) {
           />
         </TabsContent>
         <TabsContent value="leaderboard">
-          <LeaderboardPage state={state} />
+          <LeaderboardPage
+            state={state}
+            toggles={toggles}
+            setToggles={setToggles}
+            onOpenPlayer={(id) => {
+              setPlayerId(id)
+              setTab("player")
+            }}
+          />
         </TabsContent>
         <TabsContent value="player">
           <PlayerDetailPage

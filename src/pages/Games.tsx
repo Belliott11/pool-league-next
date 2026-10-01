@@ -4,7 +4,7 @@ import type { Game, PooleanState } from "@/lib/types"
 import { BalanceAndPredict } from "./games/BalanceAndPredict"
 import { GamePage } from "./games/GamePage"
 import { GameLog } from "./games/GameLog"
-import { Section } from "./games/Section"
+import { Section } from "@/components/Section"
 import { SetUpTonight } from "./games/SetUpTonight"
 import { Sidebar } from "./games/Sidebar"
 

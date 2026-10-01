@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "extract-legacy": "node scripts/extract-legacy.mjs ../dashboard/app.js src/lib/legacy-core.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -26,6 +27,8 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "acorn": "^8.18.0",
+    "acorn-walk": "^8.3.5",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"

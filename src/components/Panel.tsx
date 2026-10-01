@@ -1,0 +1,24 @@
+import type { ReactNode } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
+// One titled card, the building block of every Leaderboard / Player panel. `tag` is the small
+// "Real site data" / "Early / Experimental" chip the classic site puts next to a panel title.
+export function Panel({ title, hint, tag, children }: { title: string; hint?: ReactNode; tag?: string; children: ReactNode }) {
+  return (
+    <Card className="min-w-0">
+      <CardHeader>
+        <CardTitle className="font-display">
+          {title}
+          {tag && (
+            <Badge variant="secondary" className="ml-2 align-middle">
+              {tag}
+            </Badge>
+          )}
+        </CardTitle>
+        {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+      </CardHeader>
+      <CardContent className="flex min-w-0 flex-col gap-3">{children}</CardContent>
+    </Card>
+  )
+}
