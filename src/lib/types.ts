@@ -55,13 +55,24 @@ export interface Game {
   stealEvents: { id: string; playerId: string; opponentId: string; videoTime?: number | null }[]
   foulEvents: { id: string; playerId: string; opponentId?: string | null; videoTime?: number | null }[]
   stoppedEarly?: boolean
+  videoUrl?: string
+  masterVideoId?: string | null
+  liveInProgress?: boolean
+  liveScores?: { pid: string; points: number }[]
   // every other field (matchups, plays, videoUrl, masterVideoId, …) round-trips via this index
   [key: string]: unknown
+}
+
+export interface Rsvp {
+  id: string
+  date: string
+  playerIds: string[]
 }
 
 export interface PooleanState {
   players: Player[]
   games: Game[]
+  rsvps?: Rsvp[]
   currentSeasonStartedAt?: string | null
   [key: string]: unknown
 }

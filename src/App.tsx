@@ -2,7 +2,8 @@ import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { importStateFromJson, loadState } from "@/lib/state"
+import { importStateFromJson, loadState, saveState } from "@/lib/state"
+import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 import { GamesPage } from "@/pages/Games"
 import { LeaderboardPage } from "@/pages/Leaderboard"
@@ -50,22 +51,36 @@ function ImportScreen({ onImported }: { onImported: (state: PooleanState) => voi
   )
 }
 
-function AppShell({ state }: { state: PooleanState }) {
-  const [playerId, setPlayerId] = useState<string | null>(state.players[0]?.id ?? null)
+function AppShell({ initial }: { initial: PooleanState }) {
+  const [state, setState] = useState(initial)
+  const [tab, setTab] = useState("games")
+  const [playerId, setPlayerId] = useState<string | null>(initial.players[0]?.id ?? null)
+  const update: Update = (fn) => {
+    const next = fn(state)
+    saveState(next)
+    setState(next)
+  }
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 sm:p-6">
       <h1 className="font-display text-2xl font-bold">
         Poolean <span className="text-accent">Intel</span>
       </h1>
-      <Tabs defaultValue="games">
+      <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList>
           <TabsTrigger value="games">Games</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
           <TabsTrigger value="player">Player</TabsTrigger>
         </TabsList>
         <TabsContent value="games">
-          <GamesPage state={state} />
+          <GamesPage
+            state={state}
+            update={update}
+            onOpenPlayer={(id) => {
+              setPlayerId(id)
+              setTab("player")
+            }}
+          />
         </TabsContent>
         <TabsContent value="leaderboard">
           <LeaderboardPage state={state} />
@@ -89,7 +104,7 @@ function App() {
   const [state, setState] = useState<PooleanState | null>(() => loadState())
 
   if (!state) return <ImportScreen onImported={setState} />
-  return <AppShell state={state} />
+  return <AppShell initial={state} />
 }
 
 export default App

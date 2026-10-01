@@ -250,3 +250,39 @@ export function computeLeaderboard(state: PooleanState): LeaderboardRow[] {
     }
   })
 }
+
+// ---- Games tab helpers (ported from app.js) ----
+
+export function twoWayScore(s: PlayerGameStats, sh: ShootingStats, def: DefenseStats): number {
+  return offensiveRating(s, sh) + defensiveRating(s, def)
+}
+
+// app.js's getOrCreatePlayerStats(), minus the "create": a rostered player with no stats row yet
+// just reads as all zeros, without mutating the game.
+export function getGameStats(game: Game, playerId: string): PlayerGameStats {
+  return (
+    game.stats.find((st) => st.playerId === playerId) ?? {
+      playerId,
+      pts: 0,
+      oreb: 0,
+      dreb: 0,
+      ast: 0,
+      stl: 0,
+      blk: 0,
+      tov: 0,
+      pf: 0,
+    }
+  )
+}
+
+export function liveScoreOf(game: Game, team: string[]): number {
+  return (game.liveScores ?? []).filter((s) => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0)
+}
+
+export function isLiveScoreOnly(game: Game): boolean {
+  return game.scoringEvents.length === 0 && (game.liveScores ?? []).length > 0
+}
+
+export function isCurrentSeasonGame(state: PooleanState, game: Game): boolean {
+  return !state.currentSeasonStartedAt || (game.date || "") >= state.currentSeasonStartedAt
+}
