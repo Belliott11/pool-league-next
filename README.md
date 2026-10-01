@@ -12,5 +12,3 @@ Save Backup); it is stored in this origin's localStorage.
     npm run dev
     npm run build
 
-Deploys to GitHub Pages from `main` via `.github/workflows/deploy.yml`. The security-review
-workflow needs a `CLAUDE_API_KEY` repository secret.
