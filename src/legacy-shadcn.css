@@ -1,0 +1,254 @@
+/* shadcn skin for the markup the classic render functions produce. Loaded after legacy-style.css;
+   every rule is scoped to .legacy and doubled (.legacy.legacy) so it wins over the classic rules
+   without touching the real shadcn components elsewhere. Colors and radii come from this app's
+   own tokens, so light/dark and the accent color follow the rest of the app. */
+
+/* The classic --muted is a text color, shadcn's is a surface. Alias the shadcn one at the root,
+   where it still means the surface, so it can be used inside .legacy. */
+:root { --sh-muted: var(--muted); }
+
+/* ---- tokens: point the classic variables at the shadcn ones ---- */
+.legacy.legacy {
+  --panel-bg: var(--card);
+  --surface-tint: var(--sh-muted);
+  --surface-hover: color-mix(in srgb, var(--sh-muted) 60%, transparent);
+  --text: var(--foreground);
+  --accent: var(--primary);
+  --accent-light: color-mix(in srgb, var(--primary) 12%, transparent);
+  --primary-light: color-mix(in srgb, var(--primary) 12%, transparent);
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --font-display: var(--font-heading);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--foreground);
+  text-shadow: none;
+}
+/* the classic --muted was a text color, shadcn's is a surface: keep text muted text */
+.legacy.legacy .hint,
+.legacy.legacy .empty-state,
+.legacy.legacy [class*="-label"],
+.legacy.legacy [class*="-sub"] {
+  color: var(--muted-foreground);
+}
+
+/* ---- buttons ---- */
+.legacy.legacy button,
+.legacy.legacy .secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 0.85);
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: none;
+  text-shadow: none;
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+  cursor: pointer;
+}
+.legacy.legacy button:hover,
+.legacy.legacy .secondary-btn:hover { background: var(--sh-muted); }
+.legacy.legacy button:active { transform: translateY(1px); }
+.legacy.legacy button:disabled { opacity: 0.5; pointer-events: none; }
+.legacy.legacy button:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 40%, transparent); }
+.legacy.legacy button[type="submit"],
+.legacy.legacy .primary-btn {
+  background: var(--primary);
+  border-color: transparent;
+  color: var(--primary-foreground);
+}
+.legacy.legacy button[type="submit"]:hover { background: color-mix(in srgb, var(--primary) 88%, black); }
+.legacy.legacy .danger-btn {
+  background: color-mix(in srgb, var(--destructive) 12%, transparent);
+  border-color: transparent;
+  color: var(--destructive);
+}
+.legacy.legacy .danger-btn:hover { background: color-mix(in srgb, var(--destructive) 22%, transparent); }
+
+/* ghost buttons: names, dates and jump links are links, not boxes */
+.legacy.legacy .icon-btn {
+  min-height: 0;
+  padding: 0.125rem 0.375rem;
+  border-color: transparent;
+  background: transparent;
+  color: inherit;
+}
+.legacy.legacy .icon-btn:hover { background: var(--sh-muted); }
+.legacy.legacy .player-name-link,
+.legacy.legacy [class*="player-btn"],
+.legacy.legacy [class*="-player-btn"],
+.legacy.legacy .award-standings-name {
+  padding: 0;
+  gap: 0.375rem;
+  color: var(--primary);
+  font-weight: 600;
+  text-align: left;
+}
+.legacy.legacy .player-name-link:hover,
+.legacy.legacy [class*="player-btn"]:hover { background: transparent; text-decoration: underline; }
+.legacy.legacy [class*="date-btn"],
+.legacy.legacy [class*="game-btn"],
+.legacy.legacy .play-search-jump {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+/* ---- inputs ---- */
+.legacy.legacy input:not([type="checkbox"]):not([type="radio"]),
+.legacy.legacy select,
+.legacy.legacy textarea {
+  min-height: 2rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--input);
+  border-radius: calc(var(--radius) * 0.85);
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.875rem;
+  box-shadow: none;
+  outline: none;
+}
+.legacy.legacy input:focus-visible,
+.legacy.legacy select:focus-visible,
+.legacy.legacy textarea:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 35%, transparent);
+}
+.legacy.legacy select option { background: var(--popover); color: var(--popover-foreground); }
+.legacy.legacy label { color: var(--foreground); }
+
+/* ---- tables ---- */
+.legacy.legacy .table-scroll { overflow-x: auto; }
+.legacy.legacy .matchup-table,
+.legacy.legacy table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.legacy.legacy .matchup-table th,
+.legacy.legacy table th {
+  height: 2.5rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  white-space: nowrap;
+}
+.legacy.legacy .matchup-table td,
+.legacy.legacy table td {
+  padding: 0.5rem;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  vertical-align: middle;
+}
+.legacy.legacy .matchup-table tbody tr:hover td { background: color-mix(in srgb, var(--sh-muted) 60%, transparent); }
+.legacy.legacy .matchup-table tr:last-child td { border-bottom: 0; }
+.legacy.legacy .sortable-th { cursor: pointer; user-select: none; }
+.legacy.legacy .sortable-th:hover { color: var(--foreground); }
+.legacy.legacy .sortable-th.sorted { color: var(--primary); }
+.legacy.legacy .sticky-col { background: var(--card); }
+.legacy.legacy .num-cell { font-variant-numeric: tabular-nums; }
+.legacy.legacy .sorted-col { background: color-mix(in srgb, var(--sh-muted) 50%, transparent); }
+
+/* ---- badges and chips ---- */
+.legacy.legacy .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) * 0.7);
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+}
+.legacy.legacy .badge-highlight { background: color-mix(in srgb, var(--chart-2) 16%, transparent); color: var(--chart-2); }
+.legacy.legacy .badge-lowlight { background: color-mix(in srgb, var(--destructive) 16%, transparent); color: var(--destructive); }
+.legacy.legacy .attendee-chip { min-height: 1.75rem; padding: 0 0.625rem; }
+.legacy.legacy .attendee-chip.selected { background: var(--primary); border-color: transparent; color: var(--primary-foreground); }
+.legacy.legacy .profile-tag { border-radius: calc(var(--radius) * 0.7); }
+
+/* ---- tiles and cards inside panels ---- */
+.legacy.legacy .league-rank-badge,
+.legacy.legacy .real-partner-tile,
+.legacy.legacy .profile-stat-tile,
+.legacy.legacy .trophy-case-tile,
+.legacy.legacy .award-race-card,
+.legacy.legacy .season-timeline-item,
+.legacy.legacy .award-row,
+.legacy.legacy .award-winners,
+.legacy.legacy [class$="-card"] {
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+.legacy.legacy .league-rank-badge,
+.legacy.legacy .real-partner-tile,
+.legacy.legacy .profile-stat-tile,
+.legacy.legacy .trophy-case-tile,
+.legacy.legacy .award-race-card,
+.legacy.legacy .season-timeline-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.legacy.legacy .league-rank-place,
+.legacy.legacy .real-partner-pct,
+.legacy.legacy .profile-stat-value { font-family: var(--font-heading); font-variant-numeric: tabular-nums; }
+
+/* classic headings were loud: tone them down to shadcn's quiet weights */
+.legacy.legacy .award-label,
+.legacy.legacy .award-race-head,
+.legacy.legacy h3,
+.legacy.legacy h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.legacy.legacy .award-label { color: var(--foreground); font-size: 0.9rem; }
+.legacy.legacy .hint { font-size: 0.8rem; }
+.legacy.legacy .empty-state { font-style: normal; font-size: 0.875rem; padding: 0.25rem 0; }
+.legacy.legacy .panel-row { gap: 1rem; }
+
+/* ---- charts: quiet axes, same font as the app ---- */
+.legacy.legacy svg text { font-family: var(--font-sans); }
+.legacy.legacy .quadrant-axis-label,
+.legacy.legacy .quadrant-corner-label,
+.legacy.legacy .ts-line-axis-label,
+.legacy.legacy .pct-axis { fill: var(--muted-foreground); }
+.legacy.legacy .quadrant-axis,
+.legacy.legacy .ts-line-axis { stroke: var(--border); }
+
+/* ---- buttons that act as whole rows or headers (expand toggles) are not boxed buttons ---- */
+.legacy.legacy .award-toggle,
+.legacy.legacy [class*="-toggle"]:not(.ios-switch):not(.ios-switch-track),
+.legacy.legacy summary button {
+  width: 100%;
+  min-height: 0;
+  justify-content: space-between;
+  padding: 0.125rem 0;
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+}
+.legacy.legacy .award-toggle:hover,
+.legacy.legacy [class*="-toggle"]:hover { background: transparent; }
+.legacy.legacy .award-toggle-icon { color: var(--muted-foreground); font-weight: 400; }
