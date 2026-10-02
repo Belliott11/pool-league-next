@@ -1,6 +1,7 @@
 import { EmptyState } from "@/components/EmptyState"
 import { useMemo, useState } from "react"
 import { useReadOnly } from "@/lib/mode"
+import { LiveOddsMini } from "@/pages/live/LiveOdds"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -105,6 +106,7 @@ function GameCard({
               </span>
             ))}
           </div>
+          {game.liveInProgress && <LiveOddsMini game={game} />}
           {scoreA + scoreB > 0 && (
             <div
               role="img"

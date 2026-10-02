@@ -8,6 +8,8 @@ export type SyncState = "idle" | "saving" | "saved" | "error" | "conflict"
 
 const SAVE_DELAY_MS = 1500
 const POLL_MS = 60_000
+// While a live game is on, visitors refresh every few seconds so the score and odds follow along.
+const LIVE_POLL_MS = 10_000
 
 // Everything the app needs from the cloud: whether it is configured, who is signed in, the shared
 // copy of the data, and a debounced save for editors.
@@ -74,18 +76,19 @@ export function useCloud() {
     }
   }, [evaluateSession, refresh])
 
+  const liveNow = !!remote?.state.games.some((g) => g.liveInProgress)
   // Viewers pick up the editor's changes: every minute, and whenever the tab comes back into view.
   useEffect(() => {
     if (status !== "ready" || admin) return
     const tick = () => void refresh()
-    const id = setInterval(tick, POLL_MS)
+    const id = setInterval(tick, liveNow ? LIVE_POLL_MS : POLL_MS)
     const onVis = () => document.visibilityState === "visible" && tick()
     document.addEventListener("visibilitychange", onVis)
     return () => {
       clearInterval(id)
       document.removeEventListener("visibilitychange", onVis)
     }
-  }, [status, admin, refresh])
+  }, [status, admin, refresh, liveNow])
 
   const flush = useCallback(async () => {
     const c = clientRef.current

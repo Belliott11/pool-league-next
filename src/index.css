@@ -220,3 +220,34 @@
 @supports (-moz-appearance: none) {
   * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, transparent) transparent; }
 }
+
+/* Live scoring: points pop up from the tile, scores bump, a ring flashes, banners slide in, confetti falls. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes pop-float {
+    0% { opacity: 0; transform: translateY(8px) scale(0.6); }
+    20% { opacity: 1; transform: translateY(-8px) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-40px) scale(1); }
+  }
+  @keyframes score-bump {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+  @keyframes tile-flash {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes banner-in {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes confetti-fall {
+    0% { opacity: 1; transform: translate3d(0, -8vh, 0) rotate(0deg); }
+    100% { opacity: 0.9; transform: translate3d(var(--x), 105vh, 0) rotate(var(--r)); }
+  }
+  .anim-pop-float { animation: pop-float 1s ease-out forwards; }
+  .anim-bump { animation: score-bump 0.45s ease-out; }
+  .anim-flash { animation: tile-flash 0.8s ease-out forwards; }
+  .anim-banner { animation: banner-in 0.35s ease-out; }
+  .anim-confetti { animation-name: confetti-fall; animation-timing-function: ease-in; animation-fill-mode: forwards; }
+}
