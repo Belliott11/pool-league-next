@@ -216,7 +216,24 @@ panelSpecs.forEach((p) => {
 
 // ---- mount panels: every other Leaderboard panel is drawn by a classic render function into a
 // container with fixed ids. We keep that function and the panel's own markup, and run it in place.
-const MANUAL_PANELS = new Set(["Player Comparison", "Passing Chemistry: Pair Detail", "Party Recap", "Play Search", "Closed Seasons in This App (League)", "Highlights & Lowlights (League)", "Season Rates (Individual)"])
+const MANUAL_PANELS = new Set(["Season Rates (Individual)"])
+
+// Top-level `document.getElementById("id").addEventListener("evt", handler)` statements: the classic
+// site wires its selects and buttons once at load. We carry the handler over and attach it after the
+// panel's markup is mounted.
+const wireStmts = []
+items.forEach((it) => {
+  const n = it.node
+  if (n.type !== "ExpressionStatement") return
+  let call = n.expression
+  if (call.type === "ChainExpression") call = call.expression
+  if (call.type !== "CallExpression" || call.callee.type !== "MemberExpression" || call.callee.property.name !== "addEventListener") return
+  let obj = call.callee.object
+  if (obj.type === "ChainExpression") obj = obj.expression
+  const id = gebi(obj)
+  if (!id || call.arguments[0]?.type !== "Literal" || !call.arguments[1]) return
+  wireStmts.push({ id, evt: call.arguments[0].value, handler: src.slice(call.arguments[1].start, call.arguments[1].end) })
+})
 const mountSpecs = []
 {
   const coveredTitles = new Set(panelSpecs.map((p) => p.title))
@@ -250,10 +267,14 @@ const mountSpecs = []
     const fns = OVERRIDE[title] ?? fnIds.filter((f) => ids.some((id) => f.ids.has(id))).map((f) => f.name)
     const block = panelBlocks.find((b) => b.title === title)
     if (!fns.length) { mountSpecs.push({ title, fns: [], inner, section: block?.section, order: block?.order, noRender: true }); continue }
-    mountSpecs.push({ title, fns, inner, section: block?.section ?? "overview", order: block?.order ?? 0 })
+    const wires = wireStmts.filter((w) => ids.includes(w.id))
+    mountSpecs.push({ title, fns, inner, wires, section: block?.section ?? "overview", order: block?.order ?? 0 })
   }
 }
 mountSpecs.forEach((m) => m.fns.forEach((f) => entryNames.add(f)))
+mountSpecs.forEach((m) => (m.wires || []).forEach((w) => {
+  try { walk.full(acorn.parseExpressionAt(w.handler, 0, { ecmaVersion: "latest" }), (n) => { if (n.type === "Identifier") entryNames.add(n.name) }) } catch { /* ignore */ }
+}))
 
 // DOM taint: an item is tainted if it references a DOM global, or references a tainted item.
 const tainted = new Set()
@@ -346,7 +367,7 @@ const tableSpecSrc = panelSpecs
   .join(",\n")
 const mountBlock = `
 export const MOUNT_PANELS = [
-${mountSpecs.filter((m) => !m.noRender).map((m) => `  { title: ${JSON.stringify(m.title)}, section: ${JSON.stringify(m.section)}, order: ${m.order}, html: ${JSON.stringify(m.inner)}, render: () => { ${m.fns.map((f) => f + "();").join(" ")} } }`).join(",\n")}
+${mountSpecs.filter((m) => !m.noRender).map((m) => `  { title: ${JSON.stringify(m.title)}, section: ${JSON.stringify(m.section)}, order: ${m.order}, html: ${JSON.stringify(m.inner)}, render: () => { ${m.fns.map((f) => f + "();").join(" ")} }, wires: [${(m.wires || []).map((w) => `{ id: ${JSON.stringify(w.id)}, evt: ${JSON.stringify(w.evt)}, handler: ${w.handler} }`).join(", ")}] }`).join(",\n")}
 ];
 export const MOUNT_NO_RENDER = ${JSON.stringify(mountSpecs.filter((m) => m.noRender).map((m) => m.title))};
 `

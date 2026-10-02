@@ -9,7 +9,7 @@ import {
   LEADERBOARD_COLUMNS,
   computeLeaderboard,
 } from "@/lib/legacy-core"
-import type { Toggles } from "@/lib/legacy"
+import type { Toggles } from "@/lib/toggles"
 import type { PooleanState } from "@/lib/types"
 
 const ADVANCED_KEY = "pooleanIntelShowAdvancedCols"

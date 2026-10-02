@@ -160,6 +160,31 @@ function buildJumpSearchIndex() {
   return items;
 }
 
+let currentGameId = null;
+
+const VIDEO_DB_NAME = "poolLeagueVideos";
+
+const VIDEO_STORE = "videos";
+
+function openVideoDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(VIDEO_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(VIDEO_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getVideoFile(gameId) {
+  const db = await openVideoDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VIDEO_STORE, "readonly");
+    const req = tx.objectStore(VIDEO_STORE).get(gameId);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function normalizeGame(game) {
   game.teamA = game.teamA || [];
   game.teamB = game.teamB || [];
@@ -734,6 +759,22 @@ function playerGameResult(game, playerId) {
   return wonIt ? "W" : "L";
 }
 
+function openGameAndSeek(gameId, videoTime) {
+  openGame(gameId);
+  if (videoTime === null || videoTime === undefined) return;
+  const tryJump = attemptsLeft => {
+    if (currentGameId !== gameId) return; // navigated elsewhere before the video was ready
+    if (currentVideoEl) {
+      currentVideoEl.currentTime = videoTime;
+      currentVideoEl.play();
+      currentVideoEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (attemptsLeft > 0) setTimeout(() => tryJump(attemptsLeft - 1), 200);
+  };
+  tryJump(25);
+}
+
 function getOrCreatePlayerStats(game, playerId) {
   let s = game.stats.find(st => st.playerId === playerId);
   if (!s) {
@@ -1184,6 +1225,8 @@ const SHOT_LOG_COLUMNS = [
   { key: "time", label: "Time", accessor: r => r.videoTime }
 ];
 
+let currentVideoEl = null;
+
 function gameDefenseStats(game, playerId) {
   const against = game.scoringEvents.filter(ev => (ev.defenderIds || []).includes(playerId));
   const madeAgainst = against.filter(ev => ev.made !== false);
@@ -1256,6 +1299,13 @@ const GAME_STATS_COLUMNS = [
   { key: "twoway", label: "Two-Way", accessor: r => r.twoWay }
 ];
 
+function formatTime(seconds) {
+  const s = Math.max(0, Math.round(seconds));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+
 const JUMP_LEAD_SECONDS = 5;
 
 function padJumpTime(videoTime) {
@@ -1305,6 +1355,73 @@ const REEL_COLUMNS = [
   { key: "player", label: "Player", accessor: r => r.playerName },
   { key: "note", label: "Note", accessor: r => r.note || "" }
 ];
+
+function reelClipsChronological(game) {
+  return [...game.plays].filter(p => p.end > p.start).sort((a, b) => a.start - b.start);
+}
+
+function pickRecorderMimeType() {
+  const candidates = [
+    "video/mp4;codecs=avc1,mp4a.40.2",
+    "video/mp4;codecs=avc1",
+    "video/mp4",
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm"
+  ];
+  return candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+}
+
+function pickRecorderExtension(mimeType) {
+  return mimeType.startsWith("video/mp4") ? "mp4" : "webm";
+}
+
+function waitForSeek(video, time, timeoutMs = 15000) {
+  return new Promise(resolve => {
+    if (Math.abs(video.currentTime - time) < 0.05) { resolve("done"); return; }
+    let settled = false;
+    const onSeeked = () => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener("seeked", onSeeked);
+      clearTimeout(timeout);
+      resolve("done");
+    };
+    video.addEventListener("seeked", onSeeked);
+    video.currentTime = time;
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener("seeked", onSeeked);
+      resolve("timeout");
+    }, timeoutMs);
+  });
+}
+
+function waitUntilTime(video, endTime, timeoutMs = 30000) {
+  return new Promise(resolve => {
+    let settled = false;
+    const interval = setInterval(() => {
+      if (settled) return;
+      if (video.currentTime >= endTime || video.ended) {
+        settled = true;
+        clearInterval(interval);
+        clearTimeout(timeout);
+        resolve("done");
+      }
+    }, 50);
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      clearInterval(interval);
+      resolve("timeout");
+    }, timeoutMs);
+  });
+}
+
+function raceCancel(promise, cancelPromise) {
+  return Promise.race([promise, cancelPromise.then(() => "cancelled")]);
+}
 
 const MATCHUP_TABLE_COLUMNS = [
   { key: "defender", label: "Defender", accessor: r => r.defenderName },
@@ -2319,6 +2436,152 @@ function computePartyRecap(date) {
   return { date, games: games.length, standings, upsets: nightUpsets, climber: computeNightClimber(date) };
 }
 
+function renderPartyRecap() {
+  const select = document.getElementById("partyRecapSelect");
+  const wrap = document.getElementById("partyRecap");
+  if (!select || !wrap) return;
+  if (typeof POOLEAN_GAMES === "undefined") { wrap.innerHTML = '<p class="empty-state">No real-site game data loaded yet.</p>'; return; }
+  const dates = [...new Set(POOLEAN_GAMES.map(g => g.date))].sort().reverse();
+  // Refilled whenever the header season picker changes, since each season has its own nights.
+  if (select.dataset.season !== String(selectedPooleanSeason)) {
+    select.innerHTML = dates.map(d => `<option value="${d}">${escapeHtml(formatDateDisplay(d))}</option>`).join("");
+    select.dataset.season = String(selectedPooleanSeason);
+  }
+  if (!select.dataset.wired) {
+    select.dataset.wired = "1";
+    select.addEventListener("change", renderPartyRecap);
+    document.getElementById("downloadPartyRecapBtn")?.addEventListener("click", downloadPartyRecapImage);
+    document.getElementById("copyPartyRecapBtn")?.addEventListener("click", copyPartyRecapText);
+  }
+  const recap = computePartyRecap(select.value || dates[0]);
+  if (!recap) { wrap.innerHTML = '<p class="empty-state">No games that night.</p>'; return; }
+  const standingsHtml = recap.standings.map(r => `<li>${poolPlayerLink(r.slug)} <span class="hint" style="margin:0">${r.w}-${r.l}</span></li>`).join("");
+  const upsetsHtml = recap.upsets.length === 0 ? "" : `<p class="hint" style="margin:10px 0 0">${icon("dice")} ${recap.upsets.length} upset${recap.upsets.length === 1 ? "" : "s"} that night.</p>`;
+  const nightMilestones = computeMilestones().filter(m => m.date === recap.date);
+  const milestoneHtml = nightMilestones.length ? `<p class="hint" style="margin:6px 0 0">${nightMilestones.map(m => `${m.iconSvg} ${poolPlayerLink(m.slug)} ${escapeHtml(m.text)}`).join("<br>")}</p>` : "";
+  const climberHtml = recap.climber ? `<p class="hint" style="margin:6px 0 0">${icon("trendingUp")} Biggest climber: ${poolPlayerLink(recap.climber.slug)}, #${recap.climber.from} to #${recap.climber.to} in the season power rankings.</p>` : "";
+  wrap.innerHTML = `<p class="hint" style="margin:0 0 10px">${recap.games} game${recap.games === 1 ? "" : "s"} that night.</p>
+    <ul class="player-tips-list" style="display:block">${standingsHtml}</ul>${upsetsHtml}${climberHtml}${milestoneHtml}`;
+}
+
+function wrapCanvasText(ctx, text, maxWidth) {
+  const words = text.split(" ");
+  const lines = [];
+  let line = "";
+  words.forEach(word => {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
+    else line = test;
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function showImagePreview(canvas, filename) {
+  if (!canvas) return;
+  let el = document.getElementById("imagePreviewOverlay");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "imagePreviewOverlay";
+    el.className = "image-preview-overlay";
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-label", "Image preview");
+    document.body.appendChild(el);
+  }
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    el.innerHTML = `
+      <div class="image-preview-inner">
+        <img class="image-preview-img" src="${url}" alt="Preview">
+        <div class="image-preview-actions">
+          <button type="button" class="secondary-btn" data-preview-close>Close</button>
+          <button type="button" data-preview-download>Download</button>
+        </div>
+      </div>`;
+    const close = () => { el.hidden = true; URL.revokeObjectURL(url); el.innerHTML = ""; };
+    el.querySelector("[data-preview-close]").addEventListener("click", close);
+    el.querySelector("[data-preview-download]").addEventListener("click", () => {
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    });
+    el.hidden = false;
+  }, "image/png");
+}
+
+function generatePartyRecapCanvas(date) {
+  const recap = computePartyRecap(date);
+  if (!recap) return null;
+  const W = 1080, rowH = 64, top = 330;
+  const upset = recap.upsets[0] || null;
+  const names = ids => ids.map(poolNameOf).join(" & ");
+  const measure = document.createElement("canvas").getContext("2d");
+  measure.font = "30px sans-serif";
+  const upsetLines = upset ? wrapCanvasText(measure, `${names(upset.winners)} beat ${names(upset.losers)} (${Math.round(upset.winPct)}% vs. ${Math.round(upset.losePct)}% power ranking that night)`, W - 160) : [];
+  const climber = recap.climber;
+  const H = top + recap.standings.length * rowH + (upset ? 90 + upsetLines.length * 40 : 0) + (climber ? 90 : 0) + 120;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, "#12212b"); grad.addColorStop(1, "#1c2e3a");
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#3FE0D4"; ctx.font = "bold 30px sans-serif";
+  ctx.fillText("POOLEAN PARTY RECAP", 80, 120);
+  ctx.fillStyle = "white"; ctx.font = "bold 72px sans-serif";
+  ctx.fillText(formatDateDisplay(date), 80, 205);
+  ctx.fillStyle = "rgba(255,255,255,0.65)"; ctx.font = "30px sans-serif";
+  ctx.fillText(`${recap.games} game${recap.games === 1 ? "" : "s"} · ${recap.standings.length} players`, 80, 260);
+
+  recap.standings.forEach((r, i) => {
+    const y = top + i * rowH;
+    if (i === 0) {
+      ctx.fillStyle = "rgba(227,169,58,0.16)";
+      ctx.fillRect(60, y - 8, W - 120, rowH - 8);
+    }
+    ctx.fillStyle = i === 0 ? "#E3A93A" : "rgba(255,255,255,0.45)";
+    ctx.font = "bold 30px sans-serif"; ctx.textAlign = "left";
+    ctx.fillText(String(i + 1), 84, y + 36);
+    ctx.fillStyle = "white"; ctx.font = `${i === 0 ? "bold " : ""}34px sans-serif`;
+    ctx.fillText(`${poolNameOf(r.slug)}${i === 0 ? "  👑" : ""}`, 150, y + 36);
+    ctx.textAlign = "right";
+    ctx.fillStyle = r.w > r.l ? "#3FE0D4" : r.w < r.l ? "#F0873A" : "rgba(255,255,255,0.8)";
+    ctx.font = "bold 34px sans-serif";
+    ctx.fillText(`${r.w}-${r.l}`, W - 84, y + 36);
+  });
+
+  let y = top + recap.standings.length * rowH + 40;
+  if (upset) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#F0873A"; ctx.font = "bold 28px sans-serif";
+    ctx.fillText(`BIGGEST UPSET${recap.upsets.length > 1 ? ` (of ${recap.upsets.length})` : ""}`, 80, y);
+    y += 46;
+    ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.font = "30px sans-serif";
+    upsetLines.forEach(line => { ctx.fillText(line, 80, y); y += 40; });
+    y += 20;
+  }
+  if (climber) {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#3FE0D4"; ctx.font = "bold 28px sans-serif";
+    ctx.fillText("BIGGEST CLIMBER", 80, y);
+    y += 46;
+    ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.font = "30px sans-serif";
+    ctx.fillText(`${poolNameOf(climber.slug)}: #${climber.from} to #${climber.to} in the season rankings`, 80, y);
+  }
+  ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "22px sans-serif";
+  ctx.fillText("Poolean", W / 2, H - 40);
+  return canvas;
+}
+
+function downloadPartyRecapImage() {
+  const select = document.getElementById("partyRecapSelect");
+  if (!select || !select.value) return;
+  const canvas = generatePartyRecapCanvas(select.value);
+  showImagePreview(canvas, `Poolean_recap_${select.value}.png`);
+}
+
 const AWARD_RACE_DUO_MIN_GP = 3;
 
 function computeRealTeammateLift(slugs) {
@@ -2573,6 +2836,32 @@ function computeMilestones() {
   });
   milestoneCache = out;
   return out;
+}
+
+function partyRecapText(date) {
+  const recap = computePartyRecap(date);
+  if (!recap) return "";
+  const names = ids => ids.map(poolNameOf).join(" & ");
+  const lines = [`Poolean party recap, ${formatDateDisplay(date)}: ${recap.games} game${recap.games === 1 ? "" : "s"}, ${recap.standings.length} players`];
+  lines.push("");
+  recap.standings.forEach((r, i) => lines.push(`${i === 0 ? "👑" : `${i + 1}.`} ${poolNameOf(r.slug)} ${r.w}-${r.l}`));
+  const upset = recap.upsets[0];
+  if (upset) lines.push("", `🎲 Biggest upset: ${names(upset.winners)} beat ${names(upset.losers)}`);
+  if (recap.climber) lines.push(`📈 Biggest climber: ${poolNameOf(recap.climber.slug)}, #${recap.climber.from} to #${recap.climber.to} in the season rankings`);
+  const milestones = computeMilestones().filter(m => m.date === date);
+  if (milestones.length) {
+    lines.push("", "Milestones:");
+    milestones.forEach(m => lines.push(`${m.icon} ${poolNameOf(m.slug)} ${m.text}`));
+  }
+  return lines.join("\n");
+}
+
+async function copyPartyRecapText() {
+  const select = document.getElementById("partyRecapSelect");
+  const status = document.getElementById("partyRecapCopyStatus");
+  if (!select || !select.value) return;
+  try { await navigator.clipboard.writeText(partyRecapText(select.value)); if (status) status.textContent = "Copied"; }
+  catch (e) { if (status) status.textContent = "Couldn't copy on this browser."; }
 }
 
 function computeTrophyCase() {
@@ -3413,6 +3702,52 @@ function computePassingChemistryPair(passerId, scorerId, combos, zonePpa) {
     openRate: pct(openCount, shots),
     mostCommonType: mostCommon ? shotTypeLabel(mostCommon[0]) : "—",
   };
+}
+
+const PASSING_CHEMISTRY_ROWS = [
+  { label: "Shots Created", accessor: d => d.shots },
+  { label: "xPTS Created", accessor: d => d.xpts.toFixed(1) },
+  { label: "Actual Points", accessor: d => d.actualPts },
+  { label: "Shot-Making Added", accessor: d => `${d.added >= 0 ? "+" : ""}${d.added.toFixed(1)}` },
+  { label: "Open-Shot Rate", accessor: d => formatPct(d.openRate) },
+  { label: "Most Common Shot Type", accessor: d => d.mostCommonType },
+];
+
+function renderPassingChemistrySelects() {
+  const sel1 = document.getElementById("chemistryPlayer1Select");
+  const sel2 = document.getElementById("chemistryPlayer2Select");
+  if (!sel1 || !sel2) return;
+  const options = ['<option value="">Select a player…</option>']
+    .concat([...state.players].sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`))
+    .join("");
+  const prev1 = sel1.value, prev2 = sel2.value;
+  sel1.innerHTML = options;
+  sel2.innerHTML = options;
+  sel1.value = prev1;
+  sel2.value = prev2;
+}
+
+function renderPassingChemistryPair() {
+  const wrap = document.getElementById("passingChemistryPairResult");
+  if (!wrap) return;
+  const id1 = document.getElementById("chemistryPlayer1Select")?.value;
+  const id2 = document.getElementById("chemistryPlayer2Select")?.value;
+  if (!id1 || !id2) { wrap.innerHTML = '<p class="empty-state">Pick two players above.</p>'; return; }
+  if (id1 === id2) { wrap.innerHTML = '<p class="empty-state">Pick two different players.</p>'; return; }
+  const p1 = state.players.find(p => p.id === id1), p2 = state.players.find(p => p.id === id2);
+  if (!p1 || !p2) { wrap.innerHTML = ""; return; }
+  const zonePpa = computeLeagueZonePointsPerAttempt();
+  const combos = computeXptsCombos();
+  const forward = computePassingChemistryPair(id1, id2, combos, zonePpa);
+  const backward = computePassingChemistryPair(id2, id1, combos, zonePpa);
+  const colHtml = d => d ? PASSING_CHEMISTRY_ROWS.map(r => `<tr><td>${escapeHtml(r.label)}</td><td>${r.accessor(d)}</td></tr>`).join("")
+    : `<tr><td colspan="2" class="empty-state">No shots yet.</td></tr>`;
+  wrap.innerHTML = `
+    <table class="matchup-table compare-table">
+      <thead><tr><th></th><th>${escapeHtml(p1.name)} &#8594; ${escapeHtml(p2.name)}</th><th>${escapeHtml(p2.name)} &#8594; ${escapeHtml(p1.name)}</th></tr></thead>
+      <tbody>${PASSING_CHEMISTRY_ROWS.map((r, i) => `<tr><td class="compare-stat-label">${escapeHtml(r.label)}</td><td>${forward ? r.accessor(forward) : "—"}</td><td>${backward ? r.accessor(backward) : "—"}</td></tr>`).join("")}</tbody>
+    </table>
+  `;
 }
 
 function computePassingChemistryGrid(combos, zonePpa) {
@@ -4992,6 +5327,60 @@ function computeLeagueSeasonStandings(season) {
   }).filter(Boolean).sort((a, b) => b.twoWayPer20 - a.twoWayPer20);
 }
 
+function renderLeagueSeasonSelect() {
+  const sel = document.getElementById("leagueSeasonSelect");
+  if (!sel) return;
+  const sorted = [...state.seasonHistory].sort((a, b) => (b.endedAt || "").localeCompare(a.endedAt || ""));
+  if (sorted.length === 0) {
+    sel.innerHTML = '<option value="">No seasons closed yet</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  const prevLabel = sel.selectedOptions[0]?.textContent;
+  sel.innerHTML = sorted.map((s, i) => `<option value="${i}">${escapeHtml(s.label)}</option>`).join("");
+  const matchIndex = sorted.findIndex(s => s.label === prevLabel);
+  if (matchIndex !== -1) sel.value = String(matchIndex);
+}
+
+function renderLeagueSeasonStandings() {
+  renderLeagueSeasonSelect();
+  const sel = document.getElementById("leagueSeasonSelect");
+  const wrap = document.getElementById("leagueSeasonStandings");
+  if (!sel || !wrap) return;
+  if (state.seasonHistory.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No seasons closed yet (Export → Data Management → Start New Season). Nothing archived to show.</p>';
+    return;
+  }
+  const sorted = [...state.seasonHistory].sort((a, b) => (b.endedAt || "").localeCompare(a.endedAt || ""));
+  const season = sorted[Number(sel.value)] || sorted[0];
+  const rows = computeLeagueSeasonStandings(season);
+  if (rows.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games with real shots logged in this season.</p>';
+    return;
+  }
+  const rowsHtml = rows.map((r, i) => `<tr>
+    <td>${i + 1}</td>
+    <td><button type="button" class="icon-btn league-season-player-btn" style="color:var(--accent);font-weight:700" data-player-id="${r.player.id}">${escapeHtml(r.player.name)}</button></td>
+    <td>${r.gp}</td>
+    <td>${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}</td>
+    <td>${r.offRatingPer20.toFixed(1)}</td>
+    <td>${r.defRatingPer20.toFixed(1)}</td>
+    <td>${r.twoWayPer20.toFixed(1)}</td>
+  </tr>`).join("");
+  wrap.innerHTML = `
+    <div class="table-scroll">
+      <table class="matchup-table">
+        <thead><tr><th>#</th><th>Player</th><th>GP</th><th>Record</th><th>Off Rating/20</th><th>Def Rating/20</th><th>Two-Way/20</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+  wrap.querySelectorAll(".league-season-player-btn").forEach(btn => {
+    btn.addEventListener("click", () => openPlayerDetail(btn.dataset.playerId));
+  });
+}
+
 function playerAttendedDate(playerId, date) {
   return state.games.some(g => g.date === date && (g.teamA.includes(playerId) || g.teamB.includes(playerId)));
 }
@@ -5870,6 +6259,62 @@ const COMPARISON_NEUTRAL_KEYS = new Set(["gp", "shotpct", "astpct", "orebpct", "
 
 const COMPARISON_LOWER_IS_BETTER_KEYS = new Set(["l", "tov", "pf", "ptsAllowed", "oppfg", "oppefg", "beaten", "tovpct"]);
 
+function renderPlayerComparisonSelects() {
+  const sel1 = document.getElementById("comparePlayer1Select");
+  const sel2 = document.getElementById("comparePlayer2Select");
+  if (!sel1 || !sel2) return;
+  const options = ['<option value="">Select a player…</option>']
+    .concat([...state.players].sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`))
+    .join("");
+  const prev1 = sel1.value, prev2 = sel2.value;
+  sel1.innerHTML = options;
+  sel2.innerHTML = options;
+  sel1.value = prev1;
+  sel2.value = prev2;
+}
+
+function renderPlayerComparison() {
+  const wrap = document.getElementById("playerComparisonResult");
+  if (!wrap) return;
+  const id1 = document.getElementById("comparePlayer1Select")?.value;
+  const id2 = document.getElementById("comparePlayer2Select")?.value;
+  if (!id1 || !id2) {
+    wrap.innerHTML = '<p class="empty-state">Pick two players above.</p>';
+    return;
+  }
+  if (id1 === id2) {
+    wrap.innerHTML = '<p class="empty-state">Pick two different players.</p>';
+    return;
+  }
+  const board = computeLeaderboard();
+  const row1 = board.find(r => r.player.id === id1);
+  const row2 = board.find(r => r.player.id === id2);
+  if (!row1 || !row2) { wrap.innerHTML = ""; return; }
+
+  const rowsHtml = LEADERBOARD_COLUMNS.filter(c => c.key !== "player" && c.key !== "last5").map(col => {
+    const v1 = col.accessor(row1), v2 = col.accessor(row2);
+    const d1 = col.display ? col.display(row1) : v1;
+    const d2 = col.display ? col.display(row2) : v2;
+    let cls1 = "", cls2 = "";
+    if (!COMPARISON_NEUTRAL_KEYS.has(col.key) && typeof v1 === "number" && typeof v2 === "number" && v1 !== v2) {
+      const lowerBetter = COMPARISON_LOWER_IS_BETTER_KEYS.has(col.key);
+      const win1 = lowerBetter ? v1 < v2 : v1 > v2;
+      cls1 = win1 ? "compare-better" : "compare-worse";
+      cls2 = win1 ? "compare-worse" : "compare-better";
+    }
+    return `<tr title="${escapeHtml(col.tooltip || "")}"><td class="compare-stat-label">${escapeHtml(col.label)}</td><td class="${cls1}">${d1}</td><td class="${cls2}">${d2}</td></tr>`;
+  }).join("");
+
+  wrap.innerHTML = `
+    <div class="table-scroll">
+      <table class="matchup-table compare-table">
+        <thead><tr><th></th><th>${playerLink(row1.player.id, row1.player.name)}</th><th>${playerLink(row2.player.id, row2.player.name)}</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 const SHOOTING_BY_DIRECTION_MIN_FGA = 5;
 
 function computeShootingByDirection(playerId) {
@@ -5907,6 +6352,8 @@ const PLAY_SEARCH_TYPES = [
   { key: "dreb", label: "Defensive Rebounds" }
 ];
 
+const PLAY_SEARCH_LABEL_BY_KEY = Object.fromEntries(PLAY_SEARCH_TYPES.map(t => [t.key, t.label]));
+
 function computePlaySearchResults() {
   const rows = [];
   const add = (type, playerId, game, videoTime, otherId, extra) => {
@@ -5936,6 +6383,59 @@ function computePlaySearchResults() {
   return rows.sort((a, b) => (b.gameDate || "").localeCompare(a.gameDate || ""));
 }
 
+const PLAY_SEARCH_DETAIL_VERB = { assist: "assisted", block: "blocked", steal: "off", turnover: "forced by", foul: "on" };
+
+function renderPlaySearch() {
+  const playerSel = document.getElementById("playSearchPlayerSelect");
+  const typeSel = document.getElementById("playSearchTypeSelect");
+  const shotTypeSel = document.getElementById("playSearchShotTypeSelect");
+  const defenderSel = document.getElementById("playSearchDefenderSelect");
+  const body = document.getElementById("playSearchBody");
+  const summary = document.getElementById("playSearchSummary");
+  if (!playerSel || !typeSel || !shotTypeSel || !defenderSel || !body) return;
+  const prevPlayer = playerSel.value, prevDefender = defenderSel.value;
+  const playerOptions = [...state.players].sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join("");
+  playerSel.innerHTML = '<option value="">Any player</option>' + playerOptions;
+  playerSel.value = prevPlayer;
+  defenderSel.innerHTML = '<option value="">Any defender</option>' + playerOptions;
+  defenderSel.value = prevDefender;
+  if (!typeSel.dataset.wired) {
+    typeSel.dataset.wired = "1";
+    typeSel.innerHTML = '<option value="">Any play</option>' + PLAY_SEARCH_TYPES.map(t => `<option value="${t.key}">${escapeHtml(t.label)}</option>`).join("");
+    shotTypeSel.innerHTML = '<option value="">Any shot type</option>' + TAGGABLE_SHOT_TYPES.map(t => `<option value="${t.key}">${escapeHtml(t.label)}</option>`).join("");
+    [playerSel, typeSel, shotTypeSel, defenderSel].forEach(sel => sel.addEventListener("change", renderPlaySearch));
+  }
+  const rows = computePlaySearchResults().filter(r =>
+    (!playerSel.value || r.playerId === playerSel.value) &&
+    (!typeSel.value || r.type === typeSel.value) &&
+    (!shotTypeSel.value || r.shotType === shotTypeSel.value) &&
+    (!defenderSel.value || r.defenderIds.includes(defenderSel.value)));
+  const gameCount = new Set(rows.map(r => r.gameId)).size;
+  summary.textContent = rows.length
+    ? `${rows.length} play${rows.length === 1 ? "" : "s"} across ${gameCount} game${gameCount === 1 ? "" : "s"}.`
+    : "No plays match yet.";
+  body.innerHTML = rows.length === 0 ? "" : rows.map(r => {
+    const player = state.players.find(p => p.id === r.playerId);
+    const other = r.otherId ? state.players.find(p => p.id === r.otherId) : null;
+    const bits = [];
+    if (other && PLAY_SEARCH_DETAIL_VERB[r.type]) bits.push(`${PLAY_SEARCH_DETAIL_VERB[r.type]} ${escapeHtml(other.name)}`);
+    if (r.shotType) bits.push(escapeHtml((TAGGABLE_SHOT_TYPES.find(t => t.key === r.shotType) || {}).label || r.shotType));
+    if (r.defenderIds.length) bits.push(`vs. ${r.defenderIds.map(id => escapeHtml(state.players.find(p => p.id === id)?.name || "?")).join("/")}`);
+    const detail = bits.join(" · ");
+    return `<tr>
+      <td class="sticky-col">${player ? playerLink(player.id, player.name) : "?"}</td>
+      <td>${escapeHtml(formatDateDisplay(r.gameDate))}</td>
+      <td>${escapeHtml(PLAY_SEARCH_LABEL_BY_KEY[r.type])}</td>
+      <td>${detail}</td>
+      <td><button type="button" class="secondary-btn play-search-jump" data-game-id="${escapeHtml(r.gameId)}" data-video-time="${r.videoTime === null || r.videoTime === undefined ? "" : r.videoTime}">▶ Jump</button></td>
+    </tr>`;
+  }).join("");
+  body.querySelectorAll(".play-search-jump").forEach(btn => btn.addEventListener("click", () => {
+    const t = btn.dataset.videoTime;
+    openGameAndSeek(btn.dataset.gameId, t === "" ? null : Number(t));
+  }));
+}
+
 function computeLeagueHighlights() {
   const clips = [];
   state.games.forEach(g => {
@@ -5945,6 +6445,275 @@ function computeLeagueHighlights() {
     });
   });
   return clips.sort((a, b) => (b.gameDate || "").localeCompare(a.gameDate || ""));
+}
+
+function renderLeagueHighlights() {
+  const body = document.getElementById("leagueHighlightsBody");
+  if (!body) return;
+  updateLeagueExportButton();
+  const clips = computeLeagueHighlights();
+  body.innerHTML = "";
+  if (clips.length === 0) {
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No clips tagged yet. Mark one from the Highlight / Lowlight Reel table in Stat Entry.</td></tr>';
+    return;
+  }
+  clips.forEach(clip => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${formatDateDisplay(clip.gameDate)}</td>
+      <td>${playerLink(clip.player.id, clip.player.name)}</td>
+      <td>${clip.type === "highlight" ? `<span class="badge badge-highlight">${icon("flame")} Highlight</span>` : `<span class="badge badge-lowlight">${icon("lowlight")} Lowlight</span>`}</td>
+      <td>${formatTime(clip.start)}–${formatTime(clip.end)}</td>
+      <td>${escapeHtml(clip.note || "")}</td>
+    `;
+    const tdBtn = document.createElement("td");
+    const goBtn = document.createElement("button");
+    goBtn.type = "button";
+    goBtn.className = "secondary-btn";
+    goBtn.textContent = "▶ Jump";
+    goBtn.addEventListener("click", () => openGameAndSeek(clip.gameId, clip.start));
+    tdBtn.appendChild(goBtn);
+    tr.appendChild(tdBtn);
+    body.appendChild(tr);
+  });
+}
+
+let leagueExportState = null;
+
+function leagueClipsByGameChronological() {
+  return state.games
+    .map(game => ({ game, clips: reelClipsChronological(game) }))
+    .filter(({ clips }) => clips.length > 0)
+    .sort((a, b) => (a.game.date || "").localeCompare(b.game.date || ""));
+}
+
+function updateLeagueExportButton() {
+  const btn = document.getElementById("exportLeagueVideoBtn");
+  if (!btn) return;
+  const totalClips = leagueClipsByGameChronological().reduce((sum, { clips }) => sum + clips.length, 0);
+  btn.disabled = !!leagueExportState || totalClips === 0;
+}
+
+const leagueExportVideoSrcCache = {};
+
+async function getGameVideoSrcForExport(game) {
+  const cacheKey = game.masterVideoId || game.id;
+  if (cacheKey in leagueExportVideoSrcCache) return leagueExportVideoSrcCache[cacheKey];
+  let src = null;
+  const file = await getVideoFile(cacheKey);
+  if (file) {
+    src = URL.createObjectURL(file);
+  } else if (game.videoUrl) {
+    const isYouTube = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))/.test(game.videoUrl);
+    const isDirectVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(game.videoUrl);
+    if (!isYouTube && isDirectVideo) src = game.videoUrl;
+  }
+  leagueExportVideoSrcCache[cacheKey] = src;
+  return src;
+}
+
+function loadVideoSrc(video, src, timeoutMs = 20000) {
+  return new Promise(resolve => {
+    let settled = false;
+    function cleanup() {
+      video.removeEventListener("loadedmetadata", onReady);
+      video.removeEventListener("error", onError);
+      clearTimeout(timeout);
+    }
+    function onReady() { if (settled) return; settled = true; cleanup(); resolve("done"); }
+    function onError() { if (settled) return; settled = true; cleanup(); resolve("error"); }
+    video.addEventListener("loadedmetadata", onReady, { once: true });
+    video.addEventListener("error", onError, { once: true });
+    video.src = src;
+    video.load();
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve("timeout");
+    }, timeoutMs);
+  });
+}
+
+async function runClipExportFromGroups(grouped, downloadFilename) {
+  if (leagueExportState) return;
+  if (grouped.length === 0) return;
+  const mimeType = pickRecorderMimeType();
+  const statusEl = document.getElementById("leagueExportStatus");
+  if (!mimeType) {
+    statusEl.textContent = "This browser doesn't support recording video. Try a recent Chrome or Firefox.";
+    return;
+  }
+
+  const previewWrap = document.getElementById("leagueExportPreviewWrap");
+  const video = document.getElementById("leagueExportVideo");
+  previewWrap.hidden = false;
+  video.muted = false;
+
+  let resolveCancel;
+  const cancelPromise = new Promise(resolve => { resolveCancel = resolve; });
+  leagueExportState = { cancelled: false, resolveCancel };
+  document.getElementById("exportLeagueVideoBtn").disabled = true;
+  document.getElementById("cancelLeagueExportBtn").hidden = false;
+
+  // Resolve every game's video source up front, before any recording starts — this way "which
+  // games got skipped" is known before spending any real recording time, and games sharing the
+  // same source (a shared session video) only ever get fetched once.
+  statusEl.textContent = "Checking video sources…";
+  const queue = []; // flat list of {game, clip, src}, video reloads only happen when src changes
+  let skippedGames = 0, skippedClips = 0;
+  for (const { game, clips } of grouped) {
+    if (leagueExportState.cancelled) break;
+    let src = null;
+    try { src = await getGameVideoSrcForExport(game); } catch (e) { src = null; }
+    if (!src) {
+      skippedGames++;
+      skippedClips += clips.length;
+      continue;
+    }
+    clips.forEach(clip => queue.push({ game, clip, src }));
+  }
+
+  const totalClips = queue.length;
+  let done = 0;
+  let currentSrc = null;
+  let stoppedEarly = null;
+  const chunks = [];
+
+  // captureStream() has to happen once this element actually has a real frame to capture — call
+  // it while `video` still has no src at all (as it does right here, since this element only ever
+  // exists for exports and nothing else ever sets its src) and on Chrome the captured stream just
+  // stays black for the entire recording, regardless of every later src swap. So the very first
+  // clip's source loads BEFORE captureStream()/the MediaRecorder get created, not after — every
+  // other src swap later in the loop below is fine, since the stream's already bound to a real,
+  // already-playing video by then.
+  // Started paused so only actual clip playback — not the seeking/loading between clips or
+  // between games — ends up in the recording. pause()/resume() (not stop-and-restart) keeps it
+  // one continuous MediaRecorder session — normally. Pulled into its own function since a src
+  // swap can force rebuilding this mid-export too (see the try/catch around .resume() below).
+  function createLeagueRecorder() {
+    const stream = video.captureStream ? video.captureStream() : video.mozCaptureStream();
+    const r = new MediaRecorder(stream, { mimeType });
+    r.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    r.start();
+    r.pause();
+    return r;
+  }
+
+  let recorder = null;
+  if (totalClips > 0 && !leagueExportState.cancelled) {
+    const first = queue[0];
+    statusEl.textContent = `Loading video for ${formatDateDisplay(first.game.date)}…`;
+    const firstLoadOutcome = await raceCancel(loadVideoSrc(video, first.src), cancelPromise);
+    if (firstLoadOutcome === "error" || firstLoadOutcome === "timeout") {
+      stoppedEarly = `Couldn't load the video for ${formatDateDisplay(first.game.date)}. Stopped there.`;
+    } else if (firstLoadOutcome !== "cancelled") {
+      currentSrc = first.src;
+      recorder = createLeagueRecorder();
+    }
+  }
+  try {
+    for (const { game, clip, src } of queue) {
+      if (leagueExportState.cancelled || !recorder) break;
+
+      if (src !== currentSrc) {
+        statusEl.textContent = `Loading video for ${formatDateDisplay(game.date)}…`;
+        const loadOutcome = await raceCancel(loadVideoSrc(video, src), cancelPromise);
+        if (loadOutcome === "cancelled") break;
+        if (loadOutcome !== "done") {
+          stoppedEarly = `Couldn't load the video for ${formatDateDisplay(game.date)}. Stopped there.`;
+          break;
+        }
+        currentSrc = src;
+      }
+
+      done++;
+      statusEl.textContent = `Recording clip ${done} of ${totalClips} (${formatDateDisplay(game.date)})…`;
+
+      const seekOutcome = await raceCancel(waitForSeek(video, clip.start), cancelPromise);
+      if (seekOutcome === "cancelled") break;
+      if (seekOutcome === "timeout") {
+        stoppedEarly = `Clip ${done} of ${totalClips} never finished seeking. Stopped there.`;
+        break;
+      }
+
+      // Real bug found by testing: a video src swap can end the MediaRecorder's captured track
+      // out from under it — Chrome auto-stops a MediaRecorder once its source track ends, per
+      // spec — and exactly when that transition actually lands isn't reliably predictable ahead
+      // of time (checking `recorder.state` right after the swap succeeds was too early; the
+      // recorder was still "paused" then and only flipped to "inactive" some time after). Calling
+      // `.resume()` on an inactive recorder throws, which used to propagate straight out of this
+      // whole function, skipping every bit of cleanup below and leaving `leagueExportState` stuck
+      // non-null forever (every future export attempt silently no-ops from then on) — from the
+      // outside this looked exactly like a permanent freeze on whichever clip happened to be the
+      // first one needing a source swap. Catching the failure right here, at the one place it can
+      // actually happen, and rebuilding fresh bound to the now-current video, sidesteps needing to
+      // predict the timing at all — the new recorder keeps pushing into the same `chunks` array,
+      // so the segments concatenate into one downloadable blob at the end.
+      try {
+        recorder.resume();
+      } catch (e) {
+        recorder = createLeagueRecorder();
+        recorder.resume();
+      }
+      const playPromise = video.play().catch(() => {});
+      const playOutcome = await Promise.race([
+        playPromise.then(() => "played"),
+        cancelPromise.then(() => "cancelled"),
+        new Promise(resolve => setTimeout(() => resolve("timeout"), 8000))
+      ]);
+      if (playOutcome !== "played") {
+        recorder.pause();
+        if (playOutcome === "cancelled") break;
+        stoppedEarly = `Clip ${done} of ${totalClips} didn't start playing. Stopped there.`;
+        break;
+      }
+
+      // Same per-clip-sized timeout as the per-game export above, not a flat constant.
+      const remaining = Math.max(0, clip.end - video.currentTime);
+      const waitOutcome = await raceCancel(waitUntilTime(video, clip.end, Math.max(15000, remaining * 3000)), cancelPromise);
+      video.pause();
+      recorder.pause();
+      if (waitOutcome === "cancelled") break;
+      if (waitOutcome === "timeout") {
+        stoppedEarly = `Clip ${done} of ${totalClips} stalled partway through. Stopped there.`;
+        break;
+      }
+    }
+  } finally {
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      await new Promise(resolve => { recorder.onstop = resolve; });
+    }
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    previewWrap.hidden = true;
+  }
+
+  const cancelled = leagueExportState.cancelled;
+  leagueExportState = null;
+  document.getElementById("cancelLeagueExportBtn").hidden = true;
+  updateLeagueExportButton();
+
+  const skipNote = skippedClips > 0
+    ? ` (${skippedClips} clip${skippedClips === 1 ? "" : "s"} across ${skippedGames} game${skippedGames === 1 ? "" : "s"} skipped: no usable video source.)`
+    : "";
+  if (cancelled) {
+    statusEl.textContent = "Cancelled. Nothing downloaded.";
+  } else if (chunks.length === 0) {
+    statusEl.textContent = (stoppedEarly || "Recording produced no data. Try again.") + skipNote;
+  } else {
+    const blob = new Blob(chunks, { type: mimeType });
+    download(`${downloadFilename}.${pickRecorderExtension(mimeType)}`, blob, mimeType);
+    statusEl.textContent = stoppedEarly
+      ? `${stoppedEarly} Downloaded what was recorded before that.${skipNote}`
+      : `Done: ${done} clip${done === 1 ? "" : "s"} combined and downloaded.${skipNote}`;
+  }
+}
+
+function exportLeagueVideo() {
+  return runClipExportFromGroups(leagueClipsByGameChronological(), "league-highlights");
 }
 
 const PLAYER_GAME_LOG_COLUMNS = [
@@ -6055,6 +6824,18 @@ const H2H_DEFENDER_COLUMNS = [
   { key: "fg", label: "FG Allowed", accessor: r => r.fga },
   { key: "fgpct", label: "FG% Allowed", accessor: r => pct(r.fgm, r.fga) }
 ];
+
+function download(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 function computeUnresolvedDunkCandidates() {
   const rows = [];
@@ -7100,49 +7881,62 @@ const mix = TURNOVER_TYPES.map(t => {
 
 
 export const MOUNT_PANELS = [
-  { title: "Awards vs. Stats", section: "comparison", order: 2, html: "\r\n        <div id=\"awardsVsStats\" class=\"awards-grid\"></div>\r\n      ", render: () => { renderAwardsVsStats(); } },
-  { title: "Power Ranking vs. Performance", section: "comparison", order: 3, html: "\r\n        <div id=\"powerRankingVsPerformance\"></div>\r\n      ", render: () => { renderPowerRankingVsPerformance(); } },
-  { title: "Two-Way Quadrant", section: "comparison", order: 4, html: "\r\n        <div id=\"quadrantChart\"></div>\r\n      ", render: () => { renderQuadrantChart(); } },
-  { title: "Volume vs. Efficiency", section: "comparison", order: 5, html: "\r\n        <div id=\"volumeEfficiencyChart\"></div>\r\n      ", render: () => { renderVolumeEfficiencyChart(); } },
-  { title: "TS% by Shot Distance", section: "comparison", order: 6, html: "\r\n        <div id=\"leagueTsByZoneChart\"></div>\r\n      ", render: () => { renderLeagueTsByZoneChart(); } },
-  { title: "League TS% Over Time", section: "comparison", order: 7, html: "\r\n        <div id=\"leagueTsChart\"></div>\r\n      ", render: () => { renderLeagueTsChart(); } },
-  { title: "League Shot Heatmap", section: "comparison", order: 8, html: "\r\n        <div id=\"leagueHeatmap\"></div>\r\n      ", render: () => { renderLeagueHeatmap(); } },
-  { title: "Two-Way/20 Rank Over the Season", section: "comparison", order: 9, html: "\r\n        <div id=\"twoWayRankChart\"></div>\r\n      ", render: () => { renderTwoWayRankChart(); } },
-  { title: "Consistency", section: "comparison", order: 11, html: "\r\n        <div class=\"table-scroll\">\r\n          <div id=\"consistencyStandings\"></div>\r\n        </div>\r\n      ", render: () => { renderConsistencyStandings(); } },
-  { title: "Shot Distance", section: "shooting", order: 12, html: "\r\n      <div class=\"shot-selection-legend\">\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-close\"></span>Close</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-mid\"></span>Midrange</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-line\"></span>3PT Line</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-deep\"></span>3PT Deep</span>\r\n      </div>\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"shotZoneTable\">\r\n          <thead><tr id=\"shotZoneHeaderRow\"></tr></thead>\r\n          <tbody id=\"shotZoneBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderShotZonePanel(); } },
-  { title: "Defensive Shot Distance", section: "shooting", order: 13, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"defensiveShotZoneTable\">\r\n          <thead><tr id=\"defensiveShotZoneHeaderRow\"></tr></thead>\r\n          <tbody id=\"defensiveShotZoneBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderDefensiveShotZonePanel(); } },
-  { title: "Shot Type Efficiency", section: "shooting", order: 14, html: "\r\n      <div id=\"shotTypePanel\"></div>\r\n    ", render: () => { renderShotTypePanel(); } },
-  { title: "Deep Shot Check", section: "shooting", order: 15, html: "\r\n      <div id=\"deepShotCheckPanel\"></div>\r\n    ", render: () => { renderDeepShotCheckPanel(); } },
-  { title: "Is the Move Working?", section: "shooting", order: 16, html: "\r\n      <div id=\"moveCheckPanel\"></div>\r\n    ", render: () => { renderMoveCheckPanel(); } },
-  { title: "Shot Types: Open vs. Contested", section: "shooting", order: 17, html: "\r\n      <div id=\"shotTypeContestPanel\"></div>\r\n    ", render: () => { renderShotTypeContestPanel(); } },
-  { title: "Calibrated Thresholds", section: "shooting", order: 18, html: "\r\n      <div id=\"calibrationPanel\"></div>\r\n    ", render: () => { renderCalibrationPanel(); } },
-  { title: "Shooting & Wins by Direction", section: "shooting", order: 19, html: "\r\n      <div id=\"leagueDirectionSplits\"></div>\r\n    ", render: () => { renderLeagueDirectionSplits(); } },
-  { title: "Shot-Making Added, Cumulative Over the Season", section: "shooting", order: 22, html: "\r\n      <div id=\"shotMakingAddedChart\"></div>\r\n    ", render: () => { renderShotMakingAddedChart(); } },
-  { title: "Rivalries", section: "matchups", order: 23, html: "\r\n      <div id=\"rivalriesPanel\"></div>\r\n    ", render: () => { renderRivalries(); } },
-  { title: "Head to Head", section: "matchups", order: 24, html: "\r\n      <div id=\"realHeadToHead\"></div>\r\n    ", render: () => { renderRealHeadToHead(); } },
-  { title: "Real Rivalry Matrix", section: "matchups", order: 25, html: "\r\n      <div id=\"realRivalryMatrix\"></div>\r\n    ", render: () => { renderRealRivalryMatrix(); } },
-  { title: "Head-to-Head Matchup Grid", section: "matchups", order: 26, html: "\r\n      <div id=\"matchupGrid\"></div>\r\n    ", render: () => { renderMatchupGrid(); } },
-  { title: "League Passing Chemistry Grid", section: "matchups", order: 28, html: "\r\n      <div id=\"passingChemistryGrid\"></div>\r\n    ", render: () => { renderPassingChemistryGrid(); } },
-  { title: "Rebound Battle Record", section: "matchups", order: 29, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"reboundBattleRecordTable\">\r\n          <thead><tr id=\"reboundBattleRecordHeaderRow\"></tr></thead>\r\n          <tbody id=\"reboundBattleRecordBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderReboundBattleRecordPanel(); } },
-  { title: "Rebound Battle Head-to-Head", section: "matchups", order: 31, html: "\r\n      <div id=\"reboundBattleGrid\"></div>\r\n    ", render: () => { renderReboundBattleGridPanel(); } },
-  { title: "Teammate Lift Matrix", section: "matchups", order: 32, html: "\r\n      <div id=\"teammateLiftMatrix\"></div>\r\n    ", render: () => { renderTeammateLiftMatrix(); } },
-  { title: "Assist Connections", section: "matchups", order: 34, html: "\r\n        <div class=\"table-scroll\">\r\n          <table class=\"matchup-table\" id=\"assistSynergyTable\">\r\n            <thead><tr><th>Passer</th><th>Scorer</th><th>Assists</th></tr></thead>\r\n            <tbody id=\"assistSynergyBody\"></tbody>\r\n          </table>\r\n        </div>\r\n      ", render: () => { renderAssistSynergy(); } },
-  { title: "Comeback Tracker", section: "situational", order: 35, html: "\r\n      <div id=\"comebackTracker\"></div>\r\n    ", render: () => { renderComebackTracker(); } },
-  { title: "Self-Inflicted vs. Forced Turnover Rate", section: "situational", order: 40, html: "\r\n      <p class=\"hint\" id=\"selfInflictedVsForcedSummary\" style=\"margin-top:0\"></p>\r\n      <div id=\"selfInflictedVsForcedChart\"></div>\r\n    ", render: () => { renderSelfInflictedVsForcedChart(); } },
-  { title: "Turnover Type Over Time", section: "situational", order: 44, html: "\r\n      <p class=\"hint\" id=\"turnoverTypeOverSeasonGate\" style=\"margin-top:0\"></p>\r\n      <div id=\"turnoverTypeOverSeasonChart\"></div>\r\n    ", render: () => { renderTurnoverTypeOverSeasonChart(); } },
-  { title: "Game-Winning Buckets", section: "situational", order: 50, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"gameWinningBucketsTable\">\r\n          <thead><tr><th>Player</th><th>Game-Winning Buckets</th></tr></thead>\r\n          <tbody id=\"gameWinningBucketsBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderGameWinningBucketsPanel(); } },
-  { title: "Play Style Clusters", section: "style", order: 51, html: "\r\n      <div id=\"playStyleClusters\"></div>\r\n    ", render: () => { renderPlayStyleClusters(); } },
-  { title: "Win Shares Model (beta)", section: "style", order: 56, html: "\r\n      <div id=\"winSharesModelPanel\"></div>\r\n    ", render: () => { renderWinSharesModelPanel(); } },
-  { title: "Season Timeline", section: "media", order: 57, html: "\r\n      <div id=\"seasonTimeline\"></div>\r\n    ", render: () => { renderSeasonTimeline(); } },
-  { title: "Season Recap", section: "media", order: 58, html: "\r\n      <div id=\"seasonRecap\"></div>\r\n    ", render: () => { renderSeasonRecap(); } },
-  { title: "Award Race", section: "media", order: 59, html: "\r\n      <div id=\"awardRace\"></div>\r\n    ", render: () => { renderAwardRace(); } },
-  { title: "Trophy Case", section: "media", order: 60, html: "\r\n      <div id=\"trophyCase\"></div>\r\n    ", render: () => { renderTrophyCase(); } },
-  { title: "Iron Man", section: "media", order: 61, html: "\r\n      <div id=\"ironManPanel\"></div>\r\n    ", render: () => { renderIronMan(); } },
-  { title: "Upset Tracker", section: "media", order: 62, html: "\r\n      <div id=\"upsetTracker\"></div>\r\n    ", render: () => { renderUpsetTracker(); } },
-  { title: "Best & Worst Individual Games", section: "media", order: 64, html: "\r\n      <div id=\"individualGamePerformances\"></div>\r\n    ", render: () => { renderIndividualGamePerformances(); } }
+  { title: "Player Comparison", section: "comparison", order: 1, html: "\r\n      <div class=\"compare-controls\">\r\n        <select id=\"comparePlayer1Select\"></select>\r\n        <span>vs.</span>\r\n        <select id=\"comparePlayer2Select\"></select>\r\n      </div>\r\n      <div id=\"playerComparisonResult\" class=\"table-scroll\"></div>\r\n    ", render: () => { renderPlayerComparisonSelects(); renderPlayerComparison(); }, wires: [{ id: "comparePlayer1Select", evt: "change", handler: renderPlayerComparison }, { id: "comparePlayer2Select", evt: "change", handler: renderPlayerComparison }] },
+  { title: "Awards vs. Stats", section: "comparison", order: 2, html: "\r\n        <div id=\"awardsVsStats\" class=\"awards-grid\"></div>\r\n      ", render: () => { renderAwardsVsStats(); }, wires: [] },
+  { title: "Power Ranking vs. Performance", section: "comparison", order: 3, html: "\r\n        <div id=\"powerRankingVsPerformance\"></div>\r\n      ", render: () => { renderPowerRankingVsPerformance(); }, wires: [] },
+  { title: "Two-Way Quadrant", section: "comparison", order: 4, html: "\r\n        <div id=\"quadrantChart\"></div>\r\n      ", render: () => { renderQuadrantChart(); }, wires: [] },
+  { title: "Volume vs. Efficiency", section: "comparison", order: 5, html: "\r\n        <div id=\"volumeEfficiencyChart\"></div>\r\n      ", render: () => { renderVolumeEfficiencyChart(); }, wires: [] },
+  { title: "TS% by Shot Distance", section: "comparison", order: 6, html: "\r\n        <div id=\"leagueTsByZoneChart\"></div>\r\n      ", render: () => { renderLeagueTsByZoneChart(); }, wires: [] },
+  { title: "League TS% Over Time", section: "comparison", order: 7, html: "\r\n        <div id=\"leagueTsChart\"></div>\r\n      ", render: () => { renderLeagueTsChart(); }, wires: [] },
+  { title: "League Shot Heatmap", section: "comparison", order: 8, html: "\r\n        <div id=\"leagueHeatmap\"></div>\r\n      ", render: () => { renderLeagueHeatmap(); }, wires: [] },
+  { title: "Two-Way/20 Rank Over the Season", section: "comparison", order: 9, html: "\r\n        <div id=\"twoWayRankChart\"></div>\r\n      ", render: () => { renderTwoWayRankChart(); }, wires: [] },
+  { title: "Closed Seasons in This App (League)", section: "comparison", order: 10, html: "\r\n        <select id=\"leagueSeasonSelect\" style=\"margin-bottom:10px\"></select>\r\n        <div class=\"table-scroll\">\r\n          <div id=\"leagueSeasonStandings\"></div>\r\n        </div>\r\n      ", render: () => { renderLeagueSeasonSelect(); renderLeagueSeasonStandings(); }, wires: [{ id: "leagueSeasonSelect", evt: "change", handler: renderLeagueSeasonStandings }] },
+  { title: "Consistency", section: "comparison", order: 11, html: "\r\n        <div class=\"table-scroll\">\r\n          <div id=\"consistencyStandings\"></div>\r\n        </div>\r\n      ", render: () => { renderConsistencyStandings(); }, wires: [] },
+  { title: "Shot Distance", section: "shooting", order: 12, html: "\r\n      <div class=\"shot-selection-legend\">\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-close\"></span>Close</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-mid\"></span>Midrange</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-line\"></span>3PT Line</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-deep\"></span>3PT Deep</span>\r\n      </div>\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"shotZoneTable\">\r\n          <thead><tr id=\"shotZoneHeaderRow\"></tr></thead>\r\n          <tbody id=\"shotZoneBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderShotZonePanel(); }, wires: [] },
+  { title: "Defensive Shot Distance", section: "shooting", order: 13, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"defensiveShotZoneTable\">\r\n          <thead><tr id=\"defensiveShotZoneHeaderRow\"></tr></thead>\r\n          <tbody id=\"defensiveShotZoneBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderDefensiveShotZonePanel(); }, wires: [] },
+  { title: "Shot Type Efficiency", section: "shooting", order: 14, html: "\r\n      <div id=\"shotTypePanel\"></div>\r\n    ", render: () => { renderShotTypePanel(); }, wires: [] },
+  { title: "Deep Shot Check", section: "shooting", order: 15, html: "\r\n      <div id=\"deepShotCheckPanel\"></div>\r\n    ", render: () => { renderDeepShotCheckPanel(); }, wires: [] },
+  { title: "Is the Move Working?", section: "shooting", order: 16, html: "\r\n      <div id=\"moveCheckPanel\"></div>\r\n    ", render: () => { renderMoveCheckPanel(); }, wires: [] },
+  { title: "Shot Types: Open vs. Contested", section: "shooting", order: 17, html: "\r\n      <div id=\"shotTypeContestPanel\"></div>\r\n    ", render: () => { renderShotTypeContestPanel(); }, wires: [] },
+  { title: "Calibrated Thresholds", section: "shooting", order: 18, html: "\r\n      <div id=\"calibrationPanel\"></div>\r\n    ", render: () => { renderCalibrationPanel(); }, wires: [] },
+  { title: "Shooting & Wins by Direction", section: "shooting", order: 19, html: "\r\n      <div id=\"leagueDirectionSplits\"></div>\r\n    ", render: () => { renderLeagueDirectionSplits(); }, wires: [] },
+  { title: "Shot-Making Added, Cumulative Over the Season", section: "shooting", order: 22, html: "\r\n      <div id=\"shotMakingAddedChart\"></div>\r\n    ", render: () => { renderShotMakingAddedChart(); }, wires: [] },
+  { title: "Rivalries", section: "matchups", order: 23, html: "\r\n      <div id=\"rivalriesPanel\"></div>\r\n    ", render: () => { renderRivalries(); }, wires: [] },
+  { title: "Head to Head", section: "matchups", order: 24, html: "\r\n      <div id=\"realHeadToHead\"></div>\r\n    ", render: () => { renderRealHeadToHead(); }, wires: [] },
+  { title: "Real Rivalry Matrix", section: "matchups", order: 25, html: "\r\n      <div id=\"realRivalryMatrix\"></div>\r\n    ", render: () => { renderRealRivalryMatrix(); }, wires: [] },
+  { title: "Head-to-Head Matchup Grid", section: "matchups", order: 26, html: "\r\n      <div id=\"matchupGrid\"></div>\r\n    ", render: () => { renderMatchupGrid(); }, wires: [] },
+  { title: "Passing Chemistry: Pair Detail", section: "matchups", order: 27, html: "\r\n      <div class=\"compare-controls\">\r\n        <select id=\"chemistryPlayer1Select\"></select>\r\n        <span>&amp;</span>\r\n        <select id=\"chemistryPlayer2Select\"></select>\r\n      </div>\r\n      <div id=\"passingChemistryPairResult\" class=\"table-scroll\"></div>\r\n    ", render: () => { renderPassingChemistrySelects(); renderPassingChemistryPair(); }, wires: [{ id: "chemistryPlayer1Select", evt: "change", handler: renderPassingChemistryPair }, { id: "chemistryPlayer2Select", evt: "change", handler: renderPassingChemistryPair }] },
+  { title: "League Passing Chemistry Grid", section: "matchups", order: 28, html: "\r\n      <div id=\"passingChemistryGrid\"></div>\r\n    ", render: () => { renderPassingChemistryGrid(); }, wires: [] },
+  { title: "Rebound Battle Record", section: "matchups", order: 29, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"reboundBattleRecordTable\">\r\n          <thead><tr id=\"reboundBattleRecordHeaderRow\"></tr></thead>\r\n          <tbody id=\"reboundBattleRecordBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderReboundBattleRecordPanel(); }, wires: [] },
+  { title: "Rebound Battle Head-to-Head", section: "matchups", order: 31, html: "\r\n      <div id=\"reboundBattleGrid\"></div>\r\n    ", render: () => { renderReboundBattleGridPanel(); }, wires: [] },
+  { title: "Teammate Lift Matrix", section: "matchups", order: 32, html: "\r\n      <div id=\"teammateLiftMatrix\"></div>\r\n    ", render: () => { renderTeammateLiftMatrix(); }, wires: [] },
+  { title: "Assist Connections", section: "matchups", order: 34, html: "\r\n        <div class=\"table-scroll\">\r\n          <table class=\"matchup-table\" id=\"assistSynergyTable\">\r\n            <thead><tr><th>Passer</th><th>Scorer</th><th>Assists</th></tr></thead>\r\n            <tbody id=\"assistSynergyBody\"></tbody>\r\n          </table>\r\n        </div>\r\n      ", render: () => { renderAssistSynergy(); }, wires: [] },
+  { title: "Comeback Tracker", section: "situational", order: 35, html: "\r\n      <div id=\"comebackTracker\"></div>\r\n    ", render: () => { renderComebackTracker(); }, wires: [] },
+  { title: "Self-Inflicted vs. Forced Turnover Rate", section: "situational", order: 40, html: "\r\n      <p class=\"hint\" id=\"selfInflictedVsForcedSummary\" style=\"margin-top:0\"></p>\r\n      <div id=\"selfInflictedVsForcedChart\"></div>\r\n    ", render: () => { renderSelfInflictedVsForcedChart(); }, wires: [] },
+  { title: "Turnover Type Over Time", section: "situational", order: 44, html: "\r\n      <p class=\"hint\" id=\"turnoverTypeOverSeasonGate\" style=\"margin-top:0\"></p>\r\n      <div id=\"turnoverTypeOverSeasonChart\"></div>\r\n    ", render: () => { renderTurnoverTypeOverSeasonChart(); }, wires: [] },
+  { title: "Game-Winning Buckets", section: "situational", order: 50, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"gameWinningBucketsTable\">\r\n          <thead><tr><th>Player</th><th>Game-Winning Buckets</th></tr></thead>\r\n          <tbody id=\"gameWinningBucketsBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderGameWinningBucketsPanel(); }, wires: [] },
+  { title: "Play Style Clusters", section: "style", order: 51, html: "\r\n      <div id=\"playStyleClusters\"></div>\r\n    ", render: () => { renderPlayStyleClusters(); }, wires: [] },
+  { title: "Win Shares Model (beta)", section: "style", order: 56, html: "\r\n      <div id=\"winSharesModelPanel\"></div>\r\n    ", render: () => { renderWinSharesModelPanel(); }, wires: [] },
+  { title: "Season Timeline", section: "media", order: 57, html: "\r\n      <div id=\"seasonTimeline\"></div>\r\n    ", render: () => { renderSeasonTimeline(); }, wires: [] },
+  { title: "Season Recap", section: "media", order: 58, html: "\r\n      <div id=\"seasonRecap\"></div>\r\n    ", render: () => { renderSeasonRecap(); }, wires: [] },
+  { title: "Award Race", section: "media", order: 59, html: "\r\n      <div id=\"awardRace\"></div>\r\n    ", render: () => { renderAwardRace(); }, wires: [] },
+  { title: "Trophy Case", section: "media", order: 60, html: "\r\n      <div id=\"trophyCase\"></div>\r\n    ", render: () => { renderTrophyCase(); }, wires: [] },
+  { title: "Iron Man", section: "media", order: 61, html: "\r\n      <div id=\"ironManPanel\"></div>\r\n    ", render: () => { renderIronMan(); }, wires: [] },
+  { title: "Upset Tracker", section: "media", order: 62, html: "\r\n      <div id=\"upsetTracker\"></div>\r\n    ", render: () => { renderUpsetTracker(); }, wires: [] },
+  { title: "Party Recap", section: "media", order: 63, html: "\r\n      <div class=\"balance-controls\" style=\"margin-bottom:10px\">\r\n        <select id=\"partyRecapSelect\" aria-label=\"Party night\"></select>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"downloadPartyRecapBtn\">Download Image</button>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"copyPartyRecapBtn\">Copy Recap Text</button>\r\n        <span class=\"hint\" id=\"partyRecapCopyStatus\" style=\"margin:0\" aria-live=\"polite\"></span>\r\n      </div>\r\n      <div id=\"partyRecap\"></div>\r\n    ", render: () => { renderPartyRecap(); }, wires: [] },
+  { title: "Best & Worst Individual Games", section: "media", order: 64, html: "\r\n      <div id=\"individualGamePerformances\"></div>\r\n    ", render: () => { renderIndividualGamePerformances(); }, wires: [] },
+  { title: "Play Search", section: "media", order: 65, html: "\r\n      <div class=\"balance-controls\" style=\"margin-bottom:10px\">\r\n        <select id=\"playSearchPlayerSelect\" aria-label=\"Player\"></select>\r\n        <select id=\"playSearchTypeSelect\" aria-label=\"Play type\"></select>\r\n        <select id=\"playSearchShotTypeSelect\" aria-label=\"Shot type\"></select>\r\n        <select id=\"playSearchDefenderSelect\" aria-label=\"Defender\"></select>\r\n      </div>\r\n      <p class=\"hint\" id=\"playSearchSummary\" style=\"margin:0 0 10px\"></p>\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\">\r\n          <thead><tr><th class=\"sticky-col\">Player</th><th>Date</th><th>Play</th><th>Detail</th><th></th></tr></thead>\r\n          <tbody id=\"playSearchBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderPlaySearch(); }, wires: [] },
+  { title: "Highlights & Lowlights (League)", section: "media", order: 66, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"leagueHighlightsTable\">\r\n          <thead><tr><th>Date</th><th>Player</th><th>Type</th><th>Time</th><th>Note</th><th></th></tr></thead>\r\n          <tbody id=\"leagueHighlightsBody\"></tbody>\r\n        </table>\r\n      </div>\r\n      <div class=\"reel-export-row\">\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"exportLeagueVideoBtn\" disabled>🎬 Combine All Clips Into One Video</button>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"cancelLeagueExportBtn\" hidden>Cancel</button>\r\n        <p class=\"hint\" id=\"leagueExportStatus\" style=\"margin:0\"></p>\r\n      </div>\r\n      <p class=\"hint\" style=\"margin:6px 0 0\">Records every clip into one video, oldest game first. Games with YouTube links are skipped. It can take a while, so keep this tab open and in front.</p>\r\n      <div id=\"leagueExportPreviewWrap\" hidden>\r\n        <video id=\"leagueExportVideo\" class=\"league-export-preview\" muted playsinline></video>\r\n      </div>\r\n    ", render: () => { renderLeagueHighlights(); }, wires: [{ id: "exportLeagueVideoBtn", evt: "click", handler: () => {
+  exportLeagueVideo();
+} }, { id: "cancelLeagueExportBtn", evt: "click", handler: () => {
+  if (leagueExportState) {
+    leagueExportState.cancelled = true;
+    leagueExportState.resolveCancel();
+  }
+} }] }
 ];
 export const MOUNT_NO_RENDER = [];
 
 
 if (typeof POOLEAN_SEASONS !== "undefined") setPooleanSeason(pooleanSeasonList().slice(-1)[0]);
-export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, setPooleanSeason, pooleanSeasonList, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, clutchMarginThreshold, pct, TURNOVER_TYPE_CSS_CLASS, SELF_CREATION_FULL_MIN, OPP_ADJ_REBOUND_MIN, renderAwardsVsStats, renderPowerRankingVsPerformance, renderQuadrantChart, renderVolumeEfficiencyChart, renderLeagueTsByZoneChart, renderLeagueTsChart, renderLeagueHeatmap, renderTwoWayRankChart, renderConsistencyStandings, renderShotZonePanel, renderDefensiveShotZonePanel, renderShotTypePanel, renderDeepShotCheckPanel, renderMoveCheckPanel, renderShotTypeContestPanel, renderCalibrationPanel, renderLeagueDirectionSplits, renderShotMakingAddedChart, renderRivalries, renderRealHeadToHead, renderRealRivalryMatrix, renderMatchupGrid, renderPassingChemistryGrid, renderReboundBattleRecordPanel, renderReboundBattleGridPanel, renderTeammateLiftMatrix, renderAssistSynergy, renderComebackTracker, renderSelfInflictedVsForcedChart, renderTurnoverTypeOverSeasonChart, renderGameWinningBucketsPanel, renderPlayStyleClusters, renderWinSharesModelPanel, renderSeasonTimeline, renderSeasonRecap, renderAwardRace, renderTrophyCase, renderIronMan, renderUpsetTracker, renderIndividualGamePerformances, INDIVIDUAL_GAMES_MODES, individualGamesMode, formatDateDisplay, poolPlayerLink, poolNameOf, STORAGE_KEY, renderPlayerAvatar, playerAvatarRingClass, PLAYER_PHOTO_FILES, avatarHueForPlayer, AWARD_TIER_COLOR, AWARD_TIER, awardIconSvg, AWARD_ICON_KEYS, ordinal, WIN_SHARES_FEATURES, turnoverTypeLabel, turnoverTypeTaggedSummaryText, renderSortableHeader, reboundBattleRecordSort, PASSING_CHEMISTRY_GRID_SCALE_MAX, realMatchupPlayerPool, headToHeadPair, renderPctChart, playerNightlyPcts, PARTY_RANKINGS, realSeasonsInOrder, svgAvatarDot, directionLabel, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, sameTeam, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, shotDistanceFromHoop, findShotBreakpoint, binomialLogLik, shotTypeFgCell, MOVE_CHECK_EDGE_PTS, shotBand, effShotType, SHOT_TYPE_DEEP_CHECK_MIN, threePtDeepThreshold, closeRangeThreshold, shotTypeCellHtml, defensiveShotZoneSort, totalBandedAttempts, SHOT_ZONES, shotZoneSort, renderHeatmapInto, heatmapCellColor, renderHeatmapSvg, shotChartVbX, SHOT_CHART_VIEWBOX_W, shotChartVbY, SHOT_CHART_VIEWBOX_H, expandedAwards, ICONS, ALL_AWARD_RESULTS, selectedPooleanSeason, AWARD_RESULTS, POOL_DATA_SNAPSHOT_KEY, sameMomentDismissed, shotReviewNeeds, shotReviewPlayer, shotReviewShowSkipped, shotReviewSkipped, turnoverTypeReviewPlayer, turnoverTypeSkipped, shotTypeReviewMatches, shotTypeReviewPlayer, shotTypeSkipped, shotTypeReviewMode, DRIVE_FAR_UNITS, trueShootingPct, LEAGUE_RANK_STATS, RESISTANCE_LEVEL_SCORE, gameTotalPoints, turnoverPct, effectiveFgPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, shootingStats, REAL_PLAYMAKING_MIN, defensiveRating, gamesForZoneShots, getOrCreatePlayerStats, median, gameDefenseStats, seasonVsRecentRate, trendNote, CLIP_CURATION_PAD_SECONDS, headToHeadAsScorer, gamesForMatchup, headToHeadAsDefender, shotTypeTipCandidates, gamesForShotType, accumulateHeadToHeadFg, playerAttendedDate, includeImbalancedGames, playerGameResult, INCLUDE_IMBALANCED_KEY, STAT_FIELDS, offensiveRating, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, xptsForShot, DEFENDER_QUALITY_GATE_FGA, SHOOTER_QUALITY_GATE_FGA, defensiveShootingStats, shotTypeLabel, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, AWARD_NOT_FOUND_TEXT, milestoneCache, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, poolKnownSlug, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, gameWinningShot, formatAstTov, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, includeOutlierGames, quantile, INCLUDE_OUTLIER_GAMES_KEY, includePastSeasons, isCurrentSeasonGame, INCLUDE_PAST_SEASONS_KEY, PLAYER_REPUTATION_DATA };
+export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, setPooleanSeason, pooleanSeasonList, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, clutchMarginThreshold, pct, TURNOVER_TYPE_CSS_CLASS, SELF_CREATION_FULL_MIN, OPP_ADJ_REBOUND_MIN, renderPlayerComparisonSelects, renderPlayerComparison, renderAwardsVsStats, renderPowerRankingVsPerformance, renderQuadrantChart, renderVolumeEfficiencyChart, renderLeagueTsByZoneChart, renderLeagueTsChart, renderLeagueHeatmap, renderTwoWayRankChart, renderLeagueSeasonSelect, renderLeagueSeasonStandings, renderConsistencyStandings, renderShotZonePanel, renderDefensiveShotZonePanel, renderShotTypePanel, renderDeepShotCheckPanel, renderMoveCheckPanel, renderShotTypeContestPanel, renderCalibrationPanel, renderLeagueDirectionSplits, renderShotMakingAddedChart, renderRivalries, renderRealHeadToHead, renderRealRivalryMatrix, renderMatchupGrid, renderPassingChemistrySelects, renderPassingChemistryPair, renderPassingChemistryGrid, renderReboundBattleRecordPanel, renderReboundBattleGridPanel, renderTeammateLiftMatrix, renderAssistSynergy, renderComebackTracker, renderSelfInflictedVsForcedChart, renderTurnoverTypeOverSeasonChart, renderGameWinningBucketsPanel, renderPlayStyleClusters, renderWinSharesModelPanel, renderSeasonTimeline, renderSeasonRecap, renderAwardRace, renderTrophyCase, renderIronMan, renderUpsetTracker, renderPartyRecap, renderIndividualGamePerformances, renderPlaySearch, renderLeagueHighlights, exportLeagueVideo, leagueExportState, runClipExportFromGroups, leagueClipsByGameChronological, reelClipsChronological, STORAGE_KEY, pickRecorderMimeType, getGameVideoSrcForExport, formatDateDisplay, raceCancel, loadVideoSrc, waitForSeek, waitUntilTime, updateLeagueExportButton, download, pickRecorderExtension, leagueExportVideoSrcCache, getVideoFile, openVideoDB, VIDEO_STORE, VIDEO_DB_NAME, formatTime, openGameAndSeek, currentGameId, currentVideoEl, PLAY_SEARCH_DETAIL_VERB, PLAY_SEARCH_LABEL_BY_KEY, INDIVIDUAL_GAMES_MODES, individualGamesMode, selectedPooleanSeason, downloadPartyRecapImage, copyPartyRecapText, poolPlayerLink, poolNameOf, partyRecapText, generatePartyRecapCanvas, showImagePreview, wrapCanvasText, renderPlayerAvatar, playerAvatarRingClass, PLAYER_PHOTO_FILES, avatarHueForPlayer, AWARD_TIER_COLOR, AWARD_TIER, awardIconSvg, AWARD_ICON_KEYS, ordinal, WIN_SHARES_FEATURES, turnoverTypeLabel, turnoverTypeTaggedSummaryText, renderSortableHeader, reboundBattleRecordSort, PASSING_CHEMISTRY_GRID_SCALE_MAX, PASSING_CHEMISTRY_ROWS, realMatchupPlayerPool, headToHeadPair, renderPctChart, playerNightlyPcts, PARTY_RANKINGS, realSeasonsInOrder, svgAvatarDot, directionLabel, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, sameTeam, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, shotDistanceFromHoop, findShotBreakpoint, binomialLogLik, shotTypeFgCell, MOVE_CHECK_EDGE_PTS, shotBand, effShotType, SHOT_TYPE_DEEP_CHECK_MIN, threePtDeepThreshold, closeRangeThreshold, shotTypeCellHtml, defensiveShotZoneSort, totalBandedAttempts, SHOT_ZONES, shotZoneSort, renderHeatmapInto, heatmapCellColor, renderHeatmapSvg, shotChartVbX, SHOT_CHART_VIEWBOX_W, shotChartVbY, SHOT_CHART_VIEWBOX_H, expandedAwards, ICONS, ALL_AWARD_RESULTS, AWARD_RESULTS, POOL_DATA_SNAPSHOT_KEY, sameMomentDismissed, shotReviewNeeds, shotReviewPlayer, shotReviewShowSkipped, shotReviewSkipped, turnoverTypeReviewPlayer, turnoverTypeSkipped, shotTypeReviewMatches, shotTypeReviewPlayer, shotTypeSkipped, shotTypeReviewMode, DRIVE_FAR_UNITS, trueShootingPct, LEAGUE_RANK_STATS, RESISTANCE_LEVEL_SCORE, gameTotalPoints, turnoverPct, effectiveFgPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, shootingStats, REAL_PLAYMAKING_MIN, defensiveRating, gamesForZoneShots, getOrCreatePlayerStats, median, gameDefenseStats, seasonVsRecentRate, trendNote, CLIP_CURATION_PAD_SECONDS, headToHeadAsScorer, gamesForMatchup, headToHeadAsDefender, shotTypeTipCandidates, gamesForShotType, accumulateHeadToHeadFg, playerAttendedDate, includeImbalancedGames, playerGameResult, INCLUDE_IMBALANCED_KEY, STAT_FIELDS, offensiveRating, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, xptsForShot, DEFENDER_QUALITY_GATE_FGA, SHOOTER_QUALITY_GATE_FGA, defensiveShootingStats, shotTypeLabel, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, AWARD_NOT_FOUND_TEXT, milestoneCache, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, poolKnownSlug, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, gameWinningShot, formatAstTov, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, includeOutlierGames, quantile, INCLUDE_OUTLIER_GAMES_KEY, includePastSeasons, isCurrentSeasonGame, INCLUDE_PAST_SEASONS_KEY, PLAYER_REPUTATION_DATA };

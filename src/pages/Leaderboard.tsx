@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 import { Section } from "@/components/Section"
-import type { Toggles } from "@/lib/legacy"
+import { syncLegacy } from "@/lib/legacy"
+import type { Toggles } from "@/lib/toggles"
 import { computeLeaderboardSectionTeasers } from "@/lib/legacy-core"
 import type { PooleanState } from "@/lib/types"
 import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
@@ -27,7 +28,11 @@ export function LeaderboardPage({
   setToggles: (t: Toggles) => void
   onOpenPlayer: (id: string) => void
 }) {
-  const version = useMemo(() => ({ state, toggles }), [state, toggles])
+  // The classic compute layer keeps its own copy of the state; refresh it before anything renders.
+  const version = useMemo(() => {
+    syncLegacy(state, toggles)
+    return { state, toggles }
+  }, [state, toggles])
   const teasers = computeLeaderboardSectionTeasers() as Record<string, string>
   return (
     <div className="flex min-w-0 flex-col gap-4">

@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { loadToggles, saveToggles, syncLegacy, type Toggles } from "@/lib/legacy"
+import { loadToggles, saveToggles, type Toggles } from "@/lib/toggles"
 import { importStateFromJson, loadState, saveState } from "@/lib/state"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 import { GamesPage } from "@/pages/Games"
-import { LeaderboardPage } from "@/pages/Leaderboard"
 import { PlayerDetailPage } from "@/pages/PlayerDetail"
+
+const LeaderboardPage = lazy(() => import("@/pages/Leaderboard").then((m) => ({ default: m.LeaderboardPage })))
 
 function ImportScreen({ onImported }: { onImported: (state: PooleanState) => void }) {
   const [error, setError] = useState<string | null>(null)
@@ -61,8 +62,6 @@ function AppShell({ initial }: { initial: PooleanState }) {
     saveToggles(t)
     setTogglesState(t)
   }
-  // The classic compute layer keeps its own copy of the state; refresh it before anything renders.
-  useMemo(() => syncLegacy(state, toggles), [state, toggles])
   // The classic panels announce "open this player" through a window event.
   useEffect(() => {
     const onPlayer = (e: Event) => {
@@ -100,7 +99,8 @@ function AppShell({ initial }: { initial: PooleanState }) {
           />
         </TabsContent>
         <TabsContent value="leaderboard">
-          <LeaderboardPage
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading leaderboard&hellip;</p>}>
+            <LeaderboardPage
             state={state}
             toggles={toggles}
             setToggles={setToggles}
@@ -109,6 +109,7 @@ function AppShell({ initial }: { initial: PooleanState }) {
               setTab("player")
             }}
           />
+          </Suspense>
         </TabsContent>
         <TabsContent value="player">
           <PlayerDetailPage

@@ -24,6 +24,7 @@ interface MountSpec {
   title: string
   html: string
   render: () => void
+  wires: { id: string; evt: string; handler: (e: Event) => void }[]
 }
 
 const TABLES = TABLE_PANELS as TableSpec[]
@@ -65,6 +66,12 @@ function LegacyMountPanel({ spec, version }: { spec: MountSpec; version: unknown
   const ref = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const meta = HINTS[spec.title]
+  // The classic site wires selects and buttons once at load; do the same once the markup exists.
+  useEffect(() => {
+    const ctl = new AbortController()
+    spec.wires.forEach((w) => document.getElementById(w.id)?.addEventListener(w.evt, w.handler, { signal: ctl.signal }))
+    return () => ctl.abort()
+  }, [spec])
   useEffect(() => {
     try {
       spec.render()

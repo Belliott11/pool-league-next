@@ -43,7 +43,11 @@ function scopeContainer(container) {
       if (node.parent.type === "atrule" && /keyframes/.test(node.parent.name)) return
       const next = mapSel(node.selector)
       if (!next) node.remove()
-      else node.selector = next
+      else {
+        node.selector = next
+        // rules that were html/body: keep text styling only, never page layout or the page background
+        if (next === ".legacy") node.walkDecls((d) => { if (/^(min-height|height|margin|padding|overflow|overflow-x|overflow-y|background|background-image|background-color|background-attachment)$/.test(d.prop)) d.remove() })
+      }
     } else if (node.type === "atrule") {
       if (/keyframes|font-face/.test(node.name)) return
       if (/prefers-color-scheme/.test(node.params)) { node.remove(); return }
