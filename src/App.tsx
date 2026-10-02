@@ -215,7 +215,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           <TabsTrigger value="games">Games</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
           <TabsTrigger value="player">Player</TabsTrigger>
-          <TabsTrigger value="players">Players</TabsTrigger>
+          {!readOnly && <TabsTrigger value="players">Players</TabsTrigger>}
           {!readOnly && <TabsTrigger value="export">Export</TabsTrigger>}
         </TabsList>
         <TabsContent value="games">
@@ -246,16 +246,18 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
             <PlayerDetailPage state={state} toggles={toggles} playerId={playerId} onChangePlayer={(id) => setPlayerId(id)} />
           </Suspense>
         </TabsContent>
-        <TabsContent value="players">
-          <PlayersPage
-            state={state}
-            update={update}
-            onOpenPlayer={(id) => {
-              setPlayerId(id)
-              setTab("player")
-            }}
-          />
-        </TabsContent>
+        {!readOnly && (
+          <TabsContent value="players">
+            <PlayersPage
+              state={state}
+              update={update}
+              onOpenPlayer={(id) => {
+                setPlayerId(id)
+                setTab("player")
+              }}
+            />
+          </TabsContent>
+        )}
         {!readOnly && (
           <TabsContent value="export">
             <Suspense fallback={<PageSkeleton label="Loading export tools" />}>
@@ -265,7 +267,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         )}
       </Tabs>
       </main>
-      <BottomNav tab={tab} onChange={setTab} showExport={!readOnly} />
+      <BottomNav tab={tab} onChange={setTab} editor={!readOnly} />
       <p className="text-xs text-muted-foreground">
         {readOnly ? "You are viewing the shared stats. Only the league editor can make changes." : "A subset of the full site, with more stats on the classic site."}
       </p>

@@ -10,11 +10,11 @@ const ITEMS = [
 
 // The tab bar on a phone: five thumb-reach buttons pinned to the bottom edge. On wider screens the
 // tabs stay at the top and this is hidden.
-export function BottomNav({ tab, onChange, showExport = true }: { tab: string; onChange: (tab: string) => void; showExport?: boolean }) {
+export function BottomNav({ tab, onChange, editor = true }: { tab: string; onChange: (tab: string) => void; editor?: boolean }) {
   return (
     <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
-      <ul className={`mx-auto grid max-w-md ${showExport ? "grid-cols-5" : "grid-cols-4"}`}>
-        {ITEMS.filter((i) => showExport || i.value !== "export").map(({ value, label, Icon }) => (
+      <ul className={`mx-auto grid max-w-md ${editor ? "grid-cols-5" : "grid-cols-3"}`}>
+        {ITEMS.filter((i) => editor || (i.value !== "export" && i.value !== "players")).map(({ value, label, Icon }) => (
           <li key={value}>
             <button
               type="button"
