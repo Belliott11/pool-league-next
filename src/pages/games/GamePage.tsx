@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 import type { ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -188,7 +189,7 @@ function ShotRow({ state, game, ev }: { state: PooleanState; game: Game; ev: Sco
 }
 
 function ShotLog({ state, game }: { state: PooleanState; game: Game }) {
-  if (game.scoringEvents.length === 0) return <p className="text-sm text-muted-foreground">No shots recorded yet.</p>
+  if (game.scoringEvents.length === 0) return <EmptyState title="No shots recorded yet" hint="Log this game from film on the classic site and every shot shows up here." />
   return (
     <Table>
       <TableHeader>
@@ -234,7 +235,7 @@ function OtherEvents({ state, game }: { state: PooleanState; game: Game }) {
     if (b.videoTime === null) return -1
     return a.videoTime - b.videoTime
   })
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">No turnovers, steals, or fouls recorded yet.</p>
+  if (rows.length === 0) return <EmptyState title="No turnovers, steals, or fouls yet" hint="Mark them while logging this game and they list here." />
   return (
     <Table>
       <TableHeader>
@@ -263,7 +264,7 @@ function OtherEvents({ state, game }: { state: PooleanState; game: Game }) {
 
 function Matchups({ state, game }: { state: PooleanState; game: Game }) {
   const rows = game.matchups ?? []
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">No defensive matchups recorded for this game.</p>
+  if (rows.length === 0) return <EmptyState title="No defensive matchups yet" hint="Pick a defender on each shot when you log this game." />
   return (
     <Table>
       <TableHeader>
@@ -290,7 +291,7 @@ function Matchups({ state, game }: { state: PooleanState; game: Game }) {
 
 function Reel({ state, game }: { state: PooleanState; game: Game }) {
   const rows = game.plays ?? []
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">No highlight or lowlight clips marked for this game.</p>
+  if (rows.length === 0) return <EmptyState title="No clips marked yet" hint="Mark a highlight or lowlight while logging this game and it lands here." />
   return (
     <Table>
       <TableHeader>
@@ -380,9 +381,7 @@ export function GamePage({ state, game, onBack }: { state: PooleanState; game: G
       {!reviewed ? (
         <Card>
           <CardContent>
-            <p className="text-muted-foreground">
-              No shots logged for this game yet, so there are no stats to show. Log it from film on the classic site.
-            </p>
+            <EmptyState title="No stats for this game yet" hint="Log its shots from film on the classic site and the box score fills in." />
           </CardContent>
         </Card>
       ) : (

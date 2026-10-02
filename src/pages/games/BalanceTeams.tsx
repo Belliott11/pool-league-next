@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,7 +42,7 @@ export function AttendeeChips({
   mark?: Record<string, { text: string; title: string }>
 }) {
   const players = [...state.players].sort((a, b) => a.name.localeCompare(b.name))
-  if (players.length === 0) return <p className="text-sm text-muted-foreground">No players yet.</p>
+  if (players.length === 0) return <EmptyState title="No players yet" hint="Add players on the Players page, then come back to balance teams." />
   return (
     <div className="flex flex-wrap gap-2">
       {players.map((p) => (
@@ -163,7 +164,7 @@ function TeamCard({
 
 function MatchupPreview({ state, teamA, teamB }: { state: PooleanState; teamA: string[]; teamB: string[] }) {
   const rows = computeCrossTeamMatchups(state, teamA, teamB)
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">No head-to-head history between these two teams yet.</p>
+  if (rows.length === 0) return <EmptyState title="No head-to-head history yet" hint="These two teams have not played each other. Log a game between them to start the record." />
   return (
     <Table>
       <TableHeader>

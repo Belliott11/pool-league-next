@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 import { Panel } from "@/components/Panel"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { computeLeaderboard } from "@/lib/legacy-core"
@@ -15,7 +16,12 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
   const rows = (computeLeaderboard() as Row[])
     .filter((r) => r.gp > 0)
     .sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
-  if (rows.length === 0) return null
+  if (rows.length === 0)
+    return (
+      <Panel title="Two-Way Ranking">
+        <EmptyState title="No ranking yet" hint="Players show up here once they have played a logged game." />
+      </Panel>
+    )
 
   // Axis ends and grid lines fall on whole steps, so the vertical lines are evenly spaced.
   const { lo, hi, ticks } = axis(Math.min(0, ...rows.map((r) => r.twoWayPer20)), Math.max(0, ...rows.map((r) => r.twoWayPer20)), 6)
