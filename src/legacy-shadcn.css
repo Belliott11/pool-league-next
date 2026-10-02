@@ -438,3 +438,6 @@
 #playerRankPill { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; }
 #playerRankPill .player-rank-pill-attendance { display: inline-flex; align-items: center; gap: 0.375rem; }
 #playerRankPill .icon { width: 1rem; height: 1rem; flex: none; }
+
+/* the champion banner's name was a fixed pale gold that disappears on a light card: use the theme's gold */
+.legacy.legacy .award-marquee-text strong { color: var(--gold); }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { jumpToPanel } from "@/lib/jump"
 
@@ -15,6 +15,7 @@ export function PanelSearch({ items, placeholder = "Jump to a panel" }: { items:
   const [q, setQ] = useState("")
   const [active, setActive] = useState(0)
   const ref = useRef<HTMLInputElement>(null)
+  const listId = useId()
   const needle = q.trim().toLowerCase()
   const results = needle
     ? items
@@ -47,6 +48,11 @@ export function PanelSearch({ items, placeholder = "Jump to a panel" }: { items:
       <Input
         ref={ref}
         type="search"
+        role="combobox"
+        aria-expanded={!!needle}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={results[active] ? `${listId}-${active}` : undefined}
         value={q}
         placeholder={placeholder}
         aria-label={placeholder}
@@ -70,13 +76,16 @@ export function PanelSearch({ items, placeholder = "Jump to a panel" }: { items:
         }}
       />
       {needle && (
-        <div className="absolute inset-x-0 z-30 mt-1 max-h-80 overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg">
+        <div id={listId} role="listbox" className="absolute inset-x-0 z-30 mt-1 max-h-80 overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg">
           {results.length === 0 ? (
             <p className="p-3 text-sm text-muted-foreground">No panel matches that.</p>
           ) : (
             results.map((r, i) => (
               <button
                 key={`${r.group}-${r.title}`}
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={i === active}
                 type="button"
                 className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left ${i === active ? "bg-muted" : "hover:bg-muted"}`}
                 onMouseEnter={() => setActive(i)}

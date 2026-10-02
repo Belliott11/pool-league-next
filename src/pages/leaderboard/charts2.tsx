@@ -211,9 +211,9 @@ export function PassingChemistryGrid({ onOpen }: { onOpen: (id: string) => void 
         <table className="border-collapse text-sm">
           <thead>
             <tr>
-              <th className="sticky left-0 bg-card p-2 text-left text-xs font-medium text-muted-foreground">Passer (down), Scorer (across)</th>
+              <th scope="col" className="sticky left-0 bg-card p-2 text-left text-xs font-medium text-muted-foreground">Passer (down), Scorer (across)</th>
               {scorers.map((s) => (
-                <th key={s.id} className="w-16 min-w-16 p-1 text-center text-xs font-semibold">
+                <th key={s.id} scope="col" className="w-16 min-w-16 p-1 text-center text-xs font-semibold">
                   <button type="button" className="hover:underline" onClick={() => onOpen(s.id)}>
                     {s.name}
                   </button>
@@ -224,7 +224,7 @@ export function PassingChemistryGrid({ onOpen }: { onOpen: (id: string) => void 
           <tbody>
             {passers.map((p) => (
               <tr key={p.id}>
-                <th className="sticky left-0 bg-card p-2 text-left font-semibold">
+                <th scope="row" className="sticky left-0 bg-card p-2 text-left font-semibold">
                   <button type="button" className="flex items-center gap-2 hover:underline" onClick={() => onOpen(p.id)}>
                     <PlayerAvatar id={p.id} name={p.name} size="sm" />
                     {p.name}

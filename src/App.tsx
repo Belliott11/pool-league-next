@@ -140,6 +140,12 @@ function AppShell({ initial }: { initial: PooleanState }) {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 pb-24 sm:p-6 sm:pb-6">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
       <div className={`sticky top-0 z-20 -mx-4 flex items-center justify-between gap-3 bg-background/90 px-4 backdrop-blur transition-[padding] sm:-mx-6 sm:px-6 ${scrolled ? "py-1.5" : "py-3"}`}>
         <h1 className={`font-display font-bold transition-[font-size] ${scrolled ? "text-lg" : "text-2xl"}`}>
           Poolean <span className="text-accent">Intel</span>
@@ -149,6 +155,7 @@ function AppShell({ initial }: { initial: PooleanState }) {
           <ThemeToggle />
         </div>
       </div>
+      <main id="main" tabIndex={-1} className="outline-none">
       <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList className="max-sm:hidden">
           <TabsTrigger value="games">Games</TabsTrigger>
@@ -201,6 +208,7 @@ function AppShell({ initial }: { initial: PooleanState }) {
           </Suspense>
         </TabsContent>
       </Tabs>
+      </main>
       <BottomNav tab={tab} onChange={setTab} />
       <p className="text-xs text-muted-foreground">
         A subset of the full site, with more stats on the classic site.
