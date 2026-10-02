@@ -85,7 +85,7 @@ function ThemeToggle() {
       }}
     >
       {dark ? <Sun aria-hidden className="size-4" /> : <Moon aria-hidden className="size-4" />}
-      {dark ? "Light" : "Dark"}
+      <span className="max-sm:sr-only">{dark ? "Light" : "Dark"}</span>
     </Button>
   )
 }

@@ -11,6 +11,7 @@ import { useReadOnly } from "@/lib/mode"
 import { SetUpTonight } from "./games/SetUpTonight"
 import { Sidebar } from "./games/Sidebar"
 import { LiveGamePage } from "./live/LiveGamePage"
+import { StatEntryPage } from "./statentry/StatEntryPage"
 import { findLiveGame } from "@/lib/live"
 
 export function GamesPage({
@@ -28,6 +29,7 @@ export function GamesPage({
 }) {
   const readOnly = useReadOnly()
   const [openId, setOpenId] = useState<string | null>(null)
+  const [statEntry, setStatEntry] = useState(false)
   // Same deep link the classic site's Share button writes: #game=<id>.
   useEffect(() => {
     const m = location.hash.match(/^#game=(.+)$/)
@@ -38,14 +40,20 @@ export function GamesPage({
 
   if (liveOpen && !readOnly) return <LiveGamePage state={state} update={update} onClose={() => setLiveOpen(false)} />
 
+  if (openGame && statEntry && !readOnly) {
+    return <StatEntryPage state={state} update={update} game={openGame} onBack={() => setStatEntry(false)} />
+  }
+
   if (openGame) {
     return (
       <GamePage
         state={state}
         update={update}
         game={openGame}
+        onStatEntry={() => setStatEntry(true)}
         onBack={() => {
           setOpenId(null)
+          setStatEntry(false)
           if (location.hash) history.replaceState(null, "", location.pathname + location.search)
         }}
       />

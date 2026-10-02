@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ClipboardPenLine } from "lucide-react"
 import { GameVideoPanel } from "@/components/GameVideoPanel"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { useReadOnly } from "@/lib/mode"
@@ -346,7 +347,7 @@ function TeamScore({ state, game, ids, label, score }: { state: PooleanState; ga
 // Read-only version of the classic site's Stat Entry page for one game: scoreboard, everyone's
 // line, the full shot log, turnovers/steals/fouls, defensive matchups, and the highlight reel.
 // Editing (logging shots, assigning rosters) and the video player are not part of this app yet.
-export function GamePage({ state, update, game, onBack }: { state: PooleanState; update: Update; game: Game; onBack: () => void }) {
+export function GamePage({ state, update, game, onBack, onStatEntry }: { state: PooleanState; update: Update; game: Game; onBack: () => void; onStatEntry?: () => void }) {
   const readOnly = useReadOnly()
   const liveOnly = isLiveScoreOnly(game)
   const scoreA = liveOnly ? liveScoreOf(game, game.teamA) : teamScore(game, game.teamA)
@@ -361,6 +362,12 @@ export function GamePage({ state, update, game, onBack }: { state: PooleanState;
         </Button>
         <h2 className="font-display text-xl font-bold">{formatDateDisplay(game.date)}</h2>
         {game.notes && <span className="text-sm text-muted-foreground">{game.notes}</span>}
+        {!readOnly && onStatEntry && (
+          <Button size="sm" className="ml-auto" onClick={onStatEntry}>
+            <ClipboardPenLine />
+            Stat entry
+          </Button>
+        )}
         {game.stoppedEarly && <Badge variant="secondary">Stopped Early</Badge>}
         {!isBalancedGame(game) && (
           <Badge variant="secondary">
@@ -382,7 +389,7 @@ export function GamePage({ state, update, game, onBack }: { state: PooleanState;
       {!reviewed ? (
         <Card>
           <CardContent>
-            <EmptyState title="No stats for this game yet" hint="Log its shots from film on the classic site and the box score fills in." />
+            <EmptyState title="No stats for this game yet" hint={readOnly ? "The box score fills in once the editor logs this game's shots." : "Open Stat entry to log its shots while you watch the video, and the box score fills in."} />
           </CardContent>
         </Card>
       ) : (

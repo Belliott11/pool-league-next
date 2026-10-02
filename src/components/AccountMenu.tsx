@@ -61,7 +61,7 @@ export function AccountMenu({ cloud, state, inline = false }: { cloud: Cloud; st
           />
         )}
         {cloud.admin ? <PencilLine aria-hidden className="size-4" /> : <LockKeyhole aria-hidden className="size-4" />}
-        {cloud.admin ? "Editing" : "Editor sign-in"}
+        <span className="max-sm:sr-only">{cloud.admin ? "Editing" : "Editor sign-in"}</span>
       </summary>
       <div className="absolute right-0 z-30 mt-2 w-72 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
         {cloud.admin ? (
