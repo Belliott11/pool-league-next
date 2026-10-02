@@ -15,3 +15,19 @@ export function avatarHueForPlayer(id: string): number {
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
   return hash % 360
 }
+
+// Same photo map as the classic site (files live in public/photos).
+const PLAYER_PHOTO_FILES: Record<string, string> = {
+  adam: "adam.jpg", alex: "alex.png", ben: "ben.png", evan: "evan.jpg",
+  "g-danny": "g-danny.jpg", "g-ian": "g-ian.jpg", "g-lukas": "g-lukas.jpg",
+  "g-michael-k": "g-michael-k.jpg", "g-michael-t": "g-michael-t.jpg",
+  jason: "jason.jpg", kayla: "kayla.jpg", "logan-hoskins": "logan-hoskins.jpg",
+  "logan-watson": "logan-watson.jpg", michael: "michael.png", phillip: "phillip.jpg",
+  reilly: "reilly.jpg", ryder: "ryder.png", sean: "sean.jpg", viraj: "viraj.png",
+  will: "will.png", zach: "zach.jpg",
+}
+
+export function playerPhotoUrl(id: string): string | null {
+  const file = PLAYER_PHOTO_FILES[id]
+  return file ? `${import.meta.env.BASE_URL}photos/${file}` : null
+}

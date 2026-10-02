@@ -7,8 +7,8 @@ import { importStateFromJson, loadState, saveState } from "@/lib/state"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 import { GamesPage } from "@/pages/Games"
-import { PlayerDetailPage } from "@/pages/PlayerDetail"
 
+const PlayerDetailPage = lazy(() => import("@/pages/PlayerDetail").then((m) => ({ default: m.PlayerDetailPage })))
 const LeaderboardPage = lazy(() => import("@/pages/Leaderboard").then((m) => ({ default: m.LeaderboardPage })))
 
 function ImportScreen({ onImported }: { onImported: (state: PooleanState) => void }) {
@@ -62,6 +62,14 @@ function AppShell({ initial }: { initial: PooleanState }) {
     saveToggles(t)
     setTogglesState(t)
   }
+  // Same deep link the classic site's Share button writes: #player=<id>.
+  useEffect(() => {
+    const m = location.hash.match(/^#player=(.+)$/)
+    if (m) {
+      setPlayerId(decodeURIComponent(m[1]))
+      setTab("player")
+    }
+  }, [])
   // The classic panels announce "open this player" through a window event.
   useEffect(() => {
     const onPlayer = (e: Event) => {
@@ -112,11 +120,9 @@ function AppShell({ initial }: { initial: PooleanState }) {
           </Suspense>
         </TabsContent>
         <TabsContent value="player">
-          <PlayerDetailPage
-            state={state}
-            playerId={playerId}
-            onChangePlayer={(id) => setPlayerId(id)}
-          />
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading player&hellip;</p>}>
+            <PlayerDetailPage state={state} toggles={toggles} playerId={playerId} onChangePlayer={(id) => setPlayerId(id)} />
+          </Suspense>
         </TabsContent>
       </Tabs>
       <p className="text-xs text-muted-foreground">

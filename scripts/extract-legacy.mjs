@@ -4,6 +4,7 @@
 import fs from "node:fs"
 import * as acorn from "acorn"
 import * as walk from "acorn-walk"
+import { analyzePlayerPanels } from "./player-panels.mjs"
 
 const [, , srcPath, outPath] = process.argv
 const src = fs.readFileSync(srcPath, "utf8")
@@ -271,6 +272,14 @@ const mountSpecs = []
     mountSpecs.push({ title, fns, inner, wires, section: block?.section ?? "overview", order: block?.order ?? 0 })
   }
 }
+const playerSpecs = analyzePlayerPanels({ src, items, html, gebi, wireStmts })
+playerSpecs.forEach((m) => {
+  m.fns.forEach((f) => entryNames.add(f))
+  ;(m.wires || []).forEach((w) => {
+    try { walk.full(acorn.parseExpressionAt(w.handler, 0, { ecmaVersion: "latest" }), (n) => { if (n.type === "Identifier") entryNames.add(n.name) }) } catch { /* ignore */ }
+  })
+})
+;["currentPlayerId", "downloadTradingCard", "renderPlayerRankPill", "computePlayerSectionTeasers"].forEach((n) => entryNames.add(n))
 mountSpecs.forEach((m) => m.fns.forEach((f) => entryNames.add(f)))
 mountSpecs.forEach((m) => (m.wires || []).forEach((w) => {
   try { walk.full(acorn.parseExpressionAt(w.handler, 0, { ecmaVersion: "latest" }), (n) => { if (n.type === "Identifier") entryNames.add(n.name) }) } catch { /* ignore */ }
@@ -365,6 +374,12 @@ const tableSpecSrc = panelSpecs
     return "  " + wrap(obj)
   })
   .join(",\n")
+const playerBlock = `
+export const PLAYER_PANELS = [
+${playerSpecs.map((m) => `  { title: ${JSON.stringify(m.title)}, hint: ${JSON.stringify(m.hint)}, tag: ${JSON.stringify(m.tag ?? null)}, open: ${m.open}, section: ${JSON.stringify(m.section)}, order: ${m.order}, html: ${JSON.stringify(m.html)}, render: (pid) => { currentPlayerId = pid; ${m.fns.map((f) => f + "(pid);").join(" ")} }, wires: [${(m.wires || []).map((w) => `{ id: ${JSON.stringify(w.id)}, evt: ${JSON.stringify(w.evt)}, handler: ${w.handler} }`).join(", ")}] }`).join(",\n")}
+];
+export function setLegacyPlayer(pid) { currentPlayerId = pid; }
+`
 const mountBlock = `
 export const MOUNT_PANELS = [
 ${mountSpecs.filter((m) => !m.noRender).map((m) => `  { title: ${JSON.stringify(m.title)}, section: ${JSON.stringify(m.section)}, order: ${m.order}, html: ${JSON.stringify(m.inner)}, render: () => { ${m.fns.map((f) => f + "();").join(" ")} }, wires: [${(m.wires || []).map((w) => `{ id: ${JSON.stringify(w.id)}, evt: ${JSON.stringify(w.evt)}, handler: ${w.handler} }`).join(", ")}] }`).join(",\n")}
@@ -417,11 +432,12 @@ export function normalizeLegacyState(s) {
 const exportNames = [...included].flatMap((it) => it.names)
 const footer = `\nif (typeof POOLEAN_SEASONS !== "undefined") setPooleanSeason(pooleanSeasonList().slice(-1)[0]);\nexport { ${[...new Set(exportNames)].join(", ")} };\n`
 
-fs.writeFileSync(outPath, [header, stubBlock, chunks.join("\n\n"), tableBlock, mountBlock, footer].join("\n"))
+fs.writeFileSync(outPath, [header, stubBlock, chunks.join("\n\n"), tableBlock, mountBlock, playerBlock, footer].join("\n"))
 const detected = new Set(panelSpecs.map((p) => p.fn))
 const undetected = items.filter((it) => it.node.type === "FunctionDeclaration" && /^render/.test(it.node.id.name) && src.slice(it.node.start, it.node.end).includes("renderSortableHeader(") && !detected.has(it.node.id.name)).map((it) => it.node.id.name)
 console.log("undetected sortable renders:", undetected.join(", "))
 console.log(`table panels: ${panelSpecs.length}, skipped: ${JSON.stringify(panelSkipped)}`)
+console.log(`player panels: ${playerSpecs.length} (no render fn: ${playerSpecs.filter((m) => !m.fns.length).map((m) => m.title).join(', ')})`)
 console.log(`mount panels: ${mountSpecs.length} (no render fn: ${mountSpecs.filter((m) => m.noRender).map((m) => m.title).join(', ')})`)
 console.log(`extracted ${chunks.length} top-level items, ${exportNames.length} names, ${(fs.statSync(outPath).size / 1024).toFixed(0)} KB`)
 const missing = []

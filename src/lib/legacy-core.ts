@@ -162,6 +162,8 @@ function buildJumpSearchIndex() {
 
 let currentGameId = null;
 
+const localVideoBlobUrls = {};
+
 const VIDEO_DB_NAME = "poolLeagueVideos";
 
 const VIDEO_STORE = "videos";
@@ -299,6 +301,77 @@ function formatDateDisplay(dateStr) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+function renderLeaderboardHighlights() {
+  const wrap = document.getElementById("leaderboardSidebarHighlights");
+  if (!wrap) return;
+  const board = computeLeaderboard().filter(r => r.gp > 0);
+  const cards = [];
+
+  // Biggest positive Last 5 vs. season Two-Way/20 gap, not just the highest raw Last 5 number —
+  // a great player having a normal week shouldn't outrank someone actually trending up. Needs at
+  // least 3 of their last 5 games logged to count as a real trend, and a real ▲ (same >0.5
+  // threshold the Last 5 column itself uses), not just noise around a flat week.
+  const hotStreak = board
+    .filter(r => r.last5Gp >= 3)
+    .map(r => ({ player: r.player, delta: r.last5TwoWayPer20 - r.twoWayPer20, last5: r.last5TwoWayPer20, season: r.twoWayPer20 }))
+    .filter(r => r.delta > 0.5)
+    .sort((a, b) => b.delta - a.delta)[0];
+  if (hotStreak) {
+    cards.push({ icon: icon("flame"), label: "Hot Streak", player: hotStreak.player,
+      detail: `${hotStreak.last5.toFixed(1)} Two-Way/20 over their last 5, up from ${hotStreak.season.toFixed(1)} on the season` });
+  }
+
+  // Same ranking as the full Consistency panel, just the #1 surfaced here.
+  const consistent = computeConsistencyStandings()[0];
+  if (consistent) {
+    cards.push({ icon: icon("target"), label: "Most Consistent", player: consistent.player,
+      detail: `±${consistent.stdDev.toFixed(1)} Two-Way/20 std dev across ${consistent.gp} games` });
+  }
+
+  // Best TS% in games decided by the calibrated close-game margin or fewer — needs at least 5
+  // combined FGA+FTA in those games so one hot make doesn't read as a real clutch performer.
+  const clutch = computeCloseGameShooting().filter(r => r.attempts >= 5).sort((a, b) => b.ts - a.ts)[0];
+  if (clutch) {
+    cards.push({ icon: icon("gem"), label: "Clutch", player: clutch.player,
+      detail: `${clutch.ts}% TS in ${clutch.gp} close game${clutch.gp === 1 ? "" : "s"} (${clutch.attempts} att)` });
+  }
+
+  // The single most-repeated passer-to-scorer connection, league-wide — same data as the
+  // Assist Connections panel, just its #1 row surfaced here.
+  const topDuo = computeAssistConnections()[0];
+  if (topDuo) {
+    cards.push({ icon: icon("link"), label: "Top Assist Duo", player: topDuo.passer,
+      detail: `${topDuo.count} assist${topDuo.count === 1 ? "" : "s"} to ${playerLink(topDuo.scorer.id, topDuo.scorer.name)}` });
+  }
+
+  // League's top Def Rating/20 — every other card here leans offense/situational, so this rounds
+  // things out with a defense-focused one. Same formula and column as the main table's own
+  // Def Rating/20, just the #1 surfaced here instead of requiring a sort click.
+  const bestDefender = [...board]
+    .map(r => ({ player: r.player, defRating: defensiveRating(r.rate, r.rateDefense) }))
+    .sort((a, b) => b.defRating - a.defRating)[0];
+  if (bestDefender) {
+    cards.push({ icon: icon("shield"), label: "Best Defender", player: bestDefender.player,
+      detail: `${bestDefender.defRating.toFixed(1)} Def Rating/20` });
+  }
+
+  if (cards.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">Not enough games logged yet for any highlight to qualify.</p>';
+    return;
+  }
+
+  wrap.innerHTML = cards.map(c => `
+    <div class="sidebar-highlight-card">
+      <div class="sidebar-highlight-label">${c.icon} ${escapeHtml(c.label)}</div>
+      <button type="button" class="icon-btn standings-mini-player-btn sidebar-highlight-player" data-player-id="${c.player.id}">${renderPlayerAvatar(c.player)}${escapeHtml(c.player.name)}</button>
+      <div class="sidebar-highlight-detail">${c.detail}</div>
+    </div>
+  `).join("");
+  wrap.querySelectorAll(".sidebar-highlight-player").forEach(btn => {
+    btn.addEventListener("click", () => openPlayerDetail(btn.dataset.playerId));
+  });
+}
+
 const PLAYER_PHOTO_FILES = {
   adam: "adam.jpg", alex: "alex.png", ben: "ben.png", evan: "evan.jpg",
   "g-danny": "g-danny.jpg", "g-ian": "g-ian.jpg", "g-lukas": "g-lukas.jpg",
@@ -330,6 +403,46 @@ function renderPlayerAvatar(player, size = "normal", ringClass = "") {
 function playerAvatarRingClass(playerId) {
   const t = computePlayerAwardTier(playerId);
   return t ? `player-avatar-ring-${t.color}-${t.isCurrent ? "current" : "past"}` : "";
+}
+
+function shareOrCopy({ title, text, url }, btn) {
+  const flash = (label) => {
+    const original = btn.textContent;
+    btn.textContent = label;
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1500);
+  };
+  const fullText = `${text}\n${url}`;
+  const copyFallback = () => {
+    const onFail = () => {
+      const textarea = document.createElement("textarea");
+      textarea.value = fullText;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand("copy");
+        flash("Copied!");
+      } catch (e) {
+        flash("Copy failed");
+      }
+      document.body.removeChild(textarea);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(fullText).then(() => flash("Copied!"), onFail);
+    } else {
+      onFail();
+    }
+  };
+  if (navigator.share) {
+    // A user-cancelled share sheet rejects with an AbortError — that's not a failure needing a
+    // clipboard fallback, just someone changing their mind, so it's the one rejection this
+    // swallows silently instead of falling through to copyFallback().
+    navigator.share({ title, text, url }).catch(err => { if (err?.name !== "AbortError") copyFallback(); });
+  } else {
+    copyFallback();
+  }
 }
 
 function buildGameShareText(game) {
@@ -775,6 +888,83 @@ function openGameAndSeek(gameId, videoTime) {
   tryJump(25);
 }
 
+async function loadInlineVideo(game, videoEl, videoTime) {
+  let url = null;
+  if (game.masterVideoId) {
+    if (!masterVideoBlobUrls[game.masterVideoId]) {
+      const file = await getVideoFile(game.masterVideoId);
+      if (file) masterVideoBlobUrls[game.masterVideoId] = URL.createObjectURL(file);
+    }
+    url = masterVideoBlobUrls[game.masterVideoId] || null;
+  } else {
+    if (!localVideoBlobUrls[game.id]) {
+      const file = await getVideoFile(game.id);
+      if (file) localVideoBlobUrls[game.id] = URL.createObjectURL(file);
+    }
+    url = localVideoBlobUrls[game.id] || game.videoUrl || null;
+  }
+  if (!url) return false;
+  if (videoEl.dataset.loadedUrl !== url) {
+    videoEl.src = url;
+    videoEl.dataset.loadedUrl = url;
+  }
+  const seekAndPlay = () => {
+    if (videoTime !== null && videoTime !== undefined) videoEl.currentTime = videoTime;
+    videoEl.play();
+  };
+  if (videoEl.readyState >= 1) seekAndPlay();
+  else videoEl.addEventListener("loadedmetadata", seekAndPlay, { once: true });
+  return true;
+}
+
+function ensureInlineVideoPlayer(wrap) {
+  let player = wrap.querySelector(".inline-video-player");
+  if (!player) {
+    player = document.createElement("div");
+    player.className = "inline-video-player";
+    player.innerHTML = '<p class="hint inline-video-label" style="margin:0 0 4px"></p><video controls style="max-width:100%;display:block;margin-bottom:10px"></video>';
+    wrap.prepend(player); // top of the panel, not the bottom -- no scrolling past a long list to see it
+  }
+  return player;
+}
+
+async function playInlineVideoAt(wrap, gameId, videoTime) {
+  const game = state.games.find(g => g.id === gameId);
+  const player = ensureInlineVideoPlayer(wrap);
+  const video = player.querySelector("video");
+  const labelEl = player.querySelector(".inline-video-label");
+  if (!game) {
+    labelEl.textContent = "Game not found.";
+    return;
+  }
+  labelEl.textContent = `Loading ${formatDateDisplay(game.date)}…`;
+  const ok = await loadInlineVideo(game, video, videoTime);
+  labelEl.textContent = ok
+    ? `${formatDateDisplay(game.date)}${videoTime !== null && videoTime !== undefined ? " · " + formatVideoTime(videoTime) : ""}`
+    : `No video available for ${formatDateDisplay(game.date)}.`;
+  player.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function watchFilmLinksHtml(games) {
+  if (!games || games.length === 0) return "";
+  return `<div class="player-tip-watch">Watch film: ${games.map(g => {
+    const label = g.videoTime !== null && g.videoTime !== undefined
+      ? `${formatDateDisplay(g.date)} · ${formatVideoTime(g.videoTime)}`
+      : formatDateDisplay(g.date);
+    const timeAttr = g.videoTime !== null && g.videoTime !== undefined ? ` data-video-time="${g.videoTime}"` : "";
+    return `<button type="button" class="icon-btn player-tip-game-btn" data-game-id="${g.id}"${timeAttr}>${escapeHtml(label)}</button>`;
+  }).join(" ")}</div>`;
+}
+
+function wireWatchFilmButtons(root) {
+  root.querySelectorAll(".player-tip-game-btn").forEach(btn => {
+    const videoTime = btn.dataset.videoTime !== undefined ? parseFloat(btn.dataset.videoTime) : null;
+    btn.addEventListener("click", () => playInlineVideoAt(root, btn.dataset.gameId, videoTime));
+  });
+}
+
+const masterVideoBlobUrls = {};
+
 function getOrCreatePlayerStats(game, playerId) {
   let s = game.stats.find(st => st.playerId === playerId);
   if (!s) {
@@ -837,6 +1027,13 @@ function heatmapCellColor(cell) {
   return `hsla(${hue}, 85%, 42%, ${opacity})`;
 }
 
+function defensiveHeatmapCellColor(cell) {
+  const fgFrac = cell.makes / cell.attempts;
+  const hue = (1 - fgFrac) * 120;
+  const opacity = Math.min(0.85, 0.32 + cell.attempts * 0.1);
+  return `hsla(${hue}, 85%, 42%, ${opacity})`;
+}
+
 function renderHeatmapSvg(shots, colorFn = heatmapCellColor) {
   if (shots.length === 0) return null;
   const cells = computeHeatmapCells(shots);
@@ -887,6 +1084,86 @@ function renderHeatmapInto(containerId, allFieldGoals, colorFn = heatmapCellColo
     <div class="shot-chart-wrap">${svg}</div>
     <p class="hint" style="margin:0">${withLocation.length} of ${allFieldGoals.length} field goal${allFieldGoals.length === 1 ? "" : "s"} plotted${missing > 0 ? ` (${missing} still missing a location)` : ""}.</p>
   `;
+}
+
+function renderPlayerHeatmap(playerId) {
+  const shots = [];
+  state.games.filter(isQualifyingGame).forEach(g => g.scoringEvents.forEach(ev => {
+    if (ev.scorerId === playerId && (ev.points === 2 || ev.points === 3)) shots.push(ev);
+  }));
+  renderHeatmapInto("playerHeatmap", shots);
+}
+
+function renderPlayerDefensiveHeatmap(playerId) {
+  const shots = [];
+  state.games.filter(isQualifyingGame).forEach(g => g.scoringEvents.forEach(ev => {
+    if ((ev.points === 2 || ev.points === 3) && (ev.defenderIds || []).includes(playerId)) shots.push(ev);
+  }));
+  renderHeatmapInto("playerDefensiveHeatmap", shots, defensiveHeatmapCellColor);
+}
+
+function renderPlayerShotChart(playerId) {
+  const wrap = document.getElementById("playerShotChart");
+  if (!wrap) return;
+  const shots = [];
+  state.games.forEach(g => g.scoringEvents.forEach(ev => {
+    if (ev.scorerId === playerId && (ev.points === 2 || ev.points === 3) && ev.shotLocation) shots.push(ev);
+  }));
+  if (shots.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No shots with a marked location yet.</p>';
+    return;
+  }
+  const makes = shots.filter(ev => ev.made !== false).length;
+  const misses = shots.length - makes;
+  const typeCounts = {};
+  shots.forEach(ev => { const k = effShotType(ev) || "untagged"; typeCounts[k] = (typeCounts[k] || 0) + 1; });
+  const dotsSvg = shots.map(ev => {
+    const cx = shotChartVbX(ev.shotLocation.x);
+    const cy = shotChartVbY(ev.shotLocation.y);
+    const type = effShotType(ev);
+    const cls = (ev.made !== false ? "shot-dot-make" : "shot-dot-miss") + (type ? "" : " shot-dot-untagged");
+    const label = `${ev.made !== false ? "Make" : "Miss"}, ${ev.points}pt${type ? ", " + shotTypeLabel(type) : ", no shot type yet"}`;
+    return shotTypeShape(type, cx, cy, cls, label);
+  }).join("");
+  // The legend keys the shapes (only the types this player has), next to the make/miss colors.
+  const shapeLegend = Object.keys(typeCounts).some(k => k !== "untagged") ? SHOT_TYPES.filter(t => typeCounts[t.key]).map(t =>
+    `<span class="legend-item"><svg class="legend-shape" viewBox="-4 -4 8 8" width="11" height="11">${shotTypeShape(t.key, 0, 0, "legend-shape-fill")}</svg>${escapeHtml(t.label)} (${typeCounts[t.key]})</span>`
+  ).join("") + (typeCounts.untagged ? `<span class="legend-item"><svg class="legend-shape" viewBox="-4 -4 8 8" width="11" height="11">${shotTypeShape(null, 0, 0, "legend-shape-fill shot-dot-untagged")}</svg>Not tagged (${typeCounts.untagged})</span>` : "") : "";
+  const threePtVbY = shotChartVbY(60);
+  const hoopVbY = shotChartVbY(7);
+  wrap.innerHTML = `
+    <div class="shot-chart-wrap">
+      <svg class="shot-chart heatmap-chart" viewBox="0 0 ${SHOT_CHART_VIEWBOX_W} ${SHOT_CHART_VIEWBOX_H}">
+        <rect x="1" y="1" width="${SHOT_CHART_VIEWBOX_W - 2}" height="${SHOT_CHART_VIEWBOX_H - 2}" rx="4" class="shot-chart-court" />
+        <circle cx="${SHOT_CHART_VIEWBOX_W / 2}" cy="${hoopVbY}" r="4" class="shot-chart-hoop" />
+        ${dotsSvg}
+        <line x1="1" y1="${threePtVbY}" x2="${SHOT_CHART_VIEWBOX_W - 1}" y2="${threePtVbY}" class="shot-chart-3pt-line" />
+        <text x="${SHOT_CHART_VIEWBOX_W - 3}" y="${threePtVbY - 3}" class="shot-chart-label" text-anchor="end">3PT</text>
+      </svg>
+      <div class="shot-chart-legend">
+        <span class="legend-item"><span class="legend-dot legend-dot-make"></span>Make (${makes})</span>
+        <span class="legend-item"><span class="legend-dot legend-dot-miss"></span>Miss (${misses})</span>
+      </div>
+      ${shapeLegend ? `<div class="shot-chart-legend">${shapeLegend}</div>` : ""}
+    </div>
+  `;
+}
+
+function shotTypeShape(type, cx, cy, cls, label) {
+  const title = label ? `<title>${escapeHtml(label)}</title>` : "";
+  const c = `class="${cls}"`;
+  if (type === "dunk") {
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? 3.4 : 1.5, a = -Math.PI / 2 + (i * Math.PI) / 5;
+      pts.push(`${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`);
+    }
+    return `<polygon points="${pts.join(" ")}" ${c}>${title}</polygon>`;
+  }
+  if (type === "drive") return `<rect x="${cx - 2}" y="${cy - 2}" width="4" height="4" ${c}>${title}</rect>`;
+  if (type === "deepHeave") return `<polygon points="${cx},${cy - 2.9} ${cx - 2.6},${cy + 2} ${cx + 2.6},${cy + 2}" ${c}>${title}</polygon>`;
+  if (type === "move") return `<polygon points="${cx},${cy - 3} ${cx + 3},${cy} ${cx},${cy + 3} ${cx - 3},${cy}" ${c}>${title}</polygon>`;
+  return `<circle cx="${cx}" cy="${cy}" r="2.2" ${c}>${title}</circle>`;
 }
 
 function renderLeagueHeatmap() {
@@ -1272,7 +1549,17 @@ function defensiveRating(s, def) {
   return s.stl + 0.7 * def.blocksNotAlreadyStopped + def.stops - def.timesBeaten - 0.4 * def.ptsAllowed;
 }
 
+function twoWayScore(s, sh, def) {
+  return offensiveRating(s, sh) + defensiveRating(s, def);
+}
+
 const FOUL_OUT_THRESHOLD = 3;
+
+function foulCellHtml(pf) {
+  return pf >= FOUL_OUT_THRESHOLD
+    ? `${pf} <span class="badge badge-lowlight" title="${FOUL_OUT_THRESHOLD} fouls: ejected for the rest of this game">🚫 OUT</span>`
+    : String(pf);
+}
 
 const GAME_STATS_COLUMNS = [
   { key: "player", label: "Player", accessor: r => r.player.name },
@@ -1304,6 +1591,10 @@ function formatTime(seconds) {
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+function formatVideoTime(videoTime) {
+  return videoTime === null || videoTime === undefined ? "—" : formatTime(videoTime);
 }
 
 const JUMP_LEAD_SECONDS = 5;
@@ -1762,6 +2053,36 @@ const DEFENSIVE_LOAD_COLUMNS = [
   { key: "read", label: "Read", accessor: r => r.sentence },
 ];
 
+let defensiveLoadPanelSort = { key: "load", dir: "desc" };
+
+function renderDefensiveLoadPanel() {
+  const headerRow = document.getElementById("defensiveLoadPanelHeaderRow");
+  const body = document.getElementById("defensiveLoadPanelBody");
+  if (!body) return;
+  renderSortableHeader(headerRow, DEFENSIVE_LOAD_COLUMNS, defensiveLoadPanelSort, renderDefensiveLoadPanel);
+  const rows = computeDefensiveLoadPanelRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="6" class="empty-state">Nobody has enough tagged defensive volume yet (needs ${DEFENSIVE_LOAD_MIN_SHARE}+ expected tagged possessions across enough games).</td></tr>`;
+    return;
+  }
+  const sortCol = DEFENSIVE_LOAD_COLUMNS.find(c => c.key === defensiveLoadPanelSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), defensiveLoadPanelSort.dir));
+  const oppFgCell = r => r.realContested === null
+    ? `Not enough contested volume yet<br><span class="hint" style="margin:0">was ${formatPct(r.oppFgPct)} any-tag</span>`
+    : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${r.realContested.made}/${r.realContested.attempts} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`;
+  body.innerHTML = rows.map(r => `<tr>
+    <td><button type="button" class="icon-btn defload-player-btn" data-player-id="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button></td>
+    <td>${r.load.toFixed(2)}x</td>
+    <td>${oppFgCell(r)}</td>
+    <td>${r.defRtg.toFixed(1)}</td>
+    <td>${r.pointsAllowedUnderExpected === null ? "—" : `${r.pointsAllowedUnderExpected >= 0 ? "+" : ""}${r.pointsAllowedUnderExpected.toFixed(1)}`}</td>
+    <td>${escapeHtml(r.sentence)}</td>
+  </tr>`).join("");
+  body.querySelectorAll(".defload-player-btn").forEach(btn => {
+    btn.addEventListener("click", () => openPlayerDetail(btn.dataset.playerId));
+  });
+}
+
 const CONTEST_ENGAGEMENT_COLUMNS = [
   { key: "player", label: "Player", accessor: r => r.player.name },
   { key: "engagement", label: "Engagement Rate", accessor: r => r.dist.engagementRate, display: r => r.dist.engagementRate === null ? "—" : formatPct(r.dist.engagementRate) },
@@ -1771,12 +2092,46 @@ const CONTEST_ENGAGEMENT_COLUMNS = [
   { key: "contested", label: "Real Contested Opp FG%", accessor: r => r.realContested ? r.realContested.fgPct : null, display: r => r.realContested === null ? "—" : formatPct(r.realContested.fgPct) },
 ];
 
+let contestEngagementSort = { key: "engagement", dir: "desc" };
+
 function computeContestEngagementRows() {
   return state.players.map(player => {
     const dist = computeContestLevelDistribution(player.id);
     if (dist.tagged === 0) return null;
     return { player, dist, realContested: computeRealContestedDefense(player.id) };
   }).filter(Boolean);
+}
+
+function renderContestEngagementPanel() {
+  const headerRow = document.getElementById("contestEngagementHeaderRow");
+  const body = document.getElementById("contestEngagementBody");
+  const sanityWrap = document.getElementById("contestLevelSanityCheck");
+  if (!body) return;
+  if (sanityWrap) {
+    const split = computeContestLevelFgSplit();
+    sanityWrap.innerHTML = ["none", "light", "medium", "heavy"].map(k =>
+      `<span class="legend-item">${contestLevelLabel(k)}: ${formatPct(split[k].fgPct)}<span class="hint" style="margin:0"> (${split[k].m}/${split[k].a})</span></span>`
+    ).join("");
+  }
+  renderSortableHeader(headerRow, CONTEST_ENGAGEMENT_COLUMNS, contestEngagementSort, renderContestEngagementPanel);
+  const rows = computeContestEngagementRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="6" class="empty-state">Nobody has a tagged defensive assignment with a contest level yet.</td></tr>`;
+    return;
+  }
+  const sortCol = CONTEST_ENGAGEMENT_COLUMNS.find(c => c.key === contestEngagementSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), contestEngagementSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+    <td><button type="button" class="icon-btn" data-contest-eng-player="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button></td>
+    <td>${r.dist.engagementRate === null ? `—<br><span class="hint" style="margin:0">needs ${CONTEST_ENGAGEMENT_MIN_TAGGED}+ tagged</span>` : formatPct(r.dist.engagementRate)}</td>
+    <td>${r.dist.counts.light}</td>
+    <td>${r.dist.counts.medium}</td>
+    <td>${r.dist.counts.heavy}</td>
+    <td>${r.realContested === null ? "—" : formatPct(r.realContested.fgPct)}</td>
+  </tr>`).join("");
+  body.querySelectorAll("[data-contest-eng-player]").forEach(btn => {
+    btn.addEventListener("click", () => openPlayerDetail(btn.dataset.contestEngPlayer));
+  });
 }
 
 const SHOOTER_QUALITY_DEF_COLUMNS = [
@@ -1787,6 +2142,8 @@ const SHOOTER_QUALITY_DEF_COLUMNS = [
   { key: "dae", label: "Defense Above Expected", accessor: r => r.adj.defenseAboveExpected, display: r => `${r.adj.defenseAboveExpected >= 0 ? "+" : ""}${r.adj.defenseAboveExpected.toFixed(1)}` },
 ];
 
+let shooterQualityDefSort = { key: "dae", dir: "desc" };
+
 function computeShooterQualityDefRows() {
   const qualityMap = {};
   state.players.forEach(p => { qualityMap[p.id] = computeShooterQualityBaseline(p.id); });
@@ -1794,6 +2151,32 @@ function computeShooterQualityDefRows() {
     const adj = computeShooterQualityAdjustedDefense(player.id, qualityMap);
     return adj ? { player, adj } : null;
   }).filter(Boolean);
+}
+
+function renderShooterQualityDefPanel() {
+  const headerRow = document.getElementById("shooterQualityDefHeaderRow");
+  const body = document.getElementById("shooterQualityDefBody");
+  const gateEl = document.getElementById("shooterQualityGateStatus");
+  if (!body) return;
+  if (gateEl) {
+    const gate = computeShooterQualityGateStatus();
+    gateEl.textContent = `${gate.ready} of ${gate.total} players with any shots logged have the spec's recommended ${SHOOTER_QUALITY_GATE_FGA}+ tagged attempts for a trustworthy quality baseline -- read direction here, not magnitude.`;
+  }
+  renderSortableHeader(headerRow, SHOOTER_QUALITY_DEF_COLUMNS, shooterQualityDefSort, renderShooterQualityDefPanel);
+  const rows = computeShooterQualityDefRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="5" class="empty-state">Nobody has enough real-contested defensive volume yet.</td></tr>`;
+    return;
+  }
+  const sortCol = SHOOTER_QUALITY_DEF_COLUMNS.find(c => c.key === shooterQualityDefSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), shooterQualityDefSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+    <td>${playerLink(r.player.id, r.player.name)}</td>
+    <td>${r.adj.n}</td>
+    <td>${formatPct(r.adj.shooterQualityFaced)}</td>
+    <td>${formatPct(r.adj.realContestedFgPct)}</td>
+    <td>${r.adj.defenseAboveExpected >= 0 ? "+" : ""}${r.adj.defenseAboveExpected.toFixed(1)}</td>
+  </tr>`).join("");
 }
 
 const DEFENDER_QUALITY_OFF_COLUMNS = [
@@ -1804,6 +2187,8 @@ const DEFENDER_QUALITY_OFF_COLUMNS = [
   { key: "oae", label: "Offense Above Expected", accessor: r => r.adj.offenseAboveExpected, display: r => `${r.adj.offenseAboveExpected >= 0 ? "+" : ""}${r.adj.offenseAboveExpected.toFixed(1)}` },
 ];
 
+let defenderQualityOffSort = { key: "oae", dir: "desc" };
+
 function computeDefenderQualityOffRows() {
   const defenseMap = {};
   state.players.forEach(p => { defenseMap[p.id] = computeRealContestedDefense(p.id); });
@@ -1811,6 +2196,32 @@ function computeDefenderQualityOffRows() {
     const adj = computeDefenderQualityAdjustedOffense(player.id, defenseMap);
     return adj ? { player, adj } : null;
   }).filter(Boolean);
+}
+
+function renderDefenderQualityOffPanel() {
+  const headerRow = document.getElementById("defenderQualityOffHeaderRow");
+  const body = document.getElementById("defenderQualityOffBody");
+  const gateEl = document.getElementById("defenderQualityGateStatus");
+  if (!body) return;
+  if (gateEl) {
+    const gate = computeDefenderQualityGateStatus();
+    gateEl.textContent = `${gate.ready} of ${gate.total} defenders with real-contested volume have the spec's recommended ${DEFENDER_QUALITY_GATE_FGA}+ threshold for a trustworthy quality baseline -- read direction here, not magnitude.`;
+  }
+  renderSortableHeader(headerRow, DEFENDER_QUALITY_OFF_COLUMNS, defenderQualityOffSort, renderDefenderQualityOffPanel);
+  const rows = computeDefenderQualityOffRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="5" class="empty-state">Nobody has enough real-contested offensive volume yet.</td></tr>`;
+    return;
+  }
+  const sortCol = DEFENDER_QUALITY_OFF_COLUMNS.find(c => c.key === defenderQualityOffSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), defenderQualityOffSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+    <td>${playerLink(r.player.id, r.player.name)}</td>
+    <td>${r.adj.n}</td>
+    <td>${formatPct(r.adj.ownFgPct)}</td>
+    <td>${formatPct(r.adj.defenderQualityFaced)}</td>
+    <td>${r.adj.offenseAboveExpected >= 0 ? "+" : ""}${r.adj.offenseAboveExpected.toFixed(1)}</td>
+  </tr>`).join("");
 }
 
 function computeCloseGameShooting() {
@@ -1848,6 +2259,21 @@ const CLOSE_GAME_SHOOTING_COLUMNS = [
   { key: "ts", label: "TS%", accessor: r => r.ts }
 ];
 
+let closeGameShootingSort = { key: "ts", dir: "desc" };
+
+function renderCloseGameShootingPanel() {
+  const headerRow = document.getElementById("closeGameShootingHeaderRow");
+  if (!headerRow) return;
+  renderSortableHeader(headerRow, CLOSE_GAME_SHOOTING_COLUMNS, closeGameShootingSort, renderCloseGameShootingPanel);
+  const body = document.getElementById("closeGameShootingBody");
+  const rows = computeCloseGameShooting();
+  const sortCol = CLOSE_GAME_SHOOTING_COLUMNS.find(c => c.key === closeGameShootingSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), closeGameShootingSort.dir));
+  body.innerHTML = rows.length === 0
+    ? `<tr><td colspan="4" class="empty-state">No games decided by ${clutchMarginThreshold()} points or fewer yet.</td></tr>`
+    : rows.map(r => `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.gp}</td><td>${r.attempts}</td><td>${formatPct(r.ts)}</td></tr>`).join("");
+}
+
 function computeCloseGameDefense() {
   const closeGames = state.games.filter(g => {
     if (!isQualifyingGame(g)) return false;
@@ -1880,6 +2306,21 @@ const CLOSE_GAME_DEFENSE_COLUMNS = [
   { key: "attempts", label: "Shots Defended", accessor: r => r.attempts },
   { key: "oppfg", label: "Opp FG%", accessor: r => r.oppFgPct }
 ];
+
+let closeGameDefenseSort = { key: "oppfg", dir: "asc" };
+
+function renderCloseGameDefensePanel() {
+  const headerRow = document.getElementById("closeGameDefenseHeaderRow");
+  if (!headerRow) return;
+  renderSortableHeader(headerRow, CLOSE_GAME_DEFENSE_COLUMNS, closeGameDefenseSort, renderCloseGameDefensePanel);
+  const body = document.getElementById("closeGameDefenseBody");
+  const rows = computeCloseGameDefense();
+  const sortCol = CLOSE_GAME_DEFENSE_COLUMNS.find(c => c.key === closeGameDefenseSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), closeGameDefenseSort.dir));
+  body.innerHTML = rows.length === 0
+    ? `<tr><td colspan="4" class="empty-state">No games decided by ${clutchMarginThreshold()} points or fewer yet.</td></tr>`
+    : rows.map(r => `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.gp}</td><td>${r.attempts}</td><td>${formatPct(r.oppFgPct)}</td></tr>`).join("");
+}
 
 function computeIndividualGamePerformances() {
   const rows = [];
@@ -2199,6 +2640,28 @@ function computePlayerRealSeasons(playerId) {
   }).filter(Boolean);
 }
 
+function renderPlayerRealSeasons(playerId) {
+  const wrap = document.getElementById("playerRealSeasons");
+  if (!wrap) return;
+  const rows = computePlayerRealSeasons(playerId);
+  if (rows.length === 0) { wrap.innerHTML = '<p class="empty-state">No real-site season cards for this player yet.</p>'; return; }
+  const delta = d => d === null ? "" : ` <span class="season-delta ${d > 0 ? "season-delta-up" : d < 0 ? "season-delta-down" : ""}">${Math.round(d) > 0 ? "+" : Math.round(d) === 0 ? "±" : ""}${Math.round(d)}</span>`;
+  const body = [...rows].reverse().map(r => `
+    <tr>
+      <td><strong>${r.year}</strong></td>
+      <td>${r.card.w}-${r.card.l}</td>
+      <td>${Math.round(r.card.winPct)}%${delta(r.winDelta)}</td>
+      <td>${Math.round(r.card.powerPct)}%${delta(r.powerDelta)}</td>
+      <td>${r.card.crowns}</td>
+      <td>${r.card.bestRank ? ordinal(r.card.bestRank) : "-"}</td>
+      <td>${r.wins.map(a => `<span title="${escapeHtml(a.label)}">${awardIconSvg(a.key)}</span>`).join(" ") || "-"}</td>
+    </tr>`).join("");
+  wrap.innerHTML = `<div class="table-scroll"><table class="matchup-table">
+    <thead><tr><th>Season</th><th>Record</th><th>Win %</th><th>Power %</th><th>#1 nights</th><th>Best rank</th><th>Awards won</th></tr></thead>
+    <tbody>${body}</tbody></table></div>
+    ${rows.length === 1 ? '<p class="hint" style="margin:10px 0 0">Year-over-year changes show up here once a second season is imported.</p>' : ""}`;
+}
+
 function computeSeasonRecap() {
   if (typeof POOLEAN_SEASON_CARDS === "undefined") return null;
   // Every real slug (POOLEAN_NAMES), not just this browser's own local roster -- the champion,
@@ -2287,6 +2750,19 @@ function computePlayerStreaks(playerId) {
   });
   const current = curWin > 0 ? { type: "W", n: curWin } : { type: "L", n: curLoss };
   return { current, longestWin, longestLoss, gp: games.length };
+}
+
+function renderPlayerStreaks(playerId) {
+  const wrap = document.getElementById("playerStreaks");
+  if (!wrap) return;
+  const s = computePlayerStreaks(playerId);
+  if (!s) { wrap.innerHTML = '<p class="empty-state">No real-site games for this player yet.</p>'; return; }
+  wrap.innerHTML = `
+    <div class="league-rank-grid">
+      <div class="league-rank-badge${s.current.type === "W" ? " league-rank-top" : ""}"><span class="league-rank-place">${s.current.type === "W" ? "🔥" : "❄️"} ${s.current.n}</span><span class="league-rank-label">Current ${s.current.type === "W" ? "win" : "losing"} streak</span></div>
+      <div class="league-rank-badge"><span class="league-rank-place">${s.longestWin}</span><span class="league-rank-label">Longest win streak</span></div>
+      <div class="league-rank-badge"><span class="league-rank-place">${s.longestLoss}</span><span class="league-rank-label">Longest losing streak</span></div>
+    </div>`;
 }
 
 const RIVALRY_MIN_GP = 5;
@@ -2838,6 +3314,15 @@ function computeMilestones() {
   return out;
 }
 
+function renderPlayerMilestones(playerId) {
+  const wrap = document.getElementById("playerMilestones");
+  if (!wrap) return;
+  const list = computeMilestones().filter(m => m.slug === playerId).sort((a, b) => b.date.localeCompare(a.date));
+  wrap.innerHTML = list.length
+    ? `<ul class="player-tips-list" style="display:block">${list.map(m => `<li>${m.iconSvg} ${escapeHtml(m.text.charAt(0).toUpperCase() + m.text.slice(1))} <span class="hint" style="margin:0">${escapeHtml(formatDateDisplay(m.date))}</span></li>`).join("")}</ul>`
+    : '<p class="empty-state">No milestones yet.</p>';
+}
+
 function partyRecapText(date) {
   const recap = computePartyRecap(date);
   if (!recap) return "";
@@ -2929,6 +3414,18 @@ function computePlayerAttendanceStreak(playerId) {
   return { current: trailing, longest, of: POOLEAN_RANKINGS.length };
 }
 
+function renderPlayerAttendanceStreak(playerId) {
+  const wrap = document.getElementById("playerAttendanceStreak");
+  if (!wrap) return;
+  const s = computePlayerAttendanceStreak(playerId);
+  if (!s) { wrap.innerHTML = '<p class="empty-state">No real-site attendance data for this player yet.</p>'; return; }
+  wrap.innerHTML = `<div class="league-rank-grid">
+    <div class="league-rank-badge${s.current === s.of && s.of > 0 ? " league-rank-top" : ""}"><span class="league-rank-place">${s.current}</span><span class="league-rank-label">Current streak</span></div>
+    <div class="league-rank-badge"><span class="league-rank-place">${s.longest}</span><span class="league-rank-label">Longest streak</span></div>
+    <div class="league-rank-badge"><span class="league-rank-place">${s.of}</span><span class="league-rank-label">Real parties total</span></div>
+  </div>`;
+}
+
 function computeIronMan() {
   if (typeof POOLEAN_RANKINGS === "undefined") return null;
   // Every real slug (POOLEAN_NAMES), not just this browser's local roster -- a real player who
@@ -3005,6 +3502,81 @@ function renderComebackTracker() {
     <p class="hint" style="margin:10px 0 0">${results.length} game${results.length === 1 ? "" : "s"} with a real comeback, biggest deficit first.</p>`;
 }
 
+const TRADING_CARD_TIER_COLORS = {
+  gold: ["#3a2f14", "#E3A93A"], silver: ["#0d2b29", "#3FE0D4"], bronze: ["#3a2210", "#F0873A"]
+};
+
+async function generateTradingCardCanvas(playerId) {
+  const player = state.players.find(p => p.id === playerId);
+  if (!player) return null;
+  const tier = computePlayerAwardTier(playerId);
+  const real = poolRealRecord(playerId);
+  const power = computePowerRankingSummary(playerId);
+  const row = computeLeaderboard().find(r => r.player.id === playerId);
+  const badges = computePlayerAwardBadges(playerId).filter(b => b.isWinner).slice(0, 3);
+  const W = 600, H = 880;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const [bg1, bg2] = tier ? TRADING_CARD_TIER_COLORS[tier.color] : ["#12212b", "#1c2e3a"];
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, bg1); grad.addColorStop(1, bg2);
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2, cy = 230, r = 110;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+  const photoFile = PLAYER_PHOTO_FILES[player.id];
+  if (photoFile) {
+    const img = await new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = `photos/${photoFile}`; });
+    if (img) ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
+    else { ctx.fillStyle = "#333"; ctx.fillRect(cx - r, cy - r, r * 2, r * 2); }
+  } else {
+    const hue = avatarHueForPlayer(player.id);
+    ctx.fillStyle = `hsl(${hue}, 55%, 42%)`;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    ctx.fillStyle = "white";
+    ctx.font = "bold 120px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText((player.name.trim().charAt(0) || "?").toUpperCase(), cx, cy + 10);
+  }
+  ctx.restore();
+  if (tier) {
+    ctx.lineWidth = 10; ctx.strokeStyle = TRADING_CARD_TIER_COLORS[tier.color][1];
+    ctx.beginPath(); ctx.arc(cx, cy, r + 8, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  ctx.fillStyle = "white"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(player.name, W / 2, 395);
+
+  let y = 450;
+  ctx.font = "28px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.85)";
+  if (real) { ctx.fillText(`Real Record: ${real.w}-${real.l}`, W / 2, y); y += 42; }
+  if (power) { ctx.fillText(`Power Ranking: ${Math.round(power.avgPct)}%`, W / 2, y); y += 42; }
+  y += 10;
+  // Statline: the same per-20 core numbers shown on the profile header itself, so the card
+  // carries this app's own local read alongside the real site's data above it.
+  if (row) {
+    const tsPct = trueShootingPct(row.totals.pts, row.shooting.fga, row.shooting.fta);
+    ctx.font = "22px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillText(`${row.rate.pts.toFixed(1)} PTS/20 · ${row.rate.ast.toFixed(1)} AST/20${tsPct !== null ? ` · ${tsPct}% TS` : ""} · ${row.twoWayPer20.toFixed(1)} Two-Way/20`, W / 2, y);
+    y += 40;
+  }
+  y += 12;
+  ctx.font = "24px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.85)";
+  badges.forEach(b => { ctx.fillText(`${b.icon} ${b.label}`, W / 2, y); y += 36; });
+
+  ctx.font = "16px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.fillText("Poolean", W / 2, H - 30);
+  return canvas;
+}
+
+async function downloadTradingCard(playerId) {
+  const canvas = await generateTradingCardCanvas(playerId);
+  if (!canvas) return;
+  const player = state.players.find(p => p.id === playerId);
+  showImagePreview(canvas, `${(player.name || "player").replace(/\s+/g, "_")}_card.png`);
+}
+
 function computeSeasonTimeline() {
   if (typeof POOLEAN_RANKINGS === "undefined") return null;
   const upsetsByDate = {};
@@ -3030,6 +3602,80 @@ function renderSeasonTimeline() {
     </li>`).join("")}</ul>`;
 }
 
+function renderPlayerAwardBadges(playerId) {
+  const wrap = document.getElementById("playerAwardBadges");
+  if (!wrap) return;
+  const badges = computePlayerAwardBadges(playerId);
+  if (badges.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No award wins or runner-up finishes for this player yet.</p>';
+    return;
+  }
+  // Marquee: only when they hold a tier-1 (gold) win from the latest season with awards, skipped
+  // entirely otherwise, never an empty placeholder version.
+  const latestAwardSeason = Math.max(...ALL_AWARD_RESULTS.map(a => a.season));
+  const goldWin = badges.find(b => b.isWinner && b.tier === 1 && b.season === latestAwardSeason);
+  const marquee = goldWin ? `
+    <div class="award-marquee">
+      <span class="award-marquee-icon">${goldWin.iconSvg}</span>
+      <span class="award-marquee-text"><strong>${escapeHtml(goldWin.label)}</strong><span>${goldWin.season} · reigning</span></span>
+    </div>` : "";
+  const grid = badges.map(b => {
+    const untiered = !b.color; // Worst Duo: deliberately never gold/silver/bronze, never a ring
+    const cls = untiered ? "award-badge award-badge-untiered" : `award-badge award-badge-${b.color}`;
+    let sub = escapeHtml(b.placementLabel);
+    if (b.partnerName) {
+      const seasonTogether = typeof POOLEAN_SEASONS !== "undefined" ? POOLEAN_SEASONS[String(b.season)]?.together : null;
+      const together = seasonTogether ? seasonTogether[[playerId, b.partnerId].sort().join("|")] : null;
+      const withPart = `with ${escapeHtml(b.partnerName)}${together ? ` · ${together.w}-${together.l} together` : ""}`;
+      sub = `${escapeHtml(b.placementLabel)} · ${withPart}`;
+    }
+    return `<span class="${cls}">
+      <span class="award-badge-icon">${b.iconSvg}</span>
+      <span class="award-badge-label">${escapeHtml(b.label)}</span>
+      <span class="award-badge-sub">${sub}</span>
+    </span>`;
+  }).join("");
+  wrap.innerHTML = `${marquee}<div class="award-badge-grid">${grid}</div>`;
+}
+
+function renderPlayerPowerRanking(playerId) {
+  const wrap = document.getElementById("playerPowerRanking");
+  if (!wrap) return;
+  const summary = computePowerRankingSummary(playerId);
+  if (!summary) {
+    wrap.innerHTML = '<p class="empty-state">No real-site power ranking history for this player yet.</p>';
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="league-rank-grid">
+      <div class="league-rank-badge"><span class="league-rank-place">${Math.round(summary.avgPct)}%</span><span class="league-rank-label">Season average</span></div>
+      <div class="league-rank-badge${summary.firsts > 0 ? " league-rank-top" : ""}"><span class="league-rank-place">${summary.firsts}×</span><span class="league-rank-label">Times at #1</span></div>
+      <div class="league-rank-badge"><span class="league-rank-place">${summary.of}</span><span class="league-rank-label">parties attended (of ${PARTY_RANKINGS.length})</span></div>
+    </div>
+    ${renderPctChart([{ label: poolNameOf(playerId), cls: "pct-line-a", points: playerNightlyPcts(playerId) }], { average: summary.avgPct })}`;
+}
+
+function renderPlayerRealRecord(playerId) {
+  const wrap = document.getElementById("playerRealRecord");
+  if (!wrap) return;
+  const real = poolRealRecord(playerId);
+  if (!real) {
+    wrap.innerHTML = '<p class="empty-state">No real-site game record for this player yet.</p>';
+    return;
+  }
+  const row = computeLeaderboard().find(r => r.player.id === playerId);
+  const loggedGp = row ? row.gp : 0;
+  const loggedRecord = row ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}` : "0-0";
+  const realWinPct = real.gp > 0 ? Math.round((real.w / real.gp) * 100) : 0;
+  wrap.innerHTML = `
+    <div class="league-rank-grid">
+      <div class="league-rank-badge"><span class="league-rank-place">${real.w}-${real.l}</span><span class="league-rank-label">Real record</span></div>
+      <div class="league-rank-badge"><span class="league-rank-place">${realWinPct}%</span><span class="league-rank-label">Real win rate</span></div>
+      <div class="league-rank-badge"><span class="league-rank-place">${real.gp}</span><span class="league-rank-label">Real games</span></div>
+    </div>
+    <p class="hint" style="margin:10px 0 0">Reviewed in this app: <strong>${escapeHtml(loggedRecord)}</strong> across ${loggedGp} game${loggedGp === 1 ? "" : "s"}, ${real.gp > 0 ? `${Math.round((loggedGp / real.gp) * 100)}% of the real total` : "—"}.</p>`;
+}
+
 const REAL_PARTNER_MIN_GP = 3;
 
 function computePlayerRealPartners(playerId) {
@@ -3046,6 +3692,28 @@ function computePlayerRealPartners(playerId) {
   const best = rows => rows.length ? rows.reduce((a, b) => (b.pct > a.pct ? b : a)) : null;
   const worst = rows => rows.length ? rows.reduce((a, b) => (b.pct < a.pct ? b : a)) : null;
   return { bestWith: best(withRows), worstWith: worst(withRows), bestAgainst: best(againstRows), worstAgainst: worst(againstRows) };
+}
+
+function renderPlayerRealPartners(playerId) {
+  const wrap = document.getElementById("playerRealPartners");
+  if (!wrap) return;
+  const p = computePlayerRealPartners(playerId);
+  if (!p) {
+    wrap.innerHTML = `<p class="empty-state">Needs at least ${REAL_PARTNER_MIN_GP} real games together or against someone to show a split.</p>`;
+    return;
+  }
+  const tile = (label, entry) => !entry ? "" : `
+    <div class="real-partner-tile">
+      <span class="real-partner-label">${label}</span>
+      ${playerLink(entry.player.id, entry.player.name)}
+      <span class="real-partner-record">${entry.w}-${entry.l}</span>
+      <span class="real-partner-pct">${Math.round(entry.pct * 100)}%</span>
+    </div>`;
+  wrap.innerHTML = `<div class="real-partner-grid">
+    ${tile("Best with", p.bestWith)}${tile("Worst with", p.worstWith)}
+    ${tile("Best against", p.bestAgainst)}${tile("Worst against", p.worstAgainst)}
+  </div>
+  <p class="hint" style="margin:10px 0 0">Needs at least ${REAL_PARTNER_MIN_GP} real games together (or against) to count.</p>`;
 }
 
 function computeAwardsVsStats() {
@@ -3172,6 +3840,10 @@ function computePowerRankingSummary(playerId) {
     if (p.rank === 1) firsts++;
   });
   return { avgPct: pctSum / nights.length, firsts, of: nights.length, nights };
+}
+
+function poolRealRecord(playerId) {
+  return typeof POOLEAN_RECORD !== "undefined" ? POOLEAN_RECORD[playerId] || null : null;
 }
 
 function computePowerRankingVsPerformance() {
@@ -3551,6 +4223,21 @@ function computeNightClimber(date) {
   return best;
 }
 
+function renderPlayerRankPill(playerId) {
+  const wrap = document.getElementById("playerRankPill");
+  if (!wrap) return;
+  const rank = computePlayerOverallRank(playerId);
+  const summary = computePowerRankingSummary(playerId);
+  const parts = [];
+  if (rank) {
+    const arrow = rank.delta === null || rank.delta === 0 ? "" : rank.delta > 0
+      ? `<span class="player-rank-pill-up">▲${rank.delta}</span>` : `<span class="player-rank-pill-down">▼${Math.abs(rank.delta)}</span>`;
+    parts.push(`<span class="player-rank-pill-main" title="Real site power ranking for the ${escapeHtml(String(selectedPooleanSeason))} season, among the ${rank.fieldSize} players with ${rank.min}+ parties. The arrow is the move from the latest party night.">#${rank.rank} of ${rank.fieldSize}</span>${arrow}`);
+  }
+  if (summary) parts.push(`<span class="player-rank-pill-attendance">${icon("calendar")} ${summary.of} part${summary.of === 1 ? "y" : "ies"} this season</span>`);
+  wrap.innerHTML = parts.join("");
+}
+
 function renderTwoWayRankChart() {
   const wrap = document.getElementById("twoWayRankChart");
   if (!wrap) return;
@@ -3837,6 +4524,21 @@ const WIDE_OPEN_COLUMNS = [
   { key: "ts", label: "TS%", accessor: r => r.ts }
 ];
 
+let wideOpenSort = { key: "ts", dir: "desc" };
+
+function renderWideOpenShootingPanel() {
+  const headerRow = document.getElementById("wideOpenHeaderRow");
+  if (!headerRow) return;
+  renderSortableHeader(headerRow, WIDE_OPEN_COLUMNS, wideOpenSort, renderWideOpenShootingPanel);
+  const body = document.getElementById("wideOpenBody");
+  const rows = computeWideOpenShooting();
+  const sortCol = WIDE_OPEN_COLUMNS.find(c => c.key === wideOpenSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), wideOpenSort.dir));
+  body.innerHTML = rows.length === 0
+    ? '<tr><td colspan="4" class="empty-state">No field goals without a tagged defender yet.</td></tr>'
+    : rows.map(r => `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.wideOpenFga}</td><td>${formatPct(r.share)}</td><td>${formatPct(r.ts)}</td></tr>`).join("");
+}
+
 function renderAssistSynergy() {
   const body = document.getElementById("assistSynergyBody");
   const rowLimit = Math.max(1, computeLeaderboard().filter(r => r.gp > 0).length);
@@ -3913,6 +4615,8 @@ const TEAMMATE_CONTEXT_COLUMNS = [
   { key: "avgAssisterQuality", label: "Avg Assister Quality", accessor: r => r.avgAssisterQuality }
 ];
 
+let teammateContextSort = { key: "teammateQuality", dir: "desc" };
+
 function computeTeammateContext() {
   return computeLeaderboard().filter(r => r.gp > 0).map(r => {
     const tq = computeTeammateQualityTrend(r.player.id);
@@ -3925,6 +4629,28 @@ function computeTeammateContext() {
       assistedPct: ab.assistedPct, avgAssisterQuality: ab.avgAssisterQuality
     };
   });
+}
+
+function renderTeammateContextPanel() {
+  const headerRow = document.getElementById("teammateContextHeaderRow");
+  if (!headerRow) return;
+  renderSortableHeader(headerRow, TEAMMATE_CONTEXT_COLUMNS, teammateContextSort, renderTeammateContextPanel);
+  const body = document.getElementById("teammateContextBody");
+  const rows = computeTeammateContext();
+  const sortCol = TEAMMATE_CONTEXT_COLUMNS.find(c => c.key === teammateContextSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), teammateContextSort.dir));
+  body.innerHTML = rows.length === 0
+    ? '<tr><td colspan="8" class="empty-state">No games with players yet.</td></tr>'
+    : rows.map(r => `<tr>
+        <td>${playerLink(r.player.id, r.player.name)}</td>
+        <td>${r.gp}</td>
+        <td>${r.offRatingPer20.toFixed(1)}</td>
+        <td>${r.teammateQuality !== null ? r.teammateQuality.toFixed(1) : "—"}</td>
+        <td>${r.offMatchupDifficulty !== null ? r.offMatchupDifficulty.toFixed(1) : "—"}</td>
+        <td>${r.defMatchupDifficulty !== null ? r.defMatchupDifficulty.toFixed(1) : "—"}</td>
+        <td>${r.assistedPct !== null ? formatPct(r.assistedPct) : "—"}</td>
+        <td>${r.avgAssisterQuality !== null ? r.avgAssisterQuality.toFixed(1) : "—"}</td>
+      </tr>`).join("");
 }
 
 const SHOT_ZONES = [
@@ -4438,6 +5164,8 @@ const SHOT_MAKING_ADDED_COLUMNS = [
   { key: "addedper", label: "Added per Attempt", accessor: r => r.sma.addedPerAttempt, display: r => `${r.sma.addedPerAttempt >= 0 ? "+" : ""}${r.sma.addedPerAttempt.toFixed(2)}` },
 ];
 
+let shotMakingAddedSort = { key: "addedper", dir: "desc" };
+
 function computeShotMakingAddedRows() {
   const zonePpa = computeLeagueZonePointsPerAttempt();
   const combos = computeXptsCombos();
@@ -4445,6 +5173,28 @@ function computeShotMakingAddedRows() {
     const sma = computeShotMakingAdded(player.id, combos, zonePpa);
     return sma ? { player, sma } : null;
   }).filter(Boolean);
+}
+
+function renderShotMakingAddedPanel() {
+  const headerRow = document.getElementById("shotMakingAddedHeaderRow");
+  const body = document.getElementById("shotMakingAddedBody");
+  if (!body) return;
+  renderSortableHeader(headerRow, SHOT_MAKING_ADDED_COLUMNS, shotMakingAddedSort, renderShotMakingAddedPanel);
+  const rows = computeShotMakingAddedRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="6" class="empty-state">Nobody has ${SHOT_MAKING_ADDED_MIN_FGA}+ qualifying field goal attempts yet.</td></tr>`;
+    return;
+  }
+  const sortCol = SHOT_MAKING_ADDED_COLUMNS.find(c => c.key === shotMakingAddedSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), shotMakingAddedSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+    <td>${playerLink(r.player.id, r.player.name)}</td>
+    <td>${r.sma.attempts}</td>
+    <td>${r.sma.actualPts}</td>
+    <td>${r.sma.xpts.toFixed(1)}</td>
+    <td>${r.sma.added >= 0 ? "+" : ""}${r.sma.added.toFixed(1)}</td>
+    <td>${r.sma.addedPerAttempt >= 0 ? "+" : ""}${r.sma.addedPerAttempt.toFixed(2)}</td>
+  </tr>`).join("");
 }
 
 function computeShotMakingAddedOverSeason(combos, zonePpa) {
@@ -4626,6 +5376,28 @@ const POINTS_OFF_TAKEAWAYS_COLUMNS = [
   { key: "pointsoff", label: "Points Off", accessor: r => r.pointsOffTakeaways.pointsOff },
   { key: "pertakeaway", label: "Per Takeaway", accessor: r => r.pointsOffTakeaways.perTakeaway },
 ];
+
+let pointsOffTakeawaysSort = { key: "pointsoff", dir: "desc" };
+
+function renderPointsOffTakeawaysPanel() {
+  const headerRow = document.getElementById("pointsOffTakeawaysHeaderRow");
+  if (!headerRow) return;
+  renderSortableHeader(headerRow, POINTS_OFF_TAKEAWAYS_COLUMNS, pointsOffTakeawaysSort, renderPointsOffTakeawaysPanel);
+  const rows = computeLeaderboard().filter(r => r.pointsOffTakeaways !== null);
+  const sortCol = POINTS_OFF_TAKEAWAYS_COLUMNS.find(c => c.key === pointsOffTakeawaysSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), pointsOffTakeawaysSort.dir));
+  const totalNoTimestamp = rows.reduce((sum, r) => sum + r.pointsOffTakeaways.noTimestamp, 0);
+  const summaryEl = document.getElementById("pointsOffTakeawaysSummary");
+  if (summaryEl) {
+    summaryEl.textContent = totalNoTimestamp > 0
+      ? `${totalNoTimestamp} steal${totalNoTimestamp === 1 ? "" : "s"} had no video timestamp and couldn't be checked for a quick score afterward (still counted toward Takeaways, never toward Points Off).`
+      : "";
+  }
+  const body = document.getElementById("pointsOffTakeawaysBody");
+  body.innerHTML = rows.length === 0
+    ? '<tr><td colspan="4" class="empty-state">No steals logged yet.</td></tr>'
+    : rows.map(r => `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.pointsOffTakeaways.takeaways}</td><td>${r.pointsOffTakeaways.pointsOff}</td><td>${r.pointsOffTakeaways.perTakeaway.toFixed(2)}</td></tr>`).join("");
+}
 
 const TURNOVER_CREDIT_MIN_POOL = 5;
 
@@ -5183,6 +5955,24 @@ const SECOND_CHANCE_COLUMNS = [
   { key: "rate", label: "Rate", accessor: r => pct(r.converted, r.oreb) }
 ];
 
+let secondChanceSort = { key: "oreb", dir: "desc" };
+
+function renderSecondChancePanel() {
+  renderSortableHeader(document.getElementById("secondChanceHeaderRow"), SECOND_CHANCE_COLUMNS, secondChanceSort, renderSecondChancePanel);
+  const rows = computeSecondChanceConversions();
+  const sortCol = SECOND_CHANCE_COLUMNS.find(c => c.key === secondChanceSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), secondChanceSort.dir));
+  const totalNoTimestamp = rows.reduce((sum, r) => sum + r.noTimestamp, 0);
+  const summaryEl = document.getElementById("secondChanceSummary");
+  summaryEl.textContent = totalNoTimestamp > 0
+    ? `${totalNoTimestamp} offensive rebound${totalNoTimestamp === 1 ? "" : "s"} had no video timestamp on the missed shot and couldn't be checked for conversion (still counted toward OREB, never toward Converted or Rate).`
+    : "";
+  const body = document.getElementById("secondChanceBody");
+  body.innerHTML = rows.length === 0
+    ? '<tr><td colspan="4" class="empty-state">No offensive rebounds logged yet.</td></tr>'
+    : rows.map(r => `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.oreb}</td><td>${r.converted}</td><td>${formatPct(pct(r.converted, r.oreb))}</td></tr>`).join("");
+}
+
 function computeSecondChancePointsAllowed() {
   const totals = {}; // defenderId -> { situations, allowed, noTimestamp }
   state.games.filter(isQualifyingGame).forEach(game => {
@@ -5228,6 +6018,34 @@ const SECOND_CHANCE_ALLOWED_COLUMNS = [
   { key: "rate", label: "Rate", accessor: r => pct(r.allowed, r.situations) }
 ];
 
+let secondChanceAllowedSort = { key: "rate", dir: "asc" };
+
+function renderSecondChanceAllowedPanel() {
+  const headerRow = document.getElementById("secondChanceAllowedHeaderRow");
+  if (!headerRow) return;
+  renderSortableHeader(headerRow, SECOND_CHANCE_ALLOWED_COLUMNS, secondChanceAllowedSort, renderSecondChanceAllowedPanel);
+  const rows = computeSecondChancePointsAllowed();
+  const sortCol = SECOND_CHANCE_ALLOWED_COLUMNS.find(c => c.key === secondChanceAllowedSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), secondChanceAllowedSort.dir));
+  const totalNoTimestamp = rows.reduce((sum, r) => sum + r.noTimestamp, 0);
+  const summaryEl = document.getElementById("secondChanceAllowedSummary");
+  if (summaryEl) {
+    summaryEl.textContent = totalNoTimestamp > 0
+      ? `${totalNoTimestamp} situation${totalNoTimestamp === 1 ? "" : "s"} had no video timestamp on the original missed shot and couldn't be checked for conversion (still counted toward Situations, never toward Allowed or Rate).`
+      : "";
+  }
+  const body = document.getElementById("secondChanceAllowedBody");
+  body.innerHTML = rows.length === 0
+    ? '<tr><td colspan="4" class="empty-state">No real rebound-battle-losing defenders on an offensive board yet.</td></tr>'
+    : rows.map(r => {
+        // Not a hard gate (see this panel's own doc comment above) -- a visible flag instead, so
+        // a thin sample doesn't read as equally settled next to a real one.
+        const thin = r.situations < REBOUND_BATTLE_MIN_CONTESTS;
+        const thinFlag = thin ? ` <span class="hint" style="margin:0" title="Fewer than ${REBOUND_BATTLE_MIN_CONTESTS} situations: too little data to treat as a settled number yet">(small sample)</span>` : "";
+        return `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.situations}${thinFlag}</td><td>${r.allowed}</td><td>${formatPct(pct(r.allowed, r.situations))}</td></tr>`;
+      }).join("");
+}
+
 function computeOutOfBoundsStats() {
   const totals = {}; // playerId -> { misses, oob }
   state.games.filter(isQualifyingGame).forEach(g => {
@@ -5249,6 +6067,25 @@ const OUT_OF_BOUNDS_COLUMNS = [
   { key: "oob", label: "Out of Bounds", accessor: r => r.oob },
   { key: "oobPct", label: "OOB%", accessor: r => pct(r.oob, r.misses) }
 ];
+
+let outOfBoundsSort = { key: "misses", dir: "desc" };
+
+function renderOutOfBoundsPanel() {
+  renderSortableHeader(document.getElementById("outOfBoundsHeaderRow"), OUT_OF_BOUNDS_COLUMNS, outOfBoundsSort, renderOutOfBoundsPanel);
+  const rows = computeOutOfBoundsStats();
+  const summaryEl = document.getElementById("outOfBoundsSummary");
+  const totalMisses = rows.reduce((sum, r) => sum + r.misses, 0);
+  const totalOob = rows.reduce((sum, r) => sum + r.oob, 0);
+  summaryEl.textContent = totalMisses > 0
+    ? `League-wide: ${totalOob} of ${totalMisses} missed shots this season went out of bounds (${formatPct(pct(totalOob, totalMisses))}).`
+    : "No missed shots logged yet.";
+  const sortCol = OUT_OF_BOUNDS_COLUMNS.find(c => c.key === outOfBoundsSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), outOfBoundsSort.dir));
+  const body = document.getElementById("outOfBoundsBody");
+  body.innerHTML = rows.length === 0
+    ? '<tr><td colspan="4" class="empty-state">No missed shots logged yet.</td></tr>'
+    : rows.map(r => `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.misses}</td><td>${r.oob}</td><td>${formatPct(pct(r.oob, r.misses))}</td></tr>`).join("");
+}
 
 function computeRateSummaryForGames(playerId, games) {
   const totals = { pts: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 };
@@ -5298,6 +6135,32 @@ function computeSeasonHistoryForPlayer(playerId) {
       twoWayPer20: summary.twoWayPer20
     };
   }).filter(Boolean);
+}
+
+function renderSeasonHistoryPanel(playerId) {
+  const wrap = document.getElementById("playerSeasonHistory");
+  if (!wrap) return;
+  const rows = computeSeasonHistoryForPlayer(playerId);
+  if (rows.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No past seasons recorded for this player yet.</p>';
+    return;
+  }
+  const rowsHtml = rows.map(r => `<tr>
+    <td>${escapeHtml(r.label)}</td>
+    <td>${r.gp}</td>
+    <td>${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}</td>
+    <td>${r.offRatingPer20.toFixed(1)}</td>
+    <td>${r.defRatingPer20.toFixed(1)}</td>
+    <td>${r.twoWayPer20.toFixed(1)}</td>
+  </tr>`).join("");
+  wrap.innerHTML = `
+    <div class="table-scroll">
+      <table class="matchup-table">
+        <thead><tr><th>Season</th><th>GP</th><th>Record</th><th>Off Rating/20</th><th>Def Rating/20</th><th>Two-Way/20</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 function computeLeagueSeasonStandings(season) {
@@ -5559,6 +6422,25 @@ function computePlayerTips(playerId) {
   return candidates.slice(0, 4);
 }
 
+function renderPlayerTips(playerId) {
+  const wrap = document.getElementById("playerTips");
+  if (!wrap) return;
+  const tips = computePlayerTips(playerId);
+  if (tips === null) {
+    wrap.innerHTML = `<p class="empty-state">Needs at least ${PLAYER_TIPS_MIN_GP} qualifying games before there's a real pattern to compare against the league average.</p>`;
+    return;
+  }
+  if (tips.length === 0) {
+    wrap.innerHTML = `<p class="empty-state">Nothing stands out from the league average in either direction: a genuinely well-rounded game right now.</p>`;
+    return;
+  }
+  wrap.innerHTML = `<ul class="player-tips-list">${tips.map(t => {
+    const watchLinks = watchFilmLinksHtml(t.games);
+    return `<li><span class="player-tip-icon">${t.icon}</span><span>${t.text}${watchLinks}</span></li>`;
+  }).join("")}</ul>`;
+  wireWatchFilmButtons(wrap);
+}
+
 const AREAS_TO_WORK_ON_MIN_GP = 3;
 
 function median(values) {
@@ -5683,6 +6565,29 @@ function computeCategoryClipGroups(playerId, categoryKey) {
   return grouped.sort((a, b) => (a.game.date || "").localeCompare(b.game.date || ""));
 }
 
+function startAreaClipExport(playerId, categoryKey, categoryLabel) {
+  const grouped = computeCategoryClipGroups(playerId, categoryKey);
+  if (grouped.length === 0) return;
+  showTab("leaderboard");
+  const previewWrap = document.getElementById("leagueExportPreviewWrap");
+  previewWrap?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const statusEl = document.getElementById("leagueExportStatus");
+  if (statusEl) statusEl.textContent = `Compiling clips for "${categoryLabel}"…`;
+  const safeName = categoryLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  runClipExportFromGroups(grouped, `${safeName || "clips"}-clips`);
+}
+
+function watchClipsButtonHtml(playerId, categoryKey) {
+  const label = AREA_CLIP_CATEGORY_LABELS[categoryKey] || categoryKey;
+  return `<button type="button" class="icon-btn watch-clips-btn" data-player-id="${playerId}" data-category-key="${categoryKey}" data-category-label="${escapeHtml(label)}">${icon("film")} Watch these clips</button>`;
+}
+
+function wireWatchClipsButtons(root) {
+  root.querySelectorAll(".watch-clips-btn").forEach(btn => {
+    btn.addEventListener("click", () => startAreaClipExport(btn.dataset.playerId, btn.dataset.categoryKey, btn.dataset.categoryLabel));
+  });
+}
+
 function computePlayerContestQualityEngagement(playerId) {
   const realContested = computeRealContestedDefense(playerId);
   const dist = computeContestLevelDistribution(playerId);
@@ -5703,6 +6608,22 @@ function computePlayerContestQualityEngagement(playerId) {
     read = "Not enough real-contested volume yet to read quality alongside engagement.";
   }
   return { realContested, dist, leagueMediumHeavyFg, read };
+}
+
+function renderPlayerContestQualityEngagement(playerId) {
+  const wrap = document.getElementById("playerContestQualityEngagement");
+  if (!wrap) return;
+  const d = computePlayerContestQualityEngagement(playerId);
+  if (!d) { wrap.innerHTML = '<p class="empty-state">Not enough tagged defensive volume yet.</p>'; return; }
+  wrap.innerHTML = `
+    <div class="profile-stat-pair">
+      <div class="profile-stat-tile"><div class="profile-stat-label">Real Contested Opp FG%</div><div class="profile-stat-value">${d.realContested ? formatPct(d.realContested.fgPct) : "—"}</div></div>
+      <div class="profile-stat-tile"><div class="profile-stat-label">Engagement Rate</div><div class="profile-stat-value">${d.dist.engagementRate === null ? "—" : formatPct(d.dist.engagementRate)}</div></div>
+    </div>
+    <p class="hint">${escapeHtml(d.read)}</p>
+    ${watchClipsButtonHtml(playerId, "contest_heavy")}
+  `;
+  wireWatchClipsButtons(wrap);
 }
 
 function computePlayerResistanceShotMaking(playerId) {
@@ -5726,6 +6647,20 @@ function computePlayerResistanceShotMaking(playerId) {
   return { avgResistance, sma, read };
 }
 
+function renderPlayerResistanceShotMaking(playerId) {
+  const wrap = document.getElementById("playerResistanceShotMaking");
+  if (!wrap) return;
+  const d = computePlayerResistanceShotMaking(playerId);
+  if (!d) { wrap.innerHTML = '<p class="empty-state">Not enough shot volume yet.</p>'; return; }
+  wrap.innerHTML = `
+    <div class="profile-stat-pair">
+      <div class="profile-stat-tile"><div class="profile-stat-label">Average Resistance Faced</div><div class="profile-stat-value">${d.avgResistance === null ? "—" : d.avgResistance.toFixed(2)}</div></div>
+      <div class="profile-stat-tile"><div class="profile-stat-label">Shot-Making Added</div><div class="profile-stat-value">${d.sma ? `${d.sma.added >= 0 ? "+" : ""}${d.sma.added.toFixed(1)}` : "—"}</div></div>
+    </div>
+    <p class="hint">${escapeHtml(d.read)}</p>
+  `;
+}
+
 function computePlayerSelfCreationPanel(playerId) {
   const rate = computeTrueSelfCreationRate(playerId);
   if (!rate || rate.selfCreatedPct === null) return null;
@@ -5742,6 +6677,22 @@ function computePlayerSelfCreationPanel(playerId) {
     gapNote = "Not enough non-heave attempts yet to check the gap.";
   }
   return { rate, gapNote };
+}
+
+function renderPlayerSelfCreationPanel(playerId) {
+  const wrap = document.getElementById("playerSelfCreationPanel");
+  if (!wrap) return;
+  const d = computePlayerSelfCreationPanel(playerId);
+  if (!d) { wrap.innerHTML = '<p class="empty-state">Not enough attempts yet.</p>'; return; }
+  wrap.innerHTML = `
+    <div class="profile-stat-pair">
+      <div class="profile-stat-tile"><div class="profile-stat-label">Self-Created % (raw)</div><div class="profile-stat-value">${formatPct(d.rate.selfCreatedPct)}</div></div>
+      <div class="profile-stat-tile"><div class="profile-stat-label">Self-Created % (no heaves)</div><div class="profile-stat-value">${d.rate.noHeaves.selfCreatedPct === null ? "—" : formatPct(d.rate.noHeaves.selfCreatedPct)}</div></div>
+    </div>
+    <p class="hint">${escapeHtml(d.gapNote)}</p>
+    ${watchClipsButtonHtml(playerId, "selfcreated_drive")}
+  `;
+  wireWatchClipsButtons(wrap);
 }
 
 function computePlayerPassingPanel(playerId) {
@@ -5767,6 +6718,22 @@ function computePlayerPassingPanel(playerId) {
   return { volume, quality, read };
 }
 
+function renderPlayerPassingPanel(playerId) {
+  const wrap = document.getElementById("playerPassingPanel");
+  if (!wrap) return;
+  const d = computePlayerPassingPanel(playerId);
+  if (!d) { wrap.innerHTML = '<p class="empty-state">Not enough passing volume yet.</p>'; return; }
+  wrap.innerHTML = `
+    <div class="profile-stat-pair">
+      <div class="profile-stat-tile"><div class="profile-stat-label">Real Playmaking Volume/20</div><div class="profile-stat-value">${d.volume ? d.volume.shotsCreatedPer20.toFixed(1) : "—"}</div></div>
+      <div class="profile-stat-tile"><div class="profile-stat-label">Weighted Pass Quality</div><div class="profile-stat-value">${d.quality ? d.quality.avgQuality.toFixed(2) : "—"}</div></div>
+    </div>
+    <p class="hint">${escapeHtml(d.read)}</p>
+    ${watchClipsButtonHtml(playerId, "pass_openlook")}
+  `;
+  wireWatchClipsButtons(wrap);
+}
+
 function computePlayerTurnoverMixPanel(playerId) {
   const breakdown = computeTurnoverTypeBreakdown(playerId);
   if (breakdown.tagged < TURNOVER_TYPE_MIN_TAGGED) return null;
@@ -5787,6 +6754,25 @@ function computePlayerTurnoverMixPanel(playerId) {
       : `Most of your turnovers are ${label}, not the other categories.`;
   }
   return { breakdown, leagueMedian, read };
+}
+
+function renderPlayerTurnoverMixPanel(playerId) {
+  const wrap = document.getElementById("playerTurnoverMixPanel");
+  if (!wrap) return;
+  const d = computePlayerTurnoverMixPanel(playerId);
+  if (!d) { wrap.innerHTML = `<p class="empty-state">Needs ${TURNOVER_TYPE_MIN_TAGGED}+ tagged live-ball turnovers.</p>`; return; }
+  const b = d.breakdown;
+  const mix = TURNOVER_TYPES.map(t => {
+    const n = b.counts[t.key];
+    return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${n} ${escapeHtml(t.label)}"></div>`;
+  }).join("");
+  wrap.innerHTML = `
+    <div class="shot-selection-bar" style="margin-bottom:8px">${mix}</div>
+    <p class="hint">${escapeHtml(d.read)}</p>
+    <p class="hint">Self-Inflicted %: <strong>${formatPct(b.selfInflictedPct)}</strong>${d.leagueMedian === null ? "" : ` vs. league median ${formatPct(d.leagueMedian)}`}</p>
+    ${watchClipsButtonHtml(playerId, "tov_losthandle")}
+  `;
+  wireWatchClipsButtons(wrap);
 }
 
 function computeAreasToWorkOn(playerId) {
@@ -5958,6 +6944,49 @@ function computeAreasToWorkOn(playerId) {
   return results;
 }
 
+function renderAreasToWorkOn(playerId) {
+  const wrap = document.getElementById("areasToWorkOn");
+  if (!wrap) return;
+  const results = computeAreasToWorkOn(playerId);
+  if (results === null) {
+    wrap.innerHTML = `<p class="empty-state">Needs at least ${AREAS_TO_WORK_ON_MIN_GP} qualifying games before there's enough of a season to compare against the league median.</p>`;
+    return;
+  }
+  if (results.length === 0) {
+    wrap.innerHTML = `<p class="empty-state">Nothing clears its own minimum sample yet, or nothing that does is meaningfully off the league median: check back as more games get logged.</p>`;
+    return;
+  }
+  const weaknesses = results.filter(r => r.isWeak);
+  const strengths = results.filter(r => !r.isWeak);
+  const section = (title, rows) => rows.length === 0 ? "" : `
+    <h4 style="margin:14px 0 6px">${title}</h4>
+    <ul class="player-tips-list">${rows.map(r => {
+      const watchLinks = watchFilmLinksHtml(r.games);
+      const clipLabel = AREA_CLIP_CATEGORY_LABELS[r.key];
+      const clipBtn = clipLabel
+        ? `<div class="player-tip-watch"><button type="button" class="icon-btn area-clip-export-btn" data-player-id="${playerId}" data-category-key="${r.key}" data-category-label="${escapeHtml(clipLabel)}">${icon("film")} Watch these clips</button></div>`
+        : "";
+      return `<li><span class="player-tip-icon">${r.isWeak ? icon("snowflake") : icon("flame")}</span><span>${r.text}${watchLinks}${clipBtn}</span></li>`;
+    }).join("")}</ul>
+  `;
+  wrap.innerHTML = section("Areas to work on", weaknesses) + section("Real strengths", strengths);
+  wireWatchFilmButtons(wrap);
+  wrap.querySelectorAll(".area-clip-export-btn").forEach(btn => {
+    btn.addEventListener("click", () => startAreaClipExport(btn.dataset.playerId, btn.dataset.categoryKey, btn.dataset.categoryLabel));
+  });
+}
+
+function renderFlakeStatsPanel(playerId) {
+  const wrap = document.getElementById("playerFlakeStats");
+  if (!wrap) return;
+  const stats = computeFlakeStats(playerId);
+  if (stats.pct === null) {
+    wrap.innerHTML = '<p class="empty-state">No resolved RSVPs for this player yet. Flake % needs at least one RSVP\'d date with a logged game.</p>';
+    return;
+  }
+  wrap.innerHTML = `<p class="score-display">${stats.pct}% <span class="hint" style="margin:0">(${stats.flaked} of ${stats.resolved} RSVP'd sessions missed)</span></p>`;
+}
+
 function computeTeammateSynergy(playerId) {
   const qualifyingGames = qualifyingGamesForPlayer(playerId);
   const teammateIds = new Set();
@@ -5990,6 +7019,21 @@ const TEAMMATE_SYNERGY_COLUMNS = [
   { key: "twoWayWithout", label: "Two-Way/20 W/o", accessor: r => r.without.gp > 0 ? r.without.twoWayPer20 : null }
 ];
 
+let teammateSynergySort = { key: "gpWith", dir: "desc" };
+
+function renderTeammateSynergy(playerId) {
+  const headerRow = document.getElementById("teammateSynergyHeaderRow");
+  const body = document.getElementById("teammateSynergyBody");
+  renderSortableHeader(headerRow, TEAMMATE_SYNERGY_COLUMNS, teammateSynergySort, () => renderTeammateSynergy(playerId));
+  const rows = computeTeammateSynergy(playerId);
+  const sortCol = TEAMMATE_SYNERGY_COLUMNS.find(c => c.key === teammateSynergySort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), teammateSynergySort.dir));
+  const fmt = (v, gp) => gp > 0 ? v.toFixed(1) : "—";
+  body.innerHTML = rows.length === 0
+    ? '<tr><td colspan="7" class="empty-state">No games with teammates and real shots logged yet.</td></tr>'
+    : rows.map(r => `<tr><td>${playerLink(r.teammate.id, r.teammate.name)}</td><td>${r.with.gp}</td><td>${r.without.gp}</td><td>${fmt(r.with.offRatingPer20, r.with.gp)}</td><td>${fmt(r.without.offRatingPer20, r.without.gp)}</td><td>${fmt(r.with.twoWayPer20, r.with.gp)}</td><td>${fmt(r.without.twoWayPer20, r.without.gp)}</td></tr>`).join("");
+}
+
 function computeTwoWayTrend(playerId) {
   const qualifyingGames = qualifyingGamesForPlayer(playerId);
   const sorted = [...qualifyingGames].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
@@ -5998,7 +7042,176 @@ function computeTwoWayTrend(playerId) {
   return { points, seasonAvg };
 }
 
+function renderTwoWayTrendChart(playerId) {
+  const { points, seasonAvg } = computeTwoWayTrend(playerId);
+  const leagueAvg = leagueAvgOfPlayerTrend(computeTwoWayTrend);
+  renderTrendLineChart("playerTwoWayTrend", points, seasonAvg, "Two-Way/20", leagueAvg);
+}
+
 const TREND_MIN_POINTS = 5;
+
+const pctOrNull = (num, den) => den > 0 ? (num / den) * 100 : null;
+
+const shotPoints = sh => 2 * sh.fgm + sh.tpm + sh.ftm;
+
+const PLAYER_TREND_STATS = [
+  { key: "tovPct", label: "TOV%", unit: "%", decimals: 0, minN: 4, lowerIsBetter: true,
+    about: "How often this player turns the ball over relative to their shot attempts: live-ball TOV ÷ (FGA + 0.44×FTA + live-ball TOV). A missed shot ruled out of bounds isn't counted here. Lower is better.",
+    compute: (pid, games) => {
+      let tov = 0, fga = 0, fta = 0;
+      games.forEach(g => {
+        const s = g.stats.find(st => st.playerId === pid); if (s) tov += s.liveBallTov;
+        const sh = shootingStats(g, pid); fga += sh.fga; fta += sh.fta;
+      });
+      const den = fga + 0.44 * fta + tov;
+      return { value: pctOrNull(tov, den), n: den };
+    } },
+  { key: "wideOpen", label: "Wide-Open Shooting TS%", unit: "%", decimals: 0, minN: 2,
+    about: "True Shooting % on shots with no defender/open. Needs at least 2 wide-open shots in a game to count that game.",
+    compute: (pid, games) => {
+      let pts = 0, fga = 0;
+      games.forEach(g => g.scoringEvents.forEach(ev => {
+        if (ev.scorerId !== pid || (ev.points !== 2 && ev.points !== 3)) return;
+        if (ev.defenderIds && ev.defenderIds.length > 0) return;
+        fga++; if (ev.made !== false) pts += ev.points;
+      }));
+      return { value: fga > 0 ? (pts / (2 * fga)) * 100 : null, n: fga };
+    } },
+  { key: "expAgainst", label: "Points Saved vs. Expected (per shot defended)", unit: "pts/shot", decimals: 2, minN: 3,
+    about: "How many fewer points than expected this player allowed per shot they defended, given how hard those shots were. Higher is better. Needs at least 3 defended shots in a game.",
+    compute: (pid, games, ctx) => {
+      let actual = 0, expected = 0, fga = 0;
+      games.forEach(g => g.scoringEvents.forEach(ev => {
+        if ((ev.points !== 2 && ev.points !== 3) || !(ev.defenderIds || []).includes(pid)) return;
+        fga++;
+        actual += ev.made !== false ? ev.points : 0;
+        const zone = ev.shotLocation ? ctx.zonePpa.byZone[shotBand(ev.shotLocation, ev.points)] : null;
+        const x = zone !== null && zone !== undefined ? zone : ctx.zonePpa.overall;
+        if (x !== null && x !== undefined) expected += x;
+      }));
+      return { value: fga > 0 ? (expected - actual) / fga : null, n: fga };
+    } },
+  { key: "oppFg", label: "Opp FG% (shots defended)", unit: "%", decimals: 0, minN: 3, lowerIsBetter: true,
+    about: "How often shots this player was tagged defending went in. Lower is better. Needs at least 3 defended shots in a game.",
+    compute: (pid, games) => {
+      let beaten = 0, stops = 0;
+      games.forEach(g => { const d = gameDefenseStats(g, pid); beaten += d.timesBeaten; stops += d.stops; });
+      return { value: pctOrNull(beaten, beaten + stops), n: beaten + stops };
+    } },
+  { key: "reboundWin", label: "Rebound Battle Win%", unit: "%", decimals: 0, minN: 2,
+    about: "Share of contested rebounds this player came away with. Needs at least 2 contested rebounds in a game.",
+    compute: (pid, games) => {
+      let wins = 0, losses = 0;
+      games.forEach(g => g.scoringEvents.forEach(ev => {
+        if (ev.made !== false || !ev.rebounderId || ev.turnoverEventId) return;
+        const contesters = ev.reboundContesterIds || [];
+        if (contesters.length === 0) return;
+        if (ev.rebounderId === pid) wins++;
+        if (contesters.includes(pid)) losses++;
+      }));
+      return { value: pctOrNull(wins, wins + losses), n: wins + losses };
+    } },
+  { key: "fgPct", label: "FG%", unit: "%", decimals: 0, minN: 4,
+    about: "Field goal percentage. Needs at least 4 attempts in a game.",
+    compute: (pid, games) => {
+      let m = 0, a = 0;
+      games.forEach(g => { const sh = shootingStats(g, pid); m += sh.fgm; a += sh.fga; });
+      return { value: pctOrNull(m, a), n: a };
+    } },
+  { key: "threePct", label: "3PT%", unit: "%", decimals: 0, minN: 3,
+    about: "Three-point percentage. Needs at least 3 attempts in a game.",
+    compute: (pid, games) => {
+      let m = 0, a = 0;
+      games.forEach(g => { const sh = shootingStats(g, pid); m += sh.tpm; a += sh.tpa; });
+      return { value: pctOrNull(m, a), n: a };
+    } },
+  { key: "tsPct", label: "TS%", unit: "%", decimals: 0, minN: 4,
+    about: "True Shooting %: points per shot attempt, counting threes and free throws properly. Needs at least 4 attempts in a game.",
+    compute: (pid, games) => {
+      let pts = 0, fga = 0, fta = 0;
+      games.forEach(g => { const sh = shootingStats(g, pid); pts += shotPoints(sh); fga += sh.fga; fta += sh.fta; });
+      const den = 2 * (fga + 0.44 * fta);
+      return { value: den > 0 ? (pts / den) * 100 : null, n: fga };
+    } },
+  { key: "twoWay", label: "Two-Way/20", unit: "/20", decimals: 1, minN: 0,
+    about: "Offense plus defense rating per 20 combined points, the same number as the Two-Way Trend above.",
+    compute: (pid, games) => ({ value: games.length ? computeRateSummaryForGames(pid, games).twoWayPer20 : null, n: games.length }) },
+  { key: "offRating", label: "Off Rating/20", unit: "/20", decimals: 1, minN: 0,
+    about: "Offense-only rating per 20 combined points.",
+    compute: (pid, games) => ({ value: games.length ? computeRateSummaryForGames(pid, games).offRatingPer20 : null, n: games.length }) },
+  { key: "defRating", label: "Def Rating/20", unit: "/20", decimals: 1, minN: 0,
+    about: "Defense-only rating per 20 combined points.",
+    compute: (pid, games) => {
+      if (!games.length) return { value: null, n: 0 };
+      const r = computeRateSummaryForGames(pid, games);
+      return { value: r.twoWayPer20 - r.offRatingPer20, n: games.length };
+    } },
+  { key: "realContestedOppFg", label: "Real Contested Opp FG%", unit: "%", decimals: 0, minN: 2, lowerIsBetter: true,
+    about: "Opp FG% restricted to shots with a medium or heavy contest level -- a nominally-tagged defender and one who actually challenged the shot aren't the same thing. Needs at least 2 real-contested shots defended in a game.",
+    compute: (pid, games) => {
+      let made = 0, attempts = 0;
+      games.forEach(g => g.scoringEvents.forEach(ev => {
+        if (ev.points !== 2 && ev.points !== 3) return;
+        if (!(ev.defenderIds || []).includes(pid)) return;
+        if (ev.contestLevel !== "medium" && ev.contestLevel !== "heavy") return;
+        attempts++; if (ev.made !== false) made++;
+      }));
+      return { value: pctOrNull(made, attempts), n: attempts };
+    } },
+  { key: "engagementRate", label: "Engagement Rate", unit: "%", decimals: 0, minN: 2,
+    about: "Share of this player's own tagged defensive assignments that are genuinely competitive (medium/heavy) rather than just going through the motions (light). Needs at least 2 tagged assignments in a game.",
+    compute: (pid, games) => {
+      let engaged = 0, tagged = 0;
+      games.forEach(g => g.scoringEvents.forEach(ev => {
+        if (ev.points !== 2 && ev.points !== 3) return;
+        if (!(ev.defenderIds || []).includes(pid)) return;
+        if (ev.contestLevel === "medium" || ev.contestLevel === "heavy") { engaged++; tagged++; }
+        else if (ev.contestLevel === "light") tagged++;
+      }));
+      return { value: pctOrNull(engaged, tagged), n: tagged };
+    } },
+  { key: "avgResistance", label: "Average Resistance Faced", unit: "", decimals: 2, minN: 2,
+    about: "How much real defensive resistance this player faces when they score: none=0/light=1/medium=2/heavy=3, averaged across their own attempts with a contest level reviewed. Needs at least 2 such attempts in a game.",
+    compute: (pid, games) => {
+      let sum = 0, n = 0;
+      games.forEach(g => g.scoringEvents.forEach(ev => {
+        if (ev.scorerId !== pid) return;
+        if (ev.points !== 2 && ev.points !== 3) return;
+        const score = RESISTANCE_LEVEL_SCORE[ev.contestLevel];
+        if (score === undefined) return;
+        sum += score; n++;
+      }));
+      return { value: n > 0 ? sum / n : null, n };
+    } },
+  { key: "shotMakingAdded", label: "Shot-Making Added per Attempt", unit: "pts", decimals: 2, minN: 3,
+    about: "Actual points minus xPTS (league average points-per-attempt for that shot's exact zone x shot type x contest level combo), averaged per attempt -- separates scoring a lot because the shots are easy from scoring efficiently on hard shots. Needs at least 3 attempts in a game.",
+    compute: (pid, games, ctx) => {
+      let attempts = 0, added = 0;
+      games.forEach(g => g.scoringEvents.forEach(ev => {
+        if (ev.scorerId !== pid) return;
+        const x = xptsForShot(ev, ctx.combos, ctx.zonePpa);
+        if (x === null) return;
+        attempts++;
+        added += (ev.made !== false ? ev.points : 0) - x;
+      }));
+      return { value: attempts > 0 ? added / attempts : null, n: attempts };
+    } },
+  { key: "selfInflictedTovPct", label: "Self-Inflicted Turnover %", unit: "%", decimals: 0, minN: 2, lowerIsBetter: true,
+    about: "Share of this player's own tagged live-ball turnovers that were self-inflicted (Bad Pass, Lost Handle, Possession/Decision Error, Drive/Finish Error) rather than a genuine Stripped forced by the defense. Needs at least 2 tagged turnovers in a game.",
+    compute: (pid, games) => {
+      let selfInflicted = 0, tagged = 0;
+      games.forEach(g => g.turnoverEvents.forEach(ev => {
+        if (ev.playerId !== pid) return;
+        if (ev.missEventId) return;
+        if (!ev.turnoverType) return;
+        tagged++;
+        if (SELF_INFLICTED_TURNOVER_TYPES.has(ev.turnoverType)) selfInflicted++;
+      }));
+      return { value: pctOrNull(selfInflicted, tagged), n: tagged };
+    } }
+];
+
+let playerStatTrendKey = "tovPct";
 
 function computePlayerStatTrend(playerId, stat, ctx) {
   const games = [...qualifyingGamesForPlayer(playerId)].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
@@ -6011,6 +7224,100 @@ function computePlayerStatTrend(playerId, stat, ctx) {
   });
   const season = stat.compute(playerId, games, ctx);
   return { points, seasonAvg: season.value === undefined ? null : season.value, excluded };
+}
+
+function renderPlayerStatTrend(playerId) {
+  const select = document.getElementById("playerStatTrendSelect");
+  const chart = document.getElementById("playerStatTrend");
+  const note = document.getElementById("playerStatTrendNote");
+  if (!select || !chart) return;
+  if (select.options.length === 0) {
+    PLAYER_TREND_STATS.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.key;
+      opt.textContent = s.label;
+      select.appendChild(opt);
+    });
+    select.addEventListener("change", () => {
+      playerStatTrendKey = select.value;
+      if (currentPlayerId) renderPlayerStatTrend(currentPlayerId);
+    });
+  }
+  select.value = playerStatTrendKey;
+  const stat = PLAYER_TREND_STATS.find(s => s.key === playerStatTrendKey) || PLAYER_TREND_STATS[0];
+  const ctx = { zonePpa: computeLeagueZonePointsPerAttempt(), combos: computeXptsCombos() };
+  const { points, seasonAvg, excluded } = computePlayerStatTrend(playerId, stat, ctx);
+  const leagueAvg = leagueAvgOfPlayerTrend(pid => ({ seasonAvg: computePlayerStatTrend(pid, stat, ctx).seasonAvg }));
+  const faded = points.length < TREND_MIN_POINTS;
+  renderTrendLineChart("playerStatTrend", points, seasonAvg, stat.unit, leagueAvg, { decimals: stat.decimals, faded });
+  const parts = [stat.about];
+  if (faded && points.length > 0) parts.push(`Only ${points.length} game${points.length === 1 ? "" : "s"} so far, too few to call a trend (the line is faded until there are ${TREND_MIN_POINTS}).`);
+  if (excluded > 0) parts.push(`${excluded} game${excluded === 1 ? " was" : "s were"} left out for too few attempts.`);
+  note.textContent = parts.join(" ");
+}
+
+function renderTrendLineChart(containerId, points, seasonAvg, unitLabel, leagueAvg, opts) {
+  const dec = opts && opts.decimals !== undefined ? opts.decimals : 1;
+  const faded = !!(opts && opts.faded);
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  if (points.length === 0 || seasonAvg === null) {
+    wrap.innerHTML = '<p class="empty-state">Not enough data yet.</p>';
+    return;
+  }
+  const hasLeagueAvg = leagueAvg !== undefined && leagueAvg !== null;
+  const W = 560, H = 220, PAD_L = 40, PAD_R = 16, PAD_T = 16, PAD_B = 34;
+  const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+  const values = [...points.map(p => p.value), seasonAvg];
+  if (hasLeagueAvg) values.push(leagueAvg);
+  const rawMin = Math.min(...values), rawMax = Math.max(...values);
+  const span = Math.max(1, rawMax - rawMin);
+  const yMin = rawMin - span * 0.15;
+  const yMax = rawMax + span * 0.15;
+  const xScale = i => points.length === 1 ? PAD_L + plotW / 2 : PAD_L + (i / (points.length - 1)) * plotW;
+  const yScale = v => PAD_T + plotH - ((v - yMin) / (yMax - yMin || 1)) * plotH;
+
+  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${xScale(i)},${yScale(p.value)}`).join(" ");
+  const dotsSvg = points.map((p, i) => `
+    <circle cx="${xScale(i)}" cy="${yScale(p.value)}" r="3.5" class="ts-line-dot">
+      <title>${escapeHtml(formatDateDisplay(p.date))}: ${p.value.toFixed(dec)} ${escapeHtml(unitLabel)}</title>
+    </circle>
+  `).join("");
+  const labelEvery = Math.max(1, Math.ceil(points.length / 6));
+  const xLabelsSvg = points.map((p, i) => (i % labelEvery !== 0 && i !== points.length - 1) ? "" : `
+    <text x="${xScale(i)}" y="${H - PAD_B + 16}" text-anchor="middle" class="ts-line-axis-label">${escapeHtml(formatDateDisplay(p.date))}</text>
+  `).join("");
+  const seasonY = yScale(seasonAvg);
+  const leagueY = hasLeagueAvg ? yScale(leagueAvg) : null;
+  // Labels default to opposite corners so the two reference lines' text doesn't collide when
+  // they land close together; if they're far enough apart vertically that collision was never a
+  // real risk, both being anchored to the same end still reads fine.
+  const leagueRefSvg = hasLeagueAvg ? `
+      <line x1="${PAD_L}" y1="${leagueY}" x2="${W - PAD_R}" y2="${leagueY}" class="ts-line-ref ts-line-ref-league">
+        <title>League average: ${leagueAvg.toFixed(dec)} ${escapeHtml(unitLabel)}</title>
+      </line>
+      <text x="${PAD_L}" y="${leagueY - 4}" text-anchor="start" class="ts-line-axis-label ts-line-league-label">league avg ${leagueAvg.toFixed(dec)}</text>
+  ` : "";
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="ts-line-svg${faded ? " ts-line-faded" : ""}">
+      <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H - PAD_B}" class="ts-line-axis" />
+      <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" class="ts-line-axis" />
+      <line x1="${PAD_L}" y1="${seasonY}" x2="${W - PAD_R}" y2="${seasonY}" class="ts-line-ref">
+        <title>Season average: ${seasonAvg.toFixed(dec)} ${escapeHtml(unitLabel)}</title>
+      </line>
+      <text x="${W - PAD_R}" y="${seasonY - 4}" text-anchor="end" class="ts-line-axis-label">season avg ${seasonAvg.toFixed(dec)}</text>
+      ${leagueRefSvg}
+      <path d="${pathD}" class="ts-line-path" />
+      ${dotsSvg}
+      ${xLabelsSvg}
+    </svg>
+  `;
+}
+
+function leagueAvgOfPlayerTrend(trendFn) {
+  const vals = state.players.map(p => trendFn(p.id).seasonAvg).filter(v => v !== null && v !== undefined);
+  return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 }
 
 function computeTeammateQualityTrend(playerId) {
@@ -6032,6 +7339,12 @@ function computeTeammateQualityTrend(playerId) {
   return { points, seasonAvg: countAppearances > 0 ? sumQuality / countAppearances : null };
 }
 
+function renderTeammateQualityChart(playerId) {
+  const { points, seasonAvg } = computeTeammateQualityTrend(playerId);
+  const leagueAvg = leagueAvgOfPlayerTrend(computeTeammateQualityTrend);
+  renderTrendLineChart("playerTeammateQuality", points, seasonAvg, "Off Rating/20", leagueAvg);
+}
+
 function computeDefensiveMatchupDifficultyTrend(playerId) {
   const board = computeLeaderboard();
   const offRtgById = {};
@@ -6051,6 +7364,35 @@ function computeDefensiveMatchupDifficultyTrend(playerId) {
     countShots += qualities.length;
   });
   return { points, seasonAvg: countShots > 0 ? sumQuality / countShots : null };
+}
+
+function renderDefensiveMatchupDifficultyChart(playerId) {
+  const { points, seasonAvg } = computeDefensiveMatchupDifficultyTrend(playerId);
+  const leagueAvg = leagueAvgOfPlayerTrend(computeDefensiveMatchupDifficultyTrend);
+  renderTrendLineChart("playerDefensiveMatchupDifficulty", points, seasonAvg, "Opp Off Rating/20", leagueAvg);
+}
+
+function renderPlayerDefensiveLoadPanel(playerId) {
+  const wrap = document.getElementById("defensiveLoad");
+  if (!wrap) return;
+  const board = computeLeaderboard();
+  const row = board.find(r => r.player.id === playerId);
+  const load = row ? row.defensiveLoad : null;
+  if (!row || load === null) {
+    wrap.innerHTML = `<p class="empty-state">Not enough tagged defensive volume yet across enough games to show this (needs ${DEFENSIVE_LOAD_MIN_SHARE}+ expected tagged possessions season-to-date).</p>`;
+    return;
+  }
+  const oppFgPct = pct(row.defense.timesBeaten, row.defense.timesBeaten + row.defense.stops);
+  const defRtg = defensiveRating(row.rate, row.rateDefense);
+  const leagueAvgOppFg = computeLeagueAvgOppFg(board);
+  const xpa = row.expectedPointsAgainst;
+  const xpaText = xpa
+    ? `, Pts Allowed Under Exp: ${xpa.pointsAllowedUnderExpected >= 0 ? "+" : ""}${xpa.pointsAllowedUnderExpected.toFixed(1)}`
+    : "";
+  wrap.innerHTML = `
+    <p class="score-display">${load.toFixed(2)}x <span class="hint" style="margin:0">(Opp FG%: ${formatPct(oppFgPct)}, Def Rating/20: ${defRtg.toFixed(1)}${xpaText})</span></p>
+    <p class="hint" style="margin:8px 0 0">${escapeHtml(describeDefensiveLoad(load, oppFgPct, leagueAvgOppFg))}</p>
+  `;
 }
 
 function computeOffensiveMatchupDifficultyTrend(playerId) {
@@ -6077,6 +7419,12 @@ function computeOffensiveMatchupDifficultyTrend(playerId) {
     countTags += qualities.length;
   });
   return { points, seasonAvg: countTags > 0 ? sumQuality / countTags : null };
+}
+
+function renderOffensiveMatchupDifficultyChart(playerId) {
+  const { points, seasonAvg } = computeOffensiveMatchupDifficultyTrend(playerId);
+  const leagueAvg = leagueAvgOfPlayerTrend(computeOffensiveMatchupDifficultyTrend);
+  renderTrendLineChart("playerOffensiveMatchupDifficulty", points, seasonAvg, "Opp Def Rating/20", leagueAvg);
 }
 
 function computeAssistedByBreakdown(playerId) {
@@ -6106,6 +7454,44 @@ function computeAssistedByBreakdown(playerId) {
     fgm, assistedFgm, assistedPct: pct(assistedFgm, fgm), assisters,
     avgAssisterQuality: weightedCount > 0 ? weightedSum / weightedCount : null
   };
+}
+
+function renderAssistedByPanel(playerId) {
+  const wrap = document.getElementById("playerAssistedBy");
+  if (!wrap) return;
+  const { fgm, assistedFgm, assistedPct, assisters, avgAssisterQuality } = computeAssistedByBreakdown(playerId);
+  if (fgm === 0) {
+    wrap.innerHTML = '<p class="empty-state">No field goals logged yet.</p>';
+    return;
+  }
+  // League baselines for both headline numbers, same "is this actually high or low" context the
+  // trend charts' own league-average reference line gives — computed from every other player's
+  // own breakdown rather than a single leaguewide pool, so a player who barely shoots doesn't
+  // quietly dominate the average the way pooling every make league-wide would let them.
+  const otherBreakdowns = state.players.filter(p => p.id !== playerId).map(p => computeAssistedByBreakdown(p.id)).filter(b => b.fgm > 0);
+  const leagueAvgAssistedPct = otherBreakdowns.length > 0
+    ? otherBreakdowns.reduce((sum, b) => sum + b.assistedPct, 0) / otherBreakdowns.length
+    : null;
+  const leagueAvgAssisterQuality = (() => {
+    const vals = otherBreakdowns.map(b => b.avgAssisterQuality).filter(v => v !== null);
+    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  })();
+  const assistedPctNote = leagueAvgAssistedPct !== null ? ` (league average: ${formatPct(leagueAvgAssistedPct)})` : "";
+  const qualityNote = avgAssisterQuality !== null
+    ? `, average assister quality: ${avgAssisterQuality.toFixed(1)} Off Rating/20${leagueAvgAssisterQuality !== null ? ` (league average: ${leagueAvgAssisterQuality.toFixed(1)})` : ""}`
+    : "";
+  const rows = assisters.length === 0
+    ? '<tr><td colspan="3" class="empty-state">No assisted makes yet.</td></tr>'
+    : assisters.map(a => `<tr><td>${playerLink(a.player.id, a.player.name)}</td><td>${a.assists}</td><td>${a.offRatingPer20 !== null ? a.offRatingPer20.toFixed(1) : "—"}</td></tr>`).join("");
+  wrap.innerHTML = `
+    <p class="hint" style="margin:0 0 10px">${assistedFgm} of ${fgm} makes were assisted (${formatPct(assistedPct)}${assistedPctNote})${qualityNote}.</p>
+    <div class="table-scroll">
+      <table class="matchup-table">
+        <thead><tr><th>Teammate</th><th>Assists</th><th>Their Off Rating/20</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 const LEADERBOARD_COLUMNS = [
@@ -6226,6 +7612,61 @@ const LEADERBOARD_COLUMNS = [
   { key: "last5", label: "Last 5", accessor: r => r.last5OffRatingPer20, display: r => r.last5Gp > 0 ? `${r.last5Trend} ${r.last5OffRatingPer20.toFixed(1)}` : "—", tooltip: "Off Rating/20 over their last 5 games with real shots logged (fewer if they haven't played 5 yet). ▲/▼ shows whether that's above or below their season Off Rating/20; within ±0.5 counts as flat (–)." }
 ];
 
+let leaderboardSort = { key: "twoway20", dir: "desc" };
+
+const SHOW_ADVANCED_COLS_KEY = "poolLeagueShowAdvancedCols";
+
+let showAdvancedCols = localStorage.getItem(SHOW_ADVANCED_COLS_KEY) === "true";
+
+function visibleLeaderboardColumns() {
+  return LEADERBOARD_COLUMNS.filter(c => !c.advanced || showAdvancedCols);
+}
+
+function updateAdvancedColsBtnLabel() {
+  const input = document.getElementById("toggleAdvancedColsBtn");
+  if (input) input.checked = showAdvancedCols;
+}
+
+function updateImbalancedGamesBtnLabel() {
+  const input = document.getElementById("toggleImbalancedGamesBtn");
+  if (input) input.checked = includeImbalancedGames;
+}
+
+function updateOutlierGamesBtnLabel() {
+  const input = document.getElementById("toggleOutlierGamesBtn");
+  if (input) input.checked = includeOutlierGames;
+}
+
+const PAST_SEASONS_TOGGLE_BTN_IDS = ["togglePastSeasonsBtn", "togglePastSeasonsBtnPlayer"];
+
+function updatePastSeasonsBtnLabel() {
+  PAST_SEASONS_TOGGLE_BTN_IDS.forEach(id => {
+    const input = document.getElementById(id);
+    if (!input) return;
+    if (!state.currentSeasonStartedAt) {
+      input.checked = false;
+      input.disabled = true;
+      input.title = "No season has been closed yet (Export → Data Management → Start New Season). Nothing archived to include.";
+      return;
+    }
+    input.disabled = false;
+    input.title = "";
+    input.checked = includePastSeasons;
+  });
+}
+
+function togglePastSeasonsInclusion(e) {
+  includePastSeasons = e.target.checked;
+  localStorage.setItem(INCLUDE_PAST_SEASONS_KEY, String(includePastSeasons));
+  updatePastSeasonsBtnLabel();
+  invalidateComputedCaches();
+  // isQualifyingGame() feeds both views off the same flag, so both need a fresh render — cheap
+  // even for the one not currently on screen, and keeps it correct whenever the user switches
+  // back rather than re-deriving on tab switch.
+  renderLeaderboard();
+  if (currentPlayerId) renderPlayerDetail();
+}
+
 function compareForSort(a, b, dir) {
   if (a === null && b === null) return 0;
   if (a === null) return 1;
@@ -6253,6 +7694,172 @@ function renderSortableHeader(headerRowEl, columns, sortState, onChange) {
     });
     headerRowEl.appendChild(th);
   });
+}
+
+function renderLeaderboardHeader() {
+  const headerRow = document.getElementById("leaderboardHeaderRow");
+  headerRow.innerHTML = "";
+  visibleLeaderboardColumns().forEach(col => {
+    const th = document.createElement("th");
+    th.className = col.key === "player" ? "sortable-th sticky-col" : "sortable-th";
+    if (col.tooltip) th.title = col.tooltip;
+    const active = leaderboardSort.key === col.key;
+    th.textContent = col.label + (active ? (leaderboardSort.dir === "desc" ? " ▼" : " ▲") : "");
+    if (active) th.classList.add("sorted");
+    th.addEventListener("click", () => {
+      if (leaderboardSort.key === col.key) {
+        leaderboardSort.dir = leaderboardSort.dir === "desc" ? "asc" : "desc";
+      } else {
+        leaderboardSort = { key: col.key, dir: "desc" };
+      }
+      renderLeaderboard();
+    });
+    headerRow.appendChild(th);
+  });
+}
+
+function renderLeaderboard() {
+  updateAdvancedColsBtnLabel();
+  updateImbalancedGamesBtnLabel();
+  updatePastSeasonsBtnLabel();
+  updateOutlierGamesBtnLabel();
+  renderLeaderboardHighlights();
+  renderLeaderboardHeader();
+  renderLeagueSeasonStandings();
+  renderConsistencyStandings();
+  renderAwardsVsStats();
+  renderPowerRankingVsPerformance();
+  renderQuadrantChart();
+  renderVolumeEfficiencyChart();
+  renderPlayStyleClusters();
+  renderTwoWayRankChart();
+  renderLeagueHeatmap();
+  renderShotZonePanel();
+  renderDefensiveShotZonePanel();
+  renderShotTypePanel();
+  renderDeepShotCheckPanel();
+  renderMoveCheckPanel();
+  renderShotTypeContestPanel();
+  appendShotTypeExclusionNote(["shotTypePanel", "deepShotCheckPanel", "moveCheckPanel", "shotTypeContestPanel"]);
+  renderCalibrationPanel();
+  renderLeagueDirectionSplits();
+  renderLeagueTsByZoneChart();
+  renderWideOpenShootingPanel();
+  renderShotMakingAddedPanel();
+  renderShotMakingAddedChart();
+  renderLeagueTsChart();
+  renderMatchupGrid();
+  renderPassingChemistrySelects();
+  renderPassingChemistryPair();
+  renderPassingChemistryGrid();
+  renderOppAdjReboundPanel();
+  renderReboundBattleRecordPanel();
+  renderReboundBattleGridPanel();
+  renderTeammateLiftMatrix();
+  renderTeammateContextPanel();
+  renderAssistSynergy();
+  renderOutOfBoundsPanel();
+  renderSecondChancePanel();
+  renderSecondChanceAllowedPanel();
+  renderPointsOffTakeawaysPanel();
+  renderTurnoverTypeBreakdownPanel();
+  renderTovRecomputedPanel();
+  renderSelfInflictedVsForcedChart();
+  renderTurnoverTypeMixPanel();
+  renderForcedTurnoverCreditPanel();
+  renderTurnoverVsShotTypePanel();
+  renderTurnoverTypeOverSeasonChart();
+  renderSelfCreationFullPanel();
+  renderGameWinningBucketsPanel();
+  renderDefensiveLoadPanel();
+  renderContestEngagementPanel();
+  renderShooterQualityDefPanel();
+  renderDefenderQualityOffPanel();
+  renderWinSharesModelPanel();
+  renderCloseGameShootingPanel();
+  renderCloseGameDefensePanel();
+  renderComebackTracker();
+  renderSeasonRecap();
+  renderAwardRace();
+  renderSeasonTimeline();
+  renderRivalries();
+  renderRealHeadToHead();
+  renderRealRivalryMatrix();
+  renderUpsetTracker();
+  renderPartyRecap();
+  renderTrophyCase();
+  renderIronMan();
+  renderIndividualGamePerformances();
+  renderPlaySearch();
+  renderLeagueHighlights();
+  renderPlayerComparisonSelects();
+  renderPlayerComparison();
+  const body = document.getElementById("leaderboardBody");
+  body.innerHTML = "";
+  // Players with no games yet just clutter the table with a row of dashes.
+  const rows = computeLeaderboard().filter(r => r.gp > 0);
+  const cols = visibleLeaderboardColumns();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="${cols.length}" class="empty-state">No games with players yet.</td></tr>`;
+    return;
+  }
+  const sortCol = LEADERBOARD_COLUMNS.find(c => c.key === leaderboardSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), leaderboardSort.dir));
+
+  // Highlights whoever's leading each column this season — reuses the same "which direction is
+  // better" data Player Comparison already established (COMPARISON_NEUTRAL_KEYS/
+  // COMPARISON_LOWER_IS_BETTER_KEYS below), so a column reads as a leaderboard the same way in
+  // both places rather than inventing a second opinion on which stats even have a "better."
+  // "last5" is excluded too — its own display is a trend arrow, not a plain number, same
+  // reasoning Player Comparison uses to skip it.
+  const columnBest = {};
+  const columnWorst = {};
+  cols.forEach(col => {
+    if (col.key === "player" || col.key === "last5" || COMPARISON_NEUTRAL_KEYS.has(col.key)) return;
+    const values = rows.map(r => col.accessor(r)).filter(v => typeof v === "number" && !Number.isNaN(v));
+    if (values.length === 0) return;
+    const lowerBetter = COMPARISON_LOWER_IS_BETTER_KEYS.has(col.key);
+    const best = lowerBetter ? Math.min(...values) : Math.max(...values);
+    const worst = lowerBetter ? Math.max(...values) : Math.min(...values);
+    columnBest[col.key] = best;
+    // Only mark a worst when it's actually distinct from the best — with every value tied (or
+    // just one row), the same cell being both "leader" and "last place" would be confusing
+    // rather than informative.
+    if (worst !== best) columnWorst[col.key] = worst;
+  });
+
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    cols.forEach(col => {
+      const td = document.createElement("td");
+      if (col.key === "player") {
+        // sticky-col's own solid background already wins over sorted-col's tint here (same
+        // specificity, declared later), so there's nothing to add when player is the sort key.
+        td.className = "sticky-col";
+        const nameBtn = document.createElement("button");
+        nameBtn.className = "icon-btn player-name-btn";
+        nameBtn.style.color = "var(--accent)";
+        nameBtn.style.fontWeight = "700";
+        nameBtn.innerHTML = `${renderPlayerAvatar(r.player)}${escapeHtml(r.player.name)}`;
+        nameBtn.addEventListener("click", () => openPlayerDetail(r.player.id));
+        td.appendChild(nameBtn);
+      } else {
+        td.className = col.key === leaderboardSort.key ? "num-cell sorted-col" : "num-cell";
+        td.textContent = col.display ? col.display(r) : col.accessor(r);
+        const value = col.accessor(r);
+        if (columnBest[col.key] !== undefined && value === columnBest[col.key]) {
+          td.classList.add("leaderboard-leader-cell");
+          td.title = "Season leader in this column";
+        } else if (columnWorst[col.key] !== undefined && value === columnWorst[col.key]) {
+          td.classList.add("leaderboard-worst-cell");
+          td.title = "Season worst in this column";
+        }
+      }
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+  renderLeaderboardSectionTeasers();
 }
 
 const COMPARISON_NEUTRAL_KEYS = new Set(["gp", "shotpct", "astpct", "orebpct", "drebpct", "trebpct"]);
@@ -6315,6 +7922,72 @@ function renderPlayerComparison() {
   `;
 }
 
+let currentPlayerId = null;
+
+function renderPlayerDetail() {
+  const player = state.players.find(p => p.id === currentPlayerId);
+  if (!player) return;
+
+  const row = computeLeaderboard().find(r => r.player.id === currentPlayerId);
+  document.getElementById("playerDetailTitle").innerHTML = `${renderPlayerAvatar(player, "large", playerAvatarRingClass(player.id))}<span>${escapeHtml(player.name)}</span>`;
+  renderPlayerRankPill(player.id);
+  document.getElementById("playerDetailSummary").textContent = row
+    ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""} · ${row.rate.pts.toFixed(1)} PTS/20 · ${row.offRatingPer20.toFixed(1)} Off Rating/20 · ${row.twoWayPer20.toFixed(1)} Two-Way/20`
+    : "No games yet";
+  const shareBtn = document.getElementById("sharePlayerBtn");
+  shareBtn.onclick = () => shareOrCopy({
+    title: "Poolean Intel",
+    text: row
+      ? `${player.name}: ${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}, ${row.twoWayPer20.toFixed(1)} Two-Way/20`
+      : player.name,
+    url: `${location.origin}${location.pathname}#player=${encodeURIComponent(player.id)}`
+  }, shareBtn);
+  const cardBtn = document.getElementById("downloadCardBtn");
+  if (cardBtn) cardBtn.onclick = () => downloadTradingCard(player.id);
+
+  // Render order follows the panels' actual top-to-bottom order in index.html — tips first, then
+  // past-season context, then season overview, then offense detail (shots, then who defended
+  // them), then defense detail (same shape, mirrored), then team context, then media. Keep the
+  // two in sync.
+  renderPlayerLeagueRank(player.id);
+  renderPlayerAwardBadges(player.id);
+  renderPlayerPowerRanking(player.id);
+  renderPlayerRealSeasons(player.id);
+  renderPlayerMilestones(player.id);
+  renderPlayerRealRecord(player.id);
+  renderPlayerRealPartners(player.id);
+  renderPlayerStreaks(player.id);
+  renderPlayerAttendanceStreak(player.id);
+  renderPlayerTips(player.id);
+  renderNotableMatchups(player.id);
+  renderSeasonHistoryPanel(player.id);
+  renderFlakeStatsPanel(player.id);
+  renderTwoWayTrendChart(player.id);
+  renderPlayerStatTrend(player.id);
+  renderPlayerShotTypes(player.id);
+  renderPlayerShotArc(player.id);
+  renderPlayerGameLog(player.id);
+  renderPlayerShotChart(player.id);
+  renderPlayerHeatmap(player.id);
+  renderHeadToHead(player.id); // fills both the As-Scorer and As-Defender tables in one pass
+  renderPlayerDefensiveHeatmap(player.id);
+  renderTeammateSynergy(player.id);
+  renderTeammateQualityChart(player.id);
+  renderAssistedByPanel(player.id);
+  renderOffensiveMatchupDifficultyChart(player.id);
+  renderDefensiveMatchupDifficultyChart(player.id);
+  renderPlayerDefensiveLoadPanel(player.id);
+  renderPlayerReel(player.id);
+  renderAreasToWorkOn(player.id);
+  renderPlayerContestQualityEngagement(player.id);
+  renderPlayerResistanceShotMaking(player.id);
+  renderPlayerSelfCreationPanel(player.id);
+  renderPlayerPassingPanel(player.id);
+  renderPlayerTurnoverMixPanel(player.id);
+  renderShootingByDirection(player.id);
+  renderPlayerSectionTeasers(player.id);
+}
+
 const SHOOTING_BY_DIRECTION_MIN_FGA = 5;
 
 function computeShootingByDirection(playerId) {
@@ -6333,6 +8006,74 @@ function computeShootingByDirection(playerId) {
     fga: t.fga, fgPct: pct(t.fgm, t.fga), tsPct: trueShootingPct(t.pts, t.fga, t.fta),
   };
   return { left: build(totals.left), right: build(totals.right) };
+}
+
+function renderShootingByDirection(playerId) {
+  const wrap = document.getElementById("playerShootingByDirection");
+  if (!wrap) return;
+  const panel = wrap.closest(".panel");
+  const { left, right } = computeShootingByDirection(playerId);
+  // Almost no historical game has "Where is Team A shooting?" set, so this panel is an empty
+  // state for nearly every player -- hidden until there's real data instead of adding to the
+  // wall of empty-state text on the page.
+  if (!left && !right) {
+    if (panel) panel.style.display = "none";
+    return;
+  }
+  if (panel) panel.style.display = "";
+  const row = (label, t) => t
+    ? `<tr><td>${label}</td><td>${t.fga}</td><td>${formatPct(t.fgPct)}</td><td>${formatPct(t.tsPct)}</td></tr>`
+    : `<tr><td>${label}</td><td colspan="3" class="hint">Not enough attempts yet (${SHOOTING_BY_DIRECTION_MIN_FGA}+ needed)</td></tr>`;
+  let diffNote = "";
+  if (left && right) {
+    const diff = left.fgPct - right.fgPct;
+    if (Math.abs(diff) >= 8) {
+      const better = diff > 0 ? directionLabel("left") : directionLabel("right");
+      diffNote = `<p class="hint" style="margin:8px 0 0">${Math.abs(diff)} points better shooting toward the ${escapeHtml(better.toLowerCase())} so far, worth watching if it holds up as more games get set.</p>`;
+    }
+  }
+  wrap.innerHTML = `
+    <table class="matchup-table">
+      <thead><tr><th>Direction</th><th>FGA</th><th>FG%</th><th>TS%</th></tr></thead>
+      <tbody>${row(directionLabel("left"), left)}${row(directionLabel("right"), right)}</tbody>
+    </table>
+    ${diffNote}
+  `;
+}
+
+function renderPlayerReel(playerId) {
+  const body = document.getElementById("playerReelBody");
+  const clips = [];
+  state.games.forEach(g => {
+    g.plays.forEach(play => {
+      if (play.playerId === playerId) clips.push({ ...play, gameId: g.id, gameDate: g.date });
+    });
+  });
+  clips.sort((a, b) => (b.gameDate || "").localeCompare(a.gameDate || ""));
+
+  if (clips.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" class="empty-state">No clips tagged to this player yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = "";
+  clips.forEach(clip => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${formatDateDisplay(clip.gameDate)}</td>
+      <td>${clip.type === "highlight" ? `<span class="badge badge-highlight">${icon("flame")} Highlight</span>` : `<span class="badge badge-lowlight">${icon("lowlight")} Lowlight</span>`}</td>
+      <td>${formatTime(clip.start)}–${formatTime(clip.end)}</td>
+      <td>${escapeHtml(clip.note || "")}</td>
+    `;
+    const tdBtn = document.createElement("td");
+    const goBtn = document.createElement("button");
+    goBtn.type = "button";
+    goBtn.className = "secondary-btn";
+    goBtn.textContent = "▶ Jump";
+    goBtn.addEventListener("click", () => openGameAndSeek(clip.gameId, clip.start));
+    tdBtn.appendChild(goBtn);
+    tr.appendChild(tdBtn);
+    body.appendChild(tr);
+  });
 }
 
 const PLAY_SEARCH_TYPES = [
@@ -6742,6 +8483,95 @@ const PLAYER_GAME_LOG_COLUMNS = [
   { key: "twoway", label: "Two-Way", accessor: r => r.twoWay }
 ];
 
+let playerGameLogSort = { key: "date", dir: "desc" };
+
+function turnoverTypeDetailForGame(game, playerId) {
+  const evs = game.turnoverEvents.filter(ev => ev.playerId === playerId);
+  if (evs.length === 0) return "—";
+  const counts = {};
+  let oob = 0, untagged = 0;
+  evs.forEach(ev => {
+    if (ev.missEventId) { oob++; return; }
+    if (!ev.turnoverType) { untagged++; return; }
+    counts[ev.turnoverType] = (counts[ev.turnoverType] || 0) + 1;
+  });
+  const parts = Object.entries(counts).map(([key, n]) => `${n} ${turnoverTypeLabel(key).toLowerCase()}`);
+  if (oob > 0) parts.push(`${oob} OOB`);
+  if (untagged > 0) parts.push(`${untagged} untagged`);
+  return `${evs.length} TOV${parts.length > 0 ? `: ${parts.join(", ")}` : ""}`;
+}
+
+function renderPlayerGameLog(playerId) {
+  const headerRow = document.getElementById("playerGameLogHeaderRow");
+  const body = document.getElementById("playerGameLogBody");
+  renderSortableHeader(headerRow, PLAYER_GAME_LOG_COLUMNS, playerGameLogSort, () => renderPlayerGameLog(playerId));
+  body.innerHTML = "";
+  const games = state.games.filter(g => g.teamA.includes(playerId) || g.teamB.includes(playerId));
+  if (games.length === 0) {
+    body.innerHTML = '<tr><td colspan="23" class="empty-state">No games recorded for this player yet.</td></tr>';
+    return;
+  }
+  const rows = games.map(game => {
+    const s = getOrCreatePlayerStats(game, playerId);
+    const sh = shootingStats(game, playerId);
+    const def = gameDefenseStats(game, playerId);
+    return { game, s, sh, def, result: playerGameResult(game, playerId), offRtg: offensiveRating(s, sh), twoWay: twoWayScore(s, sh, def) };
+  });
+  // Best/worst individual game by Two-Way score, same 🔥/👎 language as the Games list's own
+  // best/worst-this-game badges — only among games with real shots logged, so an unreviewed
+  // 0-everything game can never wrongly "win" either title, and only when there are at least 2
+  // reviewed games (with just 1, best and worst would trivially be the same game).
+  const reviewed = rows.filter(r => r.game.scoringEvents.length > 0 && !r.game.stoppedEarly);
+  let bestGameId = null, worstGameId = null;
+  if (reviewed.length >= 2) {
+    bestGameId = reviewed.reduce((a, b) => b.twoWay > a.twoWay ? b : a).game.id;
+    worstGameId = reviewed.reduce((a, b) => b.twoWay < a.twoWay ? b : a).game.id;
+    if (worstGameId === bestGameId) worstGameId = null;
+  }
+  const sortCol = PLAYER_GAME_LOG_COLUMNS.find(c => c.key === playerGameLogSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), playerGameLogSort.dir));
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    const twoWayBadge = r.game.id === bestGameId
+      ? ` <span class="badge badge-highlight" title="Best individual game this season by Two-Way score.">${icon("flame")}</span>`
+      : r.game.id === worstGameId
+        ? ` <span class="badge badge-lowlight" title="Worst individual game this season by Two-Way score.">${icon("lowlight")}</span>`
+        : "";
+    const stoppedEarlyBadge = r.game.stoppedEarly
+      ? ` <span class="badge badge-lowlight" title="This game ended early. Not comparable to a complete game -- excluded from Best/Worst Games, Power Ranking vs. Performance, Shot Attempt Differential, Pace/PPP, and Win Shares.">${icon("stop")}</span>`
+      : "";
+    tr.innerHTML = `
+      <td><button type="button" class="icon-btn game-log-date-btn" data-game-id="${r.game.id}" style="padding:0;font-weight:600;color:var(--accent)">${formatDateDisplay(r.game.date)}</button>${stoppedEarlyBadge}</td>
+      <td>${r.result || "—"}</td>
+      <td>${r.s.pts}</td>
+      <td>${formatShootingSplit(r.sh.fgm, r.sh.fga)}</td>
+      <td>${formatShootingSplit(r.sh.tpm, r.sh.tpa)}</td>
+      <td>${formatShootingSplit(r.sh.ftm, r.sh.fta)}</td>
+      <td>${formatPct(effectiveFgPct(r.sh.fgm, r.sh.tpm, r.sh.fga))}</td>
+      <td>${formatPct(trueShootingPct(r.s.pts, r.sh.fga, r.sh.fta))}</td>
+      <td>${r.s.oreb}</td>
+      <td>${r.s.dreb}</td>
+      <td>${r.s.ast}</td>
+      <td>${r.s.stl}</td>
+      <td>${r.s.blk}</td>
+      <td>${r.s.tov}</td>
+      <td>${escapeHtml(turnoverTypeDetailForGame(r.game, playerId))}</td>
+      <td>${formatAstTov(r.s.ast, r.s.liveBallTov)}</td>
+      <td>${foulCellHtml(r.s.pf)}</td>
+      <td>${r.def.ptsAllowed}</td>
+      <td>${formatPct(r.def.oppFgPct)}</td>
+      <td>${r.def.timesBeaten}</td>
+      <td>${r.def.stops}</td>
+      <td>${r.offRtg.toFixed(1)}</td>
+      <td>${r.twoWay.toFixed(1)}${twoWayBadge}</td>
+    `;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll(".game-log-date-btn").forEach(btn => {
+    btn.addEventListener("click", () => openGame(btn.dataset.gameId));
+  });
+}
+
 function accumulateHeadToHeadFg(matchEvent, keysFor) {
   const totals = {}; // key -> { fgm, fga }
   state.games.filter(isQualifyingGame).forEach(g => {
@@ -6813,17 +8643,71 @@ function computeNotableMatchups(onlyPlayerId) {
   return rows;
 }
 
+function renderNotableMatchups(playerId) {
+  const wrap = document.getElementById("playerNotableMatchups");
+  if (!wrap) return;
+  const rows = computeNotableMatchups(playerId);
+  if (rows.length === 0) {
+    wrap.innerHTML = `<p class="empty-state">No matchup of theirs yet has both ${NOTABLE_MATCHUP_MIN_FGA}+ attempts and a real (${NOTABLE_MATCHUP_MIN_DEVIATION}+ point) swing from the scorer's own overall FG%.</p>`;
+    return;
+  }
+  wrap.innerHTML = `<ul class="notable-matchups-list">${rows.map(r => {
+    const suppressed = r.deviation < 0;
+    const iconHtml = suppressed ? icon("warning") : icon("check");
+    const verb = suppressed ? "is being held to" : "is shooting";
+    const compare = suppressed ? "under" : "above";
+    const games = gamesForMatchup(r.scorer.id, r.defender.id);
+    const watchLinks = watchFilmLinksHtml(games);
+    return `<li>
+      <span class="player-tip-icon">${iconHtml}</span>
+      <span><button type="button" class="icon-btn notable-matchup-player-btn" data-player-id="${r.scorer.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.scorer.name)}</button> ${verb} ${formatPct(r.fgPct)} against
+      <button type="button" class="icon-btn notable-matchup-player-btn" data-player-id="${r.defender.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.defender.name)}</button>
+      (${r.fgm}/${r.fga}), ${Math.abs(r.deviation).toFixed(0)} points ${compare} their own ${formatPct(r.ownFgPct)} overall.${watchLinks}</span>
+    </li>`;
+  }).join("")}</ul>`;
+  wrap.querySelectorAll(".notable-matchup-player-btn").forEach(btn => {
+    btn.addEventListener("click", () => openPlayerDetail(btn.dataset.playerId));
+  });
+  wireWatchFilmButtons(wrap);
+}
+
 const H2H_SCORER_COLUMNS = [
   { key: "defender", label: "Defender", accessor: r => r.defender ? r.defender.name : "No defender" },
   { key: "fg", label: "FG", accessor: r => r.fga },
   { key: "fgpct", label: "FG%", accessor: r => pct(r.fgm, r.fga) }
 ];
 
+let h2hScorerSort = { key: "fg", dir: "desc" };
+
 const H2H_DEFENDER_COLUMNS = [
   { key: "scorer", label: "Scorer", accessor: r => r.scorer ? r.scorer.name : "?" },
   { key: "fg", label: "FG Allowed", accessor: r => r.fga },
   { key: "fgpct", label: "FG% Allowed", accessor: r => pct(r.fgm, r.fga) }
 ];
+
+let h2hDefenderSort = { key: "fg", dir: "desc" };
+
+function renderHeadToHead(playerId) {
+  const scorerHeaderRow = document.getElementById("h2hScorerHeaderRow");
+  const scorerBody = document.getElementById("h2hScorerBody");
+  renderSortableHeader(scorerHeaderRow, H2H_SCORER_COLUMNS, h2hScorerSort, () => renderHeadToHead(playerId));
+  const scorerRows = headToHeadAsScorer(playerId).map(r => ({ ...r, defender: r.defenderId ? state.players.find(p => p.id === r.defenderId) : null }));
+  const scorerSortCol = H2H_SCORER_COLUMNS.find(c => c.key === h2hScorerSort.key);
+  scorerRows.sort((a, b) => compareForSort(scorerSortCol.accessor(a), scorerSortCol.accessor(b), h2hScorerSort.dir));
+  scorerBody.innerHTML = scorerRows.length === 0
+    ? '<tr><td colspan="3" class="empty-state">No tagged shots yet.</td></tr>'
+    : scorerRows.map(r => `<tr><td>${r.defender ? playerLink(r.defender.id, r.defender.name) : "No defender"}</td><td>${formatShootingSplit(r.fgm, r.fga)}</td><td>${formatPct(pct(r.fgm, r.fga))}</td></tr>`).join("");
+
+  const defenderHeaderRow = document.getElementById("h2hDefenderHeaderRow");
+  const defenderBody = document.getElementById("h2hDefenderBody");
+  renderSortableHeader(defenderHeaderRow, H2H_DEFENDER_COLUMNS, h2hDefenderSort, () => renderHeadToHead(playerId));
+  const defenderRows = headToHeadAsDefender(playerId).map(r => ({ ...r, scorer: state.players.find(p => p.id === r.scorerId) }));
+  const defenderSortCol = H2H_DEFENDER_COLUMNS.find(c => c.key === h2hDefenderSort.key);
+  defenderRows.sort((a, b) => compareForSort(defenderSortCol.accessor(a), defenderSortCol.accessor(b), h2hDefenderSort.dir));
+  defenderBody.innerHTML = defenderRows.length === 0
+    ? '<tr><td colspan="3" class="empty-state">No tagged shots yet.</td></tr>'
+    : defenderRows.map(r => `<tr><td>${r.scorer ? playerLink(r.scorer.id, r.scorer.name) : "?"}</td><td>${formatShootingSplit(r.fgm, r.fga)}</td><td>${formatPct(pct(r.fgm, r.fga))}</td></tr>`).join("");
+}
 
 function download(filename, content, mime) {
   const blob = new Blob([content], { type: mime });
@@ -6948,12 +8832,53 @@ const TURNOVER_TYPE_BREAKDOWN_COLUMNS = [
   { key: "mix", label: "Mix", accessor: r => r.breakdown.tagged },
 ];
 
+let turnoverTypeBreakdownSort = { key: "selfinflicted", dir: "desc" };
+
 function computeTurnoverTypeBreakdownRows() {
   return state.players.map(player => {
     const breakdown = computeTurnoverTypeBreakdown(player.id);
     if (breakdown.tagged < TURNOVER_TYPE_MIN_TAGGED) return null;
     return { player, breakdown };
   }).filter(Boolean);
+}
+
+function renderTurnoverTypeBreakdownPanel() {
+  const headerRow = document.getElementById("turnoverTypeBreakdownHeaderRow");
+  const body = document.getElementById("turnoverTypeBreakdownBody");
+  const legendWrap = document.getElementById("turnoverTypeLegend");
+  const summaryEl = document.getElementById("turnoverTypeBreakdownSummary");
+  if (!body) return;
+  if (summaryEl) summaryEl.textContent = turnoverTypeTaggedSummaryText();
+  if (legendWrap) {
+    legendWrap.innerHTML = TURNOVER_TYPES.filter(t => t.key !== "other").map(t =>
+      `<span class="legend-item"><span class="legend-swatch ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}"></span>${escapeHtml(t.label)}</span>`
+    ).join("");
+  }
+  renderSortableHeader(headerRow, TURNOVER_TYPE_BREAKDOWN_COLUMNS, turnoverTypeBreakdownSort, renderTurnoverTypeBreakdownPanel);
+  const rows = computeTurnoverTypeBreakdownRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="8" class="empty-state">No live-ball turnovers with a type tagged yet (Export, Review Turnover Types).</td></tr>`;
+    return;
+  }
+  const sortCol = TURNOVER_TYPE_BREAKDOWN_COLUMNS.find(c => c.key === turnoverTypeBreakdownSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), turnoverTypeBreakdownSort.dir));
+  body.innerHTML = rows.map(r => {
+    const b = r.breakdown;
+    const mix = TURNOVER_TYPES.map(t => {
+      const n = b.counts[t.key];
+      return n === 0 ? "" : `<div class="shot-seg ${TURNOVER_TYPE_CSS_CLASS[t.key] || ""}" style="width:${(n / b.tagged) * 100}%" title="${escapeHtml(r.player.name)}: ${n} ${escapeHtml(t.label)}"></div>`;
+    }).join("");
+    return `<tr>
+      <td>${playerLink(r.player.id, r.player.name)}</td>
+      <td>${b.counts.badPass}</td>
+      <td>${b.counts.lostHandle}</td>
+      <td>${b.counts.stripped}</td>
+      <td>${b.counts.decisionError}</td>
+      <td>${b.tagged}</td>
+      <td>${b.selfInflictedPct === null ? "—" : formatPct(b.selfInflictedPct)}</td>
+      <td><div class="shot-selection-bar">${mix}</div></td>
+    </tr>`;
+  }).join("");
 }
 
 const TOV_RECOMPUTED_COLUMNS = [
@@ -6965,6 +8890,8 @@ const TOV_RECOMPUTED_COLUMNS = [
   { key: "newpct", label: "TOV% (new)", accessor: r => r.tovPct, display: r => r.tovPct === null ? "—" : formatPct(r.tovPct) },
 ];
 
+let tovRecomputedSort = { key: "newpct", dir: "desc" };
+
 function computeTovRecomputedRows() {
   return computeLeaderboard()
     .map(r => ({
@@ -6972,6 +8899,28 @@ function computeTovRecomputedRows() {
       oldTovPct: turnoverPct(r.totals.tov, r.shooting.fga, r.shooting.fta),
     }))
     .filter(r => r.totals.tov > 0);
+}
+
+function renderTovRecomputedPanel() {
+  const headerRow = document.getElementById("tovRecomputedHeaderRow");
+  const body = document.getElementById("tovRecomputedBody");
+  if (!body) return;
+  renderSortableHeader(headerRow, TOV_RECOMPUTED_COLUMNS, tovRecomputedSort, renderTovRecomputedPanel);
+  const rows = computeTovRecomputedRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="6" class="empty-state">No turnovers logged yet.</td></tr>`;
+    return;
+  }
+  const sortCol = TOV_RECOMPUTED_COLUMNS.find(c => c.key === tovRecomputedSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), tovRecomputedSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+      <td>${playerLink(r.player.id, r.player.name)}</td>
+      <td>${r.totals.tov}</td>
+      <td>${r.tovSplit.liveBall}</td>
+      <td>${r.tovSplit.shotBased}</td>
+      <td>${r.oldTovPct === null ? "—" : formatPct(r.oldTovPct)}</td>
+      <td>${r.tovPct === null ? "—" : formatPct(r.tovPct)}</td>
+    </tr>`).join("");
 }
 
 function renderSelfInflictedVsForcedChart() {
@@ -7013,6 +8962,31 @@ const TURNOVER_TYPE_MIX_COLUMNS = [
   { key: "decisionerror", label: "Decision Error %", accessor: r => pct(r.breakdown.counts.decisionError, r.breakdown.tagged) },
 ];
 
+let turnoverTypeMixSort = { key: "player", dir: "asc" };
+
+function renderTurnoverTypeMixPanel() {
+  const headerRow = document.getElementById("turnoverTypeMixHeaderRow");
+  const body = document.getElementById("turnoverTypeMixBody");
+  const summaryEl = document.getElementById("turnoverTypeMixSummary");
+  if (!body) return;
+  if (summaryEl) summaryEl.textContent = turnoverTypeTaggedSummaryText();
+  renderSortableHeader(headerRow, TURNOVER_TYPE_MIX_COLUMNS, turnoverTypeMixSort, renderTurnoverTypeMixPanel);
+  const rows = computeTurnoverTypeBreakdownRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="5" class="empty-state">No live-ball turnovers with a type tagged yet.</td></tr>`;
+    return;
+  }
+  const sortCol = TURNOVER_TYPE_MIX_COLUMNS.find(c => c.key === turnoverTypeMixSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), turnoverTypeMixSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+    <td>${playerLink(r.player.id, r.player.name)}</td>
+    <td>${formatPct(pct(r.breakdown.counts.badPass, r.breakdown.tagged))}</td>
+    <td>${formatPct(pct(r.breakdown.counts.lostHandle, r.breakdown.tagged))}</td>
+    <td>${formatPct(pct(r.breakdown.counts.stripped, r.breakdown.tagged))}</td>
+    <td>${formatPct(pct(r.breakdown.counts.decisionError, r.breakdown.tagged))}</td>
+  </tr>`).join("");
+}
+
 function computeForcedTurnoverCredit(playerId) {
   let strips = 0, combinedPoints = 0;
   qualifyingGamesForPlayer(playerId).forEach(game => {
@@ -7033,11 +9007,34 @@ const FORCED_TURNOVER_CREDIT_COLUMNS = [
   { key: "per20", label: "Strips per 20", accessor: r => r.credit.stripsPer20, display: r => r.credit.stripsPer20.toFixed(2) },
 ];
 
+let forcedTurnoverCreditSort = { key: "strips", dir: "desc" };
+
 function computeForcedTurnoverCreditRows() {
   return state.players.map(player => {
     const credit = computeForcedTurnoverCredit(player.id);
     return credit ? { player, credit } : null;
   }).filter(Boolean);
+}
+
+function renderForcedTurnoverCreditPanel() {
+  const headerRow = document.getElementById("forcedTurnoverCreditHeaderRow");
+  const body = document.getElementById("forcedTurnoverCreditBody");
+  const summaryEl = document.getElementById("forcedTurnoverCreditSummary");
+  if (!body) return;
+  if (summaryEl) summaryEl.textContent = turnoverTypeTaggedSummaryText();
+  renderSortableHeader(headerRow, FORCED_TURNOVER_CREDIT_COLUMNS, forcedTurnoverCreditSort, renderForcedTurnoverCreditPanel);
+  const rows = computeForcedTurnoverCreditRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="3" class="empty-state">No strips with a defender credited yet.</td></tr>`;
+    return;
+  }
+  const sortCol = FORCED_TURNOVER_CREDIT_COLUMNS.find(c => c.key === forcedTurnoverCreditSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), forcedTurnoverCreditSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+    <td>${playerLink(r.player.id, r.player.name)}</td>
+    <td>${r.credit.strips}</td>
+    <td>${r.credit.stripsPer20.toFixed(2)}</td>
+  </tr>`).join("");
 }
 
 function computeTurnoverTypeVsSelfCreation(playerId) {
@@ -7062,11 +9059,34 @@ const TURNOVER_VS_SHOT_TYPE_COLUMNS = [
   { key: "otherwise", label: "Turnovers Otherwise", accessor: r => r.cross.otherwise },
 ];
 
+let turnoverVsShotTypeSort = { key: "during", dir: "desc" };
+
 function computeTurnoverVsShotTypeRows() {
   return state.players.map(player => {
     const cross = computeTurnoverTypeVsSelfCreation(player.id);
     return cross ? { player, cross } : null;
   }).filter(Boolean);
+}
+
+function renderTurnoverVsShotTypePanel() {
+  const headerRow = document.getElementById("turnoverVsShotTypeHeaderRow");
+  const body = document.getElementById("turnoverVsShotTypeBody");
+  const summaryEl = document.getElementById("turnoverVsShotTypeSummary");
+  if (!body) return;
+  if (summaryEl) summaryEl.textContent = turnoverTypeTaggedSummaryText();
+  renderSortableHeader(headerRow, TURNOVER_VS_SHOT_TYPE_COLUMNS, turnoverVsShotTypeSort, renderTurnoverVsShotTypePanel);
+  const rows = computeTurnoverVsShotTypeRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="3" class="empty-state">Nobody has ${TURNOVER_TYPE_MIN_TAGGED}+ tagged live-ball turnovers yet.</td></tr>`;
+    return;
+  }
+  const sortCol = TURNOVER_VS_SHOT_TYPE_COLUMNS.find(c => c.key === turnoverVsShotTypeSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), turnoverVsShotTypeSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+    <td>${playerLink(r.player.id, r.player.name)}</td>
+    <td>${r.cross.duringSelfCreation}</td>
+    <td>${r.cross.otherwise}</td>
+  </tr>`).join("");
 }
 
 function computeTurnoverTypeOverSeason() {
@@ -7184,11 +9204,35 @@ const SELF_CREATION_FULL_COLUMNS = [
   { key: "ppp", label: "Pts per Possession", accessor: r => r.full.ptsPerPossession, display: r => r.full.ptsPerPossession.toFixed(2) },
 ];
 
+let selfCreationFullSort = { key: "poss", dir: "desc" };
+
 function computeSelfCreationFullRows() {
   return state.players.map(player => {
     const full = computeSelfCreationFullAccounting(player.id);
     return full ? { player, full } : null;
   }).filter(Boolean);
+}
+
+function renderSelfCreationFullPanel() {
+  const headerRow = document.getElementById("selfCreationFullHeaderRow");
+  const body = document.getElementById("selfCreationFullBody");
+  if (!body) return;
+  renderSortableHeader(headerRow, SELF_CREATION_FULL_COLUMNS, selfCreationFullSort, renderSelfCreationFullPanel);
+  const rows = computeSelfCreationFullRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="6" class="empty-state">Nobody has ${SELF_CREATION_FULL_MIN}+ self-creation possessions yet.</td></tr>`;
+    return;
+  }
+  const sortCol = SELF_CREATION_FULL_COLUMNS.find(c => c.key === selfCreationFullSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), selfCreationFullSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+    <td>${playerLink(r.player.id, r.player.name)}</td>
+    <td>${r.full.selfCreatedFga}</td>
+    <td>${r.full.selfCreatedTov}</td>
+    <td>${r.full.possessions}</td>
+    <td>${formatPct(r.full.successRate)}</td>
+    <td>${r.full.ptsPerPossession.toFixed(2)}</td>
+  </tr>`).join("");
 }
 
 const OPP_ADJ_REBOUND_MIN = 5;
@@ -7213,6 +9257,8 @@ const OPP_ADJ_REBOUND_COLUMNS = [
   { key: "rawrpg", label: "Raw RPG", accessor: r => r.adj.rawRpg, display: r => r.adj.rawRpg.toFixed(1) },
 ];
 
+let oppAdjReboundSort = { key: "rate", dir: "desc" };
+
 function computeOppAdjReboundRows() {
   return state.players.map(player => {
     const adj = computeOpportunityAdjustedRebounding(player.id);
@@ -7220,11 +9266,38 @@ function computeOppAdjReboundRows() {
   }).filter(Boolean);
 }
 
+function renderOppAdjReboundPanel() {
+  const headerRow = document.getElementById("oppAdjReboundHeaderRow");
+  const body = document.getElementById("oppAdjReboundBody");
+  if (!body) return;
+  renderSortableHeader(headerRow, OPP_ADJ_REBOUND_COLUMNS, oppAdjReboundSort, renderOppAdjReboundPanel);
+  const rows = computeOppAdjReboundRows();
+  if (rows.length === 0) {
+    body.innerHTML = `<tr><td colspan="5" class="empty-state">Nobody has ${OPP_ADJ_REBOUND_MIN}+ rebound opportunities yet.</td></tr>`;
+    return;
+  }
+  const sortCol = OPP_ADJ_REBOUND_COLUMNS.find(c => c.key === oppAdjReboundSort.key);
+  rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), oppAdjReboundSort.dir));
+  body.innerHTML = rows.map(r => `<tr>
+    <td>${playerLink(r.player.id, r.player.name)}</td>
+    <td>${r.adj.totalReb}</td>
+    <td>${r.adj.opportunities}</td>
+    <td>${formatPct(r.adj.rate)}</td>
+    <td>${r.adj.rawRpg.toFixed(1)}</td>
+  </tr>`).join("");
+}
+
 const CONTEST_LEVELS = [
   { key: "light", label: "Light Contest", about: "A defender is credited nearby but didn't meaningfully affect the shot -- a late closeout, trailing the play, a hand up from a step away." },
   { key: "medium", label: "Medium Contest", about: "A real, in-position defender with a hand up, but not draped on the shooter or altering the release." },
   { key: "heavy", label: "Heavy Contest", about: "A hand in their face, verticality, or real physical pressure that could plausibly alter the shot." }
 ];
+
+function contestLevelLabel(key) {
+  if (key === "none") return "No Contest";
+  const t = CONTEST_LEVELS.find(x => x.key === key);
+  return t ? t.label : "No level yet";
+}
 
 const RESISTANCE_LEVEL_SCORE = { none: 0, light: 1, medium: 2, heavy: 3 };
 
@@ -7359,6 +9432,19 @@ function computeShotTypeCuts() {
   return { contest, byZone };
 }
 
+function appendShotTypeExclusionNote(panelIds) {
+  let left = 0;
+  state.games.forEach(game => {
+    if (isQualifyingGame(game)) return;
+    game.scoringEvents.forEach(ev => { if ((ev.points === 2 || ev.points === 3) && effShotType(ev)) left++; });
+  });
+  if (left === 0) return;
+  panelIds.forEach(id => {
+    const wrap = document.getElementById(id);
+    if (wrap) wrap.insertAdjacentHTML("beforeend", `<p class="hint" style="margin:8px 0 0">${left} more tagged shot${left === 1 ? " is" : "s are"} in games left out by the Include Imbalanced Games and Include Past Seasons switches at the top of the Leaderboard. Turn them on to count ${left === 1 ? "it" : "them"}.</p>`);
+  });
+}
+
 function renderShotTypeContestPanel() {
   const wrap = document.getElementById("shotTypeContestPanel");
   if (!wrap) return;
@@ -7459,6 +9545,107 @@ function shotTypeTipCandidates(playerId) {
   return out;
 }
 
+function renderPlayerShotTypes(playerId) {
+  const wrap = document.getElementById("playerShotTypes");
+  if (!wrap) return;
+  const { rows } = computeShotTypeStats();
+  const r = rows.find(x => x.player.id === playerId);
+  if (!r) {
+    wrap.innerHTML = '<p class="empty-state">No shots by this player have a type yet.</p>';
+    return;
+  }
+  const body = SHOT_TYPES.map(t => {
+    const b = r.types[t.key];
+    const enough = b.a >= SHOT_TYPE_MIN_ATTEMPTS;
+    return `<tr><td>${escapeHtml(t.label)}</td><td>${b.a}</td><td>${Math.round((b.a / r.tagged) * 100)}%</td><td>${enough ? `${b.m}/${b.a} (${Math.round((b.m / b.a) * 100)}%)` : "—"}</td><td>${enough ? Math.round((b.pts / (2 * b.a)) * 100) + "%" : "—"}</td></tr>`;
+  }).join("");
+  wrap.innerHTML = `
+    <p class="hint" style="margin-top:0">${r.tagged} of ${r.fga} field goal attempts have a shot type. Efficiency shows once a type has at least ${SHOT_TYPE_MIN_ATTEMPTS} tagged attempts.</p>
+    <div class="table-scroll">
+      <table class="matchup-table">
+        <thead><tr><th>Shot type</th><th>Attempts</th><th>Share</th><th>FG</th><th>TS%</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+
+const SHOT_ARC_MIN = 8;
+
+function shotArcRowsByShooter() {
+  const rows = typeof SHOT_ARC_DATA !== "undefined" ? SHOT_ARC_DATA : [];
+  const lookup = new Map(rows.map(r => [r[0] + "@" + r[1].toFixed(3), r]));
+  const out = {};
+  state.games.forEach(game => game.scoringEvents.forEach(ev => {
+    if (ev.videoTime === null || ev.videoTime === undefined) return;
+    const row = lookup.get(game.id + "@" + ev.videoTime.toFixed(3));
+    if (row) (out[ev.scorerId] = out[ev.scorerId] || []).push(row);
+  }));
+  return out;
+}
+
+function shotArcMedian(values, q) {
+  const v = values.slice().sort((a, b) => a - b);
+  if (v.length === 0) return null;
+  const pos = (v.length - 1) * (q === undefined ? 0.5 : q);
+  const lo = Math.floor(pos), hi = Math.ceil(pos);
+  return v[lo] + (v[hi] - v[lo]) * (pos - lo);
+}
+
+function shotArcPath(peak, height, w, h, pad) {
+  const p = Math.min(0.95, Math.max(0.1, peak));
+  const a = height / (p * p);
+  const pts = [];
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40;
+    const y = height - a * (t - p) * (t - p);
+    pts.push(`${(pad + t * (w - 2 * pad)).toFixed(1)},${(h - pad - Math.max(0, y) * (h - 2 * pad)).toFixed(1)}`);
+  }
+  return "M" + pts.join(" L");
+}
+
+function renderPlayerShotArc(playerId) {
+  const wrap = document.getElementById("playerShotArc");
+  if (!wrap) return;
+  const byShooter = shotArcRowsByShooter();
+  const mine = byShooter[playerId] || [];
+  const all = Object.values(byShooter).flat();
+  if (all.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No shots have been traced from film yet.</p>';
+    return;
+  }
+  if (mine.length < SHOT_ARC_MIN) {
+    wrap.innerHTML = `<p class="empty-state">${mine.length} of this player's shots ${mine.length === 1 ? "has" : "have"} been traced from film. It needs at least ${SHOT_ARC_MIN} to describe a typical arc.</p>`;
+    return;
+  }
+  const air = mine.map(r => r[2]), peak = mine.map(r => r[3]), arch = mine.map(r => r[4]);
+  const leagueAir = shotArcMedian(all.map(r => r[2])), leaguePeak = shotArcMedian(all.map(r => r[3]));
+  const myAir = shotArcMedian(air), myPeak = shotArcMedian(peak), myArch = shotArcMedian(arch);
+  const archWord = myArch >= 1.12 ? `${Math.round((myArch - 1) * 100)}% higher than a typical arc`
+    : myArch <= 0.88 ? `${Math.round((1 - myArch) * 100)}% flatter than a typical arc` : "about a typical arc height";
+  const peakWord = myPeak - leaguePeak >= 0.08 ? "later in the flight than most"
+    : myPeak - leaguePeak <= -0.08 ? "earlier in the flight than most" : "about the same point as most";
+  const lo = shotArcMedian(air, 0.25), hi = shotArcMedian(air, 0.75);
+  const W = 220, H = 96, PAD = 8, leagueHeight = 0.62;
+  const heightFor = rel => Math.min(0.95, leagueHeight * rel);
+  wrap.innerHTML = `
+    <p class="hint" style="margin:0 0 8px">Based on ${mine.length} shots followed on film from release to the hoop.</p>
+    <div class="shot-arc-body">
+      <svg class="shot-arc-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="This player's typical arc compared with the league's">
+        <path d="${shotArcPath(leaguePeak, heightFor(1), W, H, PAD)}" class="shot-arc-league" />
+        <path d="${shotArcPath(myPeak, heightFor(myArch), W, H, PAD)}" class="shot-arc-mine" />
+      </svg>
+      <ul class="shot-arc-facts">
+        <li><strong>${myAir.toFixed(2)} s</strong> in the air (league ${leagueAir.toFixed(2)} s). Most shots fall between ${lo.toFixed(2)} and ${hi.toFixed(2)} s.</li>
+        <li>Arc height: <strong>${archWord}</strong>.</li>
+        <li>Highest point: ${peakWord}.</li>
+      </ul>
+    </div>
+    <div class="shot-chart-legend" style="margin-top:6px">
+      <span class="legend-item"><span class="legend-dot shot-arc-key-mine"></span>This player</span>
+      <span class="legend-item"><span class="legend-dot shot-arc-key-league"></span>League</span>
+    </div>`;
+}
+
 const LEAGUE_RANK_MIN_GP = 2;
 
 const LEAGUE_RANK_STATS = [
@@ -7483,6 +9670,25 @@ function computeLeagueRanks(playerId) {
   }).filter(Boolean);
 }
 
+function renderPlayerLeagueRank(playerId) {
+  const wrap = document.getElementById("playerLeagueRank");
+  if (!wrap) return;
+  const ranks = computeLeagueRanks(playerId);
+  if (ranks.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">Needs at least 2 games played to show a league rank.</p>';
+    return;
+  }
+  wrap.innerHTML = ranks.map(r => {
+    const tier = r.rank === 1 ? " league-rank-rank1" : r.rank === 2 ? " league-rank-rank2" : r.rank === 3 ? " league-rank-rank3" : "";
+    const shown = r.decimals === undefined ? (Number.isInteger(r.value) ? r.value : r.value.toFixed(1)) : r.value.toFixed(r.decimals);
+    return `<div class="league-rank-badge${tier}" title="${escapeHtml(r.label)}: ${shown}${r.key === "ts" ? "%" : ""} among players with at least ${LEAGUE_RANK_MIN_GP} games played">
+      <span class="league-rank-place">${ordinal(r.rank)}</span>
+      <span class="league-rank-label">${escapeHtml(r.label)}</span>
+      <span class="league-rank-of">of ${r.of}</span>
+    </div>`;
+  }).join("");
+}
+
 function ordinal(n) {
   const s = ["th", "st", "nd", "rd"], v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
@@ -7505,6 +9711,14 @@ function computePlayerSectionTeasers(playerId) {
   };
 }
 
+function renderPlayerSectionTeasers(playerId) {
+  const teasers = computePlayerSectionTeasers(playerId);
+  Object.entries(teasers).forEach(([key, text]) => {
+    const el = document.getElementById(`teaser-${key}`);
+    if (el) el.textContent = text;
+  });
+}
+
 function computeLeaderboardSectionTeasers() {
   const board = computeLeaderboard().filter(r => r.gp >= LEAGUE_RANK_MIN_GP);
   const tsVals = board.map(r => trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta)).filter(v => v !== null);
@@ -7517,6 +9731,14 @@ function computeLeaderboardSectionTeasers() {
     style: "Play style clusters and the advanced models built on top of them",
     media: "Best and worst individual games, plus every clipped highlight"
   };
+}
+
+function renderLeaderboardSectionTeasers() {
+  const teasers = computeLeaderboardSectionTeasers();
+  Object.entries(teasers).forEach(([key, text]) => {
+    const el = document.getElementById(`lb-teaser-${key}`);
+    if (el) el.textContent = text;
+  });
 }
 
 function computeGamesSectionTeasers() {
@@ -7938,5 +10160,47 @@ export const MOUNT_PANELS = [
 export const MOUNT_NO_RENDER = [];
 
 
+export const PLAYER_PANELS = [
+  { title: "League Rank", hint: "Where this player stands against everyone else this season, needing at least 2 games played to count. Built entirely from stats already tracked elsewhere on this page.", tag: null, open: true, section: "overview", order: 0, html: "\r\n      <div id=\"playerLeagueRank\" class=\"league-rank-grid\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerLeagueRank(pid); }, wires: [] },
+  { title: "Real Site Awards", hint: "Wins and runner-up finishes from the real Poolean site's own voted awards, straight from that closed ballot. Nothing computed here; this app can't hold an election, it just shows the result.", tag: "Real site data", open: true, section: "overview", order: 1, html: "\r\n      <div id=\"playerAwardBadges\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerAwardBadges(pid); }, wires: [] },
+  { title: "Power Rankings", hint: "The real site's power ranking for this player, averaged across every party they were ranked at.", tag: "Real site data", open: true, section: "overview", order: 2, html: "\r\n      <div id=\"playerPowerRanking\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerPowerRanking(pid); }, wires: [] },
+  { title: "Real Site Seasons", hint: "This player's line from every season imported from the real site, with the change from the season before. Always shows every season, whichever one is picked at the top.", tag: "Real site data", open: true, section: "overview", order: 3, html: "\r\n      <div id=\"playerRealSeasons\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerRealSeasons(pid); }, wires: [] },
+  { title: "Milestones", hint: "Career moments from real games: win and game counts, win streaks, #1 nights, and parties in a row. Newest first.", tag: "Real site data", open: true, section: "overview", order: 4, html: "\r\n      <div id=\"playerMilestones\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerMilestones(pid); }, wires: [] },
+  { title: "Personalized Tips", hint: "This player's numbers next to the league average, shown only when something stands out: best and favorite shot zones, and defenders or scorers they do unusually well or badly against (5+ shots each). Watch film links go to the games behind it.", tag: null, open: true, section: "overview", order: 5, html: "\r\n      <div id=\"playerTips\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerTips(pid); }, wires: [] },
+  { title: "Areas to Work On", hint: "Where this player is ahead of or behind a typical player in the league, one area at a time. Each area needs a minimum number of plays before it shows.", tag: null, open: true, section: "overview", order: 6, html: "\r\n      <div id=\"areasToWorkOn\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderAreasToWorkOn(pid); }, wires: [] },
+  { title: "Stat Trend", hint: "Pick a stat to see it game by game, against this player's average (dashed) and the league's. The line stays faded until there are 5 games.", tag: null, open: true, section: "shooting", order: 7, html: "\r\n      <label class=\"stat-trend-picker\">Stat <select id=\"playerStatTrendSelect\"></select></label>\r\n      <p id=\"playerStatTrendNote\" class=\"hint\" style=\"margin:6px 0 10px\"></p>\r\n      <div id=\"playerStatTrend\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerStatTrend(pid); }, wires: [] },
+  { title: "Resistance Faced & Shot-Making Added", hint: "How hard the shots were (Average Resistance Faced) and whether that difficulty got beaten (Shot-Making Added) -- two different questions, always shown together. A player facing high resistance with a modest Shot-Making Added number is a different story than one facing low resistance with the same number.", tag: null, open: true, section: "shooting", order: 8, html: "\r\n      <div id=\"playerResistanceShotMaking\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerResistanceShotMaking(pid); }, wires: [] },
+  { title: "Self-Creation", hint: "Raw self-created % and the version excluding deep heaves, shown together -- grabbing a loose ball and immediately heaving it up isn't the same skill as creating a real shot, and collapsing these into one number hides that gap.", tag: null, open: false, section: "shooting", order: 9, html: "\r\n      <div id=\"playerSelfCreationPanel\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerSelfCreationPanel(pid); }, wires: [] },
+  { title: "Shot Types", hint: "How this player's field goals were created and how each type has gone. Efficiency only shows once a type has at least 5 tagged attempts.", tag: null, open: false, section: "shooting", order: 10, html: "\r\n      <div id=\"playerShotTypes\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerShotTypes(pid); }, wires: [] },
+  { title: "Shot Arc", hint: "The shape of this player's shots, from the ones followed on film from release to the hoop. It describes how the player shoots and does not predict whether a shot goes in. Needs 8 followed shots before it shows.", tag: null, open: false, section: "shooting", order: 11, html: "\r\n      <div id=\"playerShotArc\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerShotArc(pid); }, wires: [] },
+  { title: "Shot Chart", hint: "Every marked shot at its spot on the court: green make, red miss. Shape shows shot type: circle catch-and-shoot, square drive, triangle deep heave, diamond move, faint circle not tagged yet.", tag: null, open: false, section: "shooting", order: 12, html: "\r\n      <div id=\"playerShotChart\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerShotChart(pid); }, wires: [] },
+  { title: "Shot Heatmap", hint: "Every marked field goal this player has taken, bucketed by court zone. Color is FG% in that zone (red low, green high), the number is attempts. Only shots with a marked location are included.", tag: null, open: false, section: "shooting", order: 13, html: "\r\n      <div id=\"playerHeatmap\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerHeatmap(pid); }, wires: [] },
+  { title: "Shooting by Direction", hint: "Shooting split by which hoop this player's team faced, to check whether the sun costs shots. Needs the direction set in Stat Entry and 5+ attempts per side.", tag: null, open: false, section: "shooting", order: 14, html: "\r\n      <div id=\"playerShootingByDirection\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderShootingByDirection(pid); }, wires: [] },
+  { title: "Assisted By", hint: "How many of this player's made shots were set up by someone else, and how good those passers are. Free throws aren't counted.", tag: null, open: true, section: "passing", order: 15, html: "\r\n      <div id=\"playerAssistedBy\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderAssistedByPanel(pid); }, wires: [] },
+  { title: "Passing Quality & Volume", hint: "Real Playmaking Volume and Weighted Pass Quality, shown together -- volume alone (like the old assist count) and quality alone each tell an incomplete story. A player can be high on one and unremarkable on the other.", tag: null, open: true, section: "passing", order: 16, html: "\r\n      <div id=\"playerPassingPanel\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerPassingPanel(pid); }, wires: [] },
+  { title: "Turnover Mix", hint: "What kind of turnover this player tends to commit, with Self-Inflicted % read against the league median (not league-best, same convention as Areas to Work On).", tag: null, open: true, section: "passing", order: 17, html: "\r\n      <div id=\"playerTurnoverMixPanel\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerTurnoverMixPanel(pid); }, wires: [] },
+  { title: "Contest Quality & Engagement", hint: "Real Contested Opp FG% (quality) and Engagement Rate (how often that quality is even brought to bear), shown together -- never one without the other. A high-quality, low-engagement defender and a high-quality, high-engagement one look identical on Opp FG% alone but mean completely different things.", tag: null, open: true, section: "defense", order: 18, html: "\r\n      <div id=\"playerContestQualityEngagement\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerContestQualityEngagement(pid); }, wires: [] },
+  { title: "Defensive Heatmap", hint: "Shots this player defended, by court zone. Color is opponents' FG% (green is good defense). Shows whether their defense holds up at every distance.", tag: null, open: true, section: "defense", order: 19, html: "\r\n      <div id=\"playerDefensiveHeatmap\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerDefensiveHeatmap(pid); }, wires: [] },
+  { title: "Defensive Load", hint: "How much of the team's defending this player does: 1.0 is an even share, and above is more. The note beside it reads this together with their other defensive numbers, since a low share alone could mean several things.", tag: null, open: false, section: "defense", order: 20, html: "\r\n      <div id=\"defensiveLoad\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerDefensiveLoadPanel(pid); }, wires: [] },
+  { title: "Notable Matchups", hint: "The biggest shooting swings involving this player, as scorer or defender, with film links. Needs 5+ shots against that opponent and a 15-point swing.", tag: null, open: true, section: "matchups", order: 21, html: "\r\n      <div id=\"playerNotableMatchups\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderNotableMatchups(pid); }, wires: [] },
+  { title: "Head-to-Head: As Scorer", hint: "Shooting against each defender who has been tagged guarding this player's shots, across the season.", tag: null, open: false, section: "matchups", order: 22, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"h2hScorerTable\">\r\n          <thead><tr id=\"h2hScorerHeaderRow\"></tr></thead>\r\n          <tbody id=\"h2hScorerBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderHeadToHead(pid); }, wires: [] },
+  { title: "Head-to-Head: As Defender", hint: "Shooting allowed to each scorer this player has been tagged defending, across the season.", tag: null, open: false, section: "matchups", order: 23, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"h2hDefenderTable\">\r\n          <thead><tr id=\"h2hDefenderHeaderRow\"></tr></thead>\r\n          <tbody id=\"h2hDefenderBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderHeadToHead(pid); }, wires: [] },
+  { title: "Offensive Matchup Difficulty", hint: "How good the defenders guarding this player's shots have been, game by game. The dashed line is the season average.", tag: null, open: false, section: "matchups", order: 24, html: "\r\n      <div id=\"playerOffensiveMatchupDifficulty\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderOffensiveMatchupDifficultyChart(pid); }, wires: [] },
+  { title: "Defensive Matchup Difficulty", hint: "How good the scorers this player guarded have been, game by game, to show whether they get the tough assignments. The dashed line is the season average.", tag: null, open: false, section: "matchups", order: 25, html: "\r\n      <div id=\"playerDefensiveMatchupDifficulty\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderDefensiveMatchupDifficultyChart(pid); }, wires: [] },
+  { title: "Teammate Synergy (With/Without)", hint: "This player's numbers in games with each teammate versus without them. A dash means no games in that group yet, and a few games means it's noisy.", tag: null, open: true, section: "team", order: 26, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"teammateSynergyTable\">\r\n          <thead><tr id=\"teammateSynergyHeaderRow\"></tr></thead>\r\n          <tbody id=\"teammateSynergyBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTeammateSynergy(pid); }, wires: [] },
+  { title: "Teammate Quality", hint: "How good this player's teammates are on offense, game by game. The dashed line is the season average.", tag: null, open: false, section: "team", order: 27, html: "\r\n      <div id=\"playerTeammateQuality\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTeammateQualityChart(pid); }, wires: [] },
+  { title: "Two-Way Trend", hint: "This player's Two-Way/20 game by game. The dashed line is their season average; recent games above it mean they're trending up.", tag: null, open: true, section: "trends", order: 28, html: "\r\n      <div id=\"playerTwoWayTrend\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTwoWayTrendChart(pid); }, wires: [] },
+  { title: "Flake %", hint: "Of the dates this player said they were coming (and games were played), how many they missed.", tag: null, open: false, section: "trends", order: 29, html: "\r\n      <div id=\"playerFlakeStats\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderFlakeStatsPanel(pid); }, wires: [] },
+  { title: "Closed Seasons in This App", hint: "This player's final numbers from each season closed in this app (Start New Season in Export), from logged games. Real Site Seasons above has the real site's numbers. Turn on Include Past Seasons to blend them into the current numbers instead.", tag: null, open: false, section: "trends", order: 30, html: "\r\n      <label class=\"ios-switch-row\" style=\"margin-bottom:10px\">\r\n        <span>Include Past Seasons</span>\r\n        <span class=\"ios-switch\"><input type=\"checkbox\" id=\"togglePastSeasonsBtnPlayer\"><span class=\"ios-switch-track\"><span class=\"ios-switch-knob\"></span></span></span>\r\n      </label>\r\n      <div id=\"playerSeasonHistory\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderSeasonHistoryPanel(pid); }, wires: [{ id: "togglePastSeasonsBtnPlayer", evt: "change", handler: togglePastSeasonsInclusion }] },
+  { title: "Real Game Record", hint: "This player's win-loss from every real game, next to the smaller set logged in detail from film in this app.", tag: "Real site data", open: false, section: "trends", order: 31, html: "\r\n      <div id=\"playerRealRecord\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerRealRecord(pid); }, wires: [] },
+  { title: "Real Partners & Matchups", hint: "Best and worst teammate, and best and worst opponent, from the real Poolean site's full game history (not just what's logged in this app), needing at least 3 real games together or against to count.", tag: "Real site data", open: false, section: "trends", order: 32, html: "\r\n      <div id=\"playerRealPartners\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerRealPartners(pid); }, wires: [] },
+  { title: "Streaks", hint: "Current and longest real win/losing streaks, from the real Poolean site's full game log in play order.", tag: "Real site data", open: false, section: "trends", order: 33, html: "\r\n      <div id=\"playerStreaks\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerStreaks(pid); }, wires: [] },
+  { title: "Attendance Streak", hint: "Consecutive real parties attended without missing one, from the real Poolean site's full attendance history.", tag: "Real site data", open: false, section: "trends", order: 34, html: "\r\n      <div id=\"playerAttendanceStreak\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerAttendanceStreak(pid); }, wires: [] },
+  { title: "Game Log", hint: "Every game this player was in, most recent first.", tag: null, open: true, section: "media", order: 35, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"playerGameLogTable\">\r\n          <thead><tr id=\"playerGameLogHeaderRow\"></tr></thead>\r\n          <tbody id=\"playerGameLogBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerGameLog(pid); }, wires: [] },
+  { title: "Highlights & Lowlights", hint: "Every clip tagged to this player, across all games. Tag a clip to a player from the Highlight / Lowlight Reel table in Stat Entry.", tag: null, open: false, section: "media", order: 36, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"playerReelTable\">\r\n          <thead><tr><th>Date</th><th>Type</th><th>Time</th><th>Note</th><th></th></tr></thead>\r\n          <tbody id=\"playerReelBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerReel(pid); }, wires: [] }
+];
+export function setLegacyPlayer(pid) { currentPlayerId = pid; }
+
+
 if (typeof POOLEAN_SEASONS !== "undefined") setPooleanSeason(pooleanSeasonList().slice(-1)[0]);
-export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, setPooleanSeason, pooleanSeasonList, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, clutchMarginThreshold, pct, TURNOVER_TYPE_CSS_CLASS, SELF_CREATION_FULL_MIN, OPP_ADJ_REBOUND_MIN, renderPlayerComparisonSelects, renderPlayerComparison, renderAwardsVsStats, renderPowerRankingVsPerformance, renderQuadrantChart, renderVolumeEfficiencyChart, renderLeagueTsByZoneChart, renderLeagueTsChart, renderLeagueHeatmap, renderTwoWayRankChart, renderLeagueSeasonSelect, renderLeagueSeasonStandings, renderConsistencyStandings, renderShotZonePanel, renderDefensiveShotZonePanel, renderShotTypePanel, renderDeepShotCheckPanel, renderMoveCheckPanel, renderShotTypeContestPanel, renderCalibrationPanel, renderLeagueDirectionSplits, renderShotMakingAddedChart, renderRivalries, renderRealHeadToHead, renderRealRivalryMatrix, renderMatchupGrid, renderPassingChemistrySelects, renderPassingChemistryPair, renderPassingChemistryGrid, renderReboundBattleRecordPanel, renderReboundBattleGridPanel, renderTeammateLiftMatrix, renderAssistSynergy, renderComebackTracker, renderSelfInflictedVsForcedChart, renderTurnoverTypeOverSeasonChart, renderGameWinningBucketsPanel, renderPlayStyleClusters, renderWinSharesModelPanel, renderSeasonTimeline, renderSeasonRecap, renderAwardRace, renderTrophyCase, renderIronMan, renderUpsetTracker, renderPartyRecap, renderIndividualGamePerformances, renderPlaySearch, renderLeagueHighlights, exportLeagueVideo, leagueExportState, runClipExportFromGroups, leagueClipsByGameChronological, reelClipsChronological, STORAGE_KEY, pickRecorderMimeType, getGameVideoSrcForExport, formatDateDisplay, raceCancel, loadVideoSrc, waitForSeek, waitUntilTime, updateLeagueExportButton, download, pickRecorderExtension, leagueExportVideoSrcCache, getVideoFile, openVideoDB, VIDEO_STORE, VIDEO_DB_NAME, formatTime, openGameAndSeek, currentGameId, currentVideoEl, PLAY_SEARCH_DETAIL_VERB, PLAY_SEARCH_LABEL_BY_KEY, INDIVIDUAL_GAMES_MODES, individualGamesMode, selectedPooleanSeason, downloadPartyRecapImage, copyPartyRecapText, poolPlayerLink, poolNameOf, partyRecapText, generatePartyRecapCanvas, showImagePreview, wrapCanvasText, renderPlayerAvatar, playerAvatarRingClass, PLAYER_PHOTO_FILES, avatarHueForPlayer, AWARD_TIER_COLOR, AWARD_TIER, awardIconSvg, AWARD_ICON_KEYS, ordinal, WIN_SHARES_FEATURES, turnoverTypeLabel, turnoverTypeTaggedSummaryText, renderSortableHeader, reboundBattleRecordSort, PASSING_CHEMISTRY_GRID_SCALE_MAX, PASSING_CHEMISTRY_ROWS, realMatchupPlayerPool, headToHeadPair, renderPctChart, playerNightlyPcts, PARTY_RANKINGS, realSeasonsInOrder, svgAvatarDot, directionLabel, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, sameTeam, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, shotDistanceFromHoop, findShotBreakpoint, binomialLogLik, shotTypeFgCell, MOVE_CHECK_EDGE_PTS, shotBand, effShotType, SHOT_TYPE_DEEP_CHECK_MIN, threePtDeepThreshold, closeRangeThreshold, shotTypeCellHtml, defensiveShotZoneSort, totalBandedAttempts, SHOT_ZONES, shotZoneSort, renderHeatmapInto, heatmapCellColor, renderHeatmapSvg, shotChartVbX, SHOT_CHART_VIEWBOX_W, shotChartVbY, SHOT_CHART_VIEWBOX_H, expandedAwards, ICONS, ALL_AWARD_RESULTS, AWARD_RESULTS, POOL_DATA_SNAPSHOT_KEY, sameMomentDismissed, shotReviewNeeds, shotReviewPlayer, shotReviewShowSkipped, shotReviewSkipped, turnoverTypeReviewPlayer, turnoverTypeSkipped, shotTypeReviewMatches, shotTypeReviewPlayer, shotTypeSkipped, shotTypeReviewMode, DRIVE_FAR_UNITS, trueShootingPct, LEAGUE_RANK_STATS, RESISTANCE_LEVEL_SCORE, gameTotalPoints, turnoverPct, effectiveFgPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, shootingStats, REAL_PLAYMAKING_MIN, defensiveRating, gamesForZoneShots, getOrCreatePlayerStats, median, gameDefenseStats, seasonVsRecentRate, trendNote, CLIP_CURATION_PAD_SECONDS, headToHeadAsScorer, gamesForMatchup, headToHeadAsDefender, shotTypeTipCandidates, gamesForShotType, accumulateHeadToHeadFg, playerAttendedDate, includeImbalancedGames, playerGameResult, INCLUDE_IMBALANCED_KEY, STAT_FIELDS, offensiveRating, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, xptsForShot, DEFENDER_QUALITY_GATE_FGA, SHOOTER_QUALITY_GATE_FGA, defensiveShootingStats, shotTypeLabel, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, AWARD_NOT_FOUND_TEXT, milestoneCache, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, poolKnownSlug, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, gameWinningShot, formatAstTov, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, includeOutlierGames, quantile, INCLUDE_OUTLIER_GAMES_KEY, includePastSeasons, isCurrentSeasonGame, INCLUDE_PAST_SEASONS_KEY, PLAYER_REPUTATION_DATA };
+export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, setPooleanSeason, pooleanSeasonList, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, clutchMarginThreshold, pct, TURNOVER_TYPE_CSS_CLASS, SELF_CREATION_FULL_MIN, OPP_ADJ_REBOUND_MIN, renderPlayerLeagueRank, renderPlayerAwardBadges, renderPlayerPowerRanking, renderPlayerRealSeasons, renderPlayerMilestones, renderPlayerTips, renderAreasToWorkOn, renderPlayerStatTrend, renderPlayerResistanceShotMaking, renderPlayerSelfCreationPanel, renderPlayerShotTypes, renderPlayerShotArc, renderPlayerShotChart, renderPlayerHeatmap, renderShootingByDirection, renderAssistedByPanel, renderPlayerPassingPanel, renderPlayerTurnoverMixPanel, renderPlayerContestQualityEngagement, renderPlayerDefensiveHeatmap, renderPlayerDefensiveLoadPanel, renderNotableMatchups, renderHeadToHead, renderOffensiveMatchupDifficultyChart, renderDefensiveMatchupDifficultyChart, renderTeammateSynergy, renderTeammateQualityChart, renderTwoWayTrendChart, renderFlakeStatsPanel, renderSeasonHistoryPanel, togglePastSeasonsInclusion, renderPlayerRealRecord, renderPlayerRealPartners, renderPlayerStreaks, renderPlayerAttendanceStreak, renderPlayerGameLog, renderPlayerReel, currentPlayerId, downloadTradingCard, renderPlayerRankPill, renderPlayerComparisonSelects, renderPlayerComparison, renderAwardsVsStats, renderPowerRankingVsPerformance, renderQuadrantChart, renderVolumeEfficiencyChart, renderLeagueTsByZoneChart, renderLeagueTsChart, renderLeagueHeatmap, renderTwoWayRankChart, renderLeagueSeasonSelect, renderLeagueSeasonStandings, renderConsistencyStandings, renderShotZonePanel, renderDefensiveShotZonePanel, renderShotTypePanel, renderDeepShotCheckPanel, renderMoveCheckPanel, renderShotTypeContestPanel, renderCalibrationPanel, renderLeagueDirectionSplits, renderShotMakingAddedChart, renderRivalries, renderRealHeadToHead, renderRealRivalryMatrix, renderMatchupGrid, renderPassingChemistrySelects, renderPassingChemistryPair, renderPassingChemistryGrid, renderReboundBattleRecordPanel, renderReboundBattleGridPanel, renderTeammateLiftMatrix, renderAssistSynergy, renderComebackTracker, renderSelfInflictedVsForcedChart, renderTurnoverTypeOverSeasonChart, renderGameWinningBucketsPanel, renderPlayStyleClusters, renderWinSharesModelPanel, renderSeasonTimeline, renderSeasonRecap, renderAwardRace, renderTrophyCase, renderIronMan, renderUpsetTracker, renderPartyRecap, renderIndividualGamePerformances, renderPlaySearch, renderLeagueHighlights, exportLeagueVideo, leagueExportState, runClipExportFromGroups, leagueClipsByGameChronological, reelClipsChronological, STORAGE_KEY, pickRecorderMimeType, getGameVideoSrcForExport, formatDateDisplay, raceCancel, loadVideoSrc, waitForSeek, waitUntilTime, updateLeagueExportButton, download, pickRecorderExtension, leagueExportVideoSrcCache, getVideoFile, openVideoDB, VIDEO_STORE, VIDEO_DB_NAME, formatTime, openGameAndSeek, currentGameId, currentVideoEl, PLAY_SEARCH_DETAIL_VERB, PLAY_SEARCH_LABEL_BY_KEY, INDIVIDUAL_GAMES_MODES, individualGamesMode, selectedPooleanSeason, downloadPartyRecapImage, copyPartyRecapText, poolPlayerLink, poolNameOf, partyRecapText, generatePartyRecapCanvas, showImagePreview, wrapCanvasText, renderPlayerAvatar, playerAvatarRingClass, PLAYER_PHOTO_FILES, avatarHueForPlayer, AWARD_TIER_COLOR, AWARD_TIER, awardIconSvg, AWARD_ICON_KEYS, ordinal, WIN_SHARES_FEATURES, turnoverTypeLabel, turnoverTypeTaggedSummaryText, renderSortableHeader, reboundBattleRecordSort, PASSING_CHEMISTRY_GRID_SCALE_MAX, PASSING_CHEMISTRY_ROWS, realMatchupPlayerPool, headToHeadPair, renderPctChart, playerNightlyPcts, PARTY_RANKINGS, realSeasonsInOrder, svgAvatarDot, directionLabel, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, sameTeam, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, shotDistanceFromHoop, findShotBreakpoint, binomialLogLik, shotTypeFgCell, MOVE_CHECK_EDGE_PTS, shotBand, effShotType, SHOT_TYPE_DEEP_CHECK_MIN, threePtDeepThreshold, closeRangeThreshold, shotTypeCellHtml, defensiveShotZoneSort, totalBandedAttempts, SHOT_ZONES, shotZoneSort, renderHeatmapInto, heatmapCellColor, renderHeatmapSvg, shotChartVbX, SHOT_CHART_VIEWBOX_W, shotChartVbY, SHOT_CHART_VIEWBOX_H, expandedAwards, generateTradingCardCanvas, poolRealRecord, TRADING_CARD_TIER_COLORS, trueShootingPct, playerGameLogSort, getOrCreatePlayerStats, shootingStats, gameDefenseStats, playerGameResult, offensiveRating, twoWayScore, effectiveFgPct, turnoverTypeDetailForGame, formatAstTov, foulCellHtml, defensiveRating, includePastSeasons, INCLUDE_PAST_SEASONS_KEY, updatePastSeasonsBtnLabel, renderLeaderboard, renderPlayerDetail, shareOrCopy, renderPlayerSectionTeasers, updateAdvancedColsBtnLabel, updateImbalancedGamesBtnLabel, updateOutlierGamesBtnLabel, renderLeaderboardHighlights, renderLeaderboardHeader, appendShotTypeExclusionNote, renderWideOpenShootingPanel, renderShotMakingAddedPanel, renderOppAdjReboundPanel, renderTeammateContextPanel, renderOutOfBoundsPanel, renderSecondChancePanel, renderSecondChanceAllowedPanel, renderPointsOffTakeawaysPanel, renderTurnoverTypeBreakdownPanel, renderTovRecomputedPanel, renderTurnoverTypeMixPanel, renderForcedTurnoverCreditPanel, renderTurnoverVsShotTypePanel, renderSelfCreationFullPanel, renderDefensiveLoadPanel, renderContestEngagementPanel, renderShooterQualityDefPanel, renderDefenderQualityOffPanel, renderCloseGameShootingPanel, renderCloseGameDefensePanel, visibleLeaderboardColumns, leaderboardSort, renderLeaderboardSectionTeasers, showAdvancedCols, SHOW_ADVANCED_COLS_KEY, closeGameDefenseSort, closeGameShootingSort, DEFENDER_QUALITY_GATE_FGA, defenderQualityOffSort, SHOOTER_QUALITY_GATE_FGA, shooterQualityDefSort, contestLevelLabel, contestEngagementSort, defensiveLoadPanelSort, selfCreationFullSort, turnoverVsShotTypeSort, forcedTurnoverCreditSort, turnoverTypeMixSort, tovRecomputedSort, turnoverTypeBreakdownSort, pointsOffTakeawaysSort, secondChanceAllowedSort, secondChanceSort, outOfBoundsSort, teammateContextSort, oppAdjReboundSort, shotMakingAddedSort, wideOpenSort, includeOutlierGames, INCLUDE_OUTLIER_GAMES_KEY, includeImbalancedGames, INCLUDE_IMBALANCED_KEY, PAST_SEASONS_TOGGLE_BTN_IDS, leagueAvgOfPlayerTrend, renderTrendLineChart, teammateSynergySort, h2hScorerSort, headToHeadAsScorer, h2hDefenderSort, headToHeadAsDefender, accumulateHeadToHeadFg, gamesForMatchup, watchFilmLinksHtml, wireWatchFilmButtons, playInlineVideoAt, ensureInlineVideoPlayer, loadInlineVideo, formatVideoTime, masterVideoBlobUrls, localVideoBlobUrls, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, defensiveHeatmapCellColor, watchClipsButtonHtml, wireWatchClipsButtons, startAreaClipExport, shotTypeLabel, shotTypeShape, shotArcRowsByShooter, SHOT_ARC_MIN, shotArcMedian, shotArcPath, PLAYER_TREND_STATS, playerStatTrendKey, pctOrNull, shotPoints, RESISTANCE_LEVEL_SCORE, xptsForShot, ALL_AWARD_RESULTS, ICONS, AWARD_RESULTS, POOL_DATA_SNAPSHOT_KEY, sameMomentDismissed, shotReviewNeeds, shotReviewPlayer, shotReviewShowSkipped, shotReviewSkipped, turnoverTypeReviewPlayer, turnoverTypeSkipped, shotTypeReviewMatches, shotTypeReviewPlayer, shotTypeSkipped, shotTypeReviewMode, DRIVE_FAR_UNITS, LEAGUE_RANK_STATS, gameTotalPoints, turnoverPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, REAL_PLAYMAKING_MIN, gamesForZoneShots, median, seasonVsRecentRate, trendNote, CLIP_CURATION_PAD_SECONDS, shotTypeTipCandidates, gamesForShotType, playerAttendedDate, STAT_FIELDS, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, defensiveShootingStats, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, AWARD_NOT_FOUND_TEXT, milestoneCache, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, poolKnownSlug, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, gameWinningShot, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, quantile, isCurrentSeasonGame, PLAYER_REPUTATION_DATA };
