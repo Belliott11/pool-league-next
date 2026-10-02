@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
+import { LeagueRank } from "@/pages/leaderboard/native"
+import { Panel } from "@/components/Panel"
 import { Section } from "@/components/Section"
 import { syncLegacy } from "@/lib/legacy"
 import {
@@ -83,7 +85,13 @@ function Panels({ section, pid, version }: { section: string; pid: string; versi
         .sort((a, b) => a.order - b.order)
         .map((p) => (
           <PanelBoundary key={p.title} title={p.title}>
-            <PlayerPanel spec={p} pid={pid} version={version} />
+            {p.title === "League Rank" ? (
+              <Panel title={p.title} hint={p.hint}>
+                <LeagueRank pid={pid} />
+              </Panel>
+            ) : (
+              <PlayerPanel spec={p} pid={pid} version={version} />
+            )}
           </PanelBoundary>
         ))}
     </>

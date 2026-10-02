@@ -5,6 +5,8 @@ import { PanelBoundary } from "@/components/PanelBoundary"
 import { DataTable } from "@/components/DataTable"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import hints from "@/data/panel-hints.json"
+import { AwardsVsStats, PassingChemistryPair, PlayerComparison, PowerRankingVsPerformance, TwoWayQuadrant } from "./native"
+import type { PooleanState } from "@/lib/types"
 import { MOUNT_PANELS, TABLE_PANELS } from "@/lib/legacy-core"
 
 interface TableSpec {
@@ -91,18 +93,46 @@ function LegacyMountPanel({ spec, version }: { spec: MountSpec; version: unknown
   )
 }
 
+// Panels rebuilt as real React components; they replace the classic markup of the same title.
+function nativePanel(title: string, state: PooleanState, open: (id: string) => void) {
+  switch (title) {
+    case "Player Comparison": return <PlayerComparison state={state} onOpen={open} />
+    case "Awards vs. Stats": return <AwardsVsStats onOpen={open} />
+    case "Power Ranking vs. Performance": return <PowerRankingVsPerformance onOpen={open} />
+    case "Two-Way Quadrant": return <TwoWayQuadrant onOpen={open} />
+    case "Passing Chemistry: Pair Detail": return <PassingChemistryPair state={state} />
+    default: return null
+  }
+}
+
 export function LegacyPanels({
+  state,
   section,
   onOpenPlayer,
   version,
 }: {
+  state: PooleanState
   section: string
   onOpenPlayer: (id: string) => void
   version: unknown
 }) {
   const items = [
     ...TABLES.filter((s) => s.section === section).map((s) => ({ order: s.order, node: <LegacyTablePanel spec={s} onOpenPlayer={onOpenPlayer} />, title: s.title })),
-    ...MOUNTS.filter((s) => s.section === section).map((s) => ({ order: s.order, node: <LegacyMountPanel spec={s} version={version} />, title: s.title })),
+    ...MOUNTS.filter((s) => s.section === section).map((s) => {
+      const native = nativePanel(s.title, state, onOpenPlayer)
+      const meta = HINTS[s.title]
+      return {
+        order: s.order,
+        title: s.title,
+        node: native ? (
+          <Panel title={s.title} hint={meta?.hint} tag={meta?.tag}>
+            {native}
+          </Panel>
+        ) : (
+          <LegacyMountPanel spec={s} version={version} />
+        ),
+      }
+    }),
   ].sort((a, b) => a.order - b.order)
   return (
     <>

@@ -41,7 +41,7 @@ export function LeaderboardPage({
       <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
       {SECTIONS.map((s) => (
         <Section key={s.key} id={`lb-section-${s.key}`} title={s.title} teaser={teasers[s.key] ?? ""}>
-          <LegacyPanels section={s.key} onOpenPlayer={onOpenPlayer} version={version} />
+          <LegacyPanels state={state} section={s.key} onOpenPlayer={onOpenPlayer} version={version} />
         </Section>
       ))}
     </div>
