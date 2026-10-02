@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react"
+import { setAppGames } from "@/lib/matchup"
 import { AccountMenu } from "@/components/AccountMenu"
 import { BottomNav } from "@/components/BottomNav"
 import { Moon, Sun } from "lucide-react"
@@ -98,6 +99,7 @@ type Mode = "local" | "viewer" | "admin"
 function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode; cloud?: Cloud }) {
   const readOnly = mode === "viewer"
   const [state, setState] = useState(initial)
+  setAppGames(state.games)
   // A viewer always shows the latest shared copy; it is never written to this browser's own storage.
   useEffect(() => {
     if (readOnly) setState(initial)

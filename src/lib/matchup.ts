@@ -4,9 +4,16 @@
 //   1. power rankings, 2. extra player (team size difference), 3. history together and against.
 // No intercept, so swapping which side is "A" just flips the odds.
 import { realSeasonsInOrder, type PairRecord, type RealGame } from "./real"
+import { isLiveScoreOnly, liveScoreOf, teamScore } from "./stats"
+import type { Game } from "./types"
 
 export const REAL_MATCHUP_MIN_GAMES = 15
 const REAL_MATCHUP_L2 = 0.05
+// The fitted odds are pulled toward 50/50 by this factor on the logit scale. Predicting each game from
+// only the games before it, the raw odds were overconfident (its 80%+ calls were right about two times
+// in three), and shrinking them lowered log loss on every window tested. It never changes which side is
+// favored, only how sure the number sounds.
+const PREGAME_SHRINK = 0.7
 const REAL_MATCHUP_FACTOR_LABELS = ["Power rankings", "Extra player", "History together and against"]
 
 // Real percentile assumed for a player with literally no track record at all (see app.js).
@@ -60,6 +67,37 @@ interface Row {
   y: 0 | 1
 }
 
+// Games scored in this app after the imported history ends also teach the model, so it keeps learning
+// as the league plays. Only decided games count (a winner by score), not live ones or stopped-early ones.
+let appGames: RealGame[] = []
+let appSignature = ""
+
+function lastRealDate(): string {
+  let last = ""
+  realSeasonsInOrder().forEach((s) => s.games.forEach((g) => (g.date > last ? (last = g.date) : last)))
+  return last
+}
+
+export function setAppGames(games: Game[]) {
+  const after = lastRealDate()
+  const decided = games
+    .filter((g) => !g.liveInProgress && !g.stoppedEarly && g.date > after && g.teamA.length > 0 && g.teamB.length > 0)
+    .map((g) => {
+      const live = isLiveScoreOnly(g)
+      const a = live ? liveScoreOf(g, g.teamA) : teamScore(g, g.teamA)
+      const b = live ? liveScoreOf(g, g.teamB) : teamScore(g, g.teamB)
+      return { g, a, b }
+    })
+    .filter((x) => x.a !== x.b)
+    .sort((x, y) => x.g.date.localeCompare(y.g.date))
+  const sig = decided.map((x) => x.g.id).join(",")
+  if (sig === appSignature) return
+  appSignature = sig
+  appGames = decided.map((x, i) => ({ n: i, date: x.g.date, a: x.g.teamA, b: x.g.teamB, w: x.a > x.b ? "A" : "B" }))
+  modelCache = null
+  trackCache = null
+}
+
 function buildRealMatchupRows(): Row[] {
   const rows: Row[] = []
   const together: Record<string, { w: number; gp: number }> = {}
@@ -106,6 +144,24 @@ function buildRealMatchupRows(): Row[] {
     })
     prevCards = season.cards
   })
+  // Games played in this app since the imported history: features from what was known before them.
+  if (appGames.length) {
+    const L = realMatchupLookups()
+    appGames.forEach((g) => {
+      const x = realMatchupFeatures(g.a, g.b, (id) => (prevCards && prevCards[id] ? prevCards[id].powerPct : L.pctOf(id)), (p, q) => together[[p, q].sort().join("|")], (p, q) => against[`${p}|${q}`])
+      const aWon = g.w === "A"
+      rows.push({ x, y: aWon ? 1 : 0 })
+      const pairs = (ids: string[]) => ids.flatMap((p, i) => ids.slice(i + 1).map((q) => [p, q].sort().join("|")))
+      pairs(g.a).forEach((k) => bump(together, k, aWon))
+      pairs(g.b).forEach((k) => bump(together, k, !aWon))
+      g.a.forEach((p) =>
+        g.b.forEach((q) => {
+          bump(against, `${p}|${q}`, aWon)
+          bump(against, `${q}|${p}`, !aWon)
+        }),
+      )
+    })
+  }
   return rows
 }
 
@@ -141,6 +197,23 @@ function realMatchupLookups() {
     })
     add(together, season.together)
     add(against, season.against)
+  })
+  appGames.forEach((g) => {
+    const aWon = g.w === "A"
+    const bumpRec = (map: Record<string, { w: number; gp: number }>, key: string, won: boolean) => {
+      const r = map[key] || (map[key] = { w: 0, gp: 0 })
+      r.gp++
+      if (won) r.w++
+    }
+    const pairs = (ids: string[]) => ids.flatMap((p, i) => ids.slice(i + 1).map((q) => [p, q].sort().join("|")))
+    pairs(g.a).forEach((k) => bumpRec(together, k, aWon))
+    pairs(g.b).forEach((k) => bumpRec(together, k, !aWon))
+    g.a.forEach((p) =>
+      g.b.forEach((q) => {
+        bumpRec(against, `${p}|${q}`, aWon)
+        bumpRec(against, `${q}|${p}`, !aWon)
+      }),
+    )
   })
   return {
     pctOf: (id: string) => pct[id] ?? UNKNOWN_PLAYER_PCT,
@@ -197,18 +270,20 @@ export function predictRealMatchup(teamA: string[], teamB: string[]): MatchupPre
   if (!model || teamA.length === 0 || teamB.length === 0) return null
   const L = model.lookups
   const x = realMatchupFeatures(teamA, teamB, L.pctOf, L.togetherOf, L.againstOf)
-  const pA = sigmoid(model.w[0] * x[0] + model.w[1] * x[1] + model.w[2] * x[2])
+  const pA = sigmoid(PREGAME_SHRINK * (model.w[0] * x[0] + model.w[1] * x[1] + model.w[2] * x[2]))
   const factors = x.map((v, k) => ({
     label: REAL_MATCHUP_FACTOR_LABELS[k],
-    lean: (sigmoid(model.w[k] * v) - 0.5) * 100,
+    lean: (sigmoid(PREGAME_SHRINK * model.w[k] * v) - 0.5) * 100,
   }))
   const unranked = [...teamA, ...teamB].filter((id) => !L.hasPct(id))
   return { pA, factors, unranked, model }
 }
 
-export function realMatchupAccuracyText(model: RealMatchupModel): string {
-  return model.looN
-    ? `Tested on real games it wasn't trained on, it picked the winner in ${model.looCorrect} of ${model.looN} (${Math.round((model.looCorrect / model.looN) * 100)}%).`
+// Honest accuracy: each night is called from only the games played before it (never from later ones).
+export function realMatchupAccuracyText(_model?: RealMatchupModel): string {
+  const t = computeRealMatchupTrackRecord().total
+  return t.called
+    ? `Calling each night from only the games before it, it picked the winner in ${t.correct} of ${t.called} (${Math.round((t.correct / t.called) * 100)}%). Treat it as a lean, not a lock.`
     : ""
 }
 
