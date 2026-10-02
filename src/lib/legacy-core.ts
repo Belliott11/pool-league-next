@@ -1643,14 +1643,14 @@ function heatmapCellColor(cell) {
   const fgFrac = cell.makes / cell.attempts;
   const hue = fgFrac * 120;
   const opacity = Math.min(0.85, 0.32 + cell.attempts * 0.1);
-  return `hsla(${hue}, 85%, 42%, ${opacity})`;
+  return `color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)`;
 }
 
 function defensiveHeatmapCellColor(cell) {
   const fgFrac = cell.makes / cell.attempts;
   const hue = (1 - fgFrac) * 120;
   const opacity = Math.min(0.85, 0.32 + cell.attempts * 0.1);
-  return `hsla(${hue}, 85%, 42%, ${opacity})`;
+  return `color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)`;
 }
 
 function renderHeatmapSvg(shots, colorFn = heatmapCellColor) {
@@ -4021,7 +4021,7 @@ function renderRealRivalryMatrix() {
       const pct = Math.round((v.w / v.gp) * 100);
       const hue = pct >= 50 ? 140 : 0;
       const opacity = 0.2 + 0.6 * (v.gp / maxGp);
-      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 70%, 42%, ${opacity})" title="${escapeHtml(poolNameOf(rowSlug))} &amp; ${escapeHtml(poolNameOf(colSlug))}: ${v.w}-${v.l} together">${pct}%</td>`;
+      return `<td class="matchup-grid-cell" style="background: color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)" title="${escapeHtml(poolNameOf(rowSlug))} &amp; ${escapeHtml(poolNameOf(colSlug))}: ${v.w}-${v.l} together">${pct}%</td>`;
     }).join("");
     return `<tr><td class="sticky-col">${poolPlayerLink(rowSlug)}</td>${cells}</tr>`;
   }).join("");
@@ -4978,7 +4978,7 @@ function renderMatchupGrid() {
       const fgPct = pct(cell.fgm, cell.fga);
       const hue = (fgPct / 100) * 120;
       const opacity = Math.min(0.85, 0.32 + cell.fga * 0.08);
-      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 85%, 42%, ${opacity})" title="${escapeHtml(scorer.name)} vs. ${escapeHtml(defender.name)}: ${cell.fgm}/${cell.fga}">${fgPct}%</td>`;
+      return `<td class="matchup-grid-cell" style="background: color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)" title="${escapeHtml(scorer.name)} vs. ${escapeHtml(defender.name)}: ${cell.fgm}/${cell.fga}">${fgPct}%</td>`;
     }).join("");
     return `<tr><td class="sticky-col">${playerLink(scorer.id, scorer.name)}</td>${cellsHtml}</tr>`;
   }).join("");
@@ -5106,7 +5106,7 @@ function renderPassingChemistryGrid() {
       const avgXpts = cell.xptsSum / cell.shots;
       const hue = Math.max(0, Math.min(1, avgXpts / PASSING_CHEMISTRY_GRID_SCALE_MAX)) * 120;
       const opacity = Math.min(0.85, 0.32 + cell.shots * 0.08);
-      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 85%, 42%, ${opacity})" title="${escapeHtml(passer.name)} &#8594; ${escapeHtml(scorer.name)}: ${avgXpts.toFixed(2)} xPTS/pass over ${cell.shots} shot${cell.shots === 1 ? "" : "s"}">${avgXpts.toFixed(2)}</td>`;
+      return `<td class="matchup-grid-cell" style="background: color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)" title="${escapeHtml(passer.name)} &#8594; ${escapeHtml(scorer.name)}: ${avgXpts.toFixed(2)} xPTS/pass over ${cell.shots} shot${cell.shots === 1 ? "" : "s"}">${avgXpts.toFixed(2)}</td>`;
     }).join("");
     return `<tr><td class="sticky-col">${playerLink(passer.id, passer.name)}</td>${cellsHtml}</tr>`;
   }).join("");
@@ -5217,7 +5217,7 @@ function renderTeammateLiftMatrix() {
       const opacity = 0.18 + magnitude * 0.62;
       const hue = cell.lift >= 0 ? 120 : 0;
       const sign = cell.lift >= 0 ? "+" : "";
-      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 70%, 45%, ${opacity})" title="With ${escapeHtml(rowP.name)} on their team, ${escapeHtml(colP.name)}'s Two-Way/20 is ${sign}${cell.lift.toFixed(1)} (${cell.withGp} with / ${cell.withoutGp} without)">${sign}${cell.lift.toFixed(1)}</td>`;
+      return `<td class="matchup-grid-cell" style="background: color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)" title="With ${escapeHtml(rowP.name)} on their team, ${escapeHtml(colP.name)}'s Two-Way/20 is ${sign}${cell.lift.toFixed(1)} (${cell.withGp} with / ${cell.withoutGp} without)">${sign}${cell.lift.toFixed(1)}</td>`;
     }).join("");
     return `<tr><td class="sticky-col">${playerLink(rowP.id, rowP.name)}</td>${cellsHtml}</tr>`;
   }).join("");
@@ -6199,7 +6199,7 @@ function renderReboundBattleGridPanel() {
       if (!cell) return `<td class="matchup-grid-cell matchup-grid-empty">&#8212;</td>`;
       const hue = (cell.winPct / 100) * 120;
       const opacity = Math.min(0.85, 0.32 + cell.total * 0.08);
-      return `<td class="matchup-grid-cell" style="background: hsla(${hue}, 85%, 42%, ${opacity})" title="${escapeHtml(row.name)} vs. ${escapeHtml(col.name)}: ${cell.wins}-${cell.losses}">${cell.winPct}%</td>`;
+      return `<td class="matchup-grid-cell" style="background: color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)" title="${escapeHtml(row.name)} vs. ${escapeHtml(col.name)}: ${cell.wins}-${cell.losses}">${cell.winPct}%</td>`;
     }).join("");
     return `<tr><td class="sticky-col">${playerLink(row.id, row.name)}</td>${cellsHtml}</tr>`;
   }).join("");

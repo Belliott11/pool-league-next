@@ -124,7 +124,7 @@ function GameCard({
               </Badge>
             )}
             {perf && (
-              <Badge className="bg-chart-2/15 text-chart-2" title="Best individual performance this game by Two-Way score.">
+              <Badge className="bg-pos/15 text-pos" title="Best individual performance this game by Two-Way score.">
                 {playerName(state, perf.best.id)} {signed(perf.best.twoWay)}
               </Badge>
             )}

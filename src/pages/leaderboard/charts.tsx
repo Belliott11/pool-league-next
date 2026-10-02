@@ -59,7 +59,7 @@ export function TwoWayQuadrant({ onOpen }: { onOpen: Open }) {
   return (
     <Frame>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Offense versus defense rating per player">
-        <rect x={x(0)} y={PAD} width={W - PAD - x(0)} height={y(0) - PAD} className="fill-chart-2/10" />
+        <rect x={x(0)} y={PAD} width={W - PAD - x(0)} height={y(0) - PAD} className="fill-pos/10" />
         {ax.ticks.map((t) => (
           <g key={`x${t}`}>
             <line x1={x(t)} x2={x(t)} y1={PAD} y2={H - PAD} className={t === 0 ? "stroke-foreground/50" : "stroke-border"} />
@@ -168,7 +168,7 @@ export function TsByZone() {
           return (
             <g key={z.key}>
               <title>{`${z.label}: ${z.ts === null ? "no data" : `${z.ts}% TS`} (${z.fga} attempt${z.fga === 1 ? "" : "s"})`}</title>
-              {z.ts !== null && <rect x={cx - barW / 2} y={top} width={barW} height={y(0) - top} rx={3} className="fill-chart-2" />}
+              {z.ts !== null && <rect x={cx - barW / 2} y={top} width={barW} height={y(0) - top} rx={3} className="fill-pos" />}
               <text x={cx} y={(z.ts === null ? y(0) : top) - 5} textAnchor="middle" className="fill-foreground text-[11px] font-bold">
                 {z.ts === null ? "-" : `${z.ts}%`}
               </text>
@@ -214,12 +214,12 @@ export function LeagueTsOverTime() {
             <text x={x(i)} y={H - B + 14} textAnchor="middle" className={tickText}>{formatDateDisplay(p.date)}</text>
           </g>
         ))}
-        <path d={area} className="fill-chart-2/15" />
-        <path d={line} className="fill-none stroke-chart-2" strokeWidth={2.5} strokeLinejoin="round" />
+        <path d={area} className="fill-pos/15" />
+        <path d={line} className="fill-none stroke-pos" strokeWidth={2.5} strokeLinejoin="round" />
         {pts.map((p, i) => (
           <g key={p.date}>
             <title>{`${formatDateDisplay(p.date)}: ${p.ts}% TS`}</title>
-            <circle cx={x(i)} cy={y(p.ts)} r={i === last ? 5 : 3.5} className={i === last ? "fill-primary stroke-card" : "fill-chart-2 stroke-card"} strokeWidth={2} />
+            <circle cx={x(i)} cy={y(p.ts)} r={i === last ? 5 : 3.5} className={i === last ? "fill-primary stroke-card" : "fill-pos stroke-card"} strokeWidth={2} />
             {(i === last || i === 0 || pts.length <= 8) && (
               <text x={x(i)} y={y(p.ts) - 9} textAnchor="middle" className="fill-foreground text-[11px] font-bold">{p.ts}%</text>
             )}

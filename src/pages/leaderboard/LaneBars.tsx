@@ -42,7 +42,7 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
           const left = Math.min(pos(v), zero)
           const width = Math.abs(pos(v) - zero)
           const head = pos(v)
-          const color = i === 0 ? "bg-primary" : v >= 0 ? "bg-chart-2" : "bg-destructive"
+          const color = i === 0 ? "bg-primary" : v >= 0 ? "bg-pos" : "bg-neg"
           return (
             <div key={r.player.id} className="flex items-center gap-3 border-b border-dashed border-border py-1.5 last:border-b-0">
               <button

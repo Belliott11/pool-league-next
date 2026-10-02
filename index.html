@@ -7,6 +7,7 @@
     <title>Poolean Intel</title>
     <script>
       // Apply the saved theme before first paint (dark by default).
+      try { var a = localStorage.getItem("pooleanIntelAccent"); if (a) document.documentElement.setAttribute("data-accent", a) } catch (e) {}
       try { if (localStorage.getItem("pooleanIntelTheme") !== "light") document.documentElement.classList.add("dark") } catch (e) { document.documentElement.classList.add("dark") }
     </script>
     <script src="/pool-league-next/poolean-external-data.js"></script>

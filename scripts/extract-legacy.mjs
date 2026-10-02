@@ -459,7 +459,14 @@ export function normalizeLegacyState(s) {
 const exportNames = [...included].flatMap((it) => it.names)
 const footer = `\nif (typeof POOLEAN_SEASONS !== "undefined") setPooleanSeason(pooleanSeasonList().slice(-1)[0]);\nexport { ${[...new Set(exportNames)].join(", ")} };\n`
 
-fs.writeFileSync(outPath, [header, stubBlock, chunks.join("\n\n"), tableBlock, mountBlock, playerBlock, exportBlock, footer].join("\n"))
+// The classic heat cells color by hue (0 red to 120 green). Redraw them with this app's own meaning
+// colors, crimson for low and aqua for high, so heat maps match the rest of the app.
+const heatTokens = (code) =>
+  code.replace(
+    /hsla\(\$\{hue\}, \d+%, \d+%, \$\{opacity\}\)/g,
+    "color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)",
+  )
+fs.writeFileSync(outPath, heatTokens([header, stubBlock, chunks.join("\n\n"), tableBlock, mountBlock, playerBlock, exportBlock, footer].join("\n")))
 const detected = new Set(panelSpecs.map((p) => p.fn))
 const undetected = items.filter((it) => it.node.type === "FunctionDeclaration" && /^render/.test(it.node.id.name) && src.slice(it.node.start, it.node.end).includes("renderSortableHeader(") && !detected.has(it.node.id.name)).map((it) => it.node.id.name)
 console.log("undetected sortable renders:", undetected.join(", "))

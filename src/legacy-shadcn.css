@@ -10,6 +10,9 @@
 /* ---- tokens: point the classic variables at the shadcn ones ---- */
 .legacy.legacy {
   --primary: var(--sh-primary);
+  --success: var(--pos);
+  --danger: var(--neg);
+  --warning: var(--gold);
   --primary-dark: color-mix(in srgb, var(--sh-primary) 78%, black);
   --panel-bg: var(--card);
   --surface-tint: var(--sh-muted);
@@ -71,11 +74,11 @@
 }
 .legacy.legacy button[type="submit"]:hover { background: color-mix(in srgb, var(--primary) 88%, black); }
 .legacy.legacy .danger-btn {
-  background: color-mix(in srgb, var(--destructive) 12%, transparent);
+  background: color-mix(in srgb, var(--neg) 12%, transparent);
   border-color: transparent;
-  color: var(--destructive);
+  color: var(--neg);
 }
-.legacy.legacy .danger-btn:hover { background: color-mix(in srgb, var(--destructive) 22%, transparent); }
+.legacy.legacy .danger-btn:hover { background: color-mix(in srgb, var(--neg) 22%, transparent); }
 
 /* ghost buttons: names, dates and jump links are links, not boxes */
 .legacy.legacy .icon-btn {
@@ -183,8 +186,8 @@
   font-weight: 500;
   line-height: 1.25rem;
 }
-.legacy.legacy .badge-highlight { background: color-mix(in srgb, var(--chart-2) 16%, transparent); color: var(--chart-2); }
-.legacy.legacy .badge-lowlight { background: color-mix(in srgb, var(--destructive) 16%, transparent); color: var(--destructive); }
+.legacy.legacy .badge-highlight { background: color-mix(in srgb, var(--pos) 16%, transparent); color: var(--pos); }
+.legacy.legacy .badge-lowlight { background: color-mix(in srgb, var(--neg) 16%, transparent); color: var(--neg); }
 .legacy.legacy .attendee-chip { min-height: 1.75rem; padding: 0 0.625rem; }
 .legacy.legacy .attendee-chip.selected { background: var(--primary); border-color: transparent; color: var(--primary-foreground); }
 .legacy.legacy .profile-tag { border-radius: calc(var(--radius) * 0.7); }

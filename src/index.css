@@ -6,6 +6,9 @@
 /* Poolean Intel's own palette (ported from theme.css, not shadcn's default neutral theme):
    achromatic near-black/near-white neutrals, one warm-coral accent as the only real color. */
 @theme inline {
+    --color-pos: var(--pos);
+    --color-neg: var(--neg);
+    --color-gold: var(--gold);
     --font-display: "Anybody", "Hanken Grotesk", sans-serif;
     --font-heading: "Anybody", "Hanken Grotesk", sans-serif;
     --font-sans: var(--font-body);
@@ -58,32 +61,38 @@
     --card-foreground: #0b1a20;
     --popover: #ffffff;
     --popover-foreground: #0b1a20;
-    --primary: #cf431f;
+    --primary: #c24c08;
     --primary-foreground: #ffffff;
     --secondary: #e3ecee;
     --secondary-foreground: #0b1a20;
     --muted: #e6eef0;
     --muted-foreground: #54696f;
-    --accent: #cf431f;
+    --accent: #c24c08;
     --accent-foreground: #ffffff;
-    --destructive: #c8383d;
+    --destructive: #b3163f;
     --border: #d3dfe2;
     --input: #c6d5d9;
-    --ring: #cf431f;
-    --chart-1: #cf431f;
+    --ring: #c24c08;
+    --chart-1: #c24c08;
     --chart-2: #1b8a7c;
     --chart-3: #a3720f;
     --chart-4: #7a4cc2;
     --chart-5: #2a6db5;
+    /* Meaning, not decoration. Accent = identity and "this is selected / this is the leader".
+       Pos = better than average or a good outcome. Neg = worse or a bad outcome. Gold = first
+       place and awards only. Series colors (chart-2..5) only tell lines apart and never mean good/bad. */
+    --pos: #12806f;
+    --neg: #b3163f;
+    --gold: #9a6a00;
     --radius: 0.75rem;
     --sidebar: #ffffff;
     --sidebar-foreground: #0b1a20;
-    --sidebar-primary: #cf431f;
+    --sidebar-primary: #c24c08;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: #e6eef0;
     --sidebar-accent-foreground: #0b1a20;
     --sidebar-border: #d3dfe2;
-    --sidebar-ring: #cf431f;
+    --sidebar-ring: #c24c08;
 }
 
 .dark {
@@ -93,31 +102,34 @@
     --card-foreground: #e8f0f2;
     --popover: #0f171b;
     --popover-foreground: #e8f0f2;
-    --primary: #ff6a4d;
+    --primary: #ff8a3d;
     --primary-foreground: #05090b;
     --secondary: #172228;
     --secondary-foreground: #e8f0f2;
     --muted: #121c21;
     --muted-foreground: #8fa3ab;
-    --accent: #ff6a4d;
+    --accent: #ff8a3d;
     --accent-foreground: #05090b;
-    --destructive: #e5484d;
+    --destructive: #ff5c82;
     --border: #1e2a30;
     --input: #263339;
-    --ring: #ff6a4d;
-    --chart-1: #ff6a4d;
+    --ring: #ff8a3d;
+    --chart-1: #ff8a3d;
     --chart-2: #7fd6cc;
     --chart-3: #f2c94c;
     --chart-4: #c9a3f2;
     --chart-5: #7fb4f2;
+    --pos: #7fd6cc;
+    --neg: #ff5c82;
+    --gold: #f2c94c;
     --sidebar: #0f171b;
     --sidebar-foreground: #e8f0f2;
-    --sidebar-primary: #ff6a4d;
+    --sidebar-primary: #ff8a3d;
     --sidebar-primary-foreground: #05090b;
     --sidebar-accent: #172228;
     --sidebar-accent-foreground: #e8f0f2;
     --sidebar-border: #1e2a30;
-    --sidebar-ring: #ff6a4d;
+    --sidebar-ring: #ff8a3d;
 }
 
 @layer base {
@@ -163,3 +175,13 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Accent options. Only the identity color changes: pos, neg and gold keep their meaning. */
+:root[data-accent="violet"] { --primary: #6d4bd1; --accent: #6d4bd1; --ring: #6d4bd1; --chart-1: #6d4bd1; --primary-foreground: #fff; --accent-foreground: #fff; }
+:root[data-accent="blue"] { --primary: #1f63d6; --accent: #1f63d6; --ring: #1f63d6; --chart-1: #1f63d6; --primary-foreground: #fff; --accent-foreground: #fff; }
+:root[data-accent="magenta"] { --primary: #a62bb0; --accent: #a62bb0; --ring: #a62bb0; --chart-1: #a62bb0; --primary-foreground: #fff; --accent-foreground: #fff; }
+:root[data-accent="ink"] { --primary: #0b1a20; --accent: #0b1a20; --ring: #0b1a20; --chart-1: #0b1a20; --primary-foreground: #fff; --accent-foreground: #fff; }
+:root.dark[data-accent="violet"] { --primary: #b79cff; --accent: #b79cff; --ring: #b79cff; --chart-1: #b79cff; --primary-foreground: #05090b; --accent-foreground: #05090b; }
+:root.dark[data-accent="blue"] { --primary: #6aa6ff; --accent: #6aa6ff; --ring: #6aa6ff; --chart-1: #6aa6ff; --primary-foreground: #05090b; --accent-foreground: #05090b; }
+:root.dark[data-accent="magenta"] { --primary: #e08cf0; --accent: #e08cf0; --ring: #e08cf0; --chart-1: #e08cf0; --primary-foreground: #05090b; --accent-foreground: #05090b; }
+:root.dark[data-accent="ink"] { --primary: #e8f0f2; --accent: #e8f0f2; --ring: #e8f0f2; --chart-1: #e8f0f2; --primary-foreground: #05090b; --accent-foreground: #05090b; }

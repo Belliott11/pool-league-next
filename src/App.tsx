@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react"
+import { ColorMenu } from "@/components/ColorMenu"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -128,7 +129,10 @@ function AppShell({ initial }: { initial: PooleanState }) {
         <h1 className="font-display text-2xl font-bold">
           Poolean <span className="text-accent">Intel</span>
         </h1>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <ColorMenu />
+          <ThemeToggle />
+        </div>
       </div>
       <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList>

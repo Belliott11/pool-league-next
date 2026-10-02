@@ -84,7 +84,7 @@ export function PlayerComparison({ state, onOpen }: { state: PooleanState; onOpe
               }
               const cell = (v: any, r: any, win: boolean) => (
                 <span
-                  className={`font-display tabular-nums ${win ? "font-extrabold text-chart-2" : w ? "text-muted-foreground" : ""}`}
+                  className={`font-display tabular-nums ${win ? "font-extrabold text-pos" : w ? "text-muted-foreground" : ""}`}
                   dangerouslySetInnerHTML={{ __html: String(col.display ? col.display(r) : v) }}
                 />
               )
@@ -195,12 +195,12 @@ export function PowerRankingVsPerformance({ onOpen }: { onOpen: Open }) {
               )}
               <span className="flex items-center gap-2">
                 <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                  <span className="block h-full rounded-full bg-chart-2" style={{ width: `${Math.max(2, r.pct)}%` }} />
+                  <span className="block h-full rounded-full bg-pos" style={{ width: `${Math.max(2, r.pct)}%` }} />
                 </span>
                 <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">{r.pct}%</span>
               </span>
               <span
-                className={`font-display text-right font-bold tabular-nums ${r.perf && r.perf.twoWayPer20 < 0 ? "text-destructive" : ""}`}
+                className={`font-display text-right font-bold tabular-nums ${r.perf && r.perf.twoWayPer20 < 0 ? "text-neg" : ""}`}
                 title={r.perf ? `${r.perf.gp} game${r.perf.gp === 1 ? "" : "s"}` : undefined}
               >
                 {r.perf ? r.perf.twoWayPer20.toFixed(1) : "-"}
@@ -265,11 +265,11 @@ export function PassingChemistryPair({ state }: { state: PooleanState }) {
 export function LeagueRank({ pid }: { pid: string }) {
   const ranks = computeLeagueRanks(pid) as any[]
   if (ranks.length === 0) return <p className="text-sm text-muted-foreground">Needs at least {LEAGUE_RANK_MIN_GP} games played to show a league rank.</p>
-  const tone = (r: number) => (r === 1 ? "text-chart-3" : r <= 3 ? "text-chart-2" : "text-foreground")
+  const tone = (r: number) => (r === 1 ? "text-gold" : r <= 3 ? "text-pos" : "text-foreground")
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
       {ranks.map((r) => (
-        <div key={r.key} className={`tile rounded-xl border p-2 text-center ${r.rank === 1 ? "border-chart-3" : ""}`} title={`${r.label}: ${r.decimals === undefined ? r.value : r.value.toFixed(r.decimals)}`}>
+        <div key={r.key} className={`tile rounded-xl border p-2 text-center ${r.rank === 1 ? "border-gold" : ""}`} title={`${r.label}: ${r.decimals === undefined ? r.value : r.value.toFixed(r.decimals)}`}>
           <div className={`font-display text-2xl font-extrabold tabular-nums ${tone(r.rank)}`}>{ordinal(r.rank)}</div>
           <div className="text-xs font-medium">{r.label}</div>
           <div className="text-[11px] text-muted-foreground">of {r.of}</div>

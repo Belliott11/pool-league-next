@@ -6,6 +6,7 @@ import { DataTable } from "@/components/DataTable"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import hints from "@/data/panel-hints.json"
 import { AwardsVsStats, PassingChemistryPair, PlayerComparison, PowerRankingVsPerformance } from "./native"
+import { LeagueHeatmap, PassingChemistryGrid, TwoWayRankChart } from "./charts2"
 import { LeagueTsOverTime, TsByZone, TwoWayQuadrant, VolumeEfficiency } from "./charts"
 import type { PooleanState } from "@/lib/types"
 import { MOUNT_PANELS, TABLE_PANELS } from "@/lib/legacy-core"
@@ -102,6 +103,9 @@ function nativePanel(title: string, state: PooleanState, open: (id: string) => v
     case "Power Ranking vs. Performance": return <PowerRankingVsPerformance onOpen={open} />
     case "Volume vs. Efficiency": return <VolumeEfficiency onOpen={open} />
     case "League TS% Over Time": return <LeagueTsOverTime />
+    case "League Shot Heatmap": return <LeagueHeatmap state={state} />
+    case "Two-Way/20 Rank Over the Season": return <TwoWayRankChart state={state} />
+    case "League Passing Chemistry Grid": return <PassingChemistryGrid onOpen={open} />
     case "TS% by Shot Distance": return <TsByZone />
     case "Two-Way Quadrant": return <TwoWayQuadrant onOpen={open} />
     case "Passing Chemistry: Pair Detail": return <PassingChemistryPair state={state} />

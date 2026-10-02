@@ -24,7 +24,7 @@
   "hint": "True Shooting % pooled across every player, per date with a reviewed game: a single league-wide efficiency line, useful for spotting drift over the season or checking the effect of a future rule change. Not a player-comparison stat."
  },
  "League Shot Heatmap": {
-  "hint": "Every marked shot, grouped by court zone. Color is FG% (red low, green high) and the number is attempts. Backfill Shot Locations in Export fills in unmarked shots."
+  "hint": "Every marked shot, grouped by court zone. Each zone is tinted against the league average FG%: aqua above it, crimson below, darker with more attempts. The number is attempts. Backfill Shot Locations in Export fills in unmarked shots."
  },
  "Two-Way/20 Rank Over the Season": {
   "hint": "Where each player would rank if the season had ended on each date, based on every game up to then. A rising line means their standing is improving, not just one good night."
@@ -77,11 +77,11 @@
   "tag": "Real site data"
  },
  "Real Rivalry Matrix": {
-  "hint": "Every real together-win% at once, not just the four superlatives above: every player down one side, every player across the other, cell color follows red-low/green-high, opacity ramping up with real games shared. Click a name for their own page.",
+  "hint": "Every real together-win% at once, not just the four superlatives above: every player down one side, every player across the other, cell color runs crimson (low) to aqua (high), opacity ramping up with real games shared. Click a name for their own page.",
   "tag": "Real site data"
  },
  "Head-to-Head Matchup Grid": {
-  "hint": "Each scorer's FG% against each defender. Red is low, green is high, and fainter cells have fewer shots. Blank means that pairing has never been tagged."
+  "hint": "Each scorer's FG% against each defender. Crimson is low, aqua is high, and fainter cells have fewer shots. Blank means that pairing has never been tagged."
  },
  "Passing Chemistry: Pair Detail": {
   "hint": "What actually happens when one specific player passes to another -- shots created, real difficulty-adjusted value (xPTS/Shot-Making Added), how open the resulting looks tend to be, and the shot type it usually leads to. Shown for both directions of a pair side by side (A passing to B, and B passing to A), since -- same convention as the Teammate Lift Matrix -- these are two different facts, not mirror images."
@@ -99,7 +99,7 @@
   "hint": "Each player's contested-rebound win rate against each other player. Fainter cells have fewer battles, and blank means they've never battled. Only players with 5+ contests appear."
  },
  "Teammate Lift Matrix": {
-  "hint": "How much each player (row) lifts or drags each teammate's (column) Two-Way/20. Green helps, red hurts. Blank means not enough games with and without each other. Row and column aren't mirror images."
+  "hint": "How much each player (row) lifts or drags each teammate's (column) Two-Way/20. Aqua helps, crimson hurts. Blank means not enough games with and without each other. Row and column aren't mirror images."
  },
  "Teammate Context": {
   "hint": "For each player: how good their teammates are, how tough the defenders they shoot over are, and how tough the scorers they guard are. Helps tell someone carried by good teammates from someone doing it alone."
