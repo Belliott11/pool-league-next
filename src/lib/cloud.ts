@@ -19,6 +19,11 @@ export type SaveResult = { ok: true; updatedAt: string } | { ok: false; conflict
 
 let client: SupabaseClient | null = null
 
+// The client once connect() has run, or null when no cloud is configured.
+export function getClient(): SupabaseClient | null {
+  return client
+}
+
 export async function loadCloudConfig(): Promise<CloudConfig | null> {
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}cloud-config.json`, { cache: "no-store" })

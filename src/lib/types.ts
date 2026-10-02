@@ -61,6 +61,7 @@ export interface Game {
   foulEvents: { id: string; playerId: string; opponentId?: string | null; videoTime?: number | null }[]
   stoppedEarly?: boolean
   videoUrl?: string
+  videoPath?: string
   masterVideoId?: string | null
   liveInProgress?: boolean
   liveScores?: { pid: string; points: number }[]
