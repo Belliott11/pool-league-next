@@ -104,6 +104,16 @@ function GameCard({
               </span>
             ))}
           </div>
+          {scoreA + scoreB > 0 && (
+            <div
+              role="img"
+              aria-label={`Score split ${scoreA} to ${scoreB}`}
+              className="flex h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-muted"
+            >
+              <span className={scoreA > scoreB ? "bg-primary" : "bg-muted-foreground/40"} style={{ width: `${(scoreA / (scoreA + scoreB)) * 100}%` }} />
+              <span className={scoreB > scoreA ? "bg-primary" : "bg-muted-foreground/40"} style={{ width: `${(scoreB / (scoreA + scoreB)) * 100}%` }} />
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
             <span>
               {formatDateDisplay(game.date)} &middot; {game.teamA.length + game.teamB.length} players

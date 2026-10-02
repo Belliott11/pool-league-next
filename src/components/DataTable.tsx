@@ -35,6 +35,27 @@ interface Props<R> {
   emptyHint?: string
 }
 
+// Where a value sits in its column: bars grow from zero, so a column with negatives draws aqua to the
+// right of the zero line and crimson to the left, and an all-positive column is a plain neutral bar.
+interface Range {
+  lo: number
+  hi: number
+}
+function geometry(v: number, r: Range) {
+  const span = r.hi - r.lo
+  const zero = ((0 - r.lo) / span) * 100
+  const p = ((v - r.lo) / span) * 100
+  return { left: Math.min(p, zero), width: Math.abs(p - zero) }
+}
+function barTone(v: number, r: Range, mode: "plain" | "sorted" | "strong") {
+  if (r.lo < 0) {
+    if (mode === "strong") return v < 0 ? "bg-neg/60" : "bg-pos/60"
+    return v < 0 ? "bg-neg/25" : "bg-pos/25"
+  }
+  if (mode === "strong") return "bg-foreground/35"
+  return mode === "sorted" ? "bg-primary/15" : "bg-foreground/[0.07]"
+}
+
 function cellText<R>(col: Column<R>, r: R): string {
   if (col.display) return col.display(r)
   const v = col.accessor(r)
@@ -72,6 +93,19 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
       if (w !== b) worst[col.key] = w
     })
     return { best, worst }
+  }, [rows, columns, highlight])
+
+  const ranges = useMemo(() => {
+    const out: Record<string, Range> = {}
+    columns.forEach((col, i) => {
+      if (i === 0 || col.key === "last5" || highlight?.skip?.has(col.key)) return
+      const vals = rows.map((r) => col.accessor(r)).filter((v): v is number => typeof v === "number" && Number.isFinite(v))
+      if (vals.length < 2) return
+      const lo = Math.min(0, ...vals)
+      const hi = Math.max(0, ...vals)
+      if (hi - lo > 0) out[col.key] = { lo, hi }
+    })
+    return out
   }, [rows, columns, highlight])
 
   function toggle(key: string) {
@@ -120,9 +154,18 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                     <TableCell
                       key={col.key}
                       title={isBest ? "Season leader in this column" : isWorst ? "Season worst in this column" : undefined}
-                      className={`tabular-nums ${sort?.key === col.key ? "bg-muted/50" : ""} ${isBest ? "bg-chart-2/15 text-chart-2 font-semibold" : ""} ${isWorst ? "bg-destructive/15 text-destructive" : ""}`}
+                      className={`relative tabular-nums ${isBest ? "bg-pos/15 text-pos font-semibold" : ""} ${isWorst ? "bg-neg/15 text-neg" : ""}`}
                     >
-                      <Cell col={col} r={r} />
+                      {ranges[col.key] && typeof v === "number" && Number.isFinite(v) && (
+                        <span
+                          aria-hidden
+                          className={`pointer-events-none absolute inset-y-1 rounded-sm ${barTone(v, ranges[col.key], sort?.key === col.key ? "sorted" : "plain")}`}
+                          style={{ left: `${geometry(v, ranges[col.key]).left}%`, width: `${geometry(v, ranges[col.key]).width}%` }}
+                        />
+                      )}
+                      <span className="relative">
+                        <Cell col={col} r={r} />
+                      </span>
                     </TableCell>
                   )
                 })}
@@ -145,12 +188,27 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
               )}
               {columns
                 .filter((c) => c.key !== first.key && c.key !== hero?.key)
-                .map((c) => (
-                  <div key={c.key} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="text-muted-foreground">{c.label}</span>
-                    <span className="text-right tabular-nums font-medium"><Cell col={c} r={r} /></span>
-                  </div>
-                ))}
+                .map((c) => {
+                  const v = c.accessor(r)
+                  const rg = ranges[c.key]
+                  return (
+                    <div key={c.key} className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-muted-foreground">{c.label}</span>
+                        <span className="text-right tabular-nums font-medium"><Cell col={c} r={r} /></span>
+                      </div>
+                      {rg && typeof v === "number" && Number.isFinite(v) && (
+                        <div className="relative h-1 rounded-full bg-muted">
+                          <span
+                            aria-hidden
+                            className={`absolute inset-y-0 rounded-full ${barTone(v, rg, "strong")}`}
+                            style={{ left: `${geometry(v, rg).left}%`, width: `${geometry(v, rg).width}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
             </CardContent>
           </Card>
         ))}

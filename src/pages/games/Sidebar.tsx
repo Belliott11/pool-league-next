@@ -54,8 +54,19 @@ export function Sidebar({
                       </button>
                     </TableCell>
                     <TableCell>
-                      {r.wins}-{r.losses}
-                      {r.ties ? `-${r.ties}` : ""}
+                      <div className="flex flex-col gap-1">
+                        <span>
+                          {r.wins}-{r.losses}
+                          {r.ties ? `-${r.ties}` : ""}
+                        </span>
+                        {r.wins + r.losses + (r.ties ?? 0) > 0 && (
+                          <div role="img" aria-label={`${r.wins} wins, ${r.losses} losses`} className="flex h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                            <span className="bg-pos" style={{ width: `${(r.wins / (r.wins + r.losses + (r.ties ?? 0))) * 100}%` }} />
+                            <span className="bg-muted-foreground/40" style={{ width: `${((r.ties ?? 0) / (r.wins + r.losses + (r.ties ?? 0))) * 100}%` }} />
+                            <span className="bg-neg" style={{ width: `${(r.losses / (r.wins + r.losses + (r.ties ?? 0))) * 100}%` }} />
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="tabular-nums">{r.twoWayPer20.toFixed(1)}</TableCell>
                   </TableRow>

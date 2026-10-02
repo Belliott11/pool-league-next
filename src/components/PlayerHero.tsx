@@ -6,7 +6,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 type Stats = { twoWay: string; record: string; pts: string; off: string }
 
 // Trading-card style header for the Player page. #playerRankPill is filled by the classic renderPlayerRankPill.
-export function PlayerHero({ pid, name, stats, onShare, onCard }: { pid: string; name: string; stats: Stats | null; onShare: () => void; onCard: () => void }) {
+export function PlayerHero({ pid, name, stats, form = [], onShare, onCard }: { pid: string; name: string; stats: Stats | null; form?: ("W" | "L" | "T")[]; onShare: () => void; onCard: () => void }) {
   return (
     <Card className="tile overflow-hidden">
       <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
@@ -39,6 +39,20 @@ export function PlayerHero({ pid, name, stats, onShare, onCard }: { pid: string;
                   </div>
                 ))}
               </dl>
+              {form.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <div role="img" aria-label={`Last ${form.length} games, oldest first: ${form.join(", ")}`} className="flex gap-1">
+                    {form.map((r, i) => (
+                      <span
+                        key={i}
+                        title={r === "W" ? "Win" : r === "L" ? "Loss" : "Tie"}
+                        className={`size-3 rounded-full ${r === "W" ? "bg-pos" : r === "L" ? "bg-neg" : "bg-muted-foreground/50"}`}
+                      />
+                    ))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Last {form.length} games</div>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-muted-foreground">No games yet</p>

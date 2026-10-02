@@ -11,6 +11,8 @@ import { Section } from "@/components/Section"
 import { syncLegacy } from "@/lib/legacy"
 import {
   PLAYER_PANELS,
+  qualifyingGamesForPlayer,
+  teamScore,
   computeLeaderboard,
   computePlayerSectionTeasers,
   downloadTradingCard,
@@ -136,6 +138,19 @@ export function PlayerDetailPage({
   const player = state.players.find((p) => p.id === playerId) ?? state.players[0] ?? null
   const pid = player?.id ?? null
   const row = pid ? (computeLeaderboard() as { player: { id: string }; wins: number; losses: number; ties: number; rate: { pts: number }; offRatingPer20: number; twoWayPer20: number }[]).find((r) => r.player.id === pid) : null
+  // Result of each of the last ten counted games, oldest first, for the form strip in the header.
+  const form: ("W" | "L" | "T")[] = pid
+    ? [...(qualifyingGamesForPlayer(pid) as { date?: string; teamA: string[]; teamB: string[] }[])]
+        .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
+        .slice(-10)
+        .map((g) => {
+          const mine = g.teamA.includes(pid) ? g.teamA : g.teamB
+          const theirs = mine === g.teamA ? g.teamB : g.teamA
+          const a = teamScore(g, mine) as number
+          const b = teamScore(g, theirs) as number
+          return a > b ? "W" : a < b ? "L" : "T"
+        })
+    : []
   const teasers = pid ? (computePlayerSectionTeasers(pid) as Record<string, string>) : {}
 
   useEffect(() => {
@@ -178,6 +193,7 @@ export function PlayerDetailPage({
       <PlayerHero
         pid={pid}
         name={player.name}
+        form={form}
         stats={row ? { twoWay: fmtRate(row.twoWayPer20), record: record!, pts: fmtRate(row.rate.pts), off: fmtRate(row.offRatingPer20) } : null}
         onShare={share}
         onCard={() => downloadTradingCard(pid)}
