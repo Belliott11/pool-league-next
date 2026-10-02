@@ -185,3 +185,21 @@
 :root.dark[data-accent="blue"] { --primary: #6aa6ff; --accent: #6aa6ff; --ring: #6aa6ff; --chart-1: #6aa6ff; --primary-foreground: #05090b; --accent-foreground: #05090b; }
 :root.dark[data-accent="magenta"] { --primary: #e08cf0; --accent: #e08cf0; --ring: #e08cf0; --chart-1: #e08cf0; --primary-foreground: #05090b; --accent-foreground: #05090b; }
 :root.dark[data-accent="ink"] { --primary: #e8f0f2; --accent: #e8f0f2; --ring: #e8f0f2; --chart-1: #e8f0f2; --primary-foreground: #05090b; --accent-foreground: #05090b; }
+
+/* Two-Way Ranking reveal (LaneBars.tsx): played once, bars grow out of the zero line and the
+   photos travel with them. Resting state is the normal layout; backwards fill only holds the
+   start pose during each lane's stagger delay. Skipped entirely under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .lane-grow {
+    animation: lane-grow 450ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .lane-head {
+    animation: lane-head 450ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+}
+@keyframes lane-grow {
+  from { left: var(--lane-zero); width: 0; }
+}
+@keyframes lane-head {
+  from { left: var(--lane-zero); }
+}
