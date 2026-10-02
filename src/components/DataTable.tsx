@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react"
+import { EmptyState } from "@/components/EmptyState"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { compareForSort } from "@/lib/legacy-core"
@@ -31,6 +32,7 @@ interface Props<R> {
   // Mark whoever leads / trails each numeric column, given which columns are neutral / lower-better.
   highlight?: { neutral: Set<string>; lowerBetter: Set<string>; skip?: Set<string> }
   empty?: string
+  emptyHint?: string
 }
 
 function cellText<R>(col: Column<R>, r: R): string {
@@ -46,7 +48,7 @@ function Cell<R>({ col, r }: { col: Column<R>; r: R }) {
   return text.includes("<") ? <span dangerouslySetInnerHTML={{ __html: text }} /> : <>{text}</>
 }
 
-export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, heroKey, highlight, empty }: Props<R>) {
+export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, heroKey, highlight, empty, emptyHint }: Props<R>) {
   const [sort, setSort] = useState<Sort | null>(defaultSort ?? null)
 
   const sorted = useMemo(() => {
@@ -76,7 +78,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
     setSort((cur) => (cur?.key === key ? { key, dir: cur.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" }))
   }
 
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">{empty ?? "Nothing to show yet."}</p>
+  if (rows.length === 0) return <EmptyState title={empty ?? "Nothing to show yet"} hint={emptyHint} />
 
   const first = columns[0]
   const hero = columns.find((c) => c.key === (heroKey ?? sort?.key)) ?? columns[1]

@@ -433,3 +433,8 @@
   font-size: 0.8125rem;
   color: var(--muted-foreground);
 }
+
+/* the Player header's rank pill: rank, then the parties note with its icon on one tidy line */
+#playerRankPill { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; }
+#playerRankPill .player-rank-pill-attendance { display: inline-flex; align-items: center; gap: 0.375rem; }
+#playerRankPill .icon { width: 1rem; height: 1rem; flex: none; }

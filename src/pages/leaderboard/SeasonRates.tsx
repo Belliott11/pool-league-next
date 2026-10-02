@@ -79,7 +79,8 @@ export function SeasonRates({
         rowKey={(r: { player: { id: string } }) => r.player.id}
         defaultSort={{ key: "twoway20", dir: "desc" }}
         highlight={HIGHLIGHT}
-        empty="No games with players yet."
+        empty="No player stats yet"
+        emptyHint="Log a game and the season table fills in."
         renderFirst={(r: { player: { id: string; name: string } }) => (
           <button type="button" className="flex items-center gap-2 font-bold text-accent hover:underline" onClick={() => onOpenPlayer(r.player.id)}>
             <PlayerAvatar id={r.player.id} name={r.player.name} size="sm" />
