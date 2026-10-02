@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { installDataViz } from "@/lib/dataViz"
 import { findLiveGame } from "@/lib/live"
+import { useTabSwipe } from "@/lib/useSwipe"
 import { ReadOnlyContext } from "@/lib/mode"
 import { LiveMiniBar } from "@/pages/live/LiveMiniBar"
 import { useCloud, type Cloud } from "@/lib/useCloud"
@@ -108,6 +109,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   }
   const [tab, setTab] = useState("games")
   const [liveOpen, setLiveOpen] = useState(false)
+  // On a phone, swipe sideways to move between tabs (visitors only see three of them).
+  useTabSwipe(tab, readOnly ? ["games", "leaderboard", "player"] : ["games", "leaderboard", "player", "players", "export"], setTab)
   useEffect(() => installStackTables(), [])
   useEffect(() => installDataViz(), [])
   // The header shrinks once the page is scrolled, and a new tab always starts at the top.

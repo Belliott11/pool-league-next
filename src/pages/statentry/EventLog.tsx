@@ -1,5 +1,6 @@
 import { ArrowDownUp, Clock, Pencil, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
+import { useSwipeSteps } from "@/lib/useSwipe"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,6 +31,21 @@ function TimeButton({ t, canSeek, onSeek }: { t: number | null | undefined; canS
       <Clock className="size-3.5" />
       {label}
     </button>
+  )
+}
+
+// A log row. Swiping it to the right opens it for editing (deleting stays a deliberate tap on the bin).
+function SwipeRow({ onEdit, children }: { onEdit: () => void; children: ReactNode }) {
+  const { bind, dx } = useSwipeSteps(() => onEdit(), [70], 110)
+  return (
+    <li className="relative">
+      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 flex w-12 items-center justify-center text-muted-foreground">
+        <Pencil className="size-5" />
+      </span>
+      <div {...bind} style={{ transform: `translateX(${dx * 0.6}px)`, touchAction: "pan-y" }} className={`relative flex items-center gap-1 bg-card py-1 ${dx === 0 ? "transition-transform duration-200" : ""}`}>
+        {children}
+      </div>
+    </li>
   )
 }
 
@@ -126,7 +142,7 @@ export function EventLog({ state, game, canSeek, onSeek, onEdit, onDelete }: Pro
                 const { made, text } = shotText(ev)
                 const who = nm(ev.scorerId)
                 return (
-                  <li key={ev.id} className="flex items-center gap-1 py-1">
+                  <SwipeRow key={ev.id} onEdit={() => onEdit(r.edit)}>
                     <TimeButton t={ev.videoTime} canSeek={canSeek} onSeek={onSeek} />
                     <div className="min-w-0 flex-1">
                       <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
@@ -138,12 +154,12 @@ export function EventLog({ state, game, canSeek, onSeek, onEdit, onDelete }: Pro
                       {text && <p className="text-xs text-muted-foreground">{text}</p>}
                     </div>
                     <RowActions what={`${who} shot`} onEdit={() => onEdit(r.edit)} onDelete={() => onDelete(r.ref)} />
-                  </li>
+                  </SwipeRow>
                 )
               }
               const o = otherText(r)
               return (
-                <li key={r.ref.kind + r.ref.id} className="flex items-center gap-1 py-1">
+                <SwipeRow key={r.ref.kind + r.ref.id} onEdit={() => onEdit(r.edit)}>
                   <TimeButton t={r.time} canSeek={canSeek} onSeek={onSeek} />
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
@@ -153,7 +169,7 @@ export function EventLog({ state, game, canSeek, onSeek, onEdit, onDelete }: Pro
                     {o.detail && <p className="text-xs text-muted-foreground">{o.detail}</p>}
                   </div>
                   <RowActions what={`${o.who} ${o.label.toLowerCase()}`} onEdit={() => onEdit(r.edit)} onDelete={() => onDelete(r.ref)} />
-                </li>
+                </SwipeRow>
               )
             })}
           </ul>

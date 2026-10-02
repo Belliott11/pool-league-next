@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Minus, Plus, Undo2, Flag, X, UserPlus } from "lucide-react"
+import { Minus, Plus, Undo2, Flag, X, UserPlus, Vibrate, VibrateOff } from "lucide-react"
 import { EmptyState } from "@/components/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,7 +8,9 @@ import {
   DEFAULT_TARGET, addLiveScore, discardLive, finishLive, findLiveGame, liveTargetOf, liveTotals, startLive, undoLiveScore,
 } from "@/lib/live"
 import { playerName } from "@/lib/players"
+import { haptic, hapticsEnabled, setHapticsEnabled } from "@/lib/haptics"
 import { liveScoreOf } from "@/lib/stats"
+import { useSwipeSteps } from "@/lib/useSwipe"
 import { LiveOdds } from "./LiveOdds"
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
@@ -149,6 +151,61 @@ function Confetti() {
   )
 }
 
+// One player's tile. Swipe it to the right to score: a short swipe is +1, farther +2, farthest +3. The
+// number shows behind the tile as you drag and the phone ticks at each step; letting go scores it.
+function PlayerTile({ id, name, on, setSel, score, mine, add }: {
+  id: string
+  name: string
+  on: boolean
+  setSel: (id: string | null) => void
+  score: number
+  mine: Pop[]
+  add: (pid: string, pts: number) => void
+}) {
+  const { bind, dx, step } = useSwipeSteps((n) => add(id, n))
+  return (
+    <div className="relative">
+      <span
+        aria-hidden
+        className={cn("pointer-events-none absolute inset-y-0 left-0 flex w-14 items-center justify-center font-display text-3xl font-extrabold", step ? "text-primary" : "text-muted-foreground/50")}
+      >
+        +{step || 1}
+      </span>
+      <div
+        {...bind}
+        style={{ transform: `translateX(${dx * 0.55}px)`, touchAction: "pan-y" }}
+        className={cn("relative rounded-lg border p-2 transition-colors", dx === 0 && "transition-transform duration-200", on ? "border-accent bg-accent/15" : "bg-card")}
+      >
+        {mine.map((p) => (
+          <span key={p.key} aria-hidden className={cn("anim-flash pointer-events-none absolute inset-0 rounded-lg ring-2", p.points === 3 ? "ring-gold" : "ring-primary")} />
+        ))}
+        {mine.map((p) => (
+          <span
+            key={`n${p.key}`}
+            aria-hidden
+            className={cn("anim-pop-float pointer-events-none absolute right-2 top-0 z-10 font-display font-extrabold", p.points === 3 ? "text-3xl text-gold" : "text-2xl text-primary")}
+          >
+            +{p.points}
+          </span>
+        ))}
+        <button type="button" aria-pressed={on} className="flex min-h-11 w-full items-center justify-between gap-2 text-left" onClick={() => setSel(on ? null : id)}>
+          <span className="truncate font-medium">{name}</span>
+          <span key={score} className={cn("font-display text-2xl tabular-nums", mine.length > 0 && "anim-bump")}>
+            {score}
+          </span>
+        </button>
+        <div className="mt-1 grid grid-cols-3 gap-1">
+          {[1, 2, 3].map((p) => (
+            <Button key={p} className="h-12 px-0 text-base active:scale-95" variant={on ? "default" : "outline"} aria-label={`${name} plus ${p}`} onClick={() => add(id, p)}>
+              +{p}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TeamColumn({ side, ids, total, other, game, state, sel, setSel, add, pops }: {
   side: "A" | "B"
   ids: string[]
@@ -170,40 +227,9 @@ function TeamColumn({ side, ids, total, other, game, state, sel, setSel, add, po
           {total}
         </div>
       </div>
-      {ids.map((id) => {
-        const on = sel === id
-        const name = playerName(state, id)
-        const mine = pops.filter((p) => p.pid === id)
-        return (
-          <div key={id} className={cn("relative rounded-lg border p-2 transition-colors", on ? "border-accent bg-accent/15" : "bg-card")}>
-            {mine.map((p) => (
-              <span key={p.key} aria-hidden className={cn("anim-flash pointer-events-none absolute inset-0 rounded-lg ring-2", p.points === 3 ? "ring-gold" : "ring-primary")} />
-            ))}
-            {mine.map((p) => (
-              <span
-                key={`n${p.key}`}
-                aria-hidden
-                className={cn("anim-pop-float pointer-events-none absolute right-2 top-0 z-10 font-display font-extrabold", p.points === 3 ? "text-3xl text-gold" : "text-2xl text-primary")}
-              >
-                +{p.points}
-              </span>
-            ))}
-            <button type="button" aria-pressed={on} className="flex min-h-11 w-full items-center justify-between gap-2 text-left" onClick={() => setSel(on ? null : id)}>
-              <span className="truncate font-medium">{name}</span>
-              <span key={liveScoreOf(game, [id])} className={cn("font-display text-2xl tabular-nums", mine.length > 0 && "anim-bump")}>
-                {liveScoreOf(game, [id])}
-              </span>
-            </button>
-            <div className="mt-1 grid grid-cols-3 gap-1">
-              {[1, 2, 3].map((p) => (
-                <Button key={p} className="h-12 px-0 text-base active:scale-95" variant={on ? "default" : "outline"} aria-label={`${name} plus ${p}`} onClick={() => add(id, p)}>
-                  +{p}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )
-      })}
+      {ids.map((id) => (
+        <PlayerTile key={id} id={id} name={playerName(state, id)} on={sel === id} setSel={setSel} score={liveScoreOf(game, [id])} mine={pops.filter((p) => p.pid === id)} add={add} />
+      ))}
     </section>
   )
 }
@@ -215,6 +241,7 @@ function Board({ game, state, update, onClose }: { game: Game; state: PooleanSta
   const target = liveTargetOf(game)
   const over = a >= target || b >= target
   const pops = useScorePops(game)
+  const [vib, setVib] = useState(hapticsEnabled)
 
   // A banner when the lead changes hands.
   const lead = a > b ? "A" : b > a ? "B" : null
@@ -224,6 +251,7 @@ function Board({ game, state, update, onClose }: { game: Game; state: PooleanSta
     if (!lead) return
     if (prevLead.current && prevLead.current !== lead) {
       setFlipped(lead)
+      haptic("warn")
       const t = setTimeout(() => setFlipped(null), 2200)
       prevLead.current = lead
       return () => clearTimeout(t)
@@ -237,6 +265,7 @@ function Board({ game, state, update, onClose }: { game: Game; state: PooleanSta
   useEffect(() => {
     if (over && !wasOver.current) {
       setParty(true)
+      haptic("success")
       const t = setTimeout(() => setParty(false), 3200)
       wasOver.current = true
       return () => clearTimeout(t)
@@ -252,12 +281,33 @@ function Board({ game, state, update, onClose }: { game: Game; state: PooleanSta
       ? `Tied. First to ${target}.`
       : `Team ${a > b ? "A" : "B"} leads by ${Math.abs(a - b)}. ${target - Math.max(a, b)} to go.`
 
-  const add = (pid: string, pts: number) => update((s) => addLiveScore(s, game.id, pid, pts))
+  const add = (pid: string, pts: number) => {
+    haptic(pts === 3 ? "medium" : pts === 2 ? "light" : "tick")
+    update((s) => addLiveScore(s, game.id, pid, pts))
+  }
   const col = { game, state, sel, setSel, add, pops }
 
   return (
     <div className="flex flex-col gap-3">
       {party && <Confetti />}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">Swipe a player right to score. A short swipe is +1, longer +2, longest +3.</p>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9 shrink-0"
+          aria-pressed={vib}
+          aria-label={vib ? "Turn vibration off" : "Turn vibration on"}
+          onClick={() => {
+            const next = !vib
+            setHapticsEnabled(next)
+            setVib(next)
+            if (next) haptic("light")
+          }}
+        >
+          {vib ? <Vibrate /> : <VibrateOff />}
+        </Button>
+      </div>
       <p
         key={over ? "over" : "going"}
         className={cn("rounded-lg px-3 py-2 text-center text-sm font-medium", over && a !== b ? "anim-banner bg-pos text-white" : "bg-muted")}
@@ -276,12 +326,16 @@ function Board({ game, state, update, onClose }: { game: Game; state: PooleanSta
       </div>
       <LiveOdds game={game} />
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" className="h-12" disabled={!(game.liveScores ?? []).length} onClick={() => update((s) => undoLiveScore(s, game.id))}>
+        <Button variant="outline" className="h-12" disabled={!(game.liveScores ?? []).length} onClick={() => {
+            haptic("tick")
+            update((s) => undoLiveScore(s, game.id))
+          }}>
           <Undo2 /> Undo last
         </Button>
         <Button
           className="h-12"
           onClick={() => {
+            haptic("success")
             update((s) => finishLive(s, game.id))
             onClose()
           }}
@@ -322,7 +376,7 @@ function Board({ game, state, update, onClose }: { game: Game; state: PooleanSta
 export function LiveGamePage({ state, update, onClose }: { state: PooleanState; update: Update; onClose: () => void }) {
   const game = findLiveGame(state)
   return (
-    <div className="mx-auto w-full max-w-md">
+    <div data-no-swipe className="mx-auto w-full max-w-md">
       {game ? <Board game={game} state={state} update={update} onClose={onClose} /> : <Setup state={state} update={update} onClose={onClose} />}
     </div>
   )
