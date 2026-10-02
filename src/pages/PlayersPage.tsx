@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/EmptyState"
 import { useState } from "react"
+import { useReadOnly } from "@/lib/mode"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -104,6 +105,7 @@ export function PlayersPage({
   update: Update
   onOpenPlayer: (id: string) => void
 }) {
+  const readOnly = useReadOnly()
   const [name, setName] = useState("")
   const [roleFilter, setRoleFilter] = useState<string[]>([])
   const [editing, setEditing] = useState<string | null>(null)
@@ -125,6 +127,7 @@ export function PlayersPage({
 
   return (
     <div className="flex flex-col gap-4">
+      {!readOnly && (
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Add Player</CardTitle>
@@ -139,6 +142,7 @@ export function PlayersPage({
           </form>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -193,6 +197,7 @@ export function PlayersPage({
                         </div>
                       )}
                       {note && <p className="text-xs text-muted-foreground">{note}</p>}
+                      {!readOnly && (
                       <div className="flex gap-2 border-t border-dashed pt-3">
                         <Button size="sm" variant="outline" onClick={() => setEditing(editing === p.id ? null : p.id)}>
                           {editing === p.id ? "Close" : "Edit Tags"}
@@ -209,6 +214,7 @@ export function PlayersPage({
                           Remove
                         </Button>
                       </div>
+                      )}
                     </div>
                     {editing === p.id && (
                       <ProfileEditor

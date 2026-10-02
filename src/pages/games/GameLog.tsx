@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/EmptyState"
 import { useMemo, useState } from "react"
+import { useReadOnly } from "@/lib/mode"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -79,7 +80,7 @@ function GameCard({
   state: PooleanState
   game: Game
   onOpen: () => void
-  onDelete: () => void
+  onDelete?: () => void
 }) {
   const liveOnly = isLiveScoreOnly(game)
   const scoreA = liveOnly ? liveScoreOf(game, game.teamA) : teamScore(game, game.teamA)
@@ -158,9 +159,11 @@ function GameCard({
           >
             {shared ? "Shared" : "Share"}
           </Button>
-          <Button size="sm" variant="destructive" onClick={onDelete}>
-            Delete
-          </Button>
+          {onDelete && (
+            <Button size="sm" variant="destructive" onClick={onDelete}>
+              Delete
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -243,6 +246,7 @@ export function GameLog({
   update: Update
   onOpen: (game: Game) => void
 }) {
+  const readOnly = useReadOnly()
   const [filters, setFilters] = useState<GameFilters>(EMPTY_FILTERS)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
@@ -282,7 +286,7 @@ export function GameLog({
             state={state}
             game={g}
             onOpen={() => onOpen(g)}
-            onDelete={() => {
+            onDelete={readOnly ? undefined : () => {
               if (!confirm("Delete this game and all its stats?")) return
               update((s) => ({ ...s, games: s.games.filter((x) => x.id !== g.id) }))
             }}

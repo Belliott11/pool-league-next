@@ -5,6 +5,7 @@ import { BalanceAndPredict } from "./games/BalanceAndPredict"
 import { GamePage } from "./games/GamePage"
 import { GameLog } from "./games/GameLog"
 import { Section } from "@/components/Section"
+import { useReadOnly } from "@/lib/mode"
 import { SetUpTonight } from "./games/SetUpTonight"
 import { Sidebar } from "./games/Sidebar"
 
@@ -17,6 +18,7 @@ export function GamesPage({
   update: Update
   onOpenPlayer: (id: string) => void
 }) {
+  const readOnly = useReadOnly()
   const [openId, setOpenId] = useState<string | null>(null)
   // Same deep link the classic site's Share button writes: #game=<id>.
   useEffect(() => {
@@ -43,12 +45,16 @@ export function GamesPage({
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div className="flex min-w-0 flex-col gap-4">
         <GameLog state={state} update={update} onOpen={open} />
-        <Section id="games-section-setup" title="Set Up Tonight" teaser="RSVP who's coming and log tonight's game">
-          <SetUpTonight state={state} update={update} onCreated={open} />
-        </Section>
-        <Section id="games-section-balance" title="Balance & Predict" teaser="Even splits, matchup odds, and a full night's schedule">
-          <BalanceAndPredict state={state} update={update} onCreated={open} />
-        </Section>
+        {!readOnly && (
+          <>
+            <Section id="games-section-setup" title="Set Up Tonight" teaser="RSVP who's coming and log tonight's game">
+              <SetUpTonight state={state} update={update} onCreated={open} />
+            </Section>
+            <Section id="games-section-balance" title="Balance & Predict" teaser="Even splits, matchup odds, and a full night's schedule">
+              <BalanceAndPredict state={state} update={update} onCreated={open} />
+            </Section>
+          </>
+        )}
       </div>
       <Sidebar state={state} onOpenPlayer={onOpenPlayer} onOpenGame={open} />
     </div>
