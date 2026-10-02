@@ -323,7 +323,7 @@ const tainted = new Set()
   }
 }
 
-const STUB_NAMES = new Set(["openPlayerDetail", "openGame", "showTab", "startLiveGame", "openLiveGameOverlay", "scrollBelowStickyNav", "wireSectionNavExtras"])
+const STUB_NAMES = new Set(["openPlayerDetail", "openGame", "showTab", "startLiveGame", "openLiveGameOverlay", "scrollBelowStickyNav", "wireSectionNavExtras", "renderTrendLineChart", "renderHeatmapSvg"])
 // closure
 const included = new Set()
 const queue = []
@@ -421,6 +421,18 @@ function startLiveGame() {}
 function openLiveGameOverlay() {}
 function scrollBelowStickyNav() {}
 function wireSectionNavExtras() {}
+let __trendRenderer = null;
+export function setTrendRenderer(fn) { __trendRenderer = fn; }
+function renderTrendLineChart(containerId, points, seasonAvg, unitLabel, leagueAvg, opts) {
+  const wrap = document.getElementById(containerId);
+  if (wrap) wrap.innerHTML = __trendRenderer ? __trendRenderer(points, seasonAvg, unitLabel, leagueAvg, opts, formatDateDisplay) : "";
+}
+let __heatmapRenderer = null;
+export function setHeatmapRenderer(fn) { __heatmapRenderer = fn; }
+function renderHeatmapSvg(shots, colorFn) {
+  if (shots.length === 0 || !__heatmapRenderer) return null;
+  return __heatmapRenderer(computeHeatmapCells(shots), shots.length, colorFn === defensiveHeatmapCellColor);
+}
 `
 const tableBlock = `
 const __playerText = (id, name) => escapeHtml(name);
@@ -461,8 +473,14 @@ const footer = `\nif (typeof POOLEAN_SEASONS !== "undefined") setPooleanSeason(p
 
 // The classic heat cells color by hue (0 red to 120 green). Redraw them with this app's own meaning
 // colors, crimson for low and aqua for high, so heat maps match the rest of the app.
+// Hint text that names the old colors is reworded to the new ones.
+const colorWords = (code) =>
+  code
+    .replace("green make, red miss", "aqua make, crimson miss")
+    .replace("Color is FG% in that zone (red low, green high)", "Each zone is tinted against this player's own FG%: aqua above it, crimson below")
+    .replace("Color is opponents' FG% (green is good defense)", "Each zone is tinted against the opponents' overall FG%: aqua where they were held below it")
 const heatTokens = (code) =>
-  code.replace(
+  colorWords(code).replace(
     /hsla\(\$\{hue\}, \d+%, \d+%, \$\{opacity\}\)/g,
     "color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)",
   )

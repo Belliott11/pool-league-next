@@ -10,18 +10,10 @@ import {
   formatDateDisplay,
   isQualifyingGame,
 } from "@/lib/legacy-core"
+import { heatFill } from "@/lib/heat"
 import type { PooleanState } from "@/lib/types"
 
 const tickText = "fill-muted-foreground text-[10px]"
-
-// Above the league average tints aqua, below tints red; a bigger gap and more attempts is stronger.
-function heatFill(value: number, mean: number, spread: number, volume: number, volumeFull: number) {
-  const d = value - mean
-  const strength = Math.min(1, Math.abs(d) / spread)
-  const sure = Math.min(1, volume / volumeFull)
-  const pct = Math.round(18 + 62 * strength * (0.45 + 0.55 * sure))
-  return `color-mix(in oklab, var(${d >= 0 ? "--pos" : "--neg"}) ${pct}%, transparent)`
-}
 
 function HeatLegend({ mean, unit }: { mean: string; unit: string }) {
   return (
