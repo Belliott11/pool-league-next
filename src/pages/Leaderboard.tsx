@@ -5,6 +5,7 @@ import type { Toggles } from "@/lib/toggles"
 import { computeLeaderboardSectionTeasers } from "@/lib/legacy-core"
 import type { PooleanState } from "@/lib/types"
 import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
+import { LaneBars } from "./leaderboard/LaneBars"
 import { SeasonRates } from "./leaderboard/SeasonRates"
 
 // Same six groups, in the same order, as the classic Leaderboard tab.
@@ -36,6 +37,7 @@ export function LeaderboardPage({
   const teasers = computeLeaderboardSectionTeasers() as Record<string, string>
   return (
     <div className="flex min-w-0 flex-col gap-4">
+      <LaneBars onOpenPlayer={onOpenPlayer} />
       <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
       {SECTIONS.map((s) => (
         <Section key={s.key} id={`lb-section-${s.key}`} title={s.title} teaser={teasers[s.key] ?? ""}>

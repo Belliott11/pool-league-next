@@ -48,7 +48,7 @@ function names(state: PooleanState, ids: string[], fallback = "Team") {
 }
 
 function fmtPct(v: number | null) {
-  return v === null ? "—" : `${v}%`
+  return v === null ? "-" : `${v}%`
 }
 
 function signed(n: number) {
@@ -179,8 +179,8 @@ function ShotRow({ state, game, ev }: { state: PooleanState; game: Game; ev: Sco
         </span>
       </TableCell>
       <TableCell>{ev.points}</TableCell>
-      <TableCell>{ev.assistId ? playerName(state, ev.assistId) : "—"}</TableCell>
-      <TableCell>{ev.passerId && ev.passerId !== "none" ? playerName(state, ev.passerId) : "—"}</TableCell>
+      <TableCell>{ev.assistId ? playerName(state, ev.assistId) : "-"}</TableCell>
+      <TableCell>{ev.passerId && ev.passerId !== "none" ? playerName(state, ev.passerId) : "-"}</TableCell>
       <TableCell>{names(state, ev.defenderIds ?? [], "No defender")}</TableCell>
       <TableCell className="tabular-nums">{formatVideoTime(ev.videoTime)}</TableCell>
     </TableRow>
@@ -251,8 +251,8 @@ function OtherEvents({ state, game }: { state: PooleanState; game: Game }) {
           <TableRow key={r.key}>
             <TableCell>{r.verb}</TableCell>
             <TableCell>{playerName(state, r.playerId)}</TableCell>
-            <TableCell>{r.opponentId ? playerName(state, r.opponentId) : "—"}</TableCell>
-            <TableCell>{r.note || "—"}</TableCell>
+            <TableCell>{r.opponentId ? playerName(state, r.opponentId) : "-"}</TableCell>
+            <TableCell>{r.note || "-"}</TableCell>
             <TableCell className="tabular-nums">{formatVideoTime(r.videoTime)}</TableCell>
           </TableRow>
         ))}
@@ -279,7 +279,7 @@ function Matchups({ state, game }: { state: PooleanState; game: Game }) {
           <TableRow key={m.id}>
             <TableCell>{playerName(state, m.defenderId)}</TableCell>
             <TableCell>{playerName(state, m.offenderId)}</TableCell>
-            <TableCell>{m.note || "—"}</TableCell>
+            <TableCell>{m.note || "-"}</TableCell>
             <TableCell className="tabular-nums">{formatVideoTime(m.videoTime)}</TableCell>
           </TableRow>
         ))}
@@ -312,8 +312,8 @@ function Reel({ state, game }: { state: PooleanState; game: Game }) {
             </TableCell>
             <TableCell className="tabular-nums">{formatVideoTime(p.start)}</TableCell>
             <TableCell className="tabular-nums">{formatVideoTime(p.end)}</TableCell>
-            <TableCell>{p.playerId ? playerName(state, p.playerId) : "—"}</TableCell>
-            <TableCell>{p.note || "—"}</TableCell>
+            <TableCell>{p.playerId ? playerName(state, p.playerId) : "-"}</TableCell>
+            <TableCell>{p.note || "-"}</TableCell>
           </TableRow>
         ))}
       </TableBody>

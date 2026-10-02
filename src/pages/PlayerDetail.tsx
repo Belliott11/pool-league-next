@@ -123,9 +123,6 @@ export function PlayerDetailPage({
   if (!player || !pid) return <p className="text-muted-foreground">No players yet.</p>
 
   const record = row ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}` : null
-  const summary = row
-    ? `${record} · ${fmtRate(row.rate.pts)} PTS/20 · ${fmtRate(row.offRatingPer20)} Off Rating/20 · ${fmtRate(row.twoWayPer20)} Two-Way/20`
-    : "No games yet"
 
   async function share() {
     const url = `${location.origin}${location.pathname}#player=${encodeURIComponent(pid!)}`
@@ -156,8 +153,8 @@ export function PlayerDetailPage({
         </SelectContent>
       </Select>
 
-      <Card>
-        <CardContent className="flex flex-col gap-3">
+      <Card className="tile overflow-hidden">
+        <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <PlayerAvatar id={pid} name={player.name} size="lg" />
             <h2 className="font-display text-2xl font-bold">{player.name}</h2>
@@ -171,7 +168,28 @@ export function PlayerDetailPage({
               </Button>
             </span>
           </div>
-          <div className="rounded-md bg-accent/10 px-3 py-2 font-display font-bold text-accent">{summary}</div>
+          {row ? (
+            <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+              <div>
+                <div className="font-display text-7xl font-extrabold leading-none tabular-nums text-primary sm:text-8xl">{fmtRate(row.twoWayPer20)}</div>
+                <div className="mt-1 text-sm text-muted-foreground">Two-Way/20</div>
+              </div>
+              <dl className="flex gap-6 border-l border-dashed pl-6">
+                {[
+                  ["Record", record],
+                  ["PTS/20", fmtRate(row.rate.pts)],
+                  ["Off/20", fmtRate(row.offRatingPer20)],
+                ].map(([k, v]) => (
+                  <div key={k}>
+                    <dd className="font-display text-xl font-bold tabular-nums">{v}</dd>
+                    <dt className="text-xs text-muted-foreground">{k}</dt>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No games yet</p>
+          )}
         </CardContent>
       </Card>
 

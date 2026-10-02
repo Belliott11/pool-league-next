@@ -137,3 +137,11 @@
   font-stretch: 112%;
   letter-spacing: -0.01em;
 }
+
+/* Data surface: a faint pool-floor grid under charts and ranked lanes. */
+.tile {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}

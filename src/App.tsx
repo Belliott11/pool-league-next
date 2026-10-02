@@ -183,7 +183,7 @@ function AppShell({ initial }: { initial: PooleanState }) {
         </TabsContent>
       </Tabs>
       <p className="text-xs text-muted-foreground">
-        A subset of the full site &mdash; more stats on the classic site.
+        A subset of the full site, with more stats on the classic site.
       </p>
     </div>
   )

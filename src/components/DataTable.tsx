@@ -36,7 +36,7 @@ interface Props<R> {
 function cellText<R>(col: Column<R>, r: R): string {
   if (col.display) return col.display(r)
   const v = col.accessor(r)
-  return v === null || v === undefined ? "—" : String(v)
+  return v === null || v === undefined ? "-" : String(v)
 }
 
 // The classic site's cell formatters sometimes return small HTML snippets (a line break and a hint
