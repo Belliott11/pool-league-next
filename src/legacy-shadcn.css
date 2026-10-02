@@ -273,3 +273,8 @@
 .export-panel .legacy.legacy .button-row button { justify-content: flex-start; width: 100%; text-align: left; }
 .export-panel .legacy.legacy [class*="review-row"],
 .export-panel .legacy.legacy [class*="-card"] { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+
+/* long option text must not make a dropdown wider than its panel */
+.legacy.legacy select,
+.legacy.legacy input:not([type="checkbox"]):not([type="radio"]) { max-width: 100%; min-width: 0; }
+.legacy.legacy .stat-trend-picker { display: flex; flex-direction: column; align-items: stretch; gap: 0.25rem; max-width: 100%; }

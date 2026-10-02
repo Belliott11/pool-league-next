@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { showTick } from "@/lib/axis"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import {
   HEATMAP_ROW_BOUNDARIES,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/legacy-core"
 import { heatFill } from "@/lib/heat"
 import type { PooleanState } from "@/lib/types"
+import { useWidth } from "@/lib/useWidth"
 
 const tickText = "fill-muted-foreground text-[10px]"
 
@@ -74,10 +76,10 @@ export function LeagueHeatmap({ state }: { state: PooleanState }) {
                   rx={2}
                   style={{ fill: heatFill(c.makes / c.attempts, mean, 0.35, c.attempts, 8) }}
                 />
-                <text x={cx} y={cy - 1} textAnchor="middle" className="fill-foreground text-[11px] font-bold">
+                <text x={cx} y={cy - 2} textAnchor="middle" className="fill-foreground text-[11px] font-bold">
                   {c.attempts}
                 </text>
-                <text x={cx} y={cy + 10} textAnchor="middle" className="fill-foreground/70 text-[9px]">
+                <text x={cx} y={cy + 12} textAnchor="middle" className="fill-foreground/70 text-[9px]">
                   {pct}%
                 </text>
               </g>
@@ -97,14 +99,14 @@ export function LeagueHeatmap({ state }: { state: PooleanState }) {
 
 /* ---------- Two-Way/20 Rank Over the Season: rank 1 on top, every night on an even grid ---------- */
 export function TwoWayRankChart({ state }: { state: PooleanState }) {
+  const [ref, W] = useWidth()
   const { dates, series } = computeTwoWayRankOverSeason() as { dates: string[]; series: Record<string, { date: string; rank: number; twoWay: number }[]> }
   const ids = Object.keys(series).filter((id) => state.players.some((p) => p.id === id))
   if (dates.length === 0 || ids.length === 0) return <p className="text-sm text-muted-foreground">No games logged yet.</p>
   const nameOf = (id: string) => state.players.find((p) => p.id === id)?.name ?? id
   const maxRank = Math.max(...ids.flatMap((id) => series[id].map((p) => p.rank)))
-  const W = 560
   const L = 34
-  const R = 96
+  const R = W < 420 ? 60 : 96
   const T = 26
   const rowH = 26
   const B = 34
@@ -123,7 +125,7 @@ export function TwoWayRankChart({ state }: { state: PooleanState }) {
   const order = [...ids].sort((a, b) => rank.indexOf(roleOf(a)) - rank.indexOf(roleOf(b)))
   return (
     <div>
-      <div className="w-full rounded-xl border bg-card p-2">
+      <div ref={ref} className="w-full rounded-xl border bg-card p-2">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Two-Way rating rank by night">
           {Array.from({ length: maxRank }, (_, i) => i + 1).map((r) => (
             <g key={r}>
@@ -136,9 +138,11 @@ export function TwoWayRankChart({ state }: { state: PooleanState }) {
           {dates.map((d, i) => (
             <g key={d}>
               <line x1={x(i)} x2={x(i)} y1={T} y2={y(maxRank)} className="stroke-border" />
-              <text x={x(i)} y={H - B + 16} textAnchor="middle" className={tickText}>
-                {formatDateDisplay(d)}
-              </text>
+              {showTick(i, dates.length, W - L - R) && (
+                <text x={x(i)} y={H - B + 16} textAnchor={i === 0 ? "start" : i === dates.length - 1 ? "end" : "middle"} className={tickText}>
+                  {formatDateDisplay(d)}
+                </text>
+              )}
             </g>
           ))}
           {order.map((id) => {

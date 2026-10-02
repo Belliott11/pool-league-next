@@ -48,6 +48,8 @@ const SECTIONS: { key: string; title: string }[] = [
 // .legacy, the scoped classic stylesheet). Re-runs when the player, data, or a toggle changes.
 function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: string; version: unknown }) {
   const [error, setError] = useState<string | null>(null)
+  // Charts draw to their container's width, which is 0 while a panel is closed: draw again on open.
+  const [opened, setOpened] = useState(0)
   useEffect(() => {
     const ctl = new AbortController()
     spec.wires.forEach((w) => document.getElementById(w.id)?.addEventListener(w.evt, w.handler, { signal: ctl.signal }))
@@ -61,9 +63,14 @@ function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: strin
       console.error(`Player panel "${spec.title}" failed`, e)
       setError(String(e))
     }
-  }, [spec, pid, version])
+  }, [spec, pid, version, opened])
   return (
-    <details open={spec.open} className="group rounded-xl border bg-card" data-player-panel={spec.title}>
+    <details
+      open={spec.open}
+      className="group rounded-xl border bg-card"
+      data-player-panel={spec.title}
+      onToggle={(e) => e.currentTarget.open && setOpened((n) => n + 1)}
+    >
       <summary className="flex cursor-pointer list-none items-center gap-2 p-4 [&::-webkit-details-marker]:hidden">
         <span className="text-muted-foreground transition-transform group-open:rotate-90">&#9656;</span>
         <h3 className="font-display text-base font-bold">{spec.title}</h3>

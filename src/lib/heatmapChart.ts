@@ -31,7 +31,7 @@ export function heatmapHtml(cells: Cell[], total: number, invert: boolean): stri
       const pct = Math.round(fg * 100)
       const cx = X(c.x + c.w / 2)
       const cy = (Y(c.y) + Y(c.y + c.h)) / 2
-      return `<g><title>${c.makes} of ${c.attempts} ${invert ? "allowed" : "made"} (${pct}%)</title><rect x="${X(c.x) + 1}" y="${Y(c.y + c.h) + 1}" width="${X(c.x + c.w) - X(c.x) - 2}" height="${Y(c.y) - Y(c.y + c.h) - 2}" rx="2" style="fill:${heatFill(invert ? mean : fg, invert ? fg : mean, 0.35, c.attempts, 8)}"/><text x="${cx}" y="${cy - 1}" text-anchor="middle" class="fill-foreground text-[11px] font-bold">${c.attempts}</text><text x="${cx}" y="${cy + 10}" text-anchor="middle" class="fill-foreground/70 text-[9px]">${pct}%</text></g>`
+      return `<g><title>${c.makes} of ${c.attempts} ${invert ? "allowed" : "made"} (${pct}%)</title><rect x="${X(c.x) + 1}" y="${Y(c.y + c.h) + 1}" width="${X(c.x + c.w) - X(c.x) - 2}" height="${Y(c.y) - Y(c.y + c.h) - 2}" rx="2" style="fill:${heatFill(invert ? mean : fg, invert ? fg : mean, 0.35, c.attempts, 8)}"/><text x="${cx}" y="${cy - 2}" text-anchor="middle" class="fill-foreground text-[11px] font-bold">${c.attempts}</text><text x="${cx}" y="${cy + 12}" text-anchor="middle" class="fill-foreground/70 text-[9px]">${pct}%</text></g>`
     })
     .join("")
   const legend = invert

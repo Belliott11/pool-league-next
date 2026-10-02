@@ -34,7 +34,7 @@ let __trendRenderer = null;
 export function setTrendRenderer(fn) { __trendRenderer = fn; }
 function renderTrendLineChart(containerId, points, seasonAvg, unitLabel, leagueAvg, opts) {
   const wrap = document.getElementById(containerId);
-  if (wrap) wrap.innerHTML = __trendRenderer ? __trendRenderer(points, seasonAvg, unitLabel, leagueAvg, opts, formatDateDisplay) : "";
+  if (wrap) wrap.innerHTML = __trendRenderer ? __trendRenderer(points, seasonAvg, unitLabel, leagueAvg, opts, formatDateDisplay, wrap.clientWidth) : "";
 }
 let __heatmapRenderer = null;
 export function setHeatmapRenderer(fn) { __heatmapRenderer = fn; }

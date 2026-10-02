@@ -19,12 +19,15 @@ export function trendChartHtml(
   leagueAvg: number | null | undefined,
   opts: { decimals?: number; faded?: boolean } | undefined,
   fmtDate: (d: string) => string,
+  width = 0,
 ): string {
   const dec = opts?.decimals ?? 1
   if (points.length === 0 || seasonAvg === null) return '<p class="empty-state">Not enough data yet.</p>'
   const hasLeague = leagueAvg !== undefined && leagueAvg !== null
-  const W = 560
-  const H = 240
+  // Drawn at the container's real width so the text stays readable on a phone. A closed panel
+  // measures 0, so it is drawn again when opened (see PlayerPanel).
+  const W = Math.max(260, Math.min(width || 560, 640))
+  const H = 220
   const L = 46
   const R = 16
   const T = 18
@@ -33,16 +36,16 @@ export function trendChartHtml(
   const ay = axis(Math.min(...vals), Math.max(...vals), 4)
   const x = (i: number) => (points.length === 1 ? (L + W - R) / 2 : L + (i / (points.length - 1)) * (W - L - R))
   const y = (v: number) => H - B - ((v - ay.lo) / (ay.hi - ay.lo)) * (H - T - B)
-  const every = Math.max(1, Math.ceil(points.length / 7))
+  const every = Math.max(1, Math.ceil(points.length / Math.max(1, Math.floor((W - L - R) / 78))))
   const text = "fill-muted-foreground text-[10px]"
   const grid = ay.ticks
     .map((t) => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" class="stroke-border"/><text x="${L - 5}" y="${y(t) + 3}" text-anchor="end" class="${text}">${Number(t.toFixed(dec))}</text>`)
     .join("")
   const cols = points
     .map((p, i) =>
-      i % every !== 0 && i !== points.length - 1
+      !(i === points.length - 1 || (i % every === 0 && points.length - 1 - i >= Math.ceil(every / 2)))
         ? ""
-        : `<line x1="${x(i)}" x2="${x(i)}" y1="${T}" y2="${H - B}" class="stroke-border"/><text x="${x(i)}" y="${H - B + 14}" text-anchor="middle" class="${text}">${esc(fmtDate(p.date))}</text>`,
+        : `<line x1="${x(i)}" x2="${x(i)}" y1="${T}" y2="${H - B}" class="stroke-border"/><text x="${x(i)}" y="${H - B + 14}" text-anchor="${i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"}" class="${text}">${esc(fmtDate(p.date))}</text>`,
     )
     .join("")
   const line = points.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p.value)}`).join(" ")
@@ -55,5 +58,5 @@ export function trendChartHtml(
     .join("")
   const ref = (v: number, label: string, cls: string, anchor: "start" | "end") =>
     `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke-dasharray="5 4" class="${cls}"><title>${esc(label)} ${v.toFixed(dec)} ${esc(unit)}</title></line><text x="${anchor === "end" ? W - R : L + 4}" y="${y(v) - 4}" text-anchor="${anchor}" class="${text}">${esc(label)} ${v.toFixed(dec)}</text>`
-  return `<svg viewBox="0 0 ${W} ${H}" class="w-full rounded-xl border bg-card p-1" role="img" aria-label="${esc(unit)} by game"><g class="${opts?.faded ? "opacity-50" : ""}">${grid}${cols}${ref(seasonAvg, "season avg", "stroke-foreground/60", "end")}${hasLeague ? ref(leagueAvg as number, "league avg", "stroke-muted-foreground/60", "start") : ""}<path d="${line}" class="fill-none stroke-primary" stroke-width="2.5" stroke-linejoin="round"/>${dots}</g></svg>`
+  return `<svg viewBox="0 0 ${W} ${H}" class="w-full rounded-xl border bg-card p-1" width="100%" role="img" aria-label="${esc(unit)} by game"><g class="${opts?.faded ? "opacity-50" : ""}">${grid}${cols}${ref(seasonAvg, "season avg", "stroke-foreground/60", "end")}${hasLeague ? ref(leagueAvg as number, "league avg", "stroke-muted-foreground/60", "start") : ""}<path d="${line}" class="fill-none stroke-primary" stroke-width="2.5" stroke-linejoin="round"/>${dots}</g></svg>`
 }

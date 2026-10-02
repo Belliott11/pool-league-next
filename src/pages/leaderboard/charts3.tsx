@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PlayerAvatar } from "@/components/PlayerAvatar"
-import { axis } from "@/lib/axis"
+import { axis, showTick } from "@/lib/axis"
 import {
   PLAY_STYLE_MIN_GP,
   PLAY_STYLE_MIN_PLAYERS,
@@ -11,12 +11,14 @@ import {
   formatDateDisplay,
 } from "@/lib/legacy-core"
 import type { PooleanState } from "@/lib/types"
+import { useWidth } from "@/lib/useWidth"
 
 const tickText = "fill-muted-foreground text-[10px]"
 const signed = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}`
 
 /* ---------- Shot-Making Added, cumulative: points scored above what the shots were worth ---------- */
 export function ShotMakingAddedChart({ state }: { state: PooleanState }) {
+  const [ref, W] = useWidth()
   const { dates, series } = computeShotMakingAddedOverSeason(computeXptsCombos(), computeLeagueZonePointsPerAttempt()) as {
     dates: string[]
     series: Record<string, { date: string; added: number }[]>
@@ -26,10 +28,9 @@ export function ShotMakingAddedChart({ state }: { state: PooleanState }) {
   const nameOf = (id: string) => state.players.find((p) => p.id === id)?.name ?? id
   const all = ids.flatMap((id) => series[id].map((p) => p.added))
   const ay = axis(Math.min(0, ...all), Math.max(0, ...all), 6)
-  const W = 600
-  const H = 380
+  const H = Math.round(Math.max(300, Math.min(W * 0.75, 420)))
   const L = 44
-  const R = 110
+  const R = W < 420 ? 78 : 110
   const T = 18
   const B = 40
   const x = (i: number) => (dates.length === 1 ? (L + W - R) / 2 : L + (i / (dates.length - 1)) * (W - L - R))
@@ -43,7 +44,7 @@ export function ShotMakingAddedChart({ state }: { state: PooleanState }) {
   const stroke: Record<string, string> = { lead: "stroke-primary", down: "stroke-neg", rest: "stroke-muted-foreground/45" }
   const fill: Record<string, string> = { lead: "fill-primary", down: "fill-neg", rest: "fill-muted-foreground/60" }
   // End labels sit at each line's last value, nudged apart so no two overlap.
-  const gap = 12
+  const gap = 14
   const labelY: Record<string, number> = {}
   let prev = -Infinity
   byEnd.forEach((id) => {
@@ -54,7 +55,7 @@ export function ShotMakingAddedChart({ state }: { state: PooleanState }) {
   const order = [...ids].sort((a, b) => ["rest", "down", "lead"].indexOf(role(a)) - ["rest", "down", "lead"].indexOf(role(b)))
   return (
     <div>
-      <div className="w-full rounded-xl border bg-card p-2">
+      <div ref={ref} className="w-full rounded-xl border bg-card p-2">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Cumulative shot-making added by night">
           {ay.ticks.map((t) => (
             <g key={t}>
@@ -67,9 +68,11 @@ export function ShotMakingAddedChart({ state }: { state: PooleanState }) {
           {dates.map((d, i) => (
             <g key={d}>
               <line x1={x(i)} x2={x(i)} y1={T} y2={H - B} className="stroke-border" />
-              <text x={x(i)} y={H - B + 14} textAnchor="middle" className={tickText}>
-                {formatDateDisplay(d)}
-              </text>
+              {showTick(i, dates.length, W - L - R) && (
+                <text x={x(i)} y={H - B + 14} textAnchor={i === 0 ? "start" : i === dates.length - 1 ? "end" : "middle"} className={tickText}>
+                  {formatDateDisplay(d)}
+                </text>
+              )}
             </g>
           ))}
           {order.map((id) => {

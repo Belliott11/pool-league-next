@@ -4,7 +4,8 @@ import { playerPhotoUrl } from "@/lib/players"
 
 type Open = (id: string) => void
 
-import { axis } from "@/lib/axis"
+import { axis, showTick } from "@/lib/axis"
+import { useWidth } from "@/lib/useWidth"
 export { axis }
 
 const tickText = "fill-muted-foreground text-[10px]"
@@ -25,24 +26,28 @@ function PhotoDot({ id, cx, cy, r = 11 }: { id: string; cx: number; cy: number; 
   )
 }
 
-function Frame({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-md rounded-xl border bg-card p-2">{children}</div>
+function Frame({ children, frameRef }: { children: React.ReactNode; frameRef?: React.Ref<HTMLDivElement> }) {
+  return (
+    <div ref={frameRef} className="mx-auto w-full max-w-md rounded-xl border bg-card p-2">
+      {children}
+    </div>
+  )
 }
 
 /* ---------- Two-Way Quadrant: offense across, defense up; zero lines on the grid ---------- */
 export function TwoWayQuadrant({ onOpen }: { onOpen: Open }) {
+  const [ref, W] = useWidth()
   const data = computeQuadrantData() as { player: { id: string; name: string }; offRtg: number; defRtg: number }[]
   if (data.length === 0) return <p className="text-sm text-muted-foreground">No games logged yet.</p>
-  const W = 360
-  const H = 360
-  const PAD = 36
+  const H = Math.round(W * 0.95)
+  const PAD = 34
   const m = (vals: number[]) => Math.max(1, ...vals.map(Math.abs)) * 1.1
   const ax = axis(-m(data.map((d) => d.offRtg)), m(data.map((d) => d.offRtg)), 6)
   const ay = axis(-m(data.map((d) => d.defRtg)), m(data.map((d) => d.defRtg)), 6)
   const x = (v: number) => PAD + ((v - ax.lo) / (ax.hi - ax.lo)) * (W - PAD * 2)
   const y = (v: number) => H - PAD - ((v - ay.lo) / (ay.hi - ay.lo)) * (H - PAD * 2)
   return (
-    <Frame>
+    <Frame frameRef={ref}>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Offense versus defense rating per player">
         <rect x={x(0)} y={PAD} width={W - PAD - x(0)} height={y(0) - PAD} className="fill-pos/10" />
         {ax.ticks.map((t) => (
@@ -78,10 +83,10 @@ export function TwoWayQuadrant({ onOpen }: { onOpen: Open }) {
 
 /* ---------- Volume vs. Efficiency: how much each player shoots against how well ---------- */
 export function VolumeEfficiency({ onOpen }: { onOpen: Open }) {
+  const [ref, W] = useWidth()
   const data = computeVolumeEfficiencyData() as { player: { id: string; name: string }; volume: number; ts: number }[]
   if (data.length === 0) return <p className="text-sm text-muted-foreground">No field goals logged yet.</p>
-  const W = 380
-  const H = 340
+  const H = Math.round(W * 0.85)
   const L = 44
   const R = 16
   const T = 16
@@ -92,7 +97,7 @@ export function VolumeEfficiency({ onOpen }: { onOpen: Open }) {
   const x = (v: number) => L + ((v - ax.lo) / (ax.hi - ax.lo)) * (W - L - R)
   const y = (v: number) => H - B - ((v - ay.lo) / (ay.hi - ay.lo)) * (H - T - B)
   return (
-    <Frame>
+    <Frame frameRef={ref}>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Shot volume versus true shooting percentage per player">
         {ax.ticks.map((t) => (
           <g key={`x${t}`}>
@@ -126,10 +131,10 @@ export function VolumeEfficiency({ onOpen }: { onOpen: Open }) {
 
 /* ---------- TS% by Shot Distance: one bar per zone on a shared percentage scale ---------- */
 export function TsByZone() {
+  const [ref, W] = useWidth()
   const zones = computeLeagueTsByZone() as { key: string; label: string; fga: number; ts: number | null }[]
   if (zones.every((z) => z.fga === 0)) return <p className="text-sm text-muted-foreground">No field goals with a marked shot location yet.</p>
-  const W = 420
-  const H = 250
+  const H = 230
   const L = 40
   const R = 12
   const T = 22
@@ -139,7 +144,7 @@ export function TsByZone() {
   const slot = (W - L - R) / zones.length
   const barW = Math.min(56, slot * 0.6)
   return (
-    <Frame>
+    <Frame frameRef={ref}>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="True shooting percentage by shot distance">
         {ay.ticks.map((t) => (
           <g key={t}>
@@ -169,12 +174,12 @@ export function TsByZone() {
 
 /* ---------- League TS% Over Time: one point per night, evenly spaced, on a stepped % scale ---------- */
 export function LeagueTsOverTime() {
+  const [ref, W] = useWidth()
   const pts = computeLeagueTsOverTime() as { date: string; ts: number }[]
   if (pts.length === 0) return <p className="text-sm text-muted-foreground">No games logged yet.</p>
-  const W = 560
-  const H = 240
+  const H = 220
   const L = 44
-  const R = 20
+  const R = 36
   const T = 22
   const B = 40
   const vals = pts.map((p) => p.ts)
@@ -185,7 +190,7 @@ export function LeagueTsOverTime() {
   const area = `${line} L${x(pts.length - 1)},${H - B} L${x(0)},${H - B} Z`
   const last = pts.length - 1
   return (
-    <div className="w-full rounded-xl border bg-card p-2">
+    <div ref={ref} className="w-full rounded-xl border bg-card p-2">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="League true shooting percentage by night">
         {ay.ticks.map((t) => (
           <g key={t}>
@@ -196,7 +201,9 @@ export function LeagueTsOverTime() {
         {pts.map((p, i) => (
           <g key={p.date}>
             <line x1={x(i)} x2={x(i)} y1={T} y2={H - B} className="stroke-border" />
-            <text x={x(i)} y={H - B + 14} textAnchor="middle" className={tickText}>{formatDateDisplay(p.date)}</text>
+            {showTick(i, pts.length, W - L - R) && (
+              <text x={x(i)} y={H - B + 14} textAnchor={i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle"} className={tickText}>{formatDateDisplay(p.date)}</text>
+            )}
           </g>
         ))}
         <path d={area} className="fill-pos/15" />
@@ -206,7 +213,7 @@ export function LeagueTsOverTime() {
             <title>{`${formatDateDisplay(p.date)}: ${p.ts}% TS`}</title>
             <circle cx={x(i)} cy={y(p.ts)} r={i === last ? 5 : 3.5} className={i === last ? "fill-primary stroke-card" : "fill-pos stroke-card"} strokeWidth={2} />
             {(i === last || i === 0 || pts.length <= 8) && (
-              <text x={x(i)} y={y(p.ts) - 9} textAnchor="middle" className="fill-foreground text-[11px] font-bold">{p.ts}%</text>
+              <text x={x(i)} y={y(p.ts) - 9} textAnchor={i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle"} className="fill-foreground text-[11px] font-bold">{p.ts}%</text>
             )}
           </g>
         ))}

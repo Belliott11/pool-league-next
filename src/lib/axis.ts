@@ -15,3 +15,10 @@ export function axis(min: number, max: number, count = 5) {
   for (let v = lo; v <= hi + step / 1000; v += step) ticks.push(Math.round(v * 1000) / 1000)
   return { lo, hi, ticks }
 }
+
+// Whether date label `i` of `n` fits: about one label per 78px, the last always shown, and a label
+// too close to the last one is dropped so the two never run together.
+export function showTick(i: number, n: number, plotW: number) {
+  const every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(plotW / 78))))
+  return i === n - 1 || (i % every === 0 && n - 1 - i >= Math.ceil(every / 2))
+}
