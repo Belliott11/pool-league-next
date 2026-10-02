@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react"
+import { BottomNav } from "@/components/BottomNav"
 import { ColorMenu } from "@/components/ColorMenu"
+import { PageSkeleton } from "@/components/PageSkeleton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -82,6 +84,17 @@ function ThemeToggle() {
 function AppShell({ initial }: { initial: PooleanState }) {
   const [state, setState] = useState(initial)
   const [tab, setTab] = useState("games")
+  // The header shrinks once the page is scrolled, and a new tab always starts at the top.
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [tab])
   const [playerId, setPlayerId] = useState<string | null>(initial.players[0]?.id ?? null)
   const [toggles, setTogglesState] = useState<Toggles>(loadToggles)
   const setToggles = (t: Toggles) => {
@@ -124,9 +137,9 @@ function AppShell({ initial }: { initial: PooleanState }) {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 sm:p-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-bold">
+    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 pb-24 sm:p-6 sm:pb-6">
+      <div className={`sticky top-0 z-20 -mx-4 flex items-center justify-between gap-3 bg-background/90 px-4 backdrop-blur transition-[padding] sm:-mx-6 sm:px-6 ${scrolled ? "py-1.5" : "py-3"}`}>
+        <h1 className={`font-display font-bold transition-[font-size] ${scrolled ? "text-lg" : "text-2xl"}`}>
           Poolean <span className="text-accent">Intel</span>
         </h1>
         <div className="flex items-center gap-2">
@@ -135,7 +148,7 @@ function AppShell({ initial }: { initial: PooleanState }) {
         </div>
       </div>
       <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>
-        <TabsList>
+        <TabsList className="max-sm:hidden">
           <TabsTrigger value="games">Games</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
           <TabsTrigger value="player">Player</TabsTrigger>
@@ -153,7 +166,7 @@ function AppShell({ initial }: { initial: PooleanState }) {
           />
         </TabsContent>
         <TabsContent value="leaderboard">
-          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading leaderboard&hellip;</p>}>
+          <Suspense fallback={<PageSkeleton label="Loading leaderboard" />}>
             <LeaderboardPage
             state={state}
             toggles={toggles}
@@ -166,7 +179,7 @@ function AppShell({ initial }: { initial: PooleanState }) {
           </Suspense>
         </TabsContent>
         <TabsContent value="player">
-          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading player&hellip;</p>}>
+          <Suspense fallback={<PageSkeleton label="Loading player" />}>
             <PlayerDetailPage state={state} toggles={toggles} playerId={playerId} onChangePlayer={(id) => setPlayerId(id)} />
           </Suspense>
         </TabsContent>
@@ -181,11 +194,12 @@ function AppShell({ initial }: { initial: PooleanState }) {
           />
         </TabsContent>
         <TabsContent value="export">
-          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading export tools&hellip;</p>}>
+          <Suspense fallback={<PageSkeleton label="Loading export tools" />}>
             <ExportPage state={state} toggles={toggles} />
           </Suspense>
         </TabsContent>
       </Tabs>
+      <BottomNav tab={tab} onChange={setTab} />
       <p className="text-xs text-muted-foreground">
         A subset of the full site, with more stats on the classic site.
       </p>

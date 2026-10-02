@@ -4,6 +4,9 @@ import { syncLegacy } from "@/lib/legacy"
 import type { Toggles } from "@/lib/toggles"
 import { computeLeaderboardSectionTeasers } from "@/lib/legacy-core"
 import type { PooleanState } from "@/lib/types"
+import hints from "@/data/panel-hints.json"
+import { MOUNT_PANELS, TABLE_PANELS } from "@/lib/legacy-core"
+import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
 import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
 import { LaneBars } from "./leaderboard/LaneBars"
 import { SeasonRates } from "./leaderboard/SeasonRates"
@@ -16,6 +19,19 @@ const SECTIONS: { key: string; title: string }[] = [
   { key: "situational", title: "Situational" },
   { key: "style", title: "Play Style & Models" },
   { key: "media", title: "History & Media" },
+]
+
+const HINTS = hints as Record<string, { hint: string }>
+const sectionTitle = (key: string) => SECTIONS.find((s) => s.key === key)?.title ?? key
+const JUMP_ITEMS: JumpItem[] = [
+  { title: "Two-Way Ranking", group: "Top of the page", sectionId: null, hint: "Every player ranked by Two-Way/20" },
+  { title: "Season Rates (Individual)", group: "Top of the page", sectionId: null, hint: "The full stat table" },
+  ...[...(TABLE_PANELS as { title: string; section: string }[]), ...(MOUNT_PANELS as { title: string; section: string }[])].map((p) => ({
+    title: p.title,
+    group: sectionTitle(p.section),
+    sectionId: `lb-section-${p.section}`,
+    hint: HINTS[p.title]?.hint,
+  })),
 ]
 
 export function LeaderboardPage({
@@ -37,6 +53,7 @@ export function LeaderboardPage({
   const teasers = computeLeaderboardSectionTeasers() as Record<string, string>
   return (
     <div className="flex min-w-0 flex-col gap-4">
+      <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as heatmap or turnovers (press /)" />
       <LaneBars onOpenPlayer={onOpenPlayer} />
       <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
       {SECTIONS.map((s) => (

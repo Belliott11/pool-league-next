@@ -7,6 +7,7 @@ import { PanelBoundary } from "@/components/PanelBoundary"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
+import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
 import { Section } from "@/components/Section"
 import { syncLegacy } from "@/lib/legacy"
 import {
@@ -67,7 +68,7 @@ function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: strin
   return (
     <details
       open={spec.open}
-      className="group rounded-xl border bg-card"
+      className="group scroll-mt-20 rounded-xl border bg-card"
       data-player-panel={spec.title}
       onToggle={(e) => e.currentTarget.open && setOpened((n) => n + 1)}
     >
@@ -104,6 +105,13 @@ function Panels({ section, pid, version }: { section: string; pid: string; versi
     </>
   )
 }
+
+const JUMP_ITEMS: JumpItem[] = PANELS.map((p) => ({
+  title: p.title,
+  group: SECTIONS.find((s) => s.key === p.section)?.title ?? "Overview",
+  sectionId: p.section === "overview" ? null : `section-${p.section}`,
+  hint: p.hint,
+}))
 
 function fmtRate(v: number) {
   return v.toFixed(1)
@@ -208,6 +216,7 @@ export function PlayerDetailPage({
         </CardContent>
       </Card>
 
+      <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as shot chart or tips (press /)" />
       <nav className="flex flex-wrap gap-2" aria-label="Player sections">
         {SECTIONS.map((s) => (
           <Button
