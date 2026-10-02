@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computeLeagueTsByZone, computeLeagueTsOverTime, formatDateDisplay, computeQuadrantData, computeVolumeEfficiencyData } from "@/lib/legacy-core"
 import { playerPhotoUrl } from "@/lib/players"
@@ -38,7 +39,7 @@ function Frame({ children, frameRef }: { children: React.ReactNode; frameRef?: R
 export function TwoWayQuadrant({ onOpen }: { onOpen: Open }) {
   const [ref, W] = useWidth()
   const data = computeQuadrantData() as { player: { id: string; name: string }; offRtg: number; defRtg: number }[]
-  if (data.length === 0) return <p className="text-sm text-muted-foreground">No games logged yet.</p>
+  if (data.length === 0) return <EmptyState title="No games logged yet" hint="Log a game and this chart fills in." />
   const H = Math.round(W * 0.95)
   const PAD = 34
   const m = (vals: number[]) => Math.max(1, ...vals.map(Math.abs)) * 1.1
@@ -85,7 +86,7 @@ export function TwoWayQuadrant({ onOpen }: { onOpen: Open }) {
 export function VolumeEfficiency({ onOpen }: { onOpen: Open }) {
   const [ref, W] = useWidth()
   const data = computeVolumeEfficiencyData() as { player: { id: string; name: string }; volume: number; ts: number }[]
-  if (data.length === 0) return <p className="text-sm text-muted-foreground">No field goals logged yet.</p>
+  if (data.length === 0) return <EmptyState title="No field goals logged yet" hint="Log shots in a game and this chart fills in." />
   const H = Math.round(W * 0.85)
   const L = 44
   const R = 16
@@ -133,7 +134,7 @@ export function VolumeEfficiency({ onOpen }: { onOpen: Open }) {
 export function TsByZone() {
   const [ref, W] = useWidth()
   const zones = computeLeagueTsByZone() as { key: string; label: string; fga: number; ts: number | null }[]
-  if (zones.every((z) => z.fga === 0)) return <p className="text-sm text-muted-foreground">No field goals with a marked shot location yet.</p>
+  if (zones.every((z) => z.fga === 0)) return <EmptyState title="No shots with a location yet" hint="Mark where each shot was taken when you log a game, and the zones fill in." />
   const H = 230
   const L = 40
   const R = 12
@@ -176,7 +177,7 @@ export function TsByZone() {
 export function LeagueTsOverTime() {
   const [ref, W] = useWidth()
   const pts = computeLeagueTsOverTime() as { date: string; ts: number }[]
-  if (pts.length === 0) return <p className="text-sm text-muted-foreground">No games logged yet.</p>
+  if (pts.length === 0) return <EmptyState title="No games logged yet" hint="Log a game and this chart fills in." />
   const H = 220
   const L = 44
   const R = 36

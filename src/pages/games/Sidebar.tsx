@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -27,7 +28,7 @@ export function Sidebar({
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No games with players yet.</p>
+            <EmptyState title="No standings yet" hint="Standings fill in once a game is logged with players." />
           ) : (
             <Table>
               <TableHeader>
@@ -70,7 +71,7 @@ export function Sidebar({
         </CardHeader>
         <CardContent>
           {recent.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No games logged yet.</p>
+            <EmptyState title="No games logged yet" hint="Create a game on this page and your most recent ones show here." />
           ) : (
             <ul className="flex flex-col gap-1">
               {recent.map((g) => {

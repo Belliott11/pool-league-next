@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, type ReactNode } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -138,7 +139,7 @@ export function AwardsVsStats({ onOpen }: { onOpen: Open }) {
                   ))}
                 </ol>
               ) : (
-                <p className="text-muted-foreground">No ballot data for this award.</p>
+                <EmptyState title="No ballot yet" hint="Votes appear once awards are voted on for the season." />
               )}
             </div>
             <div>
@@ -155,7 +156,7 @@ export function AwardsVsStats({ onOpen }: { onOpen: Open }) {
                   ))}
                 </ol>
               ) : (
-                <p className="text-muted-foreground">No standings yet for this stat.</p>
+                <EmptyState title="No standings yet" hint="Log games with this stat and the leaders show up here." />
               )}
             </div>
           </div>
@@ -168,7 +169,7 @@ export function AwardsVsStats({ onOpen }: { onOpen: Open }) {
 /* ---------- Power Ranking vs. Performance: vote strength beside that night's play ---------- */
 export function PowerRankingVsPerformance({ onOpen }: { onOpen: Open }) {
   const parties = computePowerRankingVsPerformance() as any[]
-  if (parties.length === 0) return <p className="text-sm text-muted-foreground">No games reviewed yet for any night with a power ranking.</p>
+  if (parties.length === 0) return <EmptyState title="No reviewed games yet" hint="Log a game on a night that has a power ranking, and the comparison appears." />
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       {parties.map((party) => (
@@ -242,7 +243,7 @@ export function PassingChemistryPair({ state }: { state: PooleanState }) {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">No shots yet.</p>
+              <EmptyState title="No shots yet" hint="Log shots in a game to see them here." />
             )}
           </div>
         ))}

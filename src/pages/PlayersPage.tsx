@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -157,9 +158,9 @@ export function PlayersPage({
             ))}
           </div>
           {state.players.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No players yet. Add one above.</p>
+            <EmptyState title="No players yet" hint="Add your first player above to get started." />
           ) : visible.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No players match the selected role filter.</p>
+            <EmptyState title="No players with that role" hint="Pick a different role filter to see more players." />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {visible.map((p) => {

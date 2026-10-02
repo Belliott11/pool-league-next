@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { axis, showTick } from "@/lib/axis"
@@ -24,7 +25,7 @@ export function ShotMakingAddedChart({ state }: { state: PooleanState }) {
     series: Record<string, { date: string; added: number }[]>
   }
   const ids = Object.keys(series).filter((id) => state.players.some((p) => p.id === id))
-  if (dates.length === 0 || ids.length === 0) return <p className="text-sm text-muted-foreground">No games logged yet.</p>
+  if (dates.length === 0 || ids.length === 0) return <EmptyState title="No games logged yet" hint="Log a few games and this trend fills in." />
   const nameOf = (id: string) => state.players.find((p) => p.id === id)?.name ?? id
   const all = ids.flatMap((id) => series[id].map((p) => p.added))
   const ay = axis(Math.min(0, ...all), Math.max(0, ...all), 6)
@@ -117,9 +118,10 @@ export function PlayStyleClusters({ onOpen }: { onOpen: (id: string) => void }) 
   const clusters = computePlayerStyleClusters() as { label: string; explain: string; members: { player: { id: string; name: string } }[] }[] | null
   if (!clusters) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Needs at least {PLAY_STYLE_MIN_PLAYERS} players with {PLAY_STYLE_MIN_GP}+ qualifying games to cluster yet.
-      </p>
+      <EmptyState
+        title="Not enough players to group yet"
+        hint={`Groups appear once at least ${PLAY_STYLE_MIN_PLAYERS} players have ${PLAY_STYLE_MIN_GP}+ qualifying games.`}
+      />
     )
   }
   return (

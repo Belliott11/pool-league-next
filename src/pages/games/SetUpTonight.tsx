@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -62,7 +63,7 @@ function WhosComing({ state, update }: { state: PooleanState; update: Update }) 
           </Button>
         </div>
         {rsvps.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No RSVPs saved yet.</p>
+          <EmptyState title="No RSVPs saved yet" hint="Pick who is playing above and save, and the night shows up here." />
         ) : (
           <div className="flex flex-col gap-2">
             {rsvps.map((r) => {

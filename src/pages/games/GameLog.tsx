@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 import { useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -261,9 +262,9 @@ export function GameLog({
       </div>
       {showAdvanced && <AdvancedFilters state={state} filters={filters} setFilters={setFilters} />}
       {state.games.length === 0 ? (
-        <p className="text-muted-foreground">No games yet. Create one below.</p>
+        <EmptyState title="No games yet" hint="Create a game below, then log its shots to start the record." />
       ) : games.length === 0 ? (
-        <p className="text-muted-foreground">No games match that filter.</p>
+        <EmptyState title="No games match those filters" hint="Loosen or clear the filters to see more games." />
       ) : (
         games.map((g) => (
           <GameCard

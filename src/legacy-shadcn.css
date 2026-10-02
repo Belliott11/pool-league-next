@@ -421,3 +421,15 @@
 @media (max-width: 640px) {
   .legacy.legacy .table-scroll:has(> table.stack-rows) { overflow: visible; max-height: none; }
 }
+
+/* ---- empty states: match the native EmptyState component (dashed, rounded, centered, muted) ---- */
+.legacy.legacy .empty-state {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+  background: color-mix(in oklab, var(--muted) 30%, transparent);
+  padding: 1.25rem 1rem;
+  text-align: center;
+  font-style: normal;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}

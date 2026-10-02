@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/EmptyState"
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { showTick } from "@/lib/axis"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -41,7 +42,7 @@ export function LeagueHeatmap({ state }: { state: PooleanState }) {
       if ((ev.points === 2 || ev.points === 3) && ev.shotLocation) shots.push(ev)
     }),
   )
-  if (shots.length === 0) return <p className="text-sm text-muted-foreground">No shots with a location marked yet.</p>
+  if (shots.length === 0) return <EmptyState title="No shots with a location yet" hint="Mark where each shot was taken when you log a game, and the heat map fills in." />
   const cells = (computeHeatmapCells(shots) as any[]).filter((c) => c.attempts > 0)
   const mean = shots.filter((e) => e.made !== false).length / shots.length
   const W = 300
@@ -102,7 +103,7 @@ export function TwoWayRankChart({ state }: { state: PooleanState }) {
   const [ref, W] = useWidth()
   const { dates, series } = computeTwoWayRankOverSeason() as { dates: string[]; series: Record<string, { date: string; rank: number; twoWay: number }[]> }
   const ids = Object.keys(series).filter((id) => state.players.some((p) => p.id === id))
-  if (dates.length === 0 || ids.length === 0) return <p className="text-sm text-muted-foreground">No games logged yet.</p>
+  if (dates.length === 0 || ids.length === 0) return <EmptyState title="No games logged yet" hint="Log a few games and this trend fills in." />
   const nameOf = (id: string) => state.players.find((p) => p.id === id)?.name ?? id
   const maxRank = Math.max(...ids.flatMap((id) => series[id].map((p) => p.rank)))
   const L = 34
@@ -191,7 +192,7 @@ export function PassingChemistryGrid({ onOpen }: { onOpen: (id: string) => void 
     scorers: { id: string; name: string }[]
     cellFor: (p: string, s: string) => { shots: number; xptsSum: number } | null
   }
-  if (passers.length === 0 || scorers.length === 0) return <p className="text-sm text-muted-foreground">No shots with a passer credited yet.</p>
+  if (passers.length === 0 || scorers.length === 0) return <EmptyState title="No assisted shots yet" hint="Credit a passer when you log a made shot, and the passing map fills in." />
   let sum = 0
   let n = 0
   passers.forEach((p) =>
