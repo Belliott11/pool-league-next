@@ -291,7 +291,7 @@ function NoSharedData({ cloud }: { cloud: Cloud }) {
           {cloud.error && (
             <Button onClick={() => void cloud.refresh()}>Try again</Button>
           )}
-          <AccountMenu cloud={cloud} />
+          <AccountMenu cloud={cloud} inline />
         </CardContent>
       </Card>
     </div>

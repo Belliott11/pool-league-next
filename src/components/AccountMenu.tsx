@@ -15,7 +15,7 @@ const SYNC_LABEL: Record<Cloud["sync"], string> = {
 }
 
 // Header control for the shared data. Everyone else sees the stats read-only; an editor signs in here.
-export function AccountMenu({ cloud, state }: { cloud: Cloud; state?: PooleanState }) {
+export function AccountMenu({ cloud, state, inline = false }: { cloud: Cloud; state?: PooleanState; inline?: boolean }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +30,26 @@ export function AccountMenu({ cloud, state }: { cloud: Cloud; state?: PooleanSta
     setBusy(false)
     setPassword("")
   }
+
+  const signInForm = (
+      <form className="flex flex-col gap-2" onSubmit={submit}>
+        <div className="font-semibold">Editor sign-in</div>
+        <p className="text-xs text-muted-foreground">Only the league editor needs this. Everyone else can just look around.</p>
+        <Input type="email" required autoComplete="username" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input type="password" required autoComplete="current-password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        {error && (
+          <p role="alert" className="text-xs text-neg">
+            {error}
+          </p>
+        )}
+        <Button type="submit" size="sm" disabled={busy}>
+          {busy ? "Signing in" : "Sign in"}
+        </Button>
+      </form>
+  )
+
+  // On a plain page (no dropdown room) the form is shown directly.
+  if (inline && !cloud.admin) return <div className="w-full max-w-sm">{signInForm}</div>
 
   return (
     <details className="relative">
@@ -70,20 +90,7 @@ export function AccountMenu({ cloud, state }: { cloud: Cloud; state?: PooleanSta
             </Button>
           </div>
         ) : (
-          <form className="flex flex-col gap-2" onSubmit={submit}>
-            <div className="font-semibold">Editor sign-in</div>
-            <p className="text-xs text-muted-foreground">Only the league editor needs this. Everyone else can just look around.</p>
-            <Input type="email" required autoComplete="username" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <Input type="password" required autoComplete="current-password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            {error && (
-              <p role="alert" className="text-xs text-neg">
-                {error}
-              </p>
-            )}
-            <Button type="submit" size="sm" disabled={busy}>
-              {busy ? "Signing in" : "Sign in"}
-            </Button>
-          </form>
+          signInForm
         )}
       </div>
     </details>
