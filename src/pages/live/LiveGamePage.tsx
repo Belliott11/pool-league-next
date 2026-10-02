@@ -103,7 +103,7 @@ function Setup({ state, update, onClose }: { state: PooleanState; update: Update
   )
 }
 
-interface Pop {
+export interface Pop {
   key: number
   pid: string
   points: number
@@ -111,7 +111,7 @@ interface Pop {
 
 // Each new score becomes a short-lived "pop" that the tiles animate. The count at mount is the
 // baseline, so opening or reloading a game in progress does not replay its old scores.
-function useScorePops(game: Game): Pop[] {
+export function useScorePops(game: Game): Pop[] {
   const scores = game.liveScores ?? []
   const seen = useRef(scores.length)
   const [pops, setPops] = useState<Pop[]>([])
@@ -129,7 +129,7 @@ function useScorePops(game: Game): Pop[] {
 
 // A short burst of confetti when a team reaches the target. Pieces use the theme colors and fall once.
 const CONFETTI = ["bg-primary", "bg-pos", "bg-gold", "bg-chart-4", "bg-chart-5"]
-function Confetti() {
+export function Confetti() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 z-40 overflow-hidden">
       {Array.from({ length: 28 }, (_, i) => (

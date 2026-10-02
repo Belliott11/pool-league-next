@@ -16,7 +16,7 @@ export function LiveMiniBar({ state, onOpen }: { state: PooleanState; onOpen: ()
     >
       <Radio className="size-4 shrink-0" aria-hidden />
       <span className="truncate">
-        Live now: A {a} - {b} B, tap to return
+        Live now: A {a} - {b} B. Tap to open.
       </span>
     </button>
   )

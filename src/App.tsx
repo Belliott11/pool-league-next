@@ -215,7 +215,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           </Button>
         </div>
       )}
-      {!readOnly && !liveOpen && findLiveGame(state) && (
+      {!liveOpen && findLiveGame(state) && (
         <LiveMiniBar
           state={state}
           onOpen={() => {

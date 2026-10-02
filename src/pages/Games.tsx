@@ -11,6 +11,7 @@ import { useReadOnly } from "@/lib/mode"
 import { SetUpTonight } from "./games/SetUpTonight"
 import { Sidebar } from "./games/Sidebar"
 import { LiveGamePage } from "./live/LiveGamePage"
+import { LiveBanner, LiveWatch } from "./live/LiveWatch"
 import { StatEntryPage } from "./statentry/StatEntryPage"
 import { findLiveGame } from "@/lib/live"
 
@@ -36,9 +37,11 @@ export function GamesPage({
     if (m) setOpenId(decodeURIComponent(m[1]))
   }, [])
   const openGame = state.games.find((g) => g.id === openId) ?? null
-  const open = (g: Game) => setOpenId(g.id)
+  const open = (g: Game) => (g.liveInProgress ? setLiveOpen(true) : setOpenId(g.id))
 
-  if (liveOpen && !readOnly) return <LiveGamePage state={state} update={update} onClose={() => setLiveOpen(false)} />
+  if (liveOpen) {
+    return readOnly ? <LiveWatch state={state} onClose={() => setLiveOpen(false)} /> : <LiveGamePage state={state} update={update} onClose={() => setLiveOpen(false)} />
+  }
 
   if (openGame && statEntry && !readOnly) {
     return <StatEntryPage state={state} update={update} game={openGame} onBack={() => setStatEntry(false)} />
@@ -69,6 +72,7 @@ export function GamesPage({
             {findLiveGame(state) ? "Resume live game" : "Start a live game"}
           </Button>
         )}
+        {readOnly && <LiveBanner state={state} onOpen={() => setLiveOpen(true)} />}
         <GameLog state={state} update={update} onOpen={open} />
         {!readOnly && (
           <>
