@@ -5,10 +5,12 @@
 
 /* The classic --muted is a text color, shadcn's is a surface. Alias the shadcn one at the root,
    where it still means the surface, so it can be used inside .legacy. */
-:root { --sh-muted: var(--muted); }
+:root { --sh-muted: var(--muted); --sh-primary: var(--primary); }
 
 /* ---- tokens: point the classic variables at the shadcn ones ---- */
 .legacy.legacy {
+  --primary: var(--sh-primary);
+  --primary-dark: color-mix(in srgb, var(--sh-primary) 78%, black);
   --panel-bg: var(--card);
   --surface-tint: var(--sh-muted);
   --surface-hover: color-mix(in srgb, var(--sh-muted) 60%, transparent);
@@ -252,3 +254,9 @@
 .legacy.legacy .award-toggle:hover,
 .legacy.legacy [class*="-toggle"]:hover { background: transparent; }
 .legacy.legacy .award-toggle-icon { color: var(--muted-foreground); font-weight: 400; }
+
+/* the coral can be dark text on light and bright text on dark */
+.dark .legacy.legacy { --primary-dark: color-mix(in srgb, var(--sh-primary) 70%, white); }
+
+/* heat-map cells carry their own bright fills: keep their text legible in dark mode */
+.dark .legacy.legacy .matchup-grid-cell { color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 0.7); }

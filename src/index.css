@@ -58,19 +58,19 @@
     --card-foreground: #0b1a20;
     --popover: #ffffff;
     --popover-foreground: #0b1a20;
-    --primary: #e0502f;
+    --primary: #cf431f;
     --primary-foreground: #ffffff;
     --secondary: #e3ecee;
     --secondary-foreground: #0b1a20;
     --muted: #e6eef0;
     --muted-foreground: #54696f;
-    --accent: #e0502f;
+    --accent: #cf431f;
     --accent-foreground: #ffffff;
     --destructive: #c8383d;
     --border: #d3dfe2;
     --input: #c6d5d9;
-    --ring: #e0502f;
-    --chart-1: #e0502f;
+    --ring: #cf431f;
+    --chart-1: #cf431f;
     --chart-2: #1b8a7c;
     --chart-3: #a3720f;
     --chart-4: #7a4cc2;
@@ -78,12 +78,12 @@
     --radius: 0.75rem;
     --sidebar: #ffffff;
     --sidebar-foreground: #0b1a20;
-    --sidebar-primary: #e0502f;
+    --sidebar-primary: #cf431f;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: #e6eef0;
     --sidebar-accent-foreground: #0b1a20;
     --sidebar-border: #d3dfe2;
-    --sidebar-ring: #e0502f;
+    --sidebar-ring: #cf431f;
 }
 
 .dark {
@@ -144,4 +144,21 @@
     linear-gradient(color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px);
   background-size: 28px 28px;
+}
+
+/* Keyboard focus is always visible, including on plain buttons, selects and expandable headers. */
+@layer base {
+  :where(button, select, summary, a, input, textarea):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

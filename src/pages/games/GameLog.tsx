@@ -92,14 +92,13 @@ function GameCard({
     <Card className="cursor-pointer transition-transform active:scale-[0.99]" onClick={onOpen}>
       <CardContent className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <div className="flex flex-col gap-0.5">
             {[
               { team: game.teamA, score: scoreA, fb: "Team A", won: scoreA > scoreB },
               { team: game.teamB, score: scoreB, fb: "Team B", won: scoreB > scoreA },
             ].map((t, i) => (
-              <span key={i} className="flex items-baseline gap-2">
-                {i === 1 && <span className="text-muted-foreground">vs</span>}
-                <span className={`font-display text-2xl font-extrabold tabular-nums ${t.won ? "text-primary" : ""}`}>{t.score}</span>
+              <span key={i} className="flex items-baseline gap-3">
+                <span className={`font-display w-9 text-right text-2xl font-extrabold tabular-nums ${t.won ? "text-primary" : ""}`}>{t.score}</span>
                 <span className={`text-sm ${t.won ? "font-bold" : "text-muted-foreground"}`}>{names(state, t.team, t.fb)}</span>
               </span>
             ))}
