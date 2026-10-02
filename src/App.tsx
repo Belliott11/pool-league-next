@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import { AccountMenu } from "@/components/AccountMenu"
 import { BottomNav } from "@/components/BottomNav"
+import { Moon, Sun } from "lucide-react"
 import { ColorMenu } from "@/components/ColorMenu"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { Button } from "@/components/ui/button"
@@ -81,6 +82,7 @@ function ThemeToggle() {
         setDark(next)
       }}
     >
+      {dark ? <Sun aria-hidden className="size-4" /> : <Moon aria-hidden className="size-4" />}
       {dark ? "Light" : "Dark"}
     </Button>
   )

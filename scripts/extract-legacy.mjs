@@ -479,8 +479,41 @@ const colorWords = (code) =>
     .replace("green make, red miss", "aqua make, crimson miss")
     .replace("Color is FG% in that zone (red low, green high)", "Each zone is tinted against this player's own FG%: aqua above it, crimson below")
     .replace("Color is opponents' FG% (green is good defense)", "Each zone is tinted against the opponents' overall FG%: aqua where they were held below it")
+// One icon set. The classic code's hand-drawn icons are swapped for Lucide (scripts/classic-icons.json,
+// built by build-classic-icons.mjs), and the emoji and text arrows it put in buttons and notes become
+// icons from the same set. Share text and canvas drawings keep their emoji: those are not UI.
+const classicIcons = JSON.parse(fs.readFileSync(new URL("./classic-icons.json", import.meta.url), "utf8"))
+const EMOJI_TO_ICON = [
+  ["`📝 ${count}", '`${icon("clipboard")} ${count}'],
+  ["`📍 ${gamesWithGaps}", '`${icon("pin")} ${gamesWithGaps}'],
+  ["`⚠️ ${problems}", '`${icon("warning")} ${problems}'],
+  [">🚫 OUT</span>", '>${icon("ban")} OUT</span>'],
+  ['${s.current.type === "W" ? "🔥" : "❄️"}', '${s.current.type === "W" ? icon("flame") : icon("snowflake")}'],
+  ['goBtn.textContent = "▶ Jump";', 'goBtn.innerHTML = `${icon("play")} Jump`;'],
+  [">▶ Jump</button>", '>${icon("play")} Jump</button>'],
+  ["`💾 ${text}", '`${icon("save")} ${text}'],
+  [">🏀 Dunk</button>", '>${icon("basketball")} Dunk</button>'],
+  ['${game.stoppedEarly ? "🛑 Stopped early" : "Mark as stopped early"}', '${game.stoppedEarly ? `${icon("stop")} Stopped early` : "Mark as stopped early"}'],
+  ['btn.textContent = game.stoppedEarly ? "🛑 Stopped early" : "Mark as stopped early";', 'btn.innerHTML = game.stoppedEarly ? `${icon("stop")} Stopped early` : "Mark as stopped early";'],
+  [">▶ Watch</button>", '>${icon("play")} Watch</button>'],
+  ["marked at 📍 ${zoneLabel}", 'marked at ${icon("pin")} ${zoneLabel}'],
+]
+const iconify = (code) => {
+  const block = /const ICONS = \{[\s\S]*?\n\};/
+  if (!block.test(code)) throw new Error("ICONS block not found")
+  code = code.replace(block, () => `const ICONS = ${JSON.stringify(classicIcons, null, 2)};`)
+  for (const [from, to] of EMOJI_TO_ICON) {
+    if (!code.includes(from)) throw new Error("emoji pattern not found: " + from)
+    code = code.split(from).join(to)
+  }
+  // Static panel markup lives inside JS string literals, so its quotes are escaped.
+  const filmSvg = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${classicIcons.film}</svg>`.replace(/"/g, '\\"')
+  if (!code.includes("disabled>🎬 Combine")) throw new Error("combine-clips emoji not found")
+  code = code.replace("disabled>🎬 Combine", () => `disabled>${filmSvg} Combine`)
+  return code
+}
 const heatTokens = (code) =>
-  colorWords(code).replace(
+  iconify(colorWords(code)).replace(
     /hsla\(\$\{hue\}, \d+%, \d+%, \$\{opacity\}\)/g,
     "color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)",
   )

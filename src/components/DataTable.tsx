@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronUp } from "lucide-react"
 import { useMemo, useState, type ReactNode } from "react"
 import { EmptyState } from "@/components/EmptyState"
 import { Card, CardContent } from "@/components/ui/card"
@@ -131,7 +132,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                   onClick={() => toggle(col.key)}
                 >
                   {col.label}
-                  {sort?.key === col.key ? (sort.dir === "desc" ? " ▼" : " ▲") : ""}
+                  {sort?.key === col.key && (sort.dir === "desc" ? <ChevronDown aria-hidden className="ml-0.5 inline size-3.5" /> : <ChevronUp aria-hidden className="ml-0.5 inline size-3.5" />)}
                 </TableHead>
               ))}
             </TableRow>

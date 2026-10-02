@@ -1,5 +1,6 @@
 import { useMemo } from "react"
 import { Section } from "@/components/Section"
+import { sectionIcon } from "@/lib/panelIcons"
 import { syncLegacy } from "@/lib/legacy"
 import type { Toggles } from "@/lib/toggles"
 import { computeLeaderboardSectionTeasers } from "@/lib/legacy-core"
@@ -57,7 +58,7 @@ export function LeaderboardPage({
       <LaneBars onOpenPlayer={onOpenPlayer} />
       <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
       {SECTIONS.map((s) => (
-        <Section key={s.key} id={`lb-section-${s.key}`} title={s.title} teaser={teasers[s.key] ?? ""}>
+        <Section key={s.key} id={`lb-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
           <LegacyPanels state={state} section={s.key} onOpenPlayer={onOpenPlayer} version={version} />
         </Section>
       ))}

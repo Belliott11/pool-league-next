@@ -499,3 +499,6 @@
   background: var(--primary);
   box-shadow: 0 0 0 3px var(--card);
 }
+
+/* every classic icon is a Lucide glyph now: one size and baseline wherever it sits in text */
+.legacy.legacy svg.icon { width: 1.1em; height: 1.1em; flex: none; vertical-align: -0.17em; }

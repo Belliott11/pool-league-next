@@ -7,7 +7,10 @@ import { PlayerHero } from "@/components/PlayerHero"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
+import { ChevronRight } from "lucide-react"
+import { IconChip } from "@/components/IconChip"
 import { Section } from "@/components/Section"
+import { panelIcon, sectionIcon } from "@/lib/panelIcons"
 import { syncLegacy } from "@/lib/legacy"
 import {
   PLAYER_PANELS,
@@ -74,7 +77,8 @@ function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: strin
       onToggle={(e) => e.currentTarget.open && setOpened((n) => n + 1)}
     >
       <summary className="flex cursor-pointer list-none items-center gap-2 p-4 [&::-webkit-details-marker]:hidden">
-        <span className="text-muted-foreground transition-transform group-open:rotate-90">&#9656;</span>
+        <ChevronRight aria-hidden className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
+        <IconChip icon={panelIcon(spec.title, spec.section)} />
         <h3 className="font-display text-base font-bold">{spec.title}</h3>
         {spec.tag && <Badge variant="secondary">{spec.tag}</Badge>}
       </summary>
@@ -222,7 +226,7 @@ export function PlayerDetailPage({
       <Panels section="overview" pid={pid} version={version} />
 
       {SECTIONS.map((s) => (
-        <Section key={s.key} id={`section-${s.key}`} title={s.title} teaser={teasers[s.key] ?? ""}>
+        <Section key={s.key} id={`section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
           <Panels section={s.key} pid={pid} version={version} />
         </Section>
       ))}

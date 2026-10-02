@@ -1,3 +1,4 @@
+import { LockKeyhole, PencilLine } from "lucide-react"
 import { useState } from "react"
 import { buttonVariants } from "@/components/ui/button"
 import { Button } from "@/components/ui/button"
@@ -39,6 +40,7 @@ export function AccountMenu({ cloud, state }: { cloud: Cloud; state?: PooleanSta
             className={`size-2 rounded-full ${cloud.sync === "error" || cloud.sync === "conflict" ? "bg-neg" : cloud.sync === "saving" ? "bg-gold" : "bg-pos"}`}
           />
         )}
+        {cloud.admin ? <PencilLine aria-hidden className="size-4" /> : <LockKeyhole aria-hidden className="size-4" />}
         {cloud.admin ? "Editing" : "Editor sign-in"}
       </summary>
       <div className="absolute right-0 z-30 mt-2 w-72 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">

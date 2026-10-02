@@ -1,3 +1,4 @@
+import { Palette } from "lucide-react"
 import { useEffect, useState } from "react"
 import { buttonVariants } from "@/components/ui/button"
 
@@ -58,7 +59,10 @@ export function ColorMenu() {
   return (
     <div className="relative">
     <details className="relative" onToggle={(e) => e.currentTarget.open && hint && dismissHint()}>
-      <summary className={`${buttonVariants({ variant: "outline", size: "sm" })} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>Colors</summary>
+      <summary className={`${buttonVariants({ variant: "outline", size: "sm" })} cursor-pointer list-none gap-1.5 [&::-webkit-details-marker]:hidden`}>
+        <Palette aria-hidden className="size-4" />
+        Colors
+      </summary>
       <div className="absolute right-0 z-20 mt-2 w-72 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
         <div className="mb-1 font-semibold">Accent</div>
         <div className="mb-3 flex gap-2">

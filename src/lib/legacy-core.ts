@@ -46,42 +46,47 @@ function renderHeatmapSvg(shots, colorFn) {
 const STORAGE_KEY = "poolLeagueStatTracker";
 
 const ICONS = {
-  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
-  palette: '<circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="15" r="1.1" fill="currentColor" stroke="none"/>',
-  link: '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.4 1.4"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.4-1.4"/>',
-  moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 7 7 0 0 0 20 14.5Z"/>',
-  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
-  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-6 7-6s7 2.1 7 6"/>',
-  basketball: '<circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="21"/><path d="M5.6 5.6a12.7 12.7 0 0 1 0 12.8M18.4 5.6a12.7 12.7 0 0 0 0 12.8"/>',
-  timer: '<circle cx="12" cy="13" r="8"/><path d="M12 13l3-2M9 2h6"/>',
-  chart: '<line x1="4" y1="20" x2="4" y2="11"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>',
-  users: '<circle cx="8.5" cy="8" r="3.2"/><path d="M2.3 19c0-3.4 2.8-5.2 6.2-5.2s6.2 1.8 6.2 5.2"/><circle cx="17" cy="9" r="2.6"/><path d="M15.2 13.7c2.7.3 4.8 2.1 4.8 5.3"/>',
-  upload: '<path d="M12 15V4M8 8l4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
-  video: '<rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.3 21.5 7v10L15 13.7"/>',
-  pencil: '<path d="M4 20l.9-4L15.8 5.1a2 2 0 0 1 2.8 0l.3.3a2 2 0 0 1 0 2.8L8 19l-4 1Z"/>',
-  scale: '<line x1="12" y1="3" x2="12" y2="21"/><line x1="7" y1="21" x2="17" y2="21"/><line x1="5" y1="7" x2="19" y2="7"/><path d="M2 15a3 3 0 0 0 6 0L5 7Z"/><path d="M16 15a3 3 0 0 0 6 0L19 7Z"/>',
-  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-  megaphone: '<path d="M3 10v4a1 1 0 0 0 1 1h2l9 4V5L6 9H4a1 1 0 0 0-1 1Z"/><path d="M17 9.5a3.5 3.5 0 0 1 0 5"/>',
-  stop: '<path d="M8 3h8l5 5v8l-5 5H8l-5-5V8Z"/>',
-  flame: '<path d="M12 22c4 0 6.5-2.7 6.5-6.2 0-3-2-4.9-3-7.3-.6 1.6-1.6 2.4-2.4 1.6-1-1-1-3.3-.5-5.1-3 2-5.6 5.9-5.6 9.3C7 19.3 8.5 22 12 22Z"/>',
-  lowlight: '<circle cx="12" cy="12" r="9"/><path d="M12 8v6M9 11l3 3 3-3"/>',
-  check: '<path d="M4 12l6 6L20 6"/>',
-  x: '<path d="M5 5l14 14M19 5 5 19"/>',
-  trophy: '<path d="M8 3h8v5a4 4 0 0 1-8 0V3Z"/><path d="M8 5H5a3 3 0 0 0 3 3M16 5h3a3 3 0 0 1-3 3"/><path d="M12 12v4"/><path d="M8 20h8"/><path d="M10 20a2 2 0 0 1 2-2 2 2 0 0 1 2 2"/>',
-  shield: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6Z"/>',
-  wall: '<rect x="4" y="5" width="16" height="4"/><rect x="4" y="10" width="7" height="4"/><rect x="13" y="10" width="7" height="4"/><rect x="4" y="15" width="16" height="4"/>',
-  gem: '<path d="M12 3l9 9-9 9-9-9Z"/>',
-  trendingUp: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
-  star: '<path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L12 16.9 6.4 20l1.4-6.2L3 9.5l6.4-.6Z"/>',
-  medal: '<circle cx="12" cy="15" r="5"/><path d="M9 11 6 3M15 11l3-8"/>',
-  sadface: '<circle cx="12" cy="12" r="9"/><path d="M8 15c1.2-1 2.8-1 4 0M9 9h.01M15 9h.01"/>',
-  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
-  crown: '<path d="M4 18h16l-1.5-9-4 4-2.5-6-2.5 6-4-4L4 18Z"/>',
-  dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"/>',
-  warning: '<path d="M12 3 22 20H2Z"/><path d="M12 9v5"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>',
-  snowflake: '<path d="M12 2v20M4.2 7l15.6 10M4.2 17l15.6-10"/>',
-  pin: '<path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
-  film: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 6v4M12 6v4M17 6v4"/>'
+  "search": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"m21 21l-4.34-4.34\"/><circle cx=\"11\" cy=\"11\" r=\"8\"/></g>",
+  "palette": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M12 22a1 1 0 0 1 0-20a10 9 0 0 1 10 9a5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/><circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/><circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/><circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/><circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/></g>",
+  "link": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/></g>",
+  "moon": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\"/>",
+  "sun": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/></g>",
+  "user": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/></g>",
+  "basketball": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M19.13 5.09C15.22 9.14 10 10.44 2.25 10.94m19.5 1.9c-6.62-1.41-12.14 1-16.38 6.32\"/><path d=\"M8.56 2.75c4.37 6 6 9.42 8 17.72\"/></g>",
+  "timer": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M10 2h4m-2 12l3-3\"/><circle cx=\"12\" cy=\"14\" r=\"8\"/></g>",
+  "chart": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M3 3v16a2 2 0 0 0 2 2h16m-3-4V9m-5 8V5M8 17v-3\"/>",
+  "users": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3.128a4 4 0 0 1 0 7.744M22 21v-2a4 4 0 0 0-3-3.87\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/></g>",
+  "upload": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 3v12m5-7l-5-5l-5 5m14 7v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/>",
+  "video": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"m16 13l5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5\"/><rect width=\"14\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\"/></g>",
+  "pencil": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4\"/>",
+  "scale": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M12 3v18m7-13l3 8a5 5 0 0 1-6 0zV7\"/><path d=\"M3 7h1a17 17 0 0 0 8-2a17 17 0 0 0 8 2h1M5 8l3 8a5 5 0 0 1-6 0zV7m2 14h10\"/></g>",
+  "calendar": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M8 2v3m8-3v3\"/><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M3 9h18\"/></g>",
+  "megaphone": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z\"/><path d=\"M6 14a12 12 0 0 0 2.4 7.2a2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14M8 6v8\"/></g>",
+  "stop": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z\"/>",
+  "flame": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0a5 5 0 0 1 1-3a1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4\"/>",
+  "lowlight": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 8v8m-4-4l4 4l4-4\"/></g>",
+  "check": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 6L9 17l-5-5\"/>",
+  "x": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M18 6L6 18M6 6l12 12\"/>",
+  "trophy": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M10 14.66V17a1 1 0 0 1-1 1a2 2 0 0 0-2 2v2m7-7.34V17a1 1 0 0 0 1 1a2 2 0 0 1 2 2v2m.916-12H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3M4 22h16\"/><path d=\"M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z\"/><path d=\"M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3\"/></g>",
+  "shield": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/>",
+  "wall": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M12 9v6m4 0v6m0-18v6M3 15h18M3 9h18M8 15v6M8 3v6\"/></g>",
+  "gem": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M10.5 3L8 9l4 13l4-13l-2.5-6\"/><path d=\"M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3zM2 9h20\"/></g>",
+  "trendingUp": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M16 7h6v6\"/><path d=\"m22 7l-8.5 8.5l-5-5L2 17\"/></g>",
+  "star": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.12 2.12 0 0 0 1.597-1.16z\"/>",
+  "medal": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M7.21 15L2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15M11 12L5.12 2.2M13 12l5.88-9.8M8 7h8\"/><circle cx=\"12\" cy=\"17\" r=\"5\"/><path d=\"M12 18v-2h-.5\"/></g>",
+  "sadface": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M16 16s-1.5-2-4-2s-4 2-4 2m1-7h.01M15 9h.01\"/></g>",
+  "target": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><circle cx=\"12\" cy=\"12\" r=\"6\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/></g>",
+  "crown": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294zM5 21h14\"/>",
+  "dice": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><rect width=\"12\" height=\"12\" x=\"2\" y=\"10\" rx=\"2\" ry=\"2\"/><path d=\"m17.92 14l3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6M6 18h.01M10 14h.01M15 6h.01M18 9h.01\"/></g>",
+  "warning": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"m21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4m0 4h.01\"/>",
+  "snowflake": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"m10 20l-1.25-2.5L6 18m4-14L8.75 6.5L6 6m8 14l1.25-2.5L18 18M14 4l1.25 2.5L18 6\"/><path d=\"m17 21l-3-6h-4m7-12l-3 6l1.5 3M2 12h6.5L10 9m10 1l-1.5 2l1.5 2\"/><path d=\"M22 12h-6.5L14 15M4 10l1.5 2L4 14m3 7l3-6l-1.5-3M7 3l3 6h4\"/></g>",
+  "pin": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/></g>",
+  "film": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18m0-13.5h4m-4 9h4\"/></g>",
+  "play": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\"/>",
+  "save": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z\"/><path d=\"M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7M7 3v4a1 1 0 0 0 1 1h7\"/></g>",
+  "ban": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M4.929 4.929L19.07 19.071\"/></g>",
+  "clipboard": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2m4 7h4m-4 5h4m-8-5h.01M8 16h.01\"/></g>",
+  "handshake": "<g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><path d=\"m11 17l2 2a1 1 0 1 0 3-3\"/><path d=\"m14 14l2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\"/><path d=\"m21 3l1 11h-2M3 3L2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8\"/></g>"
 };
 
 function icon(name, extraClass) {
@@ -965,7 +970,7 @@ async function renderNeedsReviewSummary() {
   const localVideoIds = new Set(await getAllStoredVideoIds());
   const count = state.games.filter(g => g.scoringEvents.length === 0 && (g.videoUrl || g.masterVideoId || localVideoIds.has(g.id))).length;
   el.textContent = count > 0
-    ? `📝 ${count} game${count === 1 ? "" : "s"} with video still need${count === 1 ? "s" : ""} review.`
+    ? `${icon("clipboard")} ${count} game${count === 1 ? "" : "s"} with video still need${count === 1 ? "s" : ""} review.`
     : "";
 }
 
@@ -977,7 +982,7 @@ function renderShotLocationGapSummary() {
     g.scoringEvents.some(ev => (ev.points === 2 || ev.points === 3) && !ev.shotLocation)
   ).length;
   el.innerHTML = gamesWithGaps > 0
-    ? `📍 ${gamesWithGaps} reviewed game${gamesWithGaps === 1 ? "" : "s"} still missing shot locations on some makes/misses. <button type="button" class="icon-btn" id="jumpToBackfillBtn" style="padding:2px 8px">Fill them in</button>`
+    ? `${icon("pin")} ${gamesWithGaps} reviewed game${gamesWithGaps === 1 ? "" : "s"} still missing shot locations on some makes/misses. <button type="button" class="icon-btn" id="jumpToBackfillBtn" style="padding:2px 8px">Fill them in</button>`
     : "";
   document.getElementById("jumpToBackfillBtn")?.addEventListener("click", () => {
     showTab("export");
@@ -1430,7 +1435,7 @@ function renderRealSiteCheck() {
   const problems = check ? check.disagree.length + check.unmatched.length : 0;
   if (summary) {
     summary.innerHTML = problems
-      ? `⚠️ ${problems} thing${problems === 1 ? "" : "s"} here ${problems === 1 ? "doesn't" : "don't"} match the real site. <button type="button" class="secondary-btn" id="jumpToRealSiteCheckBtn">Review</button>`
+      ? `${icon("warning")} ${problems} thing${problems === 1 ? "" : "s"} here ${problems === 1 ? "doesn't" : "don't"} match the real site. <button type="button" class="secondary-btn" id="jumpToRealSiteCheckBtn">Review</button>`
       : "";
     document.getElementById("jumpToRealSiteCheckBtn")?.addEventListener("click", () => {
       showTab("export");
@@ -2160,7 +2165,7 @@ const FOUL_OUT_THRESHOLD = 3;
 
 function foulCellHtml(pf) {
   return pf >= FOUL_OUT_THRESHOLD
-    ? `${pf} <span class="badge badge-lowlight" title="${FOUL_OUT_THRESHOLD} fouls: ejected for the rest of this game">🚫 OUT</span>`
+    ? `${pf} <span class="badge badge-lowlight" title="${FOUL_OUT_THRESHOLD} fouls: ejected for the rest of this game">${icon("ban")} OUT</span>`
     : String(pf);
 }
 
@@ -3362,7 +3367,7 @@ function renderPlayerStreaks(playerId) {
   if (!s) { wrap.innerHTML = '<p class="empty-state">No real-site games for this player yet.</p>'; return; }
   wrap.innerHTML = `
     <div class="league-rank-grid">
-      <div class="league-rank-badge${s.current.type === "W" ? " league-rank-top" : ""}"><span class="league-rank-place">${s.current.type === "W" ? "🔥" : "❄️"} ${s.current.n}</span><span class="league-rank-label">Current ${s.current.type === "W" ? "win" : "losing"} streak</span></div>
+      <div class="league-rank-badge${s.current.type === "W" ? " league-rank-top" : ""}"><span class="league-rank-place">${s.current.type === "W" ? icon("flame") : icon("snowflake")} ${s.current.n}</span><span class="league-rank-label">Current ${s.current.type === "W" ? "win" : "losing"} streak</span></div>
       <div class="league-rank-badge"><span class="league-rank-place">${s.longestWin}</span><span class="league-rank-label">Longest win streak</span></div>
       <div class="league-rank-badge"><span class="league-rank-place">${s.longestLoss}</span><span class="league-rank-label">Longest losing streak</span></div>
     </div>`;
@@ -8612,7 +8617,7 @@ function renderPlayerReel(playerId) {
     const goBtn = document.createElement("button");
     goBtn.type = "button";
     goBtn.className = "secondary-btn";
-    goBtn.textContent = "▶ Jump";
+    goBtn.innerHTML = `${icon("play")} Jump`;
     goBtn.addEventListener("click", () => openGameAndSeek(clip.gameId, clip.start));
     tdBtn.appendChild(goBtn);
     tr.appendChild(tdBtn);
@@ -8712,7 +8717,7 @@ function renderPlaySearch() {
       <td>${escapeHtml(formatDateDisplay(r.gameDate))}</td>
       <td>${escapeHtml(PLAY_SEARCH_LABEL_BY_KEY[r.type])}</td>
       <td>${detail}</td>
-      <td><button type="button" class="secondary-btn play-search-jump" data-game-id="${escapeHtml(r.gameId)}" data-video-time="${r.videoTime === null || r.videoTime === undefined ? "" : r.videoTime}">▶ Jump</button></td>
+      <td><button type="button" class="secondary-btn play-search-jump" data-game-id="${escapeHtml(r.gameId)}" data-video-time="${r.videoTime === null || r.videoTime === undefined ? "" : r.videoTime}">${icon("play")} Jump</button></td>
     </tr>`;
   }).join("");
   body.querySelectorAll(".play-search-jump").forEach(btn => btn.addEventListener("click", () => {
@@ -8755,7 +8760,7 @@ function renderLeagueHighlights() {
     const goBtn = document.createElement("button");
     goBtn.type = "button";
     goBtn.className = "secondary-btn";
-    goBtn.textContent = "▶ Jump";
+    goBtn.innerHTML = `${icon("play")} Jump`;
     goBtn.addEventListener("click", () => openGameAndSeek(clip.gameId, clip.start));
     tdBtn.appendChild(goBtn);
     tr.appendChild(tdBtn);
@@ -9297,7 +9302,7 @@ function renderBackupReminder() {
     text = `Last backup was ${days} days ago, and there have been changes since.`;
   }
   el.hidden = !text;
-  el.innerHTML = text ? `💾 ${text} <button type="button" class="secondary-btn" id="backupNowBtn">Save Backup</button>` : "";
+  el.innerHTML = text ? `${icon("save")} ${text} <button type="button" class="secondary-btn" id="backupNowBtn">Save Backup</button>` : "";
   document.getElementById("backupNowBtn")?.addEventListener("click", () => downloadBackup());
 }
 
@@ -9505,7 +9510,7 @@ function renderDunkReview() {
     return `<li data-event-id="${ev.id}">
       <span>${scorer ? playerLink(scorer.id, scorer.name) : "?"}: ${ev.made !== false ? "Make" : "Miss"} (${ev.points}pt, ${escapeHtml(formatDateDisplay(game.date))})${watchLinks}</span>
       <div class="button-row" style="margin-top:4px">
-        <button type="button" class="secondary-btn" data-mark-dunk="${ev.id}">🏀 Dunk</button>
+        <button type="button" class="secondary-btn" data-mark-dunk="${ev.id}">${icon("basketball")} Dunk</button>
         <button type="button" class="secondary-btn" data-mark-notdunk="${ev.id}">Not a dunk</button>
       </div>
     </li>`;
@@ -11135,7 +11140,7 @@ function renderStoppedEarlyReview() {
     return `<li data-game-id="${game.id}">
       <span>${escapeHtml(formatDateDisplay(game.date))}: ${escapeHtml(teamANames)} ${scoreA} - ${scoreB} ${escapeHtml(teamBNames)}</span>
       <div class="button-row" style="margin-top:4px">
-        <button type="button" class="secondary-btn${game.stoppedEarly ? " selected" : ""}" data-toggle-stopped-early-review="${game.id}">${game.stoppedEarly ? "🛑 Stopped early" : "Mark as stopped early"}</button>
+        <button type="button" class="secondary-btn${game.stoppedEarly ? " selected" : ""}" data-toggle-stopped-early-review="${game.id}">${game.stoppedEarly ? `${icon("stop")} Stopped early` : "Mark as stopped early"}</button>
       </div>
     </li>`;
   }).join("")}</ul>`;
@@ -11146,7 +11151,7 @@ function renderStoppedEarlyReview() {
       game.stoppedEarly = !game.stoppedEarly;
       saveState();
       btn.classList.toggle("selected", game.stoppedEarly);
-      btn.textContent = game.stoppedEarly ? "🛑 Stopped early" : "Mark as stopped early";
+      btn.innerHTML = game.stoppedEarly ? `${icon("stop")} Stopped early` : "Mark as stopped early";
     });
   });
 }
@@ -11203,7 +11208,7 @@ function renderBackfillShotLocations() {
         <div class="backfill-shot-label">
           ${scorer ? playerLink(scorer.id, scorer.name) : "?"}: ${ev.made !== false ? "Make" : "Miss"} (${ev.points}pt)
         </div>
-        <button type="button" class="secondary-btn" data-watch="1" ${hasTime ? "" : "disabled"}>▶ Watch</button>
+        <button type="button" class="secondary-btn" data-watch="1" ${hasTime ? "" : "disabled"}>${icon("play")} Watch</button>
         ${renderShotChartBaseSvg("data-shot-chart")}
       `;
       setShotChartDot(row.querySelector("[data-shot-chart]"), ev.shotLocation);
@@ -11326,9 +11331,9 @@ function renderFlaggedShotMismatches() {
       row.className = "backfill-shot-row backfill-shot-row-marked";
       row.innerHTML = `
         <div class="backfill-shot-label">
-          ${scorer ? playerLink(scorer.id, scorer.name) : "?"}: picked ${ev.points}pt, marked at 📍 ${zoneLabel}
+          ${scorer ? playerLink(scorer.id, scorer.name) : "?"}: picked ${ev.points}pt, marked at ${icon("pin")} ${zoneLabel}
         </div>
-        <button type="button" class="secondary-btn" data-watch="1" ${hasTime ? "" : "disabled"}>▶ Watch</button>
+        <button type="button" class="secondary-btn" data-watch="1" ${hasTime ? "" : "disabled"}>${icon("play")} Watch</button>
         ${renderShotChartBaseSvg("data-shot-chart")}
       `;
       setShotChartDot(row.querySelector("[data-shot-chart]"), ev.shotLocation);
@@ -11709,7 +11714,7 @@ export const MOUNT_PANELS = [
   { title: "Party Recap", section: "media", order: 63, html: "\r\n      <div class=\"balance-controls\" style=\"margin-bottom:10px\">\r\n        <select id=\"partyRecapSelect\" aria-label=\"Party night\"></select>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"downloadPartyRecapBtn\">Download Image</button>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"copyPartyRecapBtn\">Copy Recap Text</button>\r\n        <span class=\"hint\" id=\"partyRecapCopyStatus\" style=\"margin:0\" aria-live=\"polite\"></span>\r\n      </div>\r\n      <div id=\"partyRecap\"></div>\r\n    ", render: () => { renderPartyRecap(); }, wires: [] },
   { title: "Best & Worst Individual Games", section: "media", order: 64, html: "\r\n      <div id=\"individualGamePerformances\"></div>\r\n    ", render: () => { renderIndividualGamePerformances(); }, wires: [] },
   { title: "Play Search", section: "media", order: 65, html: "\r\n      <div class=\"balance-controls\" style=\"margin-bottom:10px\">\r\n        <select id=\"playSearchPlayerSelect\" aria-label=\"Player\"></select>\r\n        <select id=\"playSearchTypeSelect\" aria-label=\"Play type\"></select>\r\n        <select id=\"playSearchShotTypeSelect\" aria-label=\"Shot type\"></select>\r\n        <select id=\"playSearchDefenderSelect\" aria-label=\"Defender\"></select>\r\n      </div>\r\n      <p class=\"hint\" id=\"playSearchSummary\" style=\"margin:0 0 10px\"></p>\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\">\r\n          <thead><tr><th class=\"sticky-col\">Player</th><th>Date</th><th>Play</th><th>Detail</th><th></th></tr></thead>\r\n          <tbody id=\"playSearchBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderPlaySearch(); }, wires: [] },
-  { title: "Highlights & Lowlights (League)", section: "media", order: 66, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"leagueHighlightsTable\">\r\n          <thead><tr><th>Date</th><th>Player</th><th>Type</th><th>Time</th><th>Note</th><th></th></tr></thead>\r\n          <tbody id=\"leagueHighlightsBody\"></tbody>\r\n        </table>\r\n      </div>\r\n      <div class=\"reel-export-row\">\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"exportLeagueVideoBtn\" disabled>🎬 Combine All Clips Into One Video</button>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"cancelLeagueExportBtn\" hidden>Cancel</button>\r\n        <p class=\"hint\" id=\"leagueExportStatus\" style=\"margin:0\"></p>\r\n      </div>\r\n      <p class=\"hint\" style=\"margin:6px 0 0\">Records every clip into one video, oldest game first. Games with YouTube links are skipped. It can take a while, so keep this tab open and in front.</p>\r\n      <div id=\"leagueExportPreviewWrap\" hidden>\r\n        <video id=\"leagueExportVideo\" class=\"league-export-preview\" muted playsinline></video>\r\n      </div>\r\n    ", render: () => { renderLeagueHighlights(); }, wires: [{ id: "exportLeagueVideoBtn", evt: "click", handler: () => {
+  { title: "Highlights & Lowlights (League)", section: "media", order: 66, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"leagueHighlightsTable\">\r\n          <thead><tr><th>Date</th><th>Player</th><th>Type</th><th>Time</th><th>Note</th><th></th></tr></thead>\r\n          <tbody id=\"leagueHighlightsBody\"></tbody>\r\n        </table>\r\n      </div>\r\n      <div class=\"reel-export-row\">\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"exportLeagueVideoBtn\" disabled><svg class=\"icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18m0-13.5h4m-4 9h4\"/></g></svg> Combine All Clips Into One Video</button>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"cancelLeagueExportBtn\" hidden>Cancel</button>\r\n        <p class=\"hint\" id=\"leagueExportStatus\" style=\"margin:0\"></p>\r\n      </div>\r\n      <p class=\"hint\" style=\"margin:6px 0 0\">Records every clip into one video, oldest game first. Games with YouTube links are skipped. It can take a while, so keep this tab open and in front.</p>\r\n      <div id=\"leagueExportPreviewWrap\" hidden>\r\n        <video id=\"leagueExportVideo\" class=\"league-export-preview\" muted playsinline></video>\r\n      </div>\r\n    ", render: () => { renderLeagueHighlights(); }, wires: [{ id: "exportLeagueVideoBtn", evt: "click", handler: () => {
   exportLeagueVideo();
 } }, { id: "cancelLeagueExportBtn", evt: "click", handler: () => {
   if (leagueExportState) {

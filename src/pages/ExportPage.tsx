@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { PanelBoundary } from "@/components/PanelBoundary"
+import { ChevronRight } from "lucide-react"
+import { IconChip } from "@/components/IconChip"
 import { Section } from "@/components/Section"
+import { panelIcon, sectionIcon } from "@/lib/panelIcons"
 import { syncLegacy } from "@/lib/legacy"
 import { EXPORT_PANELS, computeExportSectionTeasers } from "@/lib/legacy-core"
 import type { Toggles } from "@/lib/toggles"
@@ -56,7 +59,8 @@ function ExportPanel({ spec, version }: { spec: ExportPanelSpec; version: unknow
   return (
     <details open={spec.open} className="group export-panel overflow-hidden rounded-xl border bg-card" data-export-panel={spec.title}>
       <summary className="tile flex cursor-pointer list-none items-center gap-2 p-4 [&::-webkit-details-marker]:hidden">
-        <span className="text-muted-foreground transition-transform group-open:rotate-90">&#9656;</span>
+        <ChevronRight aria-hidden className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
+        <IconChip icon={panelIcon(spec.title, spec.section)} />
         <h3 className="font-display text-base font-bold">{spec.title}</h3>
         {spec.tag && <Badge variant="secondary">{spec.tag}</Badge>}
       </summary>
@@ -98,7 +102,7 @@ export function ExportPage({ state, toggles }: { state: PooleanState; toggles: T
         ))}
       </nav>
       {SECTIONS.map((s) => (
-        <Section key={s.key} id={`export-section-${s.key}`} title={s.title} teaser={teasers[s.key] ?? ""}>
+        <Section key={s.key} id={`export-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
           {PANELS.filter((p) => p.section === s.key && !SKIPPED.has(p.title))
             .sort((a, b) => a.order - b.order)
             .map((p) => (

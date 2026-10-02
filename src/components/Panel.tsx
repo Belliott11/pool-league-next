@@ -1,5 +1,7 @@
 import type { ReactNode } from "react"
+import { IconChip } from "@/components/IconChip"
 import { Badge } from "@/components/ui/badge"
+import { panelIcon } from "@/lib/panelIcons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 // One titled card, the building block of every Leaderboard / Player panel. `tag` is the small
@@ -8,7 +10,8 @@ export function Panel({ title, hint, tag, children }: { title: string; hint?: Re
   return (
     <Card data-panel={title} className="min-w-0 scroll-mt-20">
       <CardHeader>
-        <CardTitle className="font-display">
+        <CardTitle className="font-display flex items-center gap-2">
+          <IconChip icon={panelIcon(title)} />
           {title}
           {tag && (
             <Badge variant="secondary" className="ml-2 align-middle">
