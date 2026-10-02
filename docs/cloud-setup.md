@@ -60,3 +60,16 @@ and keys in your name.
 - **Not synced:** video files stay on the device they were added on.
 - **Turn it off:** empty `public/cloud-config.json` (both values blank) and the app goes back to
   keeping data in the browser only.
+
+## Game videos
+
+You can upload a game video from the game page and everyone with the site link can watch it.
+
+1. In the Supabase dashboard open **SQL Editor**, paste the contents of `supabase/storage.sql`, and run it. It is safe to run again.
+2. Open a game while signed in as an editor and choose **Upload video**.
+
+Limits on the free plan: each video can be at most 50 MB, and all your videos together can use about 1 GB. Trim phone clips before uploading. A video that is too big is refused with a message before anything uploads.
+
+Visitors can watch because the video bucket is public: anyone who has a video's address can open it, but only editors can upload, replace or delete.
+
+If a video is too big, paste a link instead (a YouTube or Vimeo link, or a direct .mp4 link). Links use no storage. YouTube and Vimeo videos play in the page, but jumping to a moment from a clip only works for uploaded files.
