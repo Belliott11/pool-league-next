@@ -10,20 +10,13 @@ const stripTags = (t) =>
     .replace(/\s+/g, " ")
     .trim()
 
-export function analyzePlayerPanels({ src, items, html, gebi, wireStmts }) {
-  const start = html.indexOf('<section id="tab-player"')
+export function analyzeTabPanels({ items, html, gebi, wireStmts, tabId, sectionPrefix, calledFns, overrides = {} }) {
+  const start = html.indexOf(`<section id="${tabId}"`)
   if (start < 0) return []
   const rest = html.slice(start + 10)
   const nextSection = rest.search(/<section id="tab-/)
   const tab = html.slice(start, nextSection > 0 ? start + 10 + nextSection : undefined)
 
-  // calls inside renderPlayerDetail: renderX(player.id)
-  const detail = items.find((it) => it.node.type === "FunctionDeclaration" && it.node.id.name === "renderPlayerDetail")
-  if (!detail) return []
-  const calledFns = []
-  walk.full(detail.node.body, (n) => {
-    if (n.type === "CallExpression" && n.callee.type === "Identifier" && /^render/.test(n.callee.name)) calledFns.push(n.callee.name)
-  })
   const fnIds = {}
   items.forEach((it) => {
     if (it.node.type !== "FunctionDeclaration" || !calledFns.includes(it.node.id.name)) return
@@ -62,10 +55,11 @@ export function analyzePlayerPanels({ src, items, html, gebi, wireStmts }) {
     const hintMatch = inner.match(/^\s*<p class="hint"[^>]*>([\s\S]*?)<\/p>/)
     const hint = hintMatch ? stripTags(hintMatch[1]) : ""
     if (hintMatch) inner = inner.slice(hintMatch[0].length)
-    const secs = [...tab.slice(0, m.index).matchAll(/id="section-(\w+)"/g)]
+    const secs = [...tab.slice(0, m.index).matchAll(new RegExp(`id="${sectionPrefix}([a-zA-Z0-9_]+)"`, "g"))]
     const section = secs.length ? secs[secs.length - 1][1] : "overview"
     const ids = [...inner.matchAll(/\sid="([^"]+)"/g)].map((x) => x[1])
     const OVERRIDE = {
+      ...overrides,
       "Shot Heatmap": ["renderPlayerHeatmap"],
       "Defensive Heatmap": ["renderPlayerDefensiveHeatmap"],
       "Offensive Matchup Difficulty": ["renderOffensiveMatchupDifficultyChart"],

@@ -4,7 +4,7 @@
 import fs from "node:fs"
 import * as acorn from "acorn"
 import * as walk from "acorn-walk"
-import { analyzePlayerPanels } from "./player-panels.mjs"
+import { analyzeTabPanels } from "./player-panels.mjs"
 
 const [, , srcPath, outPath] = process.argv
 const src = fs.readFileSync(srcPath, "utf8")
@@ -272,7 +272,28 @@ const mountSpecs = []
     mountSpecs.push({ title, fns, inner, wires, section: block?.section ?? "overview", order: block?.order ?? 0 })
   }
 }
-const playerSpecs = analyzePlayerPanels({ src, items, html, gebi, wireStmts })
+const callsIn = (fnName) => {
+  const it = items.find((x) => x.node.type === "FunctionDeclaration" && x.node.id.name === fnName)
+  const out = []
+  if (it) walk.full(it.node.body, (n) => { if (n.type === "CallExpression" && n.callee.type === "Identifier" && /^render/.test(n.callee.name)) out.push(n.callee.name) })
+  return out
+}
+const playerSpecs = analyzeTabPanels({ items, html, gebi, wireStmts, tabId: "tab-player", sectionPrefix: "section-", calledFns: callsIn("renderPlayerDetail") })
+// Export tab: the classic site renders these when the tab opens (the `export` branch of showTab).
+const exportCalls = []
+{
+  const st = items.find((x) => x.node.type === "FunctionDeclaration" && x.node.id.name === "showTab")
+  if (st) walk.full(st.node.body, (n) => {
+    if (n.type === "IfStatement" && /"export"/.test(src.slice(n.test.start, n.test.end))) walk.full(n.consequent, (c) => { if (c.type === "CallExpression" && c.callee.type === "Identifier" && /^render/.test(c.callee.name)) exportCalls.push(c.callee.name) })
+  })
+}
+const exportSpecs = analyzeTabPanels({ items, html, gebi, wireStmts, tabId: "tab-export", sectionPrefix: "export-section-", calledFns: exportCalls.filter((f) => f !== "renderExportSectionTeasers") })
+exportSpecs.forEach((m) => {
+  m.fns.forEach((f) => entryNames.add(f))
+  ;(m.wires || []).forEach((w) => {
+    try { walk.full(acorn.parseExpressionAt(w.handler, 0, { ecmaVersion: "latest" }), (n) => { if (n.type === "Identifier") entryNames.add(n.name) }) } catch { /* ignore */ }
+  })
+})
 playerSpecs.forEach((m) => {
   m.fns.forEach((f) => entryNames.add(f))
   ;(m.wires || []).forEach((w) => {
@@ -380,6 +401,12 @@ ${playerSpecs.map((m) => `  { title: ${JSON.stringify(m.title)}, hint: ${JSON.st
 ];
 export function setLegacyPlayer(pid) { currentPlayerId = pid; }
 `
+const exportBlock = `
+export const EXPORT_PANELS = [
+${exportSpecs.map((m) => `  { title: ${JSON.stringify(m.title)}, hint: ${JSON.stringify(m.hint)}, tag: ${JSON.stringify(m.tag ?? null)}, open: ${m.open}, section: ${JSON.stringify(m.section)}, order: ${m.order}, html: ${JSON.stringify(m.html)}, render: () => { ${m.fns.map((f) => f + "();").join(" ")} }, wires: [${(m.wires || []).map((w) => `{ id: ${JSON.stringify(w.id)}, evt: ${JSON.stringify(w.evt)}, handler: ${w.handler} }`).join(", ")}] }`).join(",\n")}
+];
+export function getLegacyState() { return state; }
+`
 const mountBlock = `
 export const MOUNT_PANELS = [
 ${mountSpecs.filter((m) => !m.noRender).map((m) => `  { title: ${JSON.stringify(m.title)}, section: ${JSON.stringify(m.section)}, order: ${m.order}, html: ${JSON.stringify(m.inner)}, render: () => { ${m.fns.map((f) => f + "();").join(" ")} }, wires: [${(m.wires || []).map((w) => `{ id: ${JSON.stringify(w.id)}, evt: ${JSON.stringify(w.evt)}, handler: ${w.handler} }`).join(", ")}] }`).join(",\n")}
@@ -408,7 +435,7 @@ const header = `// @ts-nocheck
 // definitions and their dependencies, extracted verbatim so the numbers match the classic site
 // exactly. Regenerate with: node extract.mjs ../dashboard/app.js src/lib/legacy-core.ts
 let state = { players: [], games: [], masterVideos: [], rsvps: [], seasonHistory: [], currentSeasonStartedAt: null, playerPhysicalOverrides: {} };
-function saveState() {}
+function saveState() { window.dispatchEvent(new CustomEvent("legacy-state-changed")); }
 export function setLegacyState(s) { state = s; invalidateComputedCaches(); }
 export function setLegacyToggles(t) {
   if (t.imbalanced !== undefined) includeImbalancedGames = t.imbalanced;
@@ -432,11 +459,12 @@ export function normalizeLegacyState(s) {
 const exportNames = [...included].flatMap((it) => it.names)
 const footer = `\nif (typeof POOLEAN_SEASONS !== "undefined") setPooleanSeason(pooleanSeasonList().slice(-1)[0]);\nexport { ${[...new Set(exportNames)].join(", ")} };\n`
 
-fs.writeFileSync(outPath, [header, stubBlock, chunks.join("\n\n"), tableBlock, mountBlock, playerBlock, footer].join("\n"))
+fs.writeFileSync(outPath, [header, stubBlock, chunks.join("\n\n"), tableBlock, mountBlock, playerBlock, exportBlock, footer].join("\n"))
 const detected = new Set(panelSpecs.map((p) => p.fn))
 const undetected = items.filter((it) => it.node.type === "FunctionDeclaration" && /^render/.test(it.node.id.name) && src.slice(it.node.start, it.node.end).includes("renderSortableHeader(") && !detected.has(it.node.id.name)).map((it) => it.node.id.name)
 console.log("undetected sortable renders:", undetected.join(", "))
 console.log(`table panels: ${panelSpecs.length}, skipped: ${JSON.stringify(panelSkipped)}`)
+console.log(`export panels: ${exportSpecs.length} (no render fn: ${exportSpecs.filter((m) => !m.fns.length).map((m) => m.title).join(', ')})`)
 console.log(`player panels: ${playerSpecs.length} (no render fn: ${playerSpecs.filter((m) => !m.fns.length).map((m) => m.title).join(', ')})`)
 console.log(`mount panels: ${mountSpecs.length} (no render fn: ${mountSpecs.filter((m) => m.noRender).map((m) => m.title).join(', ')})`)
 console.log(`extracted ${chunks.length} top-level items, ${exportNames.length} names, ${(fs.statSync(outPath).size / 1024).toFixed(0)} KB`)

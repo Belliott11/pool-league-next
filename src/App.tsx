@@ -7,7 +7,9 @@ import { importStateFromJson, loadState, saveState } from "@/lib/state"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 import { GamesPage } from "@/pages/Games"
+import { PlayersPage } from "@/pages/PlayersPage"
 
+const ExportPage = lazy(() => import("@/pages/ExportPage").then((m) => ({ default: m.ExportPage })))
 const PlayerDetailPage = lazy(() => import("@/pages/PlayerDetail").then((m) => ({ default: m.PlayerDetailPage })))
 const LeaderboardPage = lazy(() => import("@/pages/Leaderboard").then((m) => ({ default: m.LeaderboardPage })))
 
@@ -79,6 +81,18 @@ function AppShell({ initial }: { initial: PooleanState }) {
     window.addEventListener("legacy-open-player", onPlayer)
     return () => window.removeEventListener("legacy-open-player", onPlayer)
   }, [])
+  // The classic review/import tools edit their own copy of the data and announce it with an event;
+  // pull that copy back into React state (and save it) so the whole app sees the change.
+  useEffect(() => {
+    const onChanged = async () => {
+      const { getLegacyState } = await import("@/lib/legacy-core")
+      const next = structuredClone(getLegacyState()) as PooleanState
+      saveState(next)
+      setState(next)
+    }
+    window.addEventListener("legacy-state-changed", onChanged)
+    return () => window.removeEventListener("legacy-state-changed", onChanged)
+  }, [])
   const update: Update = (fn) => {
     const next = fn(state)
     saveState(next)
@@ -95,6 +109,8 @@ function AppShell({ initial }: { initial: PooleanState }) {
           <TabsTrigger value="games">Games</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
           <TabsTrigger value="player">Player</TabsTrigger>
+          <TabsTrigger value="players">Players</TabsTrigger>
+          <TabsTrigger value="export">Export</TabsTrigger>
         </TabsList>
         <TabsContent value="games">
           <GamesPage
@@ -122,6 +138,21 @@ function AppShell({ initial }: { initial: PooleanState }) {
         <TabsContent value="player">
           <Suspense fallback={<p className="text-sm text-muted-foreground">Loading player&hellip;</p>}>
             <PlayerDetailPage state={state} toggles={toggles} playerId={playerId} onChangePlayer={(id) => setPlayerId(id)} />
+          </Suspense>
+        </TabsContent>
+        <TabsContent value="players">
+          <PlayersPage
+            state={state}
+            update={update}
+            onOpenPlayer={(id) => {
+              setPlayerId(id)
+              setTab("player")
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="export">
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading export tools&hellip;</p>}>
+            <ExportPage state={state} toggles={toggles} />
           </Suspense>
         </TabsContent>
       </Tabs>

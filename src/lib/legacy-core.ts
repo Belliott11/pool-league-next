@@ -3,7 +3,7 @@
 // definitions and their dependencies, extracted verbatim so the numbers match the classic site
 // exactly. Regenerate with: node extract.mjs ../dashboard/app.js src/lib/legacy-core.ts
 let state = { players: [], games: [], masterVideos: [], rsvps: [], seasonHistory: [], currentSeasonStartedAt: null, playerPhysicalOverrides: {} };
-function saveState() {}
+function saveState() { window.dispatchEvent(new CustomEvent("legacy-state-changed")); }
 export function setLegacyState(s) { state = s; invalidateComputedCaches(); }
 export function setLegacyToggles(t) {
   if (t.imbalanced !== undefined) includeImbalancedGames = t.imbalanced;
@@ -94,6 +94,10 @@ function isBalancedGame(game) {
 
 const INCLUDE_PAST_SEASONS_KEY = "poolLeagueIncludePastSeasons";
 
+const BACKUP_META_KEY = "poolLeagueBackupMeta";
+
+const BACKUP_NUDGE_DAYS = 7;
+
 let includePastSeasons = localStorage.getItem(INCLUDE_PAST_SEASONS_KEY) === "true";
 
 function isCurrentSeasonGame(game) {
@@ -133,6 +137,12 @@ function qualifyingGamesForPlayer(playerId) {
   const upperBound = q3 + 1.5 * iqr;
   return withTwoWay.filter(x => x.twoWay >= lowerBound && x.twoWay <= upperBound).map(x => x.game);
 }
+
+const TAGGED_STAT_CONFIG = [
+  { field: "tov", eventsKey: "turnoverEvents", label: "TOV", prompt: "Who forced/recovered it, if anyone?", verb: "Turnover", requireOpponent: false },
+  { field: "stl", eventsKey: "stealEvents", label: "STL", prompt: "Who did they steal it from?", verb: "Steal", requireOpponent: true },
+  { field: "pf", eventsKey: "foulEvents", label: "PF", prompt: "Who was fouled?", verb: "Foul", requireOpponent: false }
+];
 
 const JUMP_SECTION_ID_PREFIX = { leaderboard: "lb-section-", games: "games-section-", export: "export-section-" };
 
@@ -183,6 +193,26 @@ async function getVideoFile(gameId) {
     const tx = db.transaction(VIDEO_STORE, "readonly");
     const req = tx.objectStore(VIDEO_STORE).get(gameId);
     req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteVideoFile(gameId) {
+  const db = await openVideoDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VIDEO_STORE, "readwrite");
+    tx.objectStore(VIDEO_STORE).delete(gameId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getAllStoredVideoIds() {
+  const db = await openVideoDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VIDEO_STORE, "readonly");
+    const req = tx.objectStore(VIDEO_STORE).getAllKeys();
+    req.onsuccess = () => resolve(new Set(req.result));
     req.onerror = () => reject(req.error);
   });
 }
@@ -301,6 +331,63 @@ function formatDateDisplay(dateStr) {
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+function renderStandingsSidebar(containerId) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  const rows = computeLeaderboard().filter(r => r.gp > 0).sort((a, b) => b.twoWayPer20 - a.twoWayPer20);
+  if (rows.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games with players yet.</p>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="standings-mini-table">
+      <thead><tr><th>#</th><th>Player</th><th>W-L</th><th>Two-Way/20</th></tr></thead>
+      <tbody>
+        ${rows.map((r, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td class="standings-mini-name"><button type="button" class="icon-btn standings-mini-player-btn" data-player-id="${r.player.id}">${renderPlayerAvatar(r.player)}${escapeHtml(r.player.name)}</button></td>
+            <td>${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}</td>
+            <td class="num-cell">${r.twoWayPer20.toFixed(1)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+  wrap.querySelectorAll(".standings-mini-player-btn").forEach(btn => {
+    btn.addEventListener("click", () => openPlayerDetail(btn.dataset.playerId));
+  });
+}
+
+function renderGamesSidebarRecent() {
+  const wrap = document.getElementById("gamesSidebarRecent");
+  if (!wrap) return;
+  const games = [...state.games].sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5);
+  if (games.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No games logged yet.</p>';
+    return;
+  }
+  wrap.innerHTML = `
+    <ul class="sidebar-recent-games-list">
+      ${games.map(g => {
+        const reviewed = g.scoringEvents.length > 0;
+        const scoreLine = reviewed ? `${teamScore(g, g.teamA)}–${teamScore(g, g.teamB)}` : "Not reviewed";
+        return `
+          <li>
+            <button type="button" class="icon-btn sidebar-recent-game-btn" data-game-id="${g.id}">
+              <span class="sidebar-recent-game-date">${escapeHtml(formatDateDisplay(g.date))}</span>
+              <span class="${reviewed ? "sidebar-recent-game-score" : "sidebar-recent-game-unreviewed"}">${scoreLine}</span>
+            </button>
+          </li>
+        `;
+      }).join("")}
+    </ul>
+  `;
+  wrap.querySelectorAll(".sidebar-recent-game-btn").forEach(btn => {
+    btn.addEventListener("click", () => openGame(btn.dataset.gameId));
+  });
+}
+
 function renderLeaderboardHighlights() {
   const wrap = document.getElementById("leaderboardSidebarHighlights");
   if (!wrap) return;
@@ -372,6 +459,32 @@ function renderLeaderboardHighlights() {
   });
 }
 
+function physicalProfileTags(phys) {
+  if (!phys) return [];
+  return phys.roles.map(r => ({ label: PHYSICAL_ROLE_LABELS[r], kind: r }));
+}
+
+let editingPhysicalProfileId = null;
+
+let playersRoleFilter = new Set();
+
+function renderPlayersRoleFilter() {
+  const wrap = document.getElementById("playersRoleFilter");
+  if (!wrap) return;
+  wrap.innerHTML = Object.entries(PHYSICAL_ROLE_LABELS).map(([key, label]) => {
+    const active = playersRoleFilter.has(key);
+    return `<button type="button" class="profile-tag profile-tag-${key} role-filter-chip${active ? " active" : ""}" data-role="${key}">${escapeHtml(label)}</button>`;
+  }).join("");
+  wrap.querySelectorAll(".role-filter-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const role = chip.dataset.role;
+      if (playersRoleFilter.has(role)) playersRoleFilter.delete(role);
+      else playersRoleFilter.add(role);
+      renderPlayers();
+    });
+  });
+}
+
 const PLAYER_PHOTO_FILES = {
   adam: "adam.jpg", alex: "alex.png", ben: "ben.png", evan: "evan.jpg",
   "g-danny": "g-danny.jpg", "g-ian": "g-ian.jpg", "g-lukas": "g-lukas.jpg",
@@ -403,6 +516,248 @@ function renderPlayerAvatar(player, size = "normal", ringClass = "") {
 function playerAvatarRingClass(playerId) {
   const t = computePlayerAwardTier(playerId);
   return t ? `player-avatar-ring-${t.color}-${t.isCurrent ? "current" : "past"}` : "";
+}
+
+function renderPlayers() {
+  renderPlayersRoleFilter();
+  const list = document.getElementById("playersList");
+  list.innerHTML = "";
+  if (state.players.length === 0) {
+    list.innerHTML = '<p class="empty-state">No players yet. Add one above.</p>';
+    return;
+  }
+  const sortedPlayers = [...state.players].sort((a, b) => a.name.localeCompare(b.name));
+  const visiblePlayers = playersRoleFilter.size === 0
+    ? sortedPlayers
+    : sortedPlayers.filter(p => (getPlayerPhysicalData(p.id)?.roles || []).some(r => playersRoleFilter.has(r)));
+  if (visiblePlayers.length === 0) {
+    list.innerHTML = '<p class="empty-state">No players match the selected role filter.</p>';
+    return;
+  }
+  visiblePlayers.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "roster-row";
+    // Notable things from Ben's own Player Profiles scouting — role(s) plus build, but only when
+    // build is notable (skinny/strong end of the scale, not "Average") — a quick visual scan of
+    // who's who on the roster, same profile data the Balance Teams tiebreak already reads, just
+    // surfaced here too, editable from this tab (see renderPhysicalProfileEditor() below). Hover
+    // any tag for Ben's original scouting sentence.
+    const phys = getPlayerPhysicalData(p.id);
+    const tags = physicalProfileTags(phys);
+    // Effort deliberately never becomes its own tag pill (see PLAYER_PHYSICAL_DATA's own
+    // comment) — this hover title is the one place it's visible on this row.
+    const tagsTitleText = phys?.effort !== undefined
+      ? `Effort: ${EFFORT_LABELS[phys.effort]}${phys.note ? " (" + phys.note + ")" : ""}`
+      : (phys?.note || "");
+    const tagsTitle = tagsTitleText ? ` title="${escapeHtml(tagsTitleText)}"` : "";
+    const tagsHtml = tags.length > 0
+      ? `<span class="profile-tags"${tagsTitle}>${tags.map(t => `<span class="profile-tag profile-tag-${t.kind}">${escapeHtml(t.label)}</span>`).join("")}</span>`
+      : "";
+    row.innerHTML = `<span class="roster-row-name">${renderPlayerAvatar(p)}${playerLink(p.id, p.name, false)}${tagsHtml}</span>`;
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "icon-btn roster-edit-btn";
+    editBtn.textContent = editingPhysicalProfileId === p.id ? "Close" : "Edit Tags";
+    editBtn.addEventListener("click", () => {
+      editingPhysicalProfileId = editingPhysicalProfileId === p.id ? null : p.id;
+      renderPlayers();
+    });
+    row.appendChild(editBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "icon-btn roster-remove-btn";
+    delBtn.textContent = "Remove";
+    delBtn.addEventListener("click", () => {
+      if (!confirm(`Remove ${p.name} from the roster? Their recorded stats stay in past games.`)) return;
+      state.players = state.players.filter(pl => pl.id !== p.id);
+      saveState();
+      renderPlayers();
+    });
+    row.appendChild(delBtn);
+    list.appendChild(row);
+
+    if (editingPhysicalProfileId === p.id) {
+      list.appendChild(renderPhysicalProfileEditor(p, phys));
+    }
+  });
+}
+
+function renderPhysicalProfileEditor(p, phys) {
+  const wrap = document.createElement("div");
+  wrap.className = "physical-profile-editor";
+  const heightFt = phys ? Math.floor(phys.heightIn / 12) : 5;
+  const heightIn = phys ? phys.heightIn % 12 : 10;
+  const build = phys?.build ?? 3;
+  const effort = phys?.effort ?? 2;
+  const roles = phys?.roles ?? [];
+  const note = phys?.note ?? "";
+  const hasOverride = !!state.playerPhysicalOverrides[p.id];
+
+  wrap.innerHTML = `
+    <div class="physical-profile-editor-row">
+      <label>Height
+        <span class="physical-profile-height-inputs">
+          <input type="number" min="3" max="8" class="physHeightFt" value="${heightFt}"> ft
+          <input type="number" min="0" max="11" class="physHeightIn" value="${heightIn}"> in
+        </span>
+      </label>
+      <label>Build
+        <select class="physBuild">
+          ${Object.entries(BUILD_LABELS).map(([v, label]) => `<option value="${v}" ${Number(v) === build ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+        </select>
+      </label>
+      <label>Effort
+        <select class="physEffort">
+          ${Object.entries(EFFORT_LABELS).map(([v, label]) => `<option value="${v}" ${Number(v) === effort ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+        </select>
+      </label>
+      <label class="physical-profile-note-label">Note
+        <input type="text" class="physNote" value="${escapeHtml(note)}" placeholder="e.g. Lockdown defender on top opponent">
+      </label>
+    </div>
+    <div class="physical-profile-editor-row physical-profile-roles">
+      ${Object.entries(PHYSICAL_ROLE_LABELS).map(([key, label]) => `
+        <label class="physical-profile-role-check">
+          <input type="checkbox" class="physRole" value="${key}" ${roles.includes(key) ? "checked" : ""}>
+          ${escapeHtml(label)}
+        </label>
+      `).join("")}
+    </div>
+    <div class="physical-profile-editor-actions">
+      <button type="button" class="secondary-btn physSaveBtn">Save</button>
+      <button type="button" class="icon-btn physCancelBtn">Cancel</button>
+      ${hasOverride ? '<button type="button" class="icon-btn physResetBtn">Reset to Default</button>' : ""}
+    </div>
+  `;
+
+  wrap.querySelector(".physSaveBtn").addEventListener("click", () => {
+    const ft = parseInt(wrap.querySelector(".physHeightFt").value, 10) || 0;
+    const inches = parseInt(wrap.querySelector(".physHeightIn").value, 10) || 0;
+    const buildVal = parseInt(wrap.querySelector(".physBuild").value, 10);
+    const effortVal = parseInt(wrap.querySelector(".physEffort").value, 10);
+    const selectedRoles = Array.from(wrap.querySelectorAll(".physRole:checked")).map(cb => cb.value);
+    const noteVal = wrap.querySelector(".physNote").value.trim();
+    state.playerPhysicalOverrides[p.id] = { heightIn: ft * 12 + inches, build: buildVal, effort: effortVal, roles: selectedRoles, note: noteVal };
+    saveState();
+    editingPhysicalProfileId = null;
+    renderPlayers();
+  });
+  wrap.querySelector(".physCancelBtn").addEventListener("click", () => {
+    editingPhysicalProfileId = null;
+    renderPlayers();
+  });
+  const resetBtn = wrap.querySelector(".physResetBtn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      delete state.playerPhysicalOverrides[p.id];
+      saveState();
+      editingPhysicalProfileId = null;
+      renderPlayers();
+    });
+  }
+  return wrap;
+}
+
+function renderRsvpRecentList() {
+  renderBalanceRsvpDateSelect();
+  const wrap = document.getElementById("rsvpRecentList");
+  if (!wrap) return;
+  if (state.rsvps.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No RSVPs saved yet.</p>';
+    return;
+  }
+  const sorted = [...state.rsvps].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  wrap.innerHTML = sorted.map(r => {
+    const names = r.playerIds.map(id => state.players.find(p => p.id === id)?.name).filter(Boolean);
+    const hasGame = state.games.some(g => g.date === r.date);
+    let statusHtml;
+    if (!hasGame) {
+      statusHtml = ' <span class="badge">Pending: no game logged yet</span>';
+    } else {
+      const missed = r.playerIds.filter(id => !playerAttendedDate(id, r.date));
+      statusHtml = missed.length === 0
+        ? ' <span class="badge badge-highlight">Everyone showed</span>'
+        : ` <span class="badge badge-lowlight">${missed.length} missed: ${escapeHtml(missed.map(id => state.players.find(p => p.id === id)?.name || "?").join(", "))}</span>`;
+    }
+    return `<div class="roster-row">
+      <span>${escapeHtml(formatDateDisplay(r.date))}: ${escapeHtml(names.join(", ") || "nobody")}${statusHtml}</span>
+      <button type="button" class="icon-btn" data-delete-rsvp="${r.id}">Delete</button>
+    </div>`;
+  }).join("");
+  wrap.querySelectorAll("[data-delete-rsvp]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.rsvps = state.rsvps.filter(r => r.id !== btn.dataset.deleteRsvp);
+      saveState();
+      renderRsvpRecentList();
+    });
+  });
+}
+
+let gamesFilterText = "";
+
+function gameMatchesFilter(game, filterText) {
+  if (!filterText) return true;
+  const playerNames = [...game.teamA, ...game.teamB]
+    .map(id => state.players.find(p => p.id === id))
+    .filter(Boolean)
+    .map(p => p.name.toLowerCase());
+  const haystack = [game.date || "", formatDateDisplay(game.date).toLowerCase(), (game.notes || "").toLowerCase(), ...playerNames].join(" ");
+  return haystack.includes(filterText);
+}
+
+let gamesFilterPlayerIds = new Set();
+
+let gamesFilterTeamMode = "either";
+
+let gamesFilterDateFrom = "";
+
+let gamesFilterDateTo = "";
+
+let gamesFilterStat = { playerId: "", field: "pts", op: "gte", value: "" };
+
+function getGameStatValue(game, playerId, field) {
+  const s = getOrCreatePlayerStats(game, playerId);
+  if (["pts", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf"].includes(field)) return s[field];
+  const sh = shootingStats(game, playerId);
+  if (field === "offRtg") return offensiveRating(s, sh);
+  if (field === "twoWay") {
+    const def = gameDefenseStats(game, playerId);
+    return twoWayScore(s, sh, def);
+  }
+  return null;
+}
+
+function gameMatchesAdvancedFilters(game) {
+  const rosterIds = [...game.teamA, ...game.teamB];
+
+  if (gamesFilterPlayerIds.size > 0) {
+    const selected = [...gamesFilterPlayerIds];
+    if (!selected.every(id => rosterIds.includes(id))) return false;
+    if (gamesFilterTeamMode === "together") {
+      const allOnA = selected.every(id => game.teamA.includes(id));
+      const allOnB = selected.every(id => game.teamB.includes(id));
+      if (!allOnA && !allOnB) return false;
+    } else if (gamesFilterTeamMode === "against") {
+      const anyOnA = selected.some(id => game.teamA.includes(id));
+      const anyOnB = selected.some(id => game.teamB.includes(id));
+      if (!anyOnA || !anyOnB) return false;
+    }
+  }
+
+  if (gamesFilterDateFrom && (game.date || "") < gamesFilterDateFrom) return false;
+  if (gamesFilterDateTo && (game.date || "") > gamesFilterDateTo) return false;
+
+  if (gamesFilterStat.playerId && gamesFilterStat.value !== "") {
+    if (!rosterIds.includes(gamesFilterStat.playerId)) return false;
+    const val = getGameStatValue(game, gamesFilterStat.playerId, gamesFilterStat.field);
+    const threshold = parseFloat(gamesFilterStat.value);
+    if (val === null || Number.isNaN(threshold)) return false;
+    if (gamesFilterStat.op === "gte" && !(val >= threshold)) return false;
+    if (gamesFilterStat.op === "lte" && !(val <= threshold)) return false;
+    if (gamesFilterStat.op === "eq" && !(Math.abs(val - threshold) < 0.05)) return false;
+  }
+
+  return true;
 }
 
 function shareOrCopy({ title, text, url }, btn) {
@@ -453,6 +808,171 @@ function buildGameShareText(game) {
   return `${formatDateDisplay(game.date)}: ${teamANames} ${scoreA} - ${scoreB} ${teamBNames}`;
 }
 
+function copyGameShareLink(game, btn) {
+  shareOrCopy({
+    title: "Poolean Intel",
+    text: buildGameShareText(game),
+    url: `${location.origin}${location.pathname}#game=${encodeURIComponent(game.id)}`
+  }, btn);
+}
+
+function renderGames() {
+  renderNeedsReviewSummary();
+  renderRealSiteCheck();
+  renderBackupReminder();
+  renderShotLocationGapSummary();
+  // A game being created/deleted can resolve (or un-resolve) a pending RSVP entry for that same
+  // date, so the recent-RSVP list's Pending/Everyone showed/missed status needs to stay in sync
+  // with whatever renderGames() itself is reacting to.
+  renderRsvpRecentList();
+  renderStandingsSidebar("gamesSidebarStandings");
+  renderGamesSidebarRecent();
+  const list = document.getElementById("gamesList");
+  list.innerHTML = "";
+  if (state.games.length === 0) {
+    list.innerHTML = '<p class="empty-state">No games yet. Create one above.</p>';
+    return;
+  }
+  const filtered = [...state.games]
+    .sort((x, y) => (x.date || "").localeCompare(y.date || ""))
+    .filter(game => gameMatchesFilter(game, gamesFilterText) && gameMatchesAdvancedFilters(game));
+  if (filtered.length === 0) {
+    list.innerHTML = '<p class="empty-state">No games match that filter.</p>';
+    return;
+  }
+  filtered.forEach((game, i) => {
+    const liveOnly = isLiveScoreOnly(game);
+    const scoreA = liveOnly ? liveScoreOf(game, game.teamA) : teamScore(game, game.teamA);
+    const scoreB = liveOnly ? liveScoreOf(game, game.teamB) : teamScore(game, game.teamB);
+    const card = document.createElement("div");
+    card.className = "game-card";
+    card.dataset.gameId = game.id;
+    // A quick staggered entrance instead of the whole list just appearing at once -- capped so a
+    // long filtered list doesn't leave the last cards visibly waiting their turn.
+    card.style.animationDelay = `${Math.min(i, 10) * 30}ms`;
+    const hasKnownVideo = !!(game.videoUrl || game.masterVideoId);
+    const videoBadge = hasKnownVideo ? ` <span class="badge badge-video">${icon("video")} Video</span>` : '<span class="video-badge-slot"></span>';
+    const needsReview = game.scoringEvents.length === 0;
+    // "Needs Review" only means anything once there's actually a video to review — a game with
+    // no video at all just hasn't reached that point yet, not fallen behind. Local-video-only
+    // games don't know their video status synchronously, so they get a slot too (resolved
+    // alongside the video badge itself in markGamesWithLocalVideo).
+    const reviewBadge = hasKnownVideo && needsReview
+      ? ` <span class="badge badge-review">${icon("pencil")} Needs Review</span>`
+      : (needsReview ? '<span class="review-badge-slot"></span>' : '');
+    const imbalancedBadge = isBalancedGame(game)
+      ? ""
+      : ` <span class="badge badge-imbalanced" title="Team A has ${game.teamA.length}, Team B has ${game.teamB.length}. Excluded from Leaderboard rates and every other computed comparison unless the Include Imbalanced Games toggle on the Leaderboard is on.">${icon("scale")} ${game.teamA.length}v${game.teamB.length}</span>`;
+    const pastSeasonBadge = isCurrentSeasonGame(game)
+      ? ""
+      : ` <span class="badge badge-past-season" title="From a season closed out before this one. Excluded from Leaderboard rates and every other computed comparison unless the Include Past Seasons toggle on the Leaderboard is on. See Closed Seasons in This App on each player's page for that season's final numbers.">${icon("calendar")} Past Season</span>`;
+    const liveBadge = game.liveInProgress
+      ? ` <span class="badge badge-review" title="Being scored live right now.">${icon("megaphone")} Live now</span>`
+      : liveOnly ? ` <span class="badge badge-review" title="Only who scored was tracked live. Log it from film in Stat Entry for it to count toward stats.">${icon("megaphone")} Live score only</span>` : "";
+    const stoppedEarlyBadge = game.stoppedEarly
+      ? ` <span class="badge badge-lowlight" title="This game ended early. Not comparable to a complete game -- excluded from Best/Worst Games, Power Ranking vs. Performance, Shot Attempt Differential, Pace/PPP, and Win Shares. Season-total rates still include it.">${icon("stop")} Stopped Early</span>`
+      : "";
+    // Best/worst-of-the-game badge — same Two-Way score Best & Worst Individual Games ranks by
+    // (Off Rating + Def Rating for that one game, not a per-20 rate or season number), just
+    // scoped to this specific game's own roster instead of pooled across the whole season. Only
+    // meaningful once there's real data to rank and at least two players to compare, so an
+    // unreviewed game or a lone-player roster gets neither badge rather than a trivial or
+    // misleading one.
+    const rosterIds = [...game.teamA, ...game.teamB];
+    let starBadge = "", coldBadge = "";
+    if (game.scoringEvents.length > 0 && rosterIds.length >= 2) {
+      const performances = rosterIds.map(pid => {
+        const player = state.players.find(p => p.id === pid);
+        if (!player) return null;
+        const s = getOrCreatePlayerStats(game, pid);
+        const sh = shootingStats(game, pid);
+        const def = gameDefenseStats(game, pid);
+        return { player, twoWay: twoWayScore(s, sh, def) };
+      }).filter(Boolean);
+      if (performances.length >= 2) {
+        const best = performances.reduce((a, b) => b.twoWay > a.twoWay ? b : a);
+        const worst = performances.reduce((a, b) => b.twoWay < a.twoWay ? b : a);
+        starBadge = ` <span class="badge badge-highlight" title="Best individual performance this game by Two-Way score.">${icon('flame')} ${playerLink(best.player.id, best.player.name)} ${best.twoWay >= 0 ? "+" : ""}${best.twoWay.toFixed(1)}</span>`;
+        if (worst.player.id !== best.player.id) {
+          coldBadge = ` <span class="badge badge-lowlight" title="Worst individual performance this game by Two-Way score.">${icon('lowlight')} ${playerLink(worst.player.id, worst.player.name)} ${worst.twoWay >= 0 ? "+" : ""}${worst.twoWay.toFixed(1)}</span>`;
+        }
+      }
+    }
+    const teamANames = game.teamA.map(id => state.players.find(p => p.id === id)?.name).filter(Boolean).join(", ") || "Team A";
+    const teamBNames = game.teamB.map(id => state.players.find(p => p.id === id)?.name).filter(Boolean).join(", ") || "Team B";
+    card.innerHTML = `
+      <div>
+        <div class="matchup-line">${escapeHtml(teamANames)} ${scoreA} - ${scoreB} ${escapeHtml(teamBNames)}</div>
+        <div class="date-line">${formatDateDisplay(game.date)} · ${game.teamA.length + game.teamB.length} players${game.notes ? " · " + escapeHtml(game.notes) : ""}${videoBadge}${reviewBadge}${liveBadge}${imbalancedBadge}${pastSeasonBadge}${stoppedEarlyBadge}${starBadge}${coldBadge}</div>
+      </div>
+    `;
+    const shareBtn = document.createElement("button");
+    shareBtn.className = "icon-btn game-share-btn";
+    shareBtn.textContent = "Share";
+    shareBtn.title = "Copy a link straight to this game";
+    shareBtn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      copyGameShareLink(game, shareBtn);
+    });
+    card.appendChild(shareBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "icon-btn game-delete-btn";
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      if (!confirm("Delete this game and all its stats?")) return;
+      state.games = state.games.filter(g => g.id !== game.id);
+      saveState();
+      renderGames();
+    });
+    card.appendChild(delBtn);
+    card.addEventListener("click", () => openGame(game.id));
+    list.appendChild(card);
+  });
+
+  markGamesWithLocalVideo();
+  renderGamesSectionTeasers();
+}
+
+async function markGamesWithLocalVideo() {
+  const ids = await getAllStoredVideoIds();
+  ids.forEach(gameId => {
+    const card = document.querySelector(`.game-card[data-game-id="${gameId}"]`);
+    if (!card) return;
+    const videoSlot = card.querySelector(".video-badge-slot");
+    if (videoSlot) videoSlot.outerHTML = ` <span class="badge badge-video">${icon("video")} Video</span>`;
+    const reviewSlot = card.querySelector(".review-badge-slot");
+    if (reviewSlot) reviewSlot.outerHTML = ` <span class="badge badge-review">${icon("pencil")} Needs Review</span>`;
+  });
+}
+
+async function renderNeedsReviewSummary() {
+  const el = document.getElementById("needsReviewSummary");
+  if (!el) return;
+  const localVideoIds = new Set(await getAllStoredVideoIds());
+  const count = state.games.filter(g => g.scoringEvents.length === 0 && (g.videoUrl || g.masterVideoId || localVideoIds.has(g.id))).length;
+  el.textContent = count > 0
+    ? `📝 ${count} game${count === 1 ? "" : "s"} with video still need${count === 1 ? "s" : ""} review.`
+    : "";
+}
+
+function renderShotLocationGapSummary() {
+  const el = document.getElementById("shotLocationGapSummary");
+  if (!el) return;
+  const gamesWithGaps = state.games.filter(g =>
+    g.scoringEvents.length > 0 &&
+    g.scoringEvents.some(ev => (ev.points === 2 || ev.points === 3) && !ev.shotLocation)
+  ).length;
+  el.innerHTML = gamesWithGaps > 0
+    ? `📍 ${gamesWithGaps} reviewed game${gamesWithGaps === 1 ? "" : "s"} still missing shot locations on some makes/misses. <button type="button" class="icon-btn" id="jumpToBackfillBtn" style="padding:2px 8px">Fill them in</button>`
+    : "";
+  document.getElementById("jumpToBackfillBtn")?.addEventListener("click", () => {
+    showTab("export");
+    document.getElementById("backfillShotLocations")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 const PLAYER_REPUTATION_DATA = [
   { slug: "phillip", avgPercentile: 100, parties: 4 },
   { slug: "logan-hoskins", avgPercentile: 88.9, parties: 1 },
@@ -481,11 +1001,38 @@ const PLAYER_REPUTATION_BY_ID = {};
 
 PLAYER_REPUTATION_DATA.forEach(r => { PLAYER_REPUTATION_BY_ID[r.slug] = r; });
 
+const PLAYER_PHYSICAL_DATA = {
+  ben: { heightIn: 72, build: 3, effort: 4, roles: ["defender", "playmaker"], note: "" },
+  adam: { heightIn: 64, build: 5, effort: 4, roles: ["scorer", "defender"], note: "" },
+  zach: { heightIn: 67, build: 1, effort: 4, roles: ["scorer"], note: "" },
+  alex: { heightIn: 72, build: 3, effort: 4, roles: ["scorer"], note: "" },
+  evan: { heightIn: 69, build: 4, effort: 3, roles: ["scorer"], note: "" },
+  "g-ian": { heightIn: 70, build: 4, effort: 3, roles: ["physical"], note: "" },
+  "g-michael-t": { heightIn: 70, build: 2, effort: 2, roles: ["scorer"], note: "" },
+  "g-lukas": { heightIn: 67, build: 3, effort: 3, roles: ["physical", "defender"], note: "" },
+  reilly: { heightIn: 71, build: 3, effort: 2, roles: ["scorer"], note: "" },
+  viraj: { heightIn: 69, build: 2, effort: 2, roles: ["role-player"], note: "" },
+  sean: { heightIn: 72, build: 4, effort: 3, roles: ["defender", "scorer"], note: "" },
+  will: { heightIn: 68, build: 4, effort: 3, roles: ["physical"], note: "" },
+  phillip: { heightIn: 73, build: 4, effort: 4, roles: ["scorer", "defender"], note: "" },
+  jason: { heightIn: 70, build: 2, effort: 3, roles: ["defender"], note: "" },
+  "logan-hoskins": { heightIn: 72, build: 4, effort: 1, roles: ["defender", "scorer"], note: "" },
+  "logan-watson": { heightIn: 69, build: 3, effort: 3, roles: ["role-player"], note: "" },
+  kayla: { heightIn: 67, build: 3, effort: 2, roles: ["role-player"], note: "" },
+  ryder: { heightIn: 70, build: 2, effort: 3, roles: ["playmaker"], note: "" },
+  "g-danny": { heightIn: 70, build: 5, effort: 2, roles: ["physical"], note: "" },
+  "g-michael-k": { heightIn: 70, build: 2, effort: 2, roles: ["scorer"], note: "" }
+};
+
 const PHYSICAL_ROLE_LABELS = { scorer: "Scorer", defender: "Defender", physical: "Physical", playmaker: "Playmaker", "role-player": "Role Player" };
 
 const BUILD_LABELS = { 1: "Very Skinny", 2: "Skinny", 3: "Average", 4: "Strong", 5: "Very Strong" };
 
 const EFFORT_LABELS = { 1: "Low", 2: "Medium", 3: "High", 4: "Very High" };
+
+function getPlayerPhysicalData(id) {
+  return state.playerPhysicalOverrides?.[id] || PLAYER_PHYSICAL_DATA[id];
+}
 
 const CLEAN_SWEEP_BONUS = 1.2;
 
@@ -517,6 +1064,22 @@ function computeBalanceQualityMap() {
     }
   });
   return map;
+}
+
+function renderBalanceRsvpDateSelect() {
+  const sel = document.getElementById("balanceRsvpDateSelect");
+  const btn = document.getElementById("loadRsvpToBalanceBtn");
+  if (!sel || !btn) return;
+  const sorted = [...state.rsvps].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  if (sorted.length === 0) {
+    sel.innerHTML = '<option value="">No RSVPs saved yet</option>';
+    sel.disabled = true;
+    btn.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  btn.disabled = false;
+  sel.innerHTML = sorted.map(r => `<option value="${r.id}">${escapeHtml(formatDateDisplay(r.date))} (${r.playerIds.length})</option>`).join("");
 }
 
 function computeChemistryLiftMap(attendeeIds) {
@@ -775,6 +1338,14 @@ function computeCrossTeamMatchups(teamA, teamB) {
   return rows.sort((a, b) => b.fga - a.fga);
 }
 
+function liveScoreOf(game, team) {
+  return (game.liveScores || []).filter(s => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0);
+}
+
+function isLiveScoreOnly(game) {
+  return game.scoringEvents.length === 0 && (game.liveScores || []).length > 0;
+}
+
 const LIVE_HANDOFF_PREFIX = "POOLEAN1:";
 
 function buildLiveHandoffCode(game, target) {
@@ -838,6 +1409,41 @@ function computeRealSiteCheck() {
     }
   });
   return out;
+}
+
+function renderRealSiteCheck() {
+  const wrap = document.getElementById("realSiteCheck");
+  const summary = document.getElementById("realSiteMismatchSummary");
+  const check = computeRealSiteCheck();
+  const problems = check ? check.disagree.length + check.unmatched.length : 0;
+  if (summary) {
+    summary.innerHTML = problems
+      ? `⚠️ ${problems} thing${problems === 1 ? "" : "s"} here ${problems === 1 ? "doesn't" : "don't"} match the real site. <button type="button" class="secondary-btn" id="jumpToRealSiteCheckBtn">Review</button>`
+      : "";
+    document.getElementById("jumpToRealSiteCheckBtn")?.addEventListener("click", () => {
+      showTab("export");
+      document.getElementById("realSiteCheck")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  if (!wrap) return;
+  if (!check) { wrap.innerHTML = '<p class="empty-state">No real-site data loaded yet.</p>'; return; }
+  const names = ids => ids.map(id => escapeHtml(poolNameOf(id))).join(", ");
+  const openButtons = games => games.map(game => `<button type="button" class="secondary-btn" data-open-game="${escapeHtml(game.id)}">Open</button>`).join(" ");
+  const disagreeHtml = check.disagree.map(({ bucket, localX, localY, realX, realY }) => `<li>
+      ${openButtons(bucket.games)}
+      ${escapeHtml(formatDateDisplay(bucket.date))}: ${names(bucket.xKey.split("|"))} vs. ${names(bucket.yKey.split("|"))}
+      <span class="hint" style="margin:0">here: won ${localX}, lost ${localY} (of ${bucket.games.length} logged); real site: won ${realX}, lost ${realY}</span>
+    </li>`).join("");
+  const unmatchedHtml = check.unmatched.map(({ game }) => `<li>
+      ${openButtons([game])}
+      ${escapeHtml(formatDateDisplay(game.date))}: ${names(game.teamA)} vs. ${names(game.teamB)}
+      <span class="hint" style="margin:0">no real game that night with these teams</span>
+    </li>`).join("");
+  wrap.innerHTML = `<p class="hint" style="margin:0 0 10px">${check.agree.length} match${check.agree.length === 1 ? "es" : ""} the real site.${check.noRealNight ? ` ${check.noRealNight} ${check.noRealNight === 1 ? "is" : "are"} from nights the real site has no games for yet.` : ""}</p>
+    ${disagreeHtml ? `<h4 style="margin:10px 0 6px">Doesn't fit the real record</h4><ul class="real-check-list">${disagreeHtml}</ul>` : ""}
+    ${unmatchedHtml ? `<h4 style="margin:10px 0 6px">No matching real game</h4><ul class="real-check-list">${unmatchedHtml}</ul>` : ""}
+    ${!disagreeHtml && !unmatchedHtml ? '<p class="empty-state">Nothing to fix.</p>' : ""}`;
+  wrap.querySelectorAll("[data-open-game]").forEach(btn => btn.addEventListener("click", () => openGame(btn.dataset.openGame)));
 }
 
 function teamScore(game, playerIds) {
@@ -986,6 +1592,19 @@ const SHOT_CHART_VIEWBOX_H = 200;
 function shotChartVbX(storedX) { return (storedX / 100) * SHOT_CHART_VIEWBOX_W; }
 
 function shotChartVbY(storedY) { return SHOT_CHART_VIEWBOX_H - (storedY / 100) * SHOT_CHART_VIEWBOX_H; }
+
+function renderShotChartBaseSvg(extraAttrs = "") {
+  const threePtVbY = shotChartVbY(60);
+  const hoopVbY = shotChartVbY(7);
+  return `
+    <svg class="shot-chart" viewBox="0 0 ${SHOT_CHART_VIEWBOX_W} ${SHOT_CHART_VIEWBOX_H}" ${extraAttrs}>
+      <rect x="1" y="1" width="${SHOT_CHART_VIEWBOX_W - 2}" height="${SHOT_CHART_VIEWBOX_H - 2}" rx="4" class="shot-chart-court" />
+      <line x1="1" y1="${threePtVbY}" x2="${SHOT_CHART_VIEWBOX_W - 1}" y2="${threePtVbY}" class="shot-chart-3pt-line" />
+      <text x="${SHOT_CHART_VIEWBOX_W - 3}" y="${threePtVbY - 3}" class="shot-chart-label" text-anchor="end">3PT</text>
+      <circle cx="${SHOT_CHART_VIEWBOX_W / 2}" cy="${hoopVbY}" r="4" class="shot-chart-hoop" />
+    </svg>
+  `;
+}
 
 const HEATMAP_COLS = 5;
 
@@ -1529,6 +2148,14 @@ function gameDefenseStats(game, playerId) {
     oppFgPct: pct(timesBeaten, timesBeaten + stops),
     blocksNotAlreadyStopped
   };
+}
+
+function defenderNames(defenderIds) {
+  if (!defenderIds || defenderIds.length === 0) return "No defender";
+  return defenderIds.map(id => {
+    const p = state.players.find(pl => pl.id === id);
+    return p ? escapeHtml(p.name) : "?";
+  }).join(" + ");
 }
 
 function formatShootingSplit(m, a, asRate = false) {
@@ -8721,6 +9348,217 @@ function download(filename, content, mime) {
   URL.revokeObjectURL(url);
 }
 
+function readBackupMeta() {
+  try { return JSON.parse(localStorage.getItem(BACKUP_META_KEY) || "{}"); } catch (e) { return {}; }
+}
+
+function writeBackupMeta(patch) {
+  try { localStorage.setItem(BACKUP_META_KEY, JSON.stringify({ ...readBackupMeta(), ...patch })); } catch (e) { /* storage full or blocked */ }
+}
+
+function noteEditForBackup() {
+  const meta = readBackupMeta();
+  writeBackupMeta({ editsSinceBackup: (meta.editsSinceBackup || 0) + 1 });
+}
+
+function downloadBackup(filename) {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+  download(filename || `pool-league-backup-${stamp}.json`, JSON.stringify(state, null, 2), "application/json");
+  writeBackupMeta({ lastBackupAt: Date.now(), editsSinceBackup: 0 });
+  renderBackupReminder();
+}
+
+function renderBackupReminder() {
+  const el = document.getElementById("backupReminder");
+  if (!el) return;
+  const meta = readBackupMeta();
+  const days = meta.lastBackupAt ? Math.floor((Date.now() - meta.lastBackupAt) / 86400000) : null;
+  let text = "";
+  if (state.games.length > 0 && days === null) {
+    text = "Your games are saved only in this browser. Save a backup file so they're safe if it gets cleared.";
+  } else if (days !== null && days >= BACKUP_NUDGE_DAYS && (meta.editsSinceBackup || 0) > 0) {
+    text = `Last backup was ${days} days ago, and there have been changes since.`;
+  }
+  el.hidden = !text;
+  el.innerHTML = text ? `💾 ${text} <button type="button" class="secondary-btn" id="backupNowBtn">Save Backup</button>` : "";
+  document.getElementById("backupNowBtn")?.addEventListener("click", () => downloadBackup());
+}
+
+let labelFrameNames = [];
+
+let labelResults = {};
+
+let labelFrameIndex = 0;
+
+let labelShotKey = "";
+
+let labelNaturalSize = null;
+
+let labelShotStartIndex = null;
+
+let labelShotEndIndex = null;
+
+function labelEntryFor(filename) {
+  return Object.prototype.hasOwnProperty.call(labelResults, filename) ? labelResults[filename] : undefined;
+}
+
+function labelStepSize() {
+  return Math.max(1, parseInt(document.getElementById("labelStepSize").value, 10) || 1);
+}
+
+const LABEL_INTERP_MAX_GAP = 8;
+
+function interpolateLabelFrames(rangeStart, rangeEnd) {
+  const filled = {};
+  const anchors = [];
+  for (let i = rangeStart; i <= rangeEnd; i++) {
+    const entry = labelResults[labelFrameNames[i]];
+    if (entry && typeof entry === "object") anchors.push({ i, x: entry.x, y: entry.y });
+  }
+  for (let a = 0; a < anchors.length - 1; a++) {
+    const p0 = anchors[a], p1 = anchors[a + 1];
+    const gap = p1.i - p0.i;
+    if (gap <= 1 || gap > LABEL_INTERP_MAX_GAP) continue;
+    for (let i = p0.i + 1; i < p1.i; i++) {
+      const name = labelFrameNames[i];
+      const existing = labelResults[name];
+      if (existing && typeof existing === "object") continue; // a real click already covers it
+      const frac = (i - p0.i) / gap;
+      filled[name] = {
+        x: Math.round((p0.x + (p1.x - p0.x) * frac) * 10) / 10,
+        y: Math.round((p0.y + (p1.y - p0.y) * frac) * 10) / 10,
+      };
+    }
+  }
+  return filled;
+}
+
+function labelFrameUrl(filename) {
+  return `shot-arc/frames/${labelShotKey}/${filename}`;
+}
+
+function renderLabelFrame() {
+  const wrap = document.getElementById("labelFrameWrap");
+  const progressEl = document.getElementById("labelProgress");
+  if (labelFrameNames.length === 0) {
+    wrap.innerHTML = "";
+    progressEl.textContent = "";
+    return;
+  }
+  const name = labelFrameNames[labelFrameIndex];
+  const entry = labelEntryFor(name);
+  const labeledCount = labelFrameNames.filter(n => labelEntryFor(n) !== undefined).length;
+  const rangeText = labelShotStartIndex === null && labelShotEndIndex === null
+    ? "Shot range: whole clip (not trimmed)."
+    : `Shot range: frame ${(labelShotStartIndex ?? 0) + 1} to ${(labelShotEndIndex ?? labelFrameNames.length - 1) + 1}.`;
+  progressEl.textContent = `Frame ${labelFrameIndex + 1} of ${labelFrameNames.length} (${name}) -- ${labeledCount} of ${labelFrameNames.length} labeled so far. ${rangeText} Click the ball's center, or use "No ball visible."`;
+
+  wrap.innerHTML = `<img id="labelFrameImg" src="${labelFrameUrl(name)}" style="display:block;max-width:100%;cursor:crosshair" draggable="false">`;
+  const img = document.getElementById("labelFrameImg");
+  img.addEventListener("load", () => {
+    if (!labelNaturalSize) labelNaturalSize = { w: img.naturalWidth, h: img.naturalHeight };
+    if (entry && typeof entry === "object") {
+      const marker = document.createElement("div");
+      const rect = img.getBoundingClientRect();
+      const scaleX = rect.width / img.naturalWidth;
+      const scaleY = rect.height / img.naturalHeight;
+      marker.style.cssText = `position:absolute;left:${entry.x * scaleX - 5}px;top:${entry.y * scaleY - 5}px;width:10px;height:10px;border-radius:50%;background:#ff3b30;border:2px solid #fff;pointer-events:none`;
+      wrap.appendChild(marker);
+    }
+  }, { once: true });
+  img.addEventListener("click", e => {
+    const rect = img.getBoundingClientRect();
+    const scaleX = img.naturalWidth / rect.width;
+    const scaleY = img.naturalHeight / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    labelResults[name] = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+    advanceLabelFrame(labelStepSize());
+  });
+
+  document.getElementById("labelPrevFrameBtn").disabled = labelFrameIndex === 0;
+  document.getElementById("labelNextFrameBtn").disabled = labelFrameIndex === labelFrameNames.length - 1;
+}
+
+function advanceLabelFrame(delta) {
+  const next = labelFrameIndex + delta;
+  if (next < 0 || next >= labelFrameNames.length) return;
+  labelFrameIndex = next;
+  renderLabelFrame();
+}
+
+function csvEscape(val) {
+  const s = String(val ?? "");
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function videoTimeCsv(videoTime) {
+  return videoTime === null || videoTime === undefined ? ["", ""] : [videoTime.toFixed(1), formatTime(videoTime)];
+}
+
+function renderExportGameSelect() {
+  const sel = document.getElementById("exportGameSelect");
+  sel.innerHTML = [...state.games].sort((x, y) => (x.date || "").localeCompare(y.date || ""))
+    .map(g => `<option value="${g.id}">${formatDateDisplay(g.date)} (${g.teamA.length + g.teamB.length} players)</option>`).join("");
+}
+
+async function loadBackfillVideo(game, videoWrap) {
+  let url = null;
+  if (game.masterVideoId) {
+    url = masterVideoBlobUrls[game.masterVideoId];
+    if (!url) {
+      const file = await getVideoFile(game.masterVideoId);
+      if (file) { url = URL.createObjectURL(file); masterVideoBlobUrls[game.masterVideoId] = url; }
+    }
+  } else {
+    url = localVideoBlobUrls[game.id];
+    if (!url) {
+      const file = await getVideoFile(game.id);
+      if (file) { url = URL.createObjectURL(file); localVideoBlobUrls[game.id] = url; }
+    }
+  }
+  if (!url && game.videoUrl && /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(game.videoUrl)) url = game.videoUrl;
+  if (!videoWrap.isConnected) return; // panel moved on before this resolved — nothing to update
+  if (url) {
+    videoWrap.innerHTML = `<video controls class="backfill-video"></video>`;
+    videoWrap.querySelector("video").src = url;
+  } else {
+    videoWrap.innerHTML = '<p class="hint" style="margin:0">No video available for this game. Mark from memory, or open it directly in Stat Entry.</p>';
+  }
+}
+
+let backfillUndoTimer = null;
+
+function showBackfillUndoToast(playerName, game, eventId, previousLocation) {
+  const toast = document.getElementById("backfillUndoToast");
+  if (!toast) return;
+  clearTimeout(backfillUndoTimer);
+  toast.innerHTML = `<span class="hint" style="margin:0">Location set for ${escapeHtml(playerName)}'s shot.</span> <button type="button" class="icon-btn" data-undo-location="1">Undo</button>`;
+  toast.querySelector("[data-undo-location]").addEventListener("click", () => {
+    const ev = game.scoringEvents.find(e => e.id === eventId);
+    if (ev) ev.shotLocation = previousLocation;
+    saveState();
+    clearTimeout(backfillUndoTimer);
+    renderBackfillShotLocations();
+  });
+  backfillUndoTimer = setTimeout(() => { toast.innerHTML = ""; }, 8000);
+}
+
+function setShotChartDot(svgEl, location) {
+  const existing = svgEl.querySelector(".shot-chart-dot");
+  if (existing) existing.remove();
+  if (!location) return;
+  const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  dot.setAttribute("cx", shotChartVbX(location.x));
+  dot.setAttribute("cy", shotChartVbY(location.y));
+  dot.setAttribute("r", "4");
+  dot.setAttribute("class", "shot-chart-dot");
+  svgEl.appendChild(dot);
+}
+
+let backfillShowMarked = false;
+
 function computeUnresolvedDunkCandidates() {
   const rows = [];
   state.games.forEach(game => {
@@ -8732,6 +9570,59 @@ function computeUnresolvedDunkCandidates() {
     });
   });
   return rows.sort((a, b) => (a.game.date || "").localeCompare(b.game.date || ""));
+}
+
+function renderDunkReview() {
+  const wrap = document.getElementById("dunkReview");
+  if (!wrap) return;
+  const rows = computeUnresolvedDunkCandidates();
+  if (rows.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">Every close/midrange field goal has been reviewed for dunks.</p>';
+    return;
+  }
+  wrap.innerHTML = `<p class="hint dunk-review-summary" style="margin-top:0">${rows.length} close/midrange field goal${rows.length === 1 ? "" : "s"} still unreviewed.</p>
+  <ul class="player-tips-list">${rows.map(({ game, ev }) => {
+    const scorer = state.players.find(p => p.id === ev.scorerId);
+    const hasTime = ev.videoTime !== null && ev.videoTime !== undefined;
+    const watchLinks = watchFilmLinksHtml(hasTime ? [{ id: game.id, date: game.date, videoTime: ev.videoTime }] : []);
+    return `<li data-event-id="${ev.id}">
+      <span>${scorer ? playerLink(scorer.id, scorer.name) : "?"}: ${ev.made !== false ? "Make" : "Miss"} (${ev.points}pt, ${escapeHtml(formatDateDisplay(game.date))})${watchLinks}</span>
+      <div class="button-row" style="margin-top:4px">
+        <button type="button" class="secondary-btn" data-mark-dunk="${ev.id}">🏀 Dunk</button>
+        <button type="button" class="secondary-btn" data-mark-notdunk="${ev.id}">Not a dunk</button>
+      </div>
+    </li>`;
+  }).join("")}</ul>`;
+  wireWatchFilmButtons(wrap);
+
+  const summaryEl = wrap.querySelector(".dunk-review-summary");
+  const listEl = wrap.querySelector("ul");
+  const resolveRow = (eventId, value) => {
+    const ev = state.games.flatMap(g => g.scoringEvents).find(e => e.id === eventId);
+    if (!ev) return;
+    ev.dunk = value;
+    saveState();
+    listEl.querySelector(`li[data-event-id="${eventId}"]`)?.remove();
+    const left = listEl.querySelectorAll("li").length;
+    if (left === 0) {
+      listEl.remove();
+      summaryEl.textContent = "";
+      if (!wrap.querySelector(".dunk-review-done-msg")) {
+        const doneMsg = document.createElement("p");
+        doneMsg.className = "empty-state dunk-review-done-msg";
+        doneMsg.textContent = "Every close/midrange field goal has been reviewed for dunks.";
+        wrap.appendChild(doneMsg);
+      }
+    } else {
+      summaryEl.textContent = `${left} close/midrange field goal${left === 1 ? "" : "s"} still unreviewed.`;
+    }
+  };
+  wrap.querySelectorAll("[data-mark-dunk]").forEach(btn => {
+    btn.addEventListener("click", () => resolveRow(btn.dataset.markDunk, true));
+  });
+  wrap.querySelectorAll("[data-mark-notdunk]").forEach(btn => {
+    btn.addEventListener("click", () => resolveRow(btn.dataset.markNotdunk, false));
+  });
 }
 
 const SHOT_TYPES = [
@@ -8758,6 +9649,10 @@ function shotTypeLabel(key) {
   return t ? t.label : "";
 }
 
+function shotTypeButtonsHtml(current, attr) {
+  return TAGGABLE_SHOT_TYPES.map(t => `<button type="button" class="secondary-btn${current === t.key ? " selected" : ""}" data-${attr}="${t.key}" title="${escapeHtml(t.about)}">${escapeHtml(t.label)}</button>`).join("");
+}
+
 const TURNOVER_TYPES = [
   { key: "badPass", label: "Bad Pass", about: "Pass is inaccurate, intercepted, thrown away, or a teammate can't reasonably handle it. Tells us about passing/playmaking." },
   { key: "lostHandle", label: "Lost Handle", about: "Dribble off the foot, lose control, or mishandle the ball without a defender directly causing it. Tells us about ball handling." },
@@ -8770,6 +9665,10 @@ const TURNOVER_TYPES = [
 function turnoverTypeLabel(key) {
   const t = TURNOVER_TYPES.find(x => x.key === key);
   return t ? t.label : "No type yet";
+}
+
+function turnoverTypeButtonsHtml(current, attr) {
+  return TURNOVER_TYPES.map(t => `<button type="button" class="secondary-btn${current === t.key ? " selected" : ""}" data-${attr}="${t.key}" title="${escapeHtml(t.about)}">${escapeHtml(t.label)}</button>`).join("");
 }
 
 const TURNOVER_TYPE_MIN_TAGGED = 5;
@@ -9299,6 +10198,10 @@ function contestLevelLabel(key) {
   return t ? t.label : "No level yet";
 }
 
+function contestLevelButtonsHtml(current, attr) {
+  return CONTEST_LEVELS.map(t => `<button type="button" class="secondary-btn${current === t.key ? " selected" : ""}" data-${attr}="${t.key}" title="${escapeHtml(t.about)}">${escapeHtml(t.label)}</button>`).join("");
+}
+
 const RESISTANCE_LEVEL_SCORE = { none: 0, light: 1, medium: 2, heavy: 3 };
 
 const AVG_RESISTANCE_MIN_FGA = 5;
@@ -9748,6 +10651,14 @@ function computeGamesSectionTeasers() {
   };
 }
 
+function renderGamesSectionTeasers() {
+  const teasers = computeGamesSectionTeasers();
+  Object.entries(teasers).forEach(([key, text]) => {
+    const el = document.getElementById(`games-teaser-${key}`);
+    if (el) el.textContent = text;
+  });
+}
+
 function computeExportSectionTeasers() {
   return {
     exportData: "Full data dump, or one game at a time",
@@ -9757,13 +10668,23 @@ function computeExportSectionTeasers() {
   };
 }
 
+const SHOT_TYPE_REVIEW_PAGE = 20;
+
 const DRIVE_FAR_UNITS = 65;
+
+let shotTypeReviewLimit = SHOT_TYPE_REVIEW_PAGE;
 
 let shotTypeReviewPlayer = "";
 
 let shotTypeReviewMode = "untagged";
 
 const shotTypeSkipped = new Set();
+
+const SHOT_TYPE_REVIEW_MODES = {
+  untagged: { label: "Shots with no type yet", noun: "field goals still without a shot type", empty: "Every field goal has a shot type." },
+  guardedCatch: { label: "Re-check: guarded catch-and-shoots", noun: "guarded catch-and-shoots to re-check", empty: "No guarded catch-and-shoots to re-check." },
+  farDrives: { label: `Re-check: drives ${DRIVE_FAR_UNITS}+ units from the hoop`, noun: "far-out drives to re-check", empty: "No far-out drives to re-check." }
+};
 
 function shotTypeReviewMatches(ev) {
   if (ev.points !== 2 && ev.points !== 3) return false;
@@ -9787,6 +10708,83 @@ function computeShotTypeReviewRows() {
   return rows.sort((a, b) => (a.game.date || "").localeCompare(b.game.date || "") || (a.ev.videoTime || 0) - (b.ev.videoTime || 0));
 }
 
+function renderShotTypeReview() {
+  const wrap = document.getElementById("shotTypeReview");
+  if (!wrap) return;
+  const mode = SHOT_TYPE_REVIEW_MODES[shotTypeReviewMode];
+  const all = computeShotTypeReviewRows();
+  const shown = all.slice(0, shotTypeReviewLimit);
+  // Players who have something in this view, so the filter never offers an empty choice.
+  const inMode = new Set();
+  state.games.forEach(g => g.scoringEvents.forEach(ev => { if (shotTypeReviewMatches(ev) && !shotTypeSkipped.has(ev.id)) inMode.add(ev.scorerId); }));
+  const playerOptions = state.players.filter(p => inMode.has(p.id) || p.id === shotTypeReviewPlayer)
+    .map(p => `<option value="${p.id}"${p.id === shotTypeReviewPlayer ? " selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+  const controls = `<div class="button-row" style="margin:0 0 8px;gap:10px;align-items:center">
+      <label>Show <select data-review-mode>${Object.entries(SHOT_TYPE_REVIEW_MODES).map(([k, m]) => `<option value="${k}"${k === shotTypeReviewMode ? " selected" : ""}>${escapeHtml(m.label)}</option>`).join("")}</select></label>
+      <label>Player <select data-review-player><option value="">Everyone</option>${playerOptions}</select></label>
+    </div>`;
+  const recheck = shotTypeReviewMode !== "untagged";
+  wrap.innerHTML = `${controls}
+  ${all.length === 0 ? `<p class="empty-state">${escapeHtml(mode.empty)}</p>` : `<p class="hint shot-type-review-summary" style="margin-top:0"></p>
+  <ul class="player-tips-list">${shown.map(({ game, ev }) => {
+    const scorer = state.players.find(p => p.id === ev.scorerId);
+    const hasTime = ev.videoTime !== null && ev.videoTime !== undefined;
+    const watchLinks = watchFilmLinksHtml(hasTime ? [{ id: game.id, date: game.date, videoTime: ev.videoTime }] : []);
+    const band = ev.shotLocation ? ` · ${escapeHtml(({ close: "close", mid: "midrange", arc: "at the line", deep: "deep" })[shotBand(ev.shotLocation, ev.points)])}` : "";
+    const guarded = (ev.defenderIds || []).length > 0 ? " · guarded" : " · no defender/open";
+    return `<li data-event-id="${ev.id}">
+      <span>${scorer ? playerLink(scorer.id, scorer.name) : "?"}: ${ev.made !== false ? "Make" : "Miss"} (${ev.points}pt${band}${recheck ? guarded : ""}, ${escapeHtml(formatDateDisplay(game.date))})${recheck ? ` · currently ${escapeHtml(shotTypeLabel(ev.shotType))}` : ""}${watchLinks}</span>
+      <div class="button-row" style="margin-top:4px">
+        ${shotTypeButtonsHtml(recheck ? ev.shotType : null, "mark-shot-type")}
+        <button type="button" class="icon-btn" data-skip-shot-type="${ev.id}">${recheck ? "Looks right" : "Skip"}</button>
+      </div>
+    </li>`;
+  }).join("")}</ul>
+  ${all.length > shown.length ? '<button type="button" class="secondary-btn" data-shot-type-more="1">Show more</button>' : ""}`}`;
+  wireWatchFilmButtons(wrap);
+
+  wrap.querySelector("[data-review-mode]").addEventListener("change", e => { shotTypeReviewMode = e.target.value; shotTypeReviewLimit = SHOT_TYPE_REVIEW_PAGE; renderShotTypeReview(); });
+  wrap.querySelector("[data-review-player]").addEventListener("change", e => { shotTypeReviewPlayer = e.target.value; shotTypeReviewLimit = SHOT_TYPE_REVIEW_PAGE; renderShotTypeReview(); });
+  if (all.length === 0) return;
+
+  const summaryEl = wrap.querySelector(".shot-type-review-summary");
+  const updateSummary = () => {
+    const left = computeShotTypeReviewRows().length;
+    summaryEl.textContent = `${left} ${mode.noun}.`;
+  };
+  updateSummary();
+  const dropRow = eventId => {
+    wrap.querySelector(`li[data-event-id="${eventId}"]`)?.remove();
+    updateSummary();
+    if (wrap.querySelectorAll("li").length === 0) renderShotTypeReview();
+  };
+  wrap.querySelectorAll("li").forEach(li => {
+    const eventId = li.dataset.eventId;
+    li.querySelectorAll("[data-mark-shot-type]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const ev = state.games.flatMap(g => g.scoringEvents).find(e => e.id === eventId);
+        if (!ev) return;
+        ev.shotType = btn.dataset.markShotType;
+        saveState();
+        // A re-check shot that is still a match after the change (same type picked) would otherwise
+        // reappear on the next render, so it is also set aside for this visit.
+        if (shotTypeReviewMatches(ev)) shotTypeSkipped.add(eventId);
+        dropRow(eventId);
+      });
+    });
+    li.querySelector("[data-skip-shot-type]").addEventListener("click", () => {
+      shotTypeSkipped.add(eventId);
+      dropRow(eventId);
+    });
+  });
+  const moreBtn = wrap.querySelector("[data-shot-type-more]");
+  if (moreBtn) moreBtn.addEventListener("click", () => { shotTypeReviewLimit += SHOT_TYPE_REVIEW_PAGE; renderShotTypeReview(); });
+}
+
+const TURNOVER_TYPE_REVIEW_PAGE = 20;
+
+let turnoverTypeReviewLimit = TURNOVER_TYPE_REVIEW_PAGE;
+
 let turnoverTypeReviewPlayer = "";
 
 const turnoverTypeSkipped = new Set();
@@ -9807,6 +10805,74 @@ function computeTurnoverTypeReviewRows() {
   });
   return rows.sort((a, b) => (a.game.date || "").localeCompare(b.game.date || "") || (a.ev.videoTime || 0) - (b.ev.videoTime || 0));
 }
+
+function renderTurnoverTypeReview() {
+  const wrap = document.getElementById("turnoverTypeReview");
+  if (!wrap) return;
+  const all = computeTurnoverTypeReviewRows();
+  const shown = all.slice(0, turnoverTypeReviewLimit);
+  const inMode = new Set();
+  state.games.forEach(g => g.turnoverEvents.forEach(ev => { if (!ev.turnoverType && !ev.missEventId && !turnoverTypeSkipped.has(ev.id)) inMode.add(ev.playerId); }));
+  const playerOptions = state.players.filter(p => inMode.has(p.id) || p.id === turnoverTypeReviewPlayer)
+    .map(p => `<option value="${p.id}"${p.id === turnoverTypeReviewPlayer ? " selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+  const controls = `<div class="button-row" style="margin:0 0 8px;gap:10px;align-items:center">
+      <label>Player <select data-tov-review-player><option value="">Everyone</option>${playerOptions}</select></label>
+    </div>`;
+  wrap.innerHTML = `${controls}
+  ${all.length === 0 ? '<p class="empty-state">Every turnover has a type.</p>' : `<p class="hint turnover-type-review-summary" style="margin-top:0"></p>
+  <ul class="player-tips-list">${shown.map(({ game, ev }) => {
+    const player = state.players.find(p => p.id === ev.playerId);
+    const opponent = state.players.find(p => p.id === ev.opponentId);
+    const hasTime = ev.videoTime !== null && ev.videoTime !== undefined;
+    const watchLinks = watchFilmLinksHtml(hasTime ? [{ id: game.id, date: game.date, videoTime: ev.videoTime }] : []);
+    return `<li data-event-id="${ev.id}">
+      <span>${player ? playerLink(player.id, player.name) : "?"}${opponent ? ` · forced by ${escapeHtml(opponent.name)}` : ""} (${escapeHtml(formatDateDisplay(game.date))})${watchLinks}</span>
+      <div class="button-row" style="margin-top:4px">
+        ${turnoverTypeButtonsHtml(null, "mark-turnover-type")}
+        <button type="button" class="icon-btn" data-skip-turnover-type="${ev.id}">Skip</button>
+      </div>
+    </li>`;
+  }).join("")}</ul>
+  ${all.length > shown.length ? '<button type="button" class="secondary-btn" data-turnover-type-more="1">Show more</button>' : ""}`}`;
+  wireWatchFilmButtons(wrap);
+
+  wrap.querySelector("[data-tov-review-player]").addEventListener("change", e => { turnoverTypeReviewPlayer = e.target.value; turnoverTypeReviewLimit = TURNOVER_TYPE_REVIEW_PAGE; renderTurnoverTypeReview(); });
+  if (all.length === 0) return;
+
+  const summaryEl = wrap.querySelector(".turnover-type-review-summary");
+  const updateSummary = () => {
+    const left = computeTurnoverTypeReviewRows().length;
+    summaryEl.textContent = `${left} turnovers still without a type.`;
+  };
+  updateSummary();
+  const dropRow = eventId => {
+    wrap.querySelector(`li[data-event-id="${eventId}"]`)?.remove();
+    updateSummary();
+    if (wrap.querySelectorAll("li").length === 0) renderTurnoverTypeReview();
+  };
+  wrap.querySelectorAll("li").forEach(li => {
+    const eventId = li.dataset.eventId;
+    li.querySelectorAll("[data-mark-turnover-type]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const ev = state.games.flatMap(g => g.turnoverEvents).find(e => e.id === eventId);
+        if (!ev) return;
+        ev.turnoverType = btn.dataset.markTurnoverType;
+        saveState();
+        dropRow(eventId);
+      });
+    });
+    li.querySelector("[data-skip-turnover-type]").addEventListener("click", () => {
+      turnoverTypeSkipped.add(eventId);
+      dropRow(eventId);
+    });
+  });
+  const moreBtn = wrap.querySelector("[data-turnover-type-more]");
+  if (moreBtn) moreBtn.addEventListener("click", () => { turnoverTypeReviewLimit += TURNOVER_TYPE_REVIEW_PAGE; renderTurnoverTypeReview(); });
+}
+
+const SHOT_REVIEW_PAGE = 20;
+
+let shotReviewLimit = SHOT_REVIEW_PAGE;
 
 let shotReviewPlayer = "";
 
@@ -9836,7 +10902,158 @@ function computeShotReviewRows() {
   return rows.sort((a, b) => (a.game.date || "").localeCompare(b.game.date || "") || (a.ev.videoTime || 0) - (b.ev.videoTime || 0));
 }
 
+function gameTeammatesOf(game, playerId) {
+  const side = game.teamA.includes(playerId) ? game.teamA : game.teamB;
+  return side.filter(id => id !== playerId).map(id => state.players.find(p => p.id === id)).filter(Boolean);
+}
+
+function shotReviewNeedsHtml(game, ev) {
+  const needs = shotReviewNeeds(ev);
+  const teammates = gameTeammatesOf(game, ev.scorerId);
+  return `${needs.contest ? `<div class="button-row shot-review-need" style="margin-top:4px;align-items:center">
+        <span class="stat-label">Contest</span>${contestLevelButtonsHtml(null, "mark-contest-level")}
+      </div>` : ""}${needs.passer ? `<div class="button-row shot-review-need" style="margin-top:4px;align-items:center">
+        <span class="stat-label">Passer</span>
+        <button type="button" class="secondary-btn" data-mark-passer="none">No passer</button>
+        ${teammates.map(t => `<button type="button" class="secondary-btn" data-mark-passer="${t.id}">${escapeHtml(t.name)}</button>`).join("")}
+      </div>` : ""}`;
+}
+
+function countSkippedShotReviewRows() {
+  let n = 0;
+  state.games.forEach(game => {
+    game.scoringEvents.forEach(ev => {
+      const needs = shotReviewNeeds(ev);
+      if (!needs.contest && !needs.passer) return;
+      if (shotReviewPlayer && ev.scorerId !== shotReviewPlayer) return;
+      if (shotReviewSkipped.has(ev.id)) n++;
+    });
+  });
+  return n;
+}
+
+function renderShotReview() {
+  const wrap = document.getElementById("shotReview");
+  if (!wrap) return;
+  const all = computeShotReviewRows();
+  const shown = all.slice(0, shotReviewLimit);
+  const inMode = new Set();
+  state.games.forEach(g => g.scoringEvents.forEach(ev => {
+    const needs = shotReviewNeeds(ev);
+    if ((needs.contest || needs.passer) && (shotReviewShowSkipped || !shotReviewSkipped.has(ev.id))) inMode.add(ev.scorerId);
+  }));
+  const playerOptions = state.players.filter(p => inMode.has(p.id) || p.id === shotReviewPlayer)
+    .map(p => `<option value="${p.id}"${p.id === shotReviewPlayer ? " selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+  const skippedCount = countSkippedShotReviewRows();
+  const controls = `<div class="button-row shot-review-controls" style="margin:0 0 8px;gap:10px;align-items:center">
+      <label>Player <select data-shot-review-player><option value="">Everyone</option>${playerOptions}</select></label>
+      ${skippedCount > 0 ? `<button type="button" class="icon-btn" data-toggle-show-skipped>${shotReviewShowSkipped ? "Hide skipped" : `Show skipped (${skippedCount})`}</button>` : ""}
+    </div>`;
+  wrap.innerHTML = `${controls}
+  ${all.length === 0 ? '<p class="empty-state">Every contested shot has a level, and every miss has a passer reviewed.</p>' : `<p class="hint shot-review-summary" style="margin-top:0"></p>
+  <ul class="player-tips-list">${shown.map(({ game, ev }) => {
+    const scorer = state.players.find(p => p.id === ev.scorerId);
+    const hasTime = ev.videoTime !== null && ev.videoTime !== undefined;
+    const watchLinks = watchFilmLinksHtml(hasTime ? [{ id: game.id, date: game.date, videoTime: ev.videoTime }] : []);
+    const guarded = (ev.defenderIds || []).length > 0 ? `guarded by ${escapeHtml(defenderNames(ev.defenderIds))}` : "no defender/open";
+    const isSkipped = shotReviewSkipped.has(ev.id);
+    const skipBtn = isSkipped
+      ? `<button type="button" class="icon-btn" data-unskip-shot-review="${ev.id}">Unskip</button>`
+      : `<button type="button" class="icon-btn" data-skip-shot-review="${ev.id}">Skip</button>`;
+    return `<li data-event-id="${ev.id}">
+      <span>${scorer ? playerLink(scorer.id, scorer.name) : "?"}: ${ev.made !== false ? "Make" : "Miss"} (${ev.points}pt, ${guarded}, ${escapeHtml(formatDateDisplay(game.date))})${isSkipped ? " · skipped" : ""}${watchLinks}</span>
+      <div class="shot-review-needs">${shotReviewNeedsHtml(game, ev)}</div>
+      <div class="button-row" style="margin-top:4px">${skipBtn}</div>
+    </li>`;
+  }).join("")}</ul>
+  ${all.length > shown.length ? '<button type="button" class="secondary-btn" data-shot-review-more="1">Show more</button>' : ""}`}`;
+  wireWatchFilmButtons(wrap);
+
+  wrap.querySelector("[data-shot-review-player]").addEventListener("change", e => { shotReviewPlayer = e.target.value; shotReviewLimit = SHOT_REVIEW_PAGE; renderShotReview(); });
+  const toggleSkippedBtn = wrap.querySelector("[data-toggle-show-skipped]");
+  if (toggleSkippedBtn) toggleSkippedBtn.addEventListener("click", () => { shotReviewShowSkipped = !shotReviewShowSkipped; shotReviewLimit = SHOT_REVIEW_PAGE; renderShotReview(); });
+  if (all.length === 0) return;
+
+  const summaryEl = wrap.querySelector(".shot-review-summary");
+  const updateSummary = () => {
+    const left = computeShotReviewRows().length;
+    summaryEl.textContent = shotReviewShowSkipped
+      ? `${left} shots shown, including previously skipped ones.`
+      : `${left} shots still need a contest level and/or a passer.`;
+  };
+  updateSummary();
+  const updateSkipToggle = () => {
+    const n = countSkippedShotReviewRows();
+    const controlsRow = wrap.querySelector(".shot-review-controls");
+    let btn = controlsRow.querySelector("[data-toggle-show-skipped]");
+    if (n === 0) { btn?.remove(); return; }
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "icon-btn";
+      btn.dataset.toggleShowSkipped = "1";
+      btn.addEventListener("click", () => { shotReviewShowSkipped = !shotReviewShowSkipped; shotReviewLimit = SHOT_REVIEW_PAGE; renderShotReview(); });
+      controlsRow.appendChild(btn);
+    }
+    btn.textContent = shotReviewShowSkipped ? "Hide skipped" : `Show skipped (${n})`;
+  };
+  const dropRow = eventId => {
+    wrap.querySelector(`li[data-event-id="${eventId}"]`)?.remove();
+    updateSummary();
+    updateSkipToggle();
+    if (wrap.querySelectorAll("li").length === 0) renderShotReview();
+  };
+  const wireRowButtons = (li, game, ev) => {
+    li.querySelectorAll("[data-mark-contest-level]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        ev.contestLevel = btn.dataset.markContestLevel;
+        saveState();
+        refreshRow(li, game, ev);
+      });
+    });
+    li.querySelectorAll("[data-mark-passer]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        ev.passerId = btn.dataset.markPasser;
+        saveState();
+        refreshRow(li, game, ev);
+      });
+    });
+  };
+  const refreshRow = (li, game, ev) => {
+    const needs = shotReviewNeeds(ev);
+    if (!needs.contest && !needs.passer) { dropRow(ev.id); return; }
+    li.querySelector(".shot-review-needs").innerHTML = shotReviewNeedsHtml(game, ev);
+    wireRowButtons(li, game, ev);
+    updateSummary();
+  };
+  wrap.querySelectorAll("li").forEach(li => {
+    const eventId = li.dataset.eventId;
+    const row = shown.find(r => r.ev.id === eventId);
+    if (!row) return;
+    wireRowButtons(li, row.game, row.ev);
+    li.querySelector("[data-skip-shot-review]")?.addEventListener("click", () => {
+      shotReviewSkipped.add(eventId);
+      dropRow(eventId);
+    });
+    li.querySelector("[data-unskip-shot-review]")?.addEventListener("click", () => {
+      shotReviewSkipped.delete(eventId);
+      renderShotReview();
+    });
+  });
+  const moreBtn = wrap.querySelector("[data-shot-review-more]");
+  if (moreBtn) moreBtn.addEventListener("click", () => { shotReviewLimit += SHOT_REVIEW_PAGE; renderShotReview(); });
+}
+
 const sameMomentDismissed = new Set();
+
+function parseVideoTimeInput(text) {
+  const t = String(text || "").trim();
+  if (!t) return null;
+  const m = t.match(/^(?:(\d+):)?(\d+(?:\.\d+)?)$/);
+  if (!m) return null;
+  const secs = (m[1] ? parseInt(m[1], 10) * 60 : 0) + parseFloat(m[2]);
+  return Number.isFinite(secs) ? secs : null;
+}
 
 function computeSameMomentGroups() {
   const groups = [];
@@ -9859,6 +11076,46 @@ function computeSameMomentGroups() {
   return groups.sort((a, b) => (a.game.date || "").localeCompare(b.game.date || "") || a.time - b.time);
 }
 
+function renderSameMomentReview() {
+  const wrap = document.getElementById("sameMomentReview");
+  if (!wrap) return;
+  const groups = computeSameMomentGroups();
+  if (groups.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No two shots share a video time.</p>';
+    return;
+  }
+  const nameOf = id => (state.players.find(p => p.id === id) || {}).name || "?";
+  wrap.innerHTML = `<p class="hint shot-type-review-summary" style="margin-top:0">${groups.length} moment${groups.length === 1 ? "" : "s"} with more than one shot.</p>
+  <ul class="player-tips-list">${groups.map(g => {
+    const later = g.evs.find(e => g.evs.some(o => o !== e && o.rebounderId === e.scorerId)) || g.evs[g.evs.length - 1];
+    const line = g.evs.map(e => `${escapeHtml(nameOf(e.scorerId))} ${e.made !== false ? "made" : "missed"} a ${e.points}pt`).join(", then ");
+    return `<li data-group="${g.id}">
+      <span>${escapeHtml(formatDateDisplay(g.game.date))} at ${escapeHtml(formatVideoTime(g.time))}: ${line}</span>
+      ${watchFilmLinksHtml([{ id: g.game.id, date: g.game.date, videoTime: Math.max(0, g.time - 3) }])}
+      <div class="button-row" style="margin-top:4px;gap:8px;align-items:center">
+        <label>New time for ${escapeHtml(nameOf(later.scorerId))}'s shot <input type="text" data-new-time size="7" placeholder="m:ss"></label>
+        <button type="button" class="secondary-btn" data-save-time="${later.id}">Set time</button>
+        <button type="button" class="icon-btn" data-same-ok="1">Same moment is right</button>
+      </div>
+    </li>`;
+  }).join("")}</ul>`;
+  wireWatchFilmButtons(wrap);
+  wrap.querySelectorAll("li").forEach(li => {
+    const gid = li.dataset.group;
+    li.querySelector("[data-same-ok]").addEventListener("click", () => { sameMomentDismissed.add(gid); renderSameMomentReview(); });
+    const btn = li.querySelector("[data-save-time]");
+    btn.addEventListener("click", () => {
+      const secs = parseVideoTimeInput(li.querySelector("[data-new-time]").value);
+      if (secs === null) { alert("Enter the time as m:ss (for example 17:24) or as seconds."); return; }
+      const ev = state.games.flatMap(x => x.scoringEvents).find(e => e.id === btn.dataset.saveTime);
+      if (!ev) return;
+      ev.videoTime = secs;
+      saveState();
+      renderSameMomentReview();
+    });
+  });
+}
+
 function computeReboundBattleCandidates() {
   const rows = [];
   state.games.forEach(game => {
@@ -9871,6 +11128,224 @@ function computeReboundBattleCandidates() {
   return rows.sort((a, b) => (a.game.date || "").localeCompare(b.game.date || ""));
 }
 
+function renderReboundBattleReview() {
+  const wrap = document.getElementById("reboundBattleReview");
+  if (!wrap) return;
+  const rows = computeReboundBattleCandidates();
+  if (rows.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No untagged rebounds left to review this session.</p>';
+    return;
+  }
+  wrap.innerHTML = `<p class="hint rebound-battle-review-summary" style="margin-top:0">${rows.length} rebound${rows.length === 1 ? "" : "s"} still untagged.</p>
+  <ul class="player-tips-list">${rows.map(({ game, ev }) => {
+    const scorer = state.players.find(p => p.id === ev.scorerId);
+    const rebounder = state.players.find(p => p.id === ev.rebounderId);
+    const hasTime = ev.videoTime !== null && ev.videoTime !== undefined;
+    const watchLinks = watchFilmLinksHtml(hasTime ? [{ id: game.id, date: game.date, videoTime: ev.videoTime }] : []);
+    const scorerTeam = game.teamA.includes(ev.scorerId) ? game.teamA : game.teamB;
+    const opponentTeam = game.teamA.includes(ev.scorerId) ? game.teamB : game.teamA;
+    const rebounderOnScorerSide = scorerTeam.includes(ev.rebounderId);
+    const contesterIds = rebounderOnScorerSide ? opponentTeam : scorerTeam;
+    const contesters = contesterIds.map(id => state.players.find(p => p.id === id)).filter(Boolean);
+    const kind = rebounderOnScorerSide ? "OREB" : "DREB";
+    return `<li data-event-id="${ev.id}">
+      <span>${scorer ? playerLink(scorer.id, scorer.name) : "?"} miss, ${kind} by ${rebounder ? playerLink(rebounder.id, rebounder.name) : "?"} (${escapeHtml(formatDateDisplay(game.date))})${watchLinks}</span>
+      <div class="button-row" style="margin-top:4px">
+        ${contesters.map(c => `<button type="button" class="secondary-btn" data-tag-contester="${ev.id}" data-contester-id="${c.id}">${escapeHtml(c.name)} contested</button>`).join("")}
+        <button type="button" class="secondary-btn" data-no-contest="${ev.id}">No contest</button>
+        <button type="button" class="secondary-btn" data-skip-contester="${ev.id}">Skip (unclear)</button>
+      </div>
+    </li>`;
+  }).join("")}</ul>`;
+  wireWatchFilmButtons(wrap);
+
+  const summaryEl = wrap.querySelector(".rebound-battle-review-summary");
+  const listEl = wrap.querySelector("ul");
+  const removeRow = eventId => {
+    listEl.querySelector(`li[data-event-id="${eventId}"]`)?.remove();
+    const left = listEl.querySelectorAll("li").length;
+    if (left === 0) {
+      listEl.remove();
+      summaryEl.textContent = "";
+      if (!wrap.querySelector(".rebound-battle-review-done-msg")) {
+        const doneMsg = document.createElement("p");
+        doneMsg.className = "empty-state rebound-battle-review-done-msg";
+        doneMsg.textContent = "No untagged rebounds left to review this session.";
+        wrap.appendChild(doneMsg);
+      }
+    } else {
+      summaryEl.textContent = `${left} rebound${left === 1 ? "" : "s"} still untagged.`;
+    }
+  };
+  wrap.querySelectorAll("[data-tag-contester]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const ev = state.games.flatMap(g => g.scoringEvents).find(e => e.id === btn.dataset.tagContester);
+      if (!ev) return;
+      ev.reboundContesterIds = [btn.dataset.contesterId];
+      saveState();
+      removeRow(btn.dataset.tagContester);
+    });
+  });
+  wrap.querySelectorAll("[data-no-contest]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const ev = state.games.flatMap(g => g.scoringEvents).find(e => e.id === btn.dataset.noContest);
+      if (!ev) return;
+      ev.reboundNoContest = true;
+      saveState();
+      removeRow(btn.dataset.noContest);
+    });
+  });
+  wrap.querySelectorAll("[data-skip-contester]").forEach(btn => {
+    btn.addEventListener("click", () => removeRow(btn.dataset.skipContester));
+  });
+}
+
+function renderStoppedEarlyReview() {
+  const wrap = document.getElementById("stoppedEarlyReview");
+  if (!wrap) return;
+  const games = state.games
+    .filter(g => g.scoringEvents.length > 0)
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  if (games.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No reviewed games yet.</p>';
+    return;
+  }
+  wrap.innerHTML = `<ul class="player-tips-list">${games.map(game => {
+    const scoreA = teamScore(game, game.teamA);
+    const scoreB = teamScore(game, game.teamB);
+    const teamANames = game.teamA.map(id => state.players.find(p => p.id === id)?.name).filter(Boolean).join(", ") || "Team A";
+    const teamBNames = game.teamB.map(id => state.players.find(p => p.id === id)?.name).filter(Boolean).join(", ") || "Team B";
+    return `<li data-game-id="${game.id}">
+      <span>${escapeHtml(formatDateDisplay(game.date))}: ${escapeHtml(teamANames)} ${scoreA} - ${scoreB} ${escapeHtml(teamBNames)}</span>
+      <div class="button-row" style="margin-top:4px">
+        <button type="button" class="secondary-btn${game.stoppedEarly ? " selected" : ""}" data-toggle-stopped-early-review="${game.id}">${game.stoppedEarly ? "🛑 Stopped early" : "Mark as stopped early"}</button>
+      </div>
+    </li>`;
+  }).join("")}</ul>`;
+  wrap.querySelectorAll("[data-toggle-stopped-early-review]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const game = state.games.find(g => g.id === btn.dataset.toggleStoppedEarlyReview);
+      if (!game) return;
+      game.stoppedEarly = !game.stoppedEarly;
+      saveState();
+      btn.classList.toggle("selected", game.stoppedEarly);
+      btn.textContent = game.stoppedEarly ? "🛑 Stopped early" : "Mark as stopped early";
+    });
+  });
+}
+
+function renderBackfillShotLocations() {
+  const wrap = document.getElementById("backfillShotLocations");
+  if (!wrap) return;
+  const gamesWithShots = state.games
+    .map(game => {
+      const allFg = game.scoringEvents.filter(ev => ev.points === 2 || ev.points === 3);
+      const missing = allFg.filter(ev => !ev.shotLocation);
+      return { game, shots: backfillShowMarked ? allFg : missing, missingCount: missing.length };
+    })
+    .filter(({ shots }) => shots.length > 0)
+    .sort((a, b) => (a.game.date || "").localeCompare(b.game.date || ""));
+
+  const totalMissing = gamesWithShots.reduce((sum, { missingCount }) => sum + missingCount, 0);
+  const toggleHtml = `<label class="hint" style="display:flex;align-items:center;gap:6px;margin:0 0 10px">
+    <input type="checkbox" id="backfillShowMarkedToggle" ${backfillShowMarked ? "checked" : ""}>
+    Show already-marked shots too (to fix a mistaken one)
+  </label>`;
+
+  if (gamesWithShots.length === 0) {
+    wrap.innerHTML = toggleHtml + '<p class="empty-state">Every field goal has a shot location. Nothing to backfill.</p>';
+    wrap.querySelector("#backfillShowMarkedToggle").addEventListener("change", e => {
+      backfillShowMarked = e.target.checked;
+      renderBackfillShotLocations();
+    });
+    return;
+  }
+
+  wrap.innerHTML = toggleHtml +
+    `<p class="hint backfill-summary" style="margin-top:0">${totalMissing} shot${totalMissing === 1 ? "" : "s"} still missing a location.</p><div id="backfillUndoToast"></div>`;
+  wrap.querySelector("#backfillShowMarkedToggle").addEventListener("change", e => {
+    backfillShowMarked = e.target.checked;
+    renderBackfillShotLocations();
+  });
+  const summaryEl = wrap.querySelector(".backfill-summary");
+
+  gamesWithShots.forEach(({ game, shots }) => {
+    const groupEl = document.createElement("div");
+    groupEl.className = "backfill-game-group";
+    groupEl.innerHTML = `<h4>${escapeHtml(formatDateDisplay(game.date))}</h4><div class="backfill-video-wrap"><p class="hint" style="margin:0">Loading video…</p></div>`;
+    const videoWrap = groupEl.querySelector(".backfill-video-wrap");
+
+    const rowsEl = document.createElement("div");
+    rowsEl.className = "backfill-shot-rows";
+    shots.forEach(ev => {
+      const scorer = state.players.find(p => p.id === ev.scorerId);
+      const hasTime = ev.videoTime !== null && ev.videoTime !== undefined;
+      const row = document.createElement("div");
+      row.className = ev.shotLocation ? "backfill-shot-row backfill-shot-row-marked" : "backfill-shot-row";
+      row.innerHTML = `
+        <div class="backfill-shot-label">
+          ${scorer ? playerLink(scorer.id, scorer.name) : "?"}: ${ev.made !== false ? "Make" : "Miss"} (${ev.points}pt)
+        </div>
+        <button type="button" class="secondary-btn" data-watch="1" ${hasTime ? "" : "disabled"}>▶ Watch</button>
+        ${renderShotChartBaseSvg("data-shot-chart")}
+      `;
+      setShotChartDot(row.querySelector("[data-shot-chart]"), ev.shotLocation);
+      row.querySelector("[data-watch]").addEventListener("click", () => {
+        const video = videoWrap.querySelector("video");
+        if (!video || !hasTime) return;
+        video.currentTime = ev.videoTime;
+        video.play();
+      });
+      row.querySelector("[data-shot-chart]").addEventListener("click", e => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const previousLocation = ev.shotLocation;
+        const xFrac = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+        const yFrac = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+        // Flipped rendering (hoop at the bottom) — invert back to the stored convention.
+        ev.shotLocation = { x: xFrac, y: 100 - yFrac };
+        saveState();
+        // Order matters: show the toast (which needs #backfillUndoToast intact) before doing
+        // any cleanup that might otherwise be tempted to wipe the whole panel.
+        showBackfillUndoToast(scorer ? scorer.name : "?", game, ev.id, previousLocation);
+
+        if (backfillShowMarked) {
+          // The row stays either way in this mode — just redraw its dot.
+          setShotChartDot(e.currentTarget, ev.shotLocation);
+          row.classList.add("backfill-shot-row-marked");
+          if (!previousLocation) {
+            const left = Math.max(0, parseInt(summaryEl.textContent, 10) - 1);
+            summaryEl.textContent = `${left} shot${left === 1 ? "" : "s"} still missing a location.`;
+          }
+          return;
+        }
+        row.remove();
+        if (!rowsEl.querySelector(".backfill-shot-row")) groupEl.remove();
+        const left = Math.max(0, parseInt(summaryEl.textContent, 10) - 1);
+        if (left <= 0) {
+          summaryEl.textContent = "";
+          if (!wrap.querySelector(".backfill-done-msg")) {
+            const doneMsg = document.createElement("p");
+            doneMsg.className = "empty-state backfill-done-msg";
+            doneMsg.textContent = "Every field goal has a shot location. Nothing to backfill.";
+            wrap.appendChild(doneMsg);
+          }
+        } else {
+          summaryEl.textContent = `${left} shot${left === 1 ? "" : "s"} still missing a location.`;
+        }
+      });
+      rowsEl.appendChild(row);
+    });
+    groupEl.appendChild(rowsEl);
+    wrap.appendChild(groupEl);
+    // Only load the video once the group is actually attached to the live DOM — otherwise a
+    // cached blob URL resolves synchronously, before appendChild above has run, and the
+    // `videoWrap.isConnected` guard in loadBackfillVideo silently bails, leaving "Loading
+    // video…" stuck forever. An uncached load only surfaced this by accident: the IndexedDB
+    // round-trip is slow enough that the DOM always catches up first.
+    loadBackfillVideo(game, videoWrap);
+  });
+}
+
 function computeFlaggedShotMismatches() {
   const flagged = [];
   state.games.forEach(game => {
@@ -9881,6 +11356,175 @@ function computeFlaggedShotMismatches() {
     });
   });
   return flagged;
+}
+
+let flaggedUndoTimer = null;
+
+function showFlaggedUndoToast(playerName, game, eventId, previousLocation) {
+  const toast = document.getElementById("flaggedShotUndoToast");
+  if (!toast) return;
+  clearTimeout(flaggedUndoTimer);
+  toast.innerHTML = `<span class="hint" style="margin:0">Location updated for ${escapeHtml(playerName)}'s shot.</span> <button type="button" class="icon-btn" data-undo-location="1">Undo</button>`;
+  toast.querySelector("[data-undo-location]").addEventListener("click", () => {
+    const ev = game.scoringEvents.find(e => e.id === eventId);
+    if (ev) ev.shotLocation = previousLocation;
+    saveState();
+    clearTimeout(flaggedUndoTimer);
+    renderFlaggedShotMismatches();
+  });
+  flaggedUndoTimer = setTimeout(() => { toast.innerHTML = ""; }, 8000);
+}
+
+function renderFlaggedShotMismatches() {
+  const wrap = document.getElementById("flaggedShotMismatches");
+  if (!wrap) return;
+  const flagged = computeFlaggedShotMismatches();
+  const byGame = {};
+  flagged.forEach(({ game, ev }) => {
+    (byGame[game.id] = byGame[game.id] || { game, shots: [] }).shots.push(ev);
+  });
+  const groups = Object.values(byGame).sort((a, b) => (a.game.date || "").localeCompare(b.game.date || ""));
+
+  if (groups.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No flagged shots. Every marked 2PT/3PT location agrees with its point value.</p>';
+    return;
+  }
+
+  wrap.innerHTML = `<p class="hint flagged-summary" style="margin-top:0">${flagged.length} shot${flagged.length === 1 ? "" : "s"} flagged.</p><div id="flaggedShotUndoToast"></div>`;
+  const summaryEl = wrap.querySelector(".flagged-summary");
+
+  groups.forEach(({ game, shots }) => {
+    const groupEl = document.createElement("div");
+    groupEl.className = "backfill-game-group";
+    groupEl.innerHTML = `<h4>${escapeHtml(formatDateDisplay(game.date))}</h4><div class="backfill-video-wrap"><p class="hint" style="margin:0">Loading video…</p></div>`;
+    const videoWrap = groupEl.querySelector(".backfill-video-wrap");
+
+    const rowsEl = document.createElement("div");
+    rowsEl.className = "backfill-shot-rows";
+    shots.forEach(ev => {
+      const scorer = state.players.find(p => p.id === ev.scorerId);
+      const hasTime = ev.videoTime !== null && ev.videoTime !== undefined;
+      const zoneLabel = ev.shotLocation.y >= 60 ? "3PT range" : "2PT range";
+      const row = document.createElement("div");
+      row.className = "backfill-shot-row backfill-shot-row-marked";
+      row.innerHTML = `
+        <div class="backfill-shot-label">
+          ${scorer ? playerLink(scorer.id, scorer.name) : "?"}: picked ${ev.points}pt, marked at 📍 ${zoneLabel}
+        </div>
+        <button type="button" class="secondary-btn" data-watch="1" ${hasTime ? "" : "disabled"}>▶ Watch</button>
+        ${renderShotChartBaseSvg("data-shot-chart")}
+      `;
+      setShotChartDot(row.querySelector("[data-shot-chart]"), ev.shotLocation);
+      row.querySelector("[data-watch]").addEventListener("click", () => {
+        const video = videoWrap.querySelector("video");
+        if (!video || !hasTime) return;
+        video.currentTime = ev.videoTime;
+        video.play();
+      });
+      row.querySelector("[data-shot-chart]").addEventListener("click", e => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const previousLocation = ev.shotLocation;
+        const xFrac = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+        const yFrac = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+        ev.shotLocation = { x: xFrac, y: 100 - yFrac };
+        saveState();
+        showFlaggedUndoToast(scorer ? scorer.name : "?", game, ev.id, previousLocation);
+
+        const stillFlagged = (ev.shotLocation.y >= 60 ? 3 : 2) !== ev.points;
+        if (stillFlagged) {
+          setShotChartDot(e.currentTarget, ev.shotLocation);
+          return;
+        }
+        row.remove();
+        if (!rowsEl.querySelector(".backfill-shot-row")) groupEl.remove();
+        const left = Math.max(0, parseInt(summaryEl.textContent, 10) - 1);
+        if (left <= 0) {
+          summaryEl.textContent = "";
+          if (!wrap.querySelector(".flagged-done-msg")) {
+            const doneMsg = document.createElement("p");
+            doneMsg.className = "empty-state flagged-done-msg";
+            doneMsg.textContent = "No flagged shots. Every marked 2PT/3PT location agrees with its point value.";
+            wrap.appendChild(doneMsg);
+          }
+        } else {
+          summaryEl.textContent = `${left} shot${left === 1 ? "" : "s"} flagged.`;
+        }
+      });
+      rowsEl.appendChild(row);
+    });
+    groupEl.appendChild(rowsEl);
+    wrap.appendChild(groupEl);
+    loadBackfillVideo(game, videoWrap);
+  });
+}
+
+function renderBrokenVideoLinks() {
+  const wrap = document.getElementById("brokenVideoLinks");
+  if (!wrap) return;
+  const broken = state.games
+    .filter(g => g.masterVideoId && !state.masterVideos.some(m => m.id === g.masterVideoId))
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  if (broken.length === 0) {
+    wrap.innerHTML = '<p class="empty-state">No broken session video links found.</p>';
+    return;
+  }
+  const table = document.createElement("table");
+  table.className = "matchup-table";
+  table.innerHTML = `<thead><tr><th>Game</th><th>Broken reference</th><th></th></tr></thead><tbody></tbody>`;
+  const body = table.querySelector("tbody");
+  broken.forEach(game => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${escapeHtml(formatDateDisplay(game.date))}</td><td><code>${escapeHtml(game.masterVideoId)}</code></td>`;
+    const tdBtn = document.createElement("td");
+    const fixBtn = document.createElement("button");
+    fixBtn.type = "button";
+    fixBtn.className = "secondary-btn";
+    fixBtn.textContent = "Open in Stat Entry to fix";
+    fixBtn.addEventListener("click", () => openGame(game.id));
+    tdBtn.appendChild(fixBtn);
+    tr.appendChild(tdBtn);
+    body.appendChild(tr);
+  });
+  wrap.innerHTML = "";
+  wrap.appendChild(table);
+}
+
+function renderMasterVideoList() {
+  const body = document.getElementById("masterVideoListBody");
+  if (!body) return;
+  body.innerHTML = "";
+  if (state.masterVideos.length === 0) {
+    body.innerHTML = '<tr><td colspan="3" class="empty-state">No session videos uploaded yet.</td></tr>';
+    return;
+  }
+  state.masterVideos.forEach(m => {
+    const usedByCount = state.games.filter(g => g.masterVideoId === m.id).length;
+    const tr = document.createElement("tr");
+    const fileNameHint = m.fileName ? ` <span class="hint" style="margin:0">(${escapeHtml(m.fileName)})</span>` : "";
+    tr.innerHTML = `<td>${escapeHtml(m.name)}${fileNameHint}</td><td>${usedByCount} game${usedByCount === 1 ? "" : "s"}</td>`;
+    const tdBtn = document.createElement("td");
+    const delBtn = document.createElement("button");
+    delBtn.className = "icon-btn";
+    delBtn.textContent = "Remove";
+    delBtn.addEventListener("click", async () => {
+      if (!confirm(`Remove "${m.name}"? This clears it from ${usedByCount} game${usedByCount === 1 ? "" : "s"} using it.`)) return;
+      state.games.forEach(g => {
+        if (g.masterVideoId === m.id) { g.masterVideoId = null; g.videoStart = 0; }
+      });
+      state.masterVideos = state.masterVideos.filter(mv => mv.id !== m.id);
+      if (masterVideoBlobUrls[m.id]) {
+        URL.revokeObjectURL(masterVideoBlobUrls[m.id]);
+        delete masterVideoBlobUrls[m.id];
+      }
+      await deleteVideoFile(m.id);
+      saveState();
+      renderMasterVideoList();
+      renderGames();
+    });
+    tdBtn.appendChild(delBtn);
+    tr.appendChild(tdBtn);
+    body.appendChild(tr);
+  });
 }
 
 function escapeHtml(str) {
@@ -10202,5 +11846,277 @@ export const PLAYER_PANELS = [
 export function setLegacyPlayer(pid) { currentPlayerId = pid; }
 
 
+export const EXPORT_PANELS = [
+  { title: "Export All Data", hint: "Full dump of players, games, box scores, and matchups. Give this to your friend to integrate into the website.", tag: null, open: true, section: "exportData", order: 0, html: "\r\n          <div class=\"button-row\">\r\n            <button id=\"exportAllJsonBtn\">Download JSON</button>\r\n            <button id=\"exportBoxScoreCsvBtn\">Download Box Score CSV</button>\r\n            <button id=\"exportScoringLogCsvBtn\">Download Shot Log CSV</button>\r\n            <button id=\"exportShotLocationsCsvBtn\">Download Shot Locations CSV</button>\r\n            <button id=\"exportOtherEventsCsvBtn\">Download Other Events CSV</button>\r\n            <button id=\"exportMatchupCsvBtn\">Download Matchups CSV</button>\r\n            <button id=\"exportReelCsvBtn\">Download Highlight Reel CSV</button>\r\n            <button id=\"exportLeaderboardCsvBtn\">Download Leaderboard CSV</button>\r\n            <button id=\"exportAssistSynergyCsvBtn\">Download Assist Connections CSV</button>\r\n            <button id=\"exportTeammateSynergyCsvBtn\">Download Teammate Synergy CSV</button>\r\n            <button id=\"exportOutOfBoundsCsvBtn\">Download Out-of-Bounds CSV</button>\r\n          </div>\r\n        ", render: () => {  }, wires: [{ id: "exportAllJsonBtn", evt: "click", handler: () => downloadBackup("pool-league-data.json") }, { id: "exportBoxScoreCsvBtn", evt: "click", handler: () => {
+  const rows = [["game_id", "date", "team", "player", ...STAT_FIELDS,
+    "fgm", "fga", "tpm", "tpa", "close_m", "close_a", "mid_m", "mid_a", "tp_arc_m", "tp_arc_a", "tp_deep_m", "tp_deep_a", "ftm", "fta", "efg_pct", "ts_pct", "stocks", "ast_tov",
+    "pts_allowed", "opp_fg_pct", "times_beaten", "stops", "off_rating", "two_way_score"]];
+  state.games.forEach(game => {
+    game.stats.forEach(s => {
+      const player = state.players.find(p => p.id === s.playerId);
+      if (!player) return;
+      const teamLabel = game.teamA.includes(s.playerId) ? "A" : game.teamB.includes(s.playerId) ? "B" : "";
+      const sh = shootingStats(game, s.playerId);
+      const def = gameDefenseStats(game, s.playerId);
+      rows.push([
+        game.id, game.date, teamLabel, player.name, ...STAT_FIELDS.map(f => s[f]),
+        sh.fgm, sh.fga, sh.tpm, sh.tpa, sh.closeM, sh.closeA, sh.midM, sh.midA, sh.tpArcM, sh.tpArcA, sh.tpDeepM, sh.tpDeepA, sh.ftm, sh.fta,
+        effectiveFgPct(sh.fgm, sh.tpm, sh.fga), trueShootingPct(s.pts, sh.fga, sh.fta),
+        s.stl + s.blk, formatAstTov(s.ast, s.liveBallTov),
+        def.ptsAllowed, def.oppFgPct, def.timesBeaten, def.stops, offensiveRating(s, sh).toFixed(1), twoWayScore(s, sh, def).toFixed(1)
+      ]);
+    });
+  });
+  download("box-scores.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }, { id: "exportScoringLogCsvBtn", evt: "click", handler: () => {
+  const rows = [["game_id", "date", "shooter", "made", "points", "assist", "defenders", "blocked_by", "out_of_bounds_turnover", "rebounded_by", "rebound_type", "shot_x", "shot_y", "shot_band", "video_time_seconds", "video_time_mmss"]];
+  state.games.forEach(game => {
+    game.scoringEvents.forEach(ev => {
+      const scorer = state.players.find(p => p.id === ev.scorerId);
+      const assister = ev.assistId ? state.players.find(p => p.id === ev.assistId) : null;
+      const blocker = ev.blockerId ? state.players.find(p => p.id === ev.blockerId) : null;
+      const rebounder = ev.rebounderId ? state.players.find(p => p.id === ev.rebounderId) : null;
+      const reboundType = rebounder ? (sameTeam(game, ev.scorerId, rebounder.id) ? "OREB" : "DREB") : "";
+      const bandLabels = { close: "close", mid: "midrange", arc: "line", deep: "deep" };
+      const band = ev.shotLocation && (ev.points === 2 || ev.points === 3) ? bandLabels[shotBand(ev.shotLocation, ev.points)] : "";
+      rows.push([game.id, game.date, scorer ? scorer.name : "", ev.made !== false, ev.points, assister ? assister.name : "", defenderNames(ev.defenderIds), blocker ? blocker.name : "", !!ev.turnoverEventId, rebounder ? rebounder.name : "", reboundType, ev.shotLocation ? ev.shotLocation.x.toFixed(1) : "", ev.shotLocation ? ev.shotLocation.y.toFixed(1) : "", band, ...videoTimeCsv(ev.videoTime)]);
+    });
+  });
+  download("shot-log.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }, { id: "exportShotLocationsCsvBtn", evt: "click", handler: () => {
+  const rows = [["game_id", "date", "player", "team", "made", "points", "shot_x", "shot_y", "video_time_seconds", "video_time_mmss"]];
+  state.games.forEach(game => {
+    game.scoringEvents.filter(ev => ev.shotLocation).forEach(ev => {
+      const scorer = state.players.find(p => p.id === ev.scorerId);
+      const team = game.teamA.includes(ev.scorerId) ? "A" : game.teamB.includes(ev.scorerId) ? "B" : "";
+      rows.push([game.id, game.date, scorer ? scorer.name : "", team, ev.made !== false, ev.points, ev.shotLocation.x.toFixed(1), ev.shotLocation.y.toFixed(1), ...videoTimeCsv(ev.videoTime)]);
+    });
+  });
+  download("shot-locations.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }, { id: "exportOtherEventsCsvBtn", evt: "click", handler: () => {
+  const rows = [["game_id", "date", "type", "player", "opponent", "via_steal", "video_time_seconds", "video_time_mmss"]];
+  state.games.forEach(game => {
+    TAGGED_STAT_CONFIG.forEach(cfg => {
+      game[cfg.eventsKey].forEach(ev => {
+        const player = state.players.find(p => p.id === ev.playerId);
+        const opponent = ev.opponentId ? state.players.find(p => p.id === ev.opponentId) : null;
+        const viaSteal = cfg.field === "tov" && !!ev.stealEventId;
+        rows.push([game.id, game.date, cfg.verb, player ? player.name : "", opponent ? opponent.name : "", viaSteal, ...videoTimeCsv(ev.videoTime)]);
+      });
+    });
+  });
+  download("other-events.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }, { id: "exportMatchupCsvBtn", evt: "click", handler: () => {
+  const rows = [["game_id", "date", "defender", "guarded_offender", "note", "video_time_seconds", "video_time_mmss"]];
+  state.games.forEach(game => {
+    game.matchups.forEach(m => {
+      const defender = state.players.find(p => p.id === m.defenderId);
+      const offender = state.players.find(p => p.id === m.offenderId);
+      rows.push([game.id, game.date, defender ? defender.name : "", offender ? offender.name : "", m.note || "", ...videoTimeCsv(m.videoTime)]);
+    });
+  });
+  download("matchups.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }, { id: "exportLeaderboardCsvBtn", evt: "click", handler: () => {
+  const rows = [["player", "games_played", ...STAT_FIELDS,
+    "fgm", "fga", "tpm", "tpa", "close_m", "close_a", "mid_m", "mid_a", "tp_arc_m", "tp_arc_a", "tp_deep_m", "tp_deep_a", "ftm", "fta", "shot_pct", "ast_pct", "oreb_pct", "dreb_pct", "treb_pct", "tov_pct", "efg_pct", "ts_pct", "stocks", "ast_tov",
+    "pts_allowed", "opp_fg_pct", "times_beaten", "stops", "pts_per_20", "off_rating_per_20", "def_rating_per_20", "two_way_per_20"]];
+  computeLeaderboard().forEach(r => {
+    rows.push([
+      r.player.name, r.gp, ...STAT_FIELDS.map(f => r.totals[f]),
+      r.shooting.fgm, r.shooting.fga, r.shooting.tpm, r.shooting.tpa, r.shooting.closeM, r.shooting.closeA, r.shooting.midM, r.shooting.midA, r.shooting.tpArcM, r.shooting.tpArcA, r.shooting.tpDeepM, r.shooting.tpDeepA, r.shooting.ftm, r.shooting.fta,
+      r.shotPct, r.astPct, r.orebPct, r.drebPct, r.trebPct, r.tovPct, effectiveFgPct(r.shooting.fgm, r.shooting.tpm, r.shooting.fga), trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta),
+      r.stocks, r.astTov, r.defense.ptsAllowed,
+      pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops),
+      r.defense.timesBeaten, r.defense.stops, r.rate.pts.toFixed(1), r.offRatingPer20.toFixed(1),
+      defensiveRating(r.rate, r.rateDefense).toFixed(1), r.twoWayPer20.toFixed(1)
+    ]);
+  });
+  download("leaderboard.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }, { id: "exportAssistSynergyCsvBtn", evt: "click", handler: () => {
+  const rows = [["passer", "scorer", "assists"]];
+  computeAssistConnections().forEach(r => {
+    rows.push([r.passer.name, r.scorer.name, r.count]);
+  });
+  download("assist-connections.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }, { id: "exportTeammateSynergyCsvBtn", evt: "click", handler: () => {
+  const rows = [["player", "teammate", "gp_with", "gp_without", "off_rating_per20_with", "off_rating_per20_without", "two_way_per20_with", "two_way_per20_without"]];
+  state.players.forEach(p => {
+    computeTeammateSynergy(p.id).forEach(r => {
+      rows.push([
+        p.name, r.teammate.name, r.with.gp, r.without.gp,
+        r.with.gp > 0 ? r.with.offRatingPer20.toFixed(1) : "",
+        r.without.gp > 0 ? r.without.offRatingPer20.toFixed(1) : "",
+        r.with.gp > 0 ? r.with.twoWayPer20.toFixed(1) : "",
+        r.without.gp > 0 ? r.without.twoWayPer20.toFixed(1) : ""
+      ]);
+    });
+  });
+  download("teammate-synergy.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }, { id: "exportOutOfBoundsCsvBtn", evt: "click", handler: () => {
+  const rows = [["player", "misses", "out_of_bounds", "oob_pct"]];
+  computeOutOfBoundsStats().forEach(r => {
+    rows.push([r.player.name, r.misses, r.oob, pct(r.oob, r.misses) ?? ""]);
+  });
+  download("out-of-bounds.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }, { id: "exportReelCsvBtn", evt: "click", handler: () => {
+  const rows = [["game_id", "date", "type", "start_seconds", "start_mmss", "end_seconds", "end_mmss", "player", "note"]];
+  state.games.forEach(game => {
+    (game.plays || []).forEach(play => {
+      const player = play.playerId ? state.players.find(p => p.id === play.playerId) : null;
+      rows.push([
+        game.id, game.date, play.type,
+        play.start.toFixed(1), formatTime(play.start),
+        play.end.toFixed(1), formatTime(play.end),
+        player ? player.name : "", play.note || ""
+      ]);
+    });
+  });
+  download("highlight-reel.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
+} }] },
+  { title: "Export a Single Game", hint: "", tag: null, open: true, section: "exportData", order: 1, html: "\r\n          <div class=\"inline-form\">\r\n            <select id=\"exportGameSelect\"></select>\r\n            <button id=\"exportGameJsonBtn\">Download Game JSON</button>\r\n          </div>\r\n        ", render: () => { renderExportGameSelect(); }, wires: [{ id: "exportGameJsonBtn", evt: "click", handler: () => {
+  const gameId = document.getElementById("exportGameSelect").value;
+  const game = state.games.find(g => g.id === gameId);
+  if (!game) return;
+  // A single-game export has no sibling `masterVideos` array to resolve `masterVideoId`
+  // against (unlike the full "export all data" dump, where it's a top-level array) — without
+  // this, fileName never actually reaches anyone reading just this one file.
+  const masterVideo = game.masterVideoId ? (state.masterVideos.find(m => m.id === game.masterVideoId) || null) : null;
+  download(`game-${gameId}.json`, JSON.stringify({ ...game, masterVideo }, null, 2), "application/json");
+} }] },
+  { title: "Backfill Shot Locations", hint: "Every field goal (2 or 3, not free throws) that's missing a shot chart location, across every game. Click a spot on the mini chart to set it, no need to reopen the game or its video. Each click saves immediately and the shot drops off this list.", tag: null, open: true, section: "review", order: 2, html: "\r\n          <div id=\"backfillShotLocations\"></div>\r\n        ", render: () => { renderBackfillShotLocations(); }, wires: [] },
+  { title: "Review Possible Dunks", hint: "Close 2-point shots logged before dunks could be marked. Watch the film, then pick Dunk or Not a dunk.", tag: null, open: true, section: "review", order: 3, html: "\r\n          <div id=\"dunkReview\"></div>\r\n        ", render: () => { renderDunkReview(); }, wires: [] },
+  { title: "Review Shot Types", hint: "Shots with no type yet, oldest first. Pick a player to start with, watch the clip, and pick the type. Skip hides one until you reload. The re-check views list tagged shots worth a second look.", tag: null, open: true, section: "review", order: 4, html: "\r\n          <div id=\"shotTypeReview\"></div>\r\n        ", render: () => { renderShotTypeReview(); }, wires: [] },
+  { title: "Review Turnover Types", hint: "Turnovers with no type yet, oldest first: bad pass, lost handle, stripped, drive/finish error, possession/decision error, or other. Pick a player to start with, watch the clip, and pick the category. Skip hides one until you reload.", tag: null, open: true, section: "review", order: 5, html: "\r\n          <div id=\"turnoverTypeReview\"></div>\r\n        ", render: () => { renderTurnoverTypeReview(); }, wires: [] },
+  { title: "Review Contests & Passers", hint: "Shots that need a contest level (light, medium, or heavy -- for any shot that already has a defender tagged; no defender means no contest, so those never show up here), a passer (for misses -- an assist only ever gets logged on a make, so this is the same idea for misses), or both. Pick a player to start with, watch the clip, and answer whichever's still showing. Skip sets a shot aside for now -- Show skipped brings it back without reloading.", tag: null, open: true, section: "review", order: 6, html: "\r\n          <div id=\"shotReview\"></div>\r\n        ", render: () => { renderShotReview(); }, wires: [] },
+  { title: "Review Shots at the Same Moment", hint: "Two shots at the exact same video time are usually a miss and its putback. Watch the film and give the putback its real time. Same moment is right hides the pair until you reload.", tag: null, open: true, section: "review", order: 7, html: "\r\n          <div id=\"sameMomentReview\"></div>\r\n        ", render: () => { renderSameMomentReview(); }, wires: [] },
+  { title: "Check Against the Real Site", hint: "Each game here with a result (logged from film or scored live) is matched to the real site's game from the same night with the same teams. Games with a different winner, or with no matching real game, are listed so you can fix whichever side is wrong.", tag: "Real site data", open: true, section: "review", order: 8, html: "\r\n          <div id=\"realSiteCheck\"></div>\r\n        ", render: () => { renderRealSiteCheck(); }, wires: [] },
+  { title: "Review Stopped-Early Games", hint: "Flag any game that was cut short, since a partial game throws off per-game panels like best games and power ranking comparisons. Season totals aren't affected.", tag: null, open: true, section: "review", order: 9, html: "\r\n          <div id=\"stoppedEarlyReview\"></div>\r\n        ", render: () => { renderStoppedEarlyReview(); }, wires: [] },
+  { title: "Review Rebound Battles", hint: "Tag who was fighting for the rebound on each miss. One click tags one player; use Edit in the Shot Log for two. No contest means nobody was. Skip hides a row until you reload.", tag: null, open: true, section: "review", order: 10, html: "\r\n          <div id=\"reboundBattleReview\"></div>\r\n        ", render: () => { renderReboundBattleReview(); }, wires: [] },
+  { title: "Flagged Shot Locations", hint: "Shots whose marked spot doesn't match their point value. Click the mini chart to move the spot. If the point value was the mistake, delete the shot and log it again in the Shot Log.", tag: null, open: true, section: "review", order: 11, html: "\r\n          <div id=\"flaggedShotMismatches\"></div>\r\n        ", render: () => { renderFlaggedShotMismatches(); }, wires: [] },
+  { title: "Session Videos", hint: "Recordings uploaded once and shared across multiple games (see the Video panel in Stat Entry). Removing one here clears it from every game using it.", tag: null, open: true, section: "media", order: 12, html: "\r\n          <div class=\"table-scroll\">\r\n            <table class=\"matchup-table\">\r\n              <thead><tr><th>Name</th><th>Used by</th><th></th></tr></thead>\r\n              <tbody id=\"masterVideoListBody\"></tbody>\r\n            </table>\r\n          </div>\r\n        ", render: () => { renderMasterVideoList(); }, wires: [] },
+  { title: "Broken Session Video Links", hint: "Games pointing at a session video that isn't in this browser anymore, so their video won't load. Exporting one of these games won't include its video.", tag: null, open: true, section: "media", order: 13, html: "\r\n          <div id=\"brokenVideoLinks\"></div>\r\n        ", render: () => { renderBrokenVideoLinks(); }, wires: [] },
+  { title: "Shot Arc Hand-Labeling", hint: "Label the ball in shot clips to help train ball tracking. Click the ball's center on each frame (skipped frames are filled in), or No ball visible (Space). Mark Shot Start and End to trim the clip, or Not a valid shot for dunks and mixed plays. Download the labels when done.", tag: null, open: true, section: "media", order: 14, html: "\r\n          <div class=\"button-row\">\r\n            <select id=\"labelShotSelect\"><option value=\"\">Loading available shots…</option></select>\r\n            <label class=\"hint\" style=\"display:inline-flex;align-items:center;gap:4px;margin:0\">Step <input type=\"number\" id=\"labelStepSize\" value=\"3\" min=\"1\" max=\"20\" style=\"width:48px\"></label>\r\n            <button id=\"labelPrevFrameBtn\" class=\"secondary-btn\" disabled>◀ Prev</button>\r\n            <button id=\"labelNoballBtn\" class=\"secondary-btn\" disabled>No ball visible (space)</button>\r\n            <button id=\"labelNextFrameBtn\" class=\"secondary-btn\" disabled>Next ▶</button>\r\n          </div>\r\n          <div class=\"button-row\" style=\"margin-top:6px\">\r\n            <button id=\"labelMarkStartBtn\" class=\"secondary-btn\" disabled>Mark Shot Start</button>\r\n            <button id=\"labelMarkEndBtn\" class=\"secondary-btn\" disabled>Mark Shot End</button>\r\n            <button id=\"labelDownloadBtn\" class=\"secondary-btn\" disabled>Download Labels JSON</button>\r\n            <button id=\"labelExcludeBtn\" class=\"secondary-btn\" disabled>Not a valid shot (dunk, etc.)</button>\r\n          </div>\r\n          <p id=\"labelProgress\" class=\"hint\" style=\"margin:8px 0 0\"></p>\r\n          <div id=\"labelFrameWrap\" style=\"position:relative;display:inline-block;margin-top:8px\"></div>\r\n        ", render: () => {  }, wires: [{ id: "labelShotSelect", evt: "change", handler: e => {
+  const manifest = typeof SHOT_ARC_LABEL_MANIFEST !== "undefined" ? SHOT_ARC_LABEL_MANIFEST : [];
+  const entry = manifest.find(s => s.key === e.target.value);
+  if (!entry) {
+    labelFrameNames = [];
+    renderLabelFrame();
+    ["labelPrevFrameBtn", "labelNoballBtn", "labelNextFrameBtn", "labelDownloadBtn"].forEach(id => {
+      document.getElementById(id).disabled = true;
+    });
+    return;
+  }
+  labelShotKey = entry.key;
+  labelFrameNames = Array.from({ length: entry.frameCount }, (_, i) => `frame_${String(i + 1).padStart(4, "0")}.png`);
+  labelResults = {};
+  labelFrameIndex = 0;
+  labelNaturalSize = null;
+  labelShotStartIndex = null;
+  labelShotEndIndex = null;
+
+  ["labelPrevFrameBtn", "labelNoballBtn", "labelNextFrameBtn", "labelDownloadBtn", "labelMarkStartBtn", "labelMarkEndBtn", "labelExcludeBtn"].forEach(id => {
+    document.getElementById(id).disabled = false;
+  });
+  renderLabelFrame();
+} }, { id: "labelPrevFrameBtn", evt: "click", handler: () => advanceLabelFrame(-1) }, { id: "labelNextFrameBtn", evt: "click", handler: () => advanceLabelFrame(1) }, { id: "labelNoballBtn", evt: "click", handler: () => {
+  if (labelFrameNames.length === 0) return;
+  labelResults[labelFrameNames[labelFrameIndex]] = "no-ball";
+  advanceLabelFrame(labelStepSize());
+} }, { id: "labelMarkStartBtn", evt: "click", handler: () => {
+  if (labelFrameNames.length === 0) return;
+  labelShotStartIndex = labelFrameIndex;
+  renderLabelFrame();
+} }, { id: "labelMarkEndBtn", evt: "click", handler: () => {
+  if (labelFrameNames.length === 0) return;
+  labelShotEndIndex = labelFrameIndex;
+  renderLabelFrame();
+} }, { id: "labelExcludeBtn", evt: "click", handler: () => {
+  if (!labelShotKey) return;
+  const reason = prompt('Why exclude this shot? (e.g. "dunk", "multiple plays")', "dunk") || "unspecified";
+  download(`${labelShotKey}-excluded.json`, JSON.stringify({ shotKey: labelShotKey, excluded: true, reason }, null, 2), "application/json");
+} }, { id: "labelDownloadBtn", evt: "click", handler: () => {
+  if (labelFrameNames.length === 0) return;
+  const rangeStart = labelShotStartIndex ?? 0;
+  const rangeEnd = labelShotEndIndex ?? (labelFrameNames.length - 1);
+  const interpolated = interpolateLabelFrames(rangeStart, rangeEnd);
+  const output = {
+    shotKey: labelShotKey,
+    frameWidth: labelNaturalSize ? labelNaturalSize.w : null,
+    frameHeight: labelNaturalSize ? labelNaturalSize.h : null,
+    shotStartFrame: rangeStart + 1, // 1-indexed to match frame_0001.png naming
+    shotEndFrame: rangeEnd + 1,
+    frames: labelFrameNames.map((name, i) => {
+      const inRange = i >= rangeStart && i <= rangeEnd;
+      if (!inRange) return { filename: name, status: "outside-shot" };
+      const entry = labelEntryFor(name);
+      if (entry === undefined) {
+        return interpolated[name]
+          ? { filename: name, status: "interpolated", x: interpolated[name].x, y: interpolated[name].y }
+          : { filename: name, status: "unlabeled" };
+      }
+      if (entry === "no-ball") {
+        return interpolated[name]
+          ? { filename: name, status: "interpolated", x: interpolated[name].x, y: interpolated[name].y }
+          : { filename: name, status: "no-ball" };
+      }
+      return { filename: name, status: "labeled", x: entry.x, y: entry.y };
+    }),
+  };
+  download(`${labelShotKey}-labels.json`, JSON.stringify(output, null, 2), "application/json");
+} }] },
+  { title: "Data Management", hint: "", tag: null, open: true, section: "dataManagement", order: 15, html: "\r\n          <div class=\"button-row\">\r\n            <label class=\"secondary-btn file-label\">\r\n              Import JSON\r\n              <input type=\"file\" id=\"importFileInput\" accept=\"application/json\" hidden>\r\n            </label>\r\n            <button id=\"startNewSeasonBtn\" class=\"danger-btn\">Start New Season</button>\r\n            <button id=\"resetDataBtn\" class=\"danger-btn\">Reset All Data</button>\r\n          </div>\r\n          <p class=\"hint\" style=\"margin:8px 0 0\">Start New Season closes the current season: its games are kept but archived (see Include Past Seasons), and videos stored in this browser are cleared. Reset All Data deletes everything, roster included. Either one saves a backup file first.</p>\r\n        ", render: () => {  }, wires: [{ id: "importFileInput", evt: "change", handler: e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      if (!imported.players || !imported.games) throw new Error("Missing expected fields");
+      if (!confirm("This will replace all current data with the imported file. Continue?")) return;
+      state = imported;
+      state.masterVideos = state.masterVideos || [];
+      state.seasonHistory = state.seasonHistory || [];
+      state.currentSeasonStartedAt = state.currentSeasonStartedAt || null;
+      (state.games || []).forEach(normalizeGame);
+      saveState();
+      renderPlayers();
+      renderGames();
+      showTab("players");
+    } catch (err) {
+      alert("Could not import file: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+} }, { id: "startNewSeasonBtn", evt: "click", handler: async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const label = prompt('Name the season that\'s ending (shown on player profiles and the "Include Past Seasons" toggle), e.g. "Summer 2026":', "");
+  if (label === null) return;
+  if (!confirm("This archives every current game behind today's date and clears locally-stored video files. Games, stats, the player roster, and every player's height/build/role tags are all kept. A backup file downloads first. Continue?")) return;
+  downloadBackup();
+  state.seasonHistory.push({ label: label.trim() || `Season ending ${today}`, startedAt: state.currentSeasonStartedAt, endedAt: today });
+  state.currentSeasonStartedAt = today;
+  saveState();
+  const videoIds = await getAllStoredVideoIds();
+  for (const id of videoIds) await deleteVideoFile(id);
+  state.masterVideos = [];
+  saveState();
+  currentGameId = null;
+  currentPlayerId = null;
+  renderPlayers();
+  renderGames();
+  showTab("games");
+} }, { id: "resetDataBtn", evt: "click", handler: () => {
+  if (!confirm("This will permanently delete all players, games, and stats. A backup file downloads first. Continue?")) return;
+  downloadBackup();
+  state = { players: [], games: [], masterVideos: [], seasonHistory: [], currentSeasonStartedAt: null, playerPhysicalOverrides: {}, rsvps: [] };
+  saveState();
+  renderPlayers();
+  renderGames();
+} }] }
+];
+export function getLegacyState() { return state; }
+
+
 if (typeof POOLEAN_SEASONS !== "undefined") setPooleanSeason(pooleanSeasonList().slice(-1)[0]);
-export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, setPooleanSeason, pooleanSeasonList, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, clutchMarginThreshold, pct, TURNOVER_TYPE_CSS_CLASS, SELF_CREATION_FULL_MIN, OPP_ADJ_REBOUND_MIN, renderPlayerLeagueRank, renderPlayerAwardBadges, renderPlayerPowerRanking, renderPlayerRealSeasons, renderPlayerMilestones, renderPlayerTips, renderAreasToWorkOn, renderPlayerStatTrend, renderPlayerResistanceShotMaking, renderPlayerSelfCreationPanel, renderPlayerShotTypes, renderPlayerShotArc, renderPlayerShotChart, renderPlayerHeatmap, renderShootingByDirection, renderAssistedByPanel, renderPlayerPassingPanel, renderPlayerTurnoverMixPanel, renderPlayerContestQualityEngagement, renderPlayerDefensiveHeatmap, renderPlayerDefensiveLoadPanel, renderNotableMatchups, renderHeadToHead, renderOffensiveMatchupDifficultyChart, renderDefensiveMatchupDifficultyChart, renderTeammateSynergy, renderTeammateQualityChart, renderTwoWayTrendChart, renderFlakeStatsPanel, renderSeasonHistoryPanel, togglePastSeasonsInclusion, renderPlayerRealRecord, renderPlayerRealPartners, renderPlayerStreaks, renderPlayerAttendanceStreak, renderPlayerGameLog, renderPlayerReel, currentPlayerId, downloadTradingCard, renderPlayerRankPill, renderPlayerComparisonSelects, renderPlayerComparison, renderAwardsVsStats, renderPowerRankingVsPerformance, renderQuadrantChart, renderVolumeEfficiencyChart, renderLeagueTsByZoneChart, renderLeagueTsChart, renderLeagueHeatmap, renderTwoWayRankChart, renderLeagueSeasonSelect, renderLeagueSeasonStandings, renderConsistencyStandings, renderShotZonePanel, renderDefensiveShotZonePanel, renderShotTypePanel, renderDeepShotCheckPanel, renderMoveCheckPanel, renderShotTypeContestPanel, renderCalibrationPanel, renderLeagueDirectionSplits, renderShotMakingAddedChart, renderRivalries, renderRealHeadToHead, renderRealRivalryMatrix, renderMatchupGrid, renderPassingChemistrySelects, renderPassingChemistryPair, renderPassingChemistryGrid, renderReboundBattleRecordPanel, renderReboundBattleGridPanel, renderTeammateLiftMatrix, renderAssistSynergy, renderComebackTracker, renderSelfInflictedVsForcedChart, renderTurnoverTypeOverSeasonChart, renderGameWinningBucketsPanel, renderPlayStyleClusters, renderWinSharesModelPanel, renderSeasonTimeline, renderSeasonRecap, renderAwardRace, renderTrophyCase, renderIronMan, renderUpsetTracker, renderPartyRecap, renderIndividualGamePerformances, renderPlaySearch, renderLeagueHighlights, exportLeagueVideo, leagueExportState, runClipExportFromGroups, leagueClipsByGameChronological, reelClipsChronological, STORAGE_KEY, pickRecorderMimeType, getGameVideoSrcForExport, formatDateDisplay, raceCancel, loadVideoSrc, waitForSeek, waitUntilTime, updateLeagueExportButton, download, pickRecorderExtension, leagueExportVideoSrcCache, getVideoFile, openVideoDB, VIDEO_STORE, VIDEO_DB_NAME, formatTime, openGameAndSeek, currentGameId, currentVideoEl, PLAY_SEARCH_DETAIL_VERB, PLAY_SEARCH_LABEL_BY_KEY, INDIVIDUAL_GAMES_MODES, individualGamesMode, selectedPooleanSeason, downloadPartyRecapImage, copyPartyRecapText, poolPlayerLink, poolNameOf, partyRecapText, generatePartyRecapCanvas, showImagePreview, wrapCanvasText, renderPlayerAvatar, playerAvatarRingClass, PLAYER_PHOTO_FILES, avatarHueForPlayer, AWARD_TIER_COLOR, AWARD_TIER, awardIconSvg, AWARD_ICON_KEYS, ordinal, WIN_SHARES_FEATURES, turnoverTypeLabel, turnoverTypeTaggedSummaryText, renderSortableHeader, reboundBattleRecordSort, PASSING_CHEMISTRY_GRID_SCALE_MAX, PASSING_CHEMISTRY_ROWS, realMatchupPlayerPool, headToHeadPair, renderPctChart, playerNightlyPcts, PARTY_RANKINGS, realSeasonsInOrder, svgAvatarDot, directionLabel, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, sameTeam, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, shotDistanceFromHoop, findShotBreakpoint, binomialLogLik, shotTypeFgCell, MOVE_CHECK_EDGE_PTS, shotBand, effShotType, SHOT_TYPE_DEEP_CHECK_MIN, threePtDeepThreshold, closeRangeThreshold, shotTypeCellHtml, defensiveShotZoneSort, totalBandedAttempts, SHOT_ZONES, shotZoneSort, renderHeatmapInto, heatmapCellColor, renderHeatmapSvg, shotChartVbX, SHOT_CHART_VIEWBOX_W, shotChartVbY, SHOT_CHART_VIEWBOX_H, expandedAwards, generateTradingCardCanvas, poolRealRecord, TRADING_CARD_TIER_COLORS, trueShootingPct, playerGameLogSort, getOrCreatePlayerStats, shootingStats, gameDefenseStats, playerGameResult, offensiveRating, twoWayScore, effectiveFgPct, turnoverTypeDetailForGame, formatAstTov, foulCellHtml, defensiveRating, includePastSeasons, INCLUDE_PAST_SEASONS_KEY, updatePastSeasonsBtnLabel, renderLeaderboard, renderPlayerDetail, shareOrCopy, renderPlayerSectionTeasers, updateAdvancedColsBtnLabel, updateImbalancedGamesBtnLabel, updateOutlierGamesBtnLabel, renderLeaderboardHighlights, renderLeaderboardHeader, appendShotTypeExclusionNote, renderWideOpenShootingPanel, renderShotMakingAddedPanel, renderOppAdjReboundPanel, renderTeammateContextPanel, renderOutOfBoundsPanel, renderSecondChancePanel, renderSecondChanceAllowedPanel, renderPointsOffTakeawaysPanel, renderTurnoverTypeBreakdownPanel, renderTovRecomputedPanel, renderTurnoverTypeMixPanel, renderForcedTurnoverCreditPanel, renderTurnoverVsShotTypePanel, renderSelfCreationFullPanel, renderDefensiveLoadPanel, renderContestEngagementPanel, renderShooterQualityDefPanel, renderDefenderQualityOffPanel, renderCloseGameShootingPanel, renderCloseGameDefensePanel, visibleLeaderboardColumns, leaderboardSort, renderLeaderboardSectionTeasers, showAdvancedCols, SHOW_ADVANCED_COLS_KEY, closeGameDefenseSort, closeGameShootingSort, DEFENDER_QUALITY_GATE_FGA, defenderQualityOffSort, SHOOTER_QUALITY_GATE_FGA, shooterQualityDefSort, contestLevelLabel, contestEngagementSort, defensiveLoadPanelSort, selfCreationFullSort, turnoverVsShotTypeSort, forcedTurnoverCreditSort, turnoverTypeMixSort, tovRecomputedSort, turnoverTypeBreakdownSort, pointsOffTakeawaysSort, secondChanceAllowedSort, secondChanceSort, outOfBoundsSort, teammateContextSort, oppAdjReboundSort, shotMakingAddedSort, wideOpenSort, includeOutlierGames, INCLUDE_OUTLIER_GAMES_KEY, includeImbalancedGames, INCLUDE_IMBALANCED_KEY, PAST_SEASONS_TOGGLE_BTN_IDS, leagueAvgOfPlayerTrend, renderTrendLineChart, teammateSynergySort, h2hScorerSort, headToHeadAsScorer, h2hDefenderSort, headToHeadAsDefender, accumulateHeadToHeadFg, gamesForMatchup, watchFilmLinksHtml, wireWatchFilmButtons, playInlineVideoAt, ensureInlineVideoPlayer, loadInlineVideo, formatVideoTime, masterVideoBlobUrls, localVideoBlobUrls, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, defensiveHeatmapCellColor, watchClipsButtonHtml, wireWatchClipsButtons, startAreaClipExport, shotTypeLabel, shotTypeShape, shotArcRowsByShooter, SHOT_ARC_MIN, shotArcMedian, shotArcPath, PLAYER_TREND_STATS, playerStatTrendKey, pctOrNull, shotPoints, RESISTANCE_LEVEL_SCORE, xptsForShot, ALL_AWARD_RESULTS, ICONS, AWARD_RESULTS, POOL_DATA_SNAPSHOT_KEY, sameMomentDismissed, shotReviewNeeds, shotReviewPlayer, shotReviewShowSkipped, shotReviewSkipped, turnoverTypeReviewPlayer, turnoverTypeSkipped, shotTypeReviewMatches, shotTypeReviewPlayer, shotTypeSkipped, shotTypeReviewMode, DRIVE_FAR_UNITS, LEAGUE_RANK_STATS, gameTotalPoints, turnoverPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, REAL_PLAYMAKING_MIN, gamesForZoneShots, median, seasonVsRecentRate, trendNote, CLIP_CURATION_PAD_SECONDS, shotTypeTipCandidates, gamesForShotType, playerAttendedDate, STAT_FIELDS, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, defensiveShootingStats, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, AWARD_NOT_FOUND_TEXT, milestoneCache, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, poolKnownSlug, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, gameWinningShot, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, quantile, isCurrentSeasonGame, PLAYER_REPUTATION_DATA };
+export { STAT_LABELS, isQualifyingGame, OUTLIER_MIN_GAMES, qualifyingGamesForPlayer, buildJumpSearchIndex, normalizeGame, invalidateComputedCaches, buildGameShareText, PHYSICAL_ROLE_LABELS, BUILD_LABELS, EFFORT_LABELS, computePooleanReputation, computeBalanceQualityMap, computeChemistryLiftMap, computeTeamWinRateMap, REAL_AGAINST_WARNING_MIN_GP, REAL_AGAINST_WARNING_THRESHOLD, computeCrossTeamRivalryWarnings, REAL_MATCHUP_MIN_GAMES, REAL_MATCHUP_FACTOR_LABELS, buildRealMatchupRows, predictRealMatchup, computeRealMatchupTrackRecord, predictTeamWinChances, computeCrossTeamMatchups, buildLiveHandoffCode, computeRealSiteCheck, computeHeatmapCells, recomputeDerivedStats, CALIBRATION_MIN_STAT, CALIBRATION_MIN_SIDE, SECOND_CHANCE_MIN_EXCESS, computeTovSplit, OTHER_EVENTS_COLUMNS, SHOT_LOG_COLUMNS, FOUL_OUT_THRESHOLD, GAME_STATS_COLUMNS, computeSuggestedPlays, REEL_COLUMNS, MATCHUP_TABLE_COLUMNS, DEFENSIVE_LOAD_MIN_SHARE, computeDefensiveLoad, computeLeagueAvgOppFg, computeLeaderboard, computeLeaderboardUncached, computeConsistencyStandings, computeAssistConnections, computeGameWinningBuckets, computeDefensiveLoadPanelRows, DEFENSIVE_LOAD_COLUMNS, CONTEST_ENGAGEMENT_COLUMNS, computeContestEngagementRows, SHOOTER_QUALITY_DEF_COLUMNS, computeShooterQualityDefRows, DEFENDER_QUALITY_OFF_COLUMNS, computeDefenderQualityOffRows, computeCloseGameShooting, CLOSE_GAME_SHOOTING_COLUMNS, computeCloseGameDefense, CLOSE_GAME_DEFENSE_COLUMNS, computeIndividualGamePerformances, AWARD_LABELS, computeAllAwardResults, computeAwardStandings, computePlayerAwardBadges, computePlayerAwardTier, computePlayerRealSeasons, computeSeasonRecap, computePlayerStreaks, RIVALRY_MIN_GP, computeRivalries, computeTeamSizeAdvantagePct, computeUpsets, computePartyRecap, AWARD_RACE_DUO_MIN_GP, computeRealTeammateLift, computeAwardRace, computeMilestones, computeTrophyCase, computePlayerAttendanceStreak, computeIronMan, computeComebacks, computeSeasonTimeline, REAL_PARTNER_MIN_GP, computePlayerRealPartners, computeAwardsVsStats, computePowerRankingSummary, computePowerRankingVsPerformance, computeQuadrantData, computeVolumeEfficiencyData, PLAY_STYLE_MIN_PLAYERS, PLAY_STYLE_MIN_GP, computePlayerStyleFeatures, computePlayerStyleClusters, computeTwoWayRankOverSeason, computePlayerOverallRank, computeNightClimber, computeMatchupGrid, computePassingChemistryPair, computePassingChemistryGrid, computeWideOpenShooting, WIDE_OPEN_COLUMNS, computeTeammateLiftMatrix, TEAMMATE_CONTEXT_COLUMNS, computeTeammateContext, SHOT_ZONE_COLUMNS, LEAGUE_DIRECTION_MIN_FGA, computeLeagueDirectionSplits, computeDefensiveShotZoneRows, DEFENSIVE_SHOT_ZONE_COLUMNS, computeLeagueTsOverTime, computeLeagueZonePointsPerAttempt, computeExpectedPoints, EXPECTED_POINTS_AGAINST_MIN_FGA, computeExpectedPointsAgainst, REAL_CONTESTED_MIN_FGA, computeRealContestedDefense, computeContestLevelFgSplit, CONTEST_ENGAGEMENT_MIN_TAGGED, computeContestLevelDistribution, computeShooterQualityBaseline, computeShooterQualityGateStatus, computeShooterQualityAdjustedDefense, computeDefenderQualityGateStatus, computeScorerRealContestedFg, computeDefenderQualityAdjustedOffense, XPTS_MIN_COMBO_FGA, computeXptsCombos, SHOT_MAKING_ADDED_MIN_FGA, computeShotMakingAdded, SHOT_MAKING_ADDED_COLUMNS, computeShotMakingAddedRows, computeShotMakingAddedOverSeason, SHOT_CREATION_MIN_FGA, computeTrueSelfCreationRate, computeRealPlaymakingVolume, PASS_QUALITY_MIN_VOLUME, computeWeightedPassQuality, computePointsOffTakeaways, POINTS_OFF_TAKEAWAYS_COLUMNS, TURNOVER_CREDIT_MIN_POOL, computeTurnoverCreditRate, computeShotAttemptDifferential, computeReboundDifferential, REBOUND_BATTLE_MIN_CONTESTS, computeReboundBattleRecord, computeReboundContestRate, computeReboundBattleGrid, REBOUND_BATTLE_RECORD_COLUMNS, computePaceAndPpp, predictMargin, computeR2, computeWinSharesWeights, computeWinSharesWeightsUncached, computeWinShares, computeLeagueTsByZone, computeSecondChanceConversions, SECOND_CHANCE_COLUMNS, computeSecondChancePointsAllowed, SECOND_CHANCE_ALLOWED_COLUMNS, computeOutOfBoundsStats, OUT_OF_BOUNDS_COLUMNS, computeRateSummaryForGames, computeSeasonHistoryForPlayer, computeLeagueSeasonStandings, computeFlakeStats, PLAYER_TIPS_MIN_GP, computePlayerTips, AREAS_TO_WORK_ON_MIN_GP, computeAreaCategory, AREA_CLIP_CATEGORY_LABELS, computeCategoryClipGroups, computePlayerContestQualityEngagement, computePlayerResistanceShotMaking, computePlayerSelfCreationPanel, computePlayerPassingPanel, computePlayerTurnoverMixPanel, computeAreasToWorkOn, computeTeammateSynergy, TEAMMATE_SYNERGY_COLUMNS, computeTwoWayTrend, TREND_MIN_POINTS, computePlayerStatTrend, computeTeammateQualityTrend, computeDefensiveMatchupDifficultyTrend, computeOffensiveMatchupDifficultyTrend, computeAssistedByBreakdown, LEADERBOARD_COLUMNS, COMPARISON_NEUTRAL_KEYS, COMPARISON_LOWER_IS_BETTER_KEYS, SHOOTING_BY_DIRECTION_MIN_FGA, computeShootingByDirection, PLAY_SEARCH_TYPES, computePlaySearchResults, computeLeagueHighlights, PLAYER_GAME_LOG_COLUMNS, NOTABLE_MATCHUP_MIN_FGA, NOTABLE_MATCHUP_MIN_DEVIATION, computeNotableMatchups, H2H_SCORER_COLUMNS, H2H_DEFENDER_COLUMNS, computeUnresolvedDunkCandidates, SHOT_TYPES, TAGGABLE_SHOT_TYPES, SHOT_TYPE_MIN_ATTEMPTS, TURNOVER_TYPES, TURNOVER_TYPE_MIN_TAGGED, SELF_INFLICTED_TURNOVER_TYPES, FORCED_TURNOVER_TYPES, computeTurnoverTypeBreakdown, computeTurnoverTypeTaggedSummary, TURNOVER_TYPE_BREAKDOWN_COLUMNS, computeTurnoverTypeBreakdownRows, TOV_RECOMPUTED_COLUMNS, computeTovRecomputedRows, TURNOVER_TYPE_MIX_COLUMNS, computeForcedTurnoverCredit, FORCED_TURNOVER_CREDIT_COLUMNS, computeForcedTurnoverCreditRows, computeTurnoverTypeVsSelfCreation, TURNOVER_VS_SHOT_TYPE_COLUMNS, computeTurnoverVsShotTypeRows, computeTurnoverTypeOverSeason, computeSelfCreationFullAccounting, SELF_CREATION_FULL_COLUMNS, computeSelfCreationFullRows, computeOpportunityAdjustedRebounding, OPP_ADJ_REBOUND_COLUMNS, computeOppAdjReboundRows, CONTEST_LEVELS, AVG_RESISTANCE_MIN_FGA, computeShotTypeStats, computeShotTypeCuts, LEAGUE_RANK_MIN_GP, computeLeagueRanks, computePlayerSectionTeasers, computeLeaderboardSectionTeasers, computeGamesSectionTeasers, computeExportSectionTeasers, computeShotTypeReviewRows, computeTurnoverTypeReviewRows, computeShotReviewRows, computeSameMomentGroups, computeReboundBattleCandidates, computeFlaggedShotMismatches, computePoolDataDigest, setPooleanSeason, pooleanSeasonList, formatPct, formatShootingSplit, playerLink, icon, escapeHtml, compareForSort, clutchMarginThreshold, pct, TURNOVER_TYPE_CSS_CLASS, SELF_CREATION_FULL_MIN, OPP_ADJ_REBOUND_MIN, downloadBackup, STAT_FIELDS, shootingStats, gameDefenseStats, effectiveFgPct, trueShootingPct, formatAstTov, offensiveRating, twoWayScore, download, csvEscape, sameTeam, shotBand, defenderNames, videoTimeCsv, TAGGED_STAT_CONFIG, defensiveRating, formatTime, renderExportGameSelect, renderBackfillShotLocations, renderDunkReview, renderShotTypeReview, renderTurnoverTypeReview, renderShotReview, renderSameMomentReview, renderRealSiteCheck, renderStoppedEarlyReview, renderReboundBattleReview, renderFlaggedShotMismatches, renderMasterVideoList, renderBrokenVideoLinks, labelFrameNames, renderLabelFrame, labelShotKey, labelResults, labelFrameIndex, labelNaturalSize, labelShotStartIndex, labelShotEndIndex, advanceLabelFrame, labelStepSize, interpolateLabelFrames, labelEntryFor, renderPlayers, renderGames, getAllStoredVideoIds, deleteVideoFile, currentGameId, currentPlayerId, renderPlayerLeagueRank, renderPlayerAwardBadges, renderPlayerPowerRanking, renderPlayerRealSeasons, renderPlayerMilestones, renderPlayerTips, renderAreasToWorkOn, renderPlayerStatTrend, renderPlayerResistanceShotMaking, renderPlayerSelfCreationPanel, renderPlayerShotTypes, renderPlayerShotArc, renderPlayerShotChart, renderPlayerHeatmap, renderShootingByDirection, renderAssistedByPanel, renderPlayerPassingPanel, renderPlayerTurnoverMixPanel, renderPlayerContestQualityEngagement, renderPlayerDefensiveHeatmap, renderPlayerDefensiveLoadPanel, renderNotableMatchups, renderHeadToHead, renderOffensiveMatchupDifficultyChart, renderDefensiveMatchupDifficultyChart, renderTeammateSynergy, renderTeammateQualityChart, renderTwoWayTrendChart, renderFlakeStatsPanel, renderSeasonHistoryPanel, togglePastSeasonsInclusion, renderPlayerRealRecord, renderPlayerRealPartners, renderPlayerStreaks, renderPlayerAttendanceStreak, renderPlayerGameLog, renderPlayerReel, downloadTradingCard, renderPlayerRankPill, renderPlayerComparisonSelects, renderPlayerComparison, renderAwardsVsStats, renderPowerRankingVsPerformance, renderQuadrantChart, renderVolumeEfficiencyChart, renderLeagueTsByZoneChart, renderLeagueTsChart, renderLeagueHeatmap, renderTwoWayRankChart, renderLeagueSeasonSelect, renderLeagueSeasonStandings, renderConsistencyStandings, renderShotZonePanel, renderDefensiveShotZonePanel, renderShotTypePanel, renderDeepShotCheckPanel, renderMoveCheckPanel, renderShotTypeContestPanel, renderCalibrationPanel, renderLeagueDirectionSplits, renderShotMakingAddedChart, renderRivalries, renderRealHeadToHead, renderRealRivalryMatrix, renderMatchupGrid, renderPassingChemistrySelects, renderPassingChemistryPair, renderPassingChemistryGrid, renderReboundBattleRecordPanel, renderReboundBattleGridPanel, renderTeammateLiftMatrix, renderAssistSynergy, renderComebackTracker, renderSelfInflictedVsForcedChart, renderTurnoverTypeOverSeasonChart, renderGameWinningBucketsPanel, renderPlayStyleClusters, renderWinSharesModelPanel, renderSeasonTimeline, renderSeasonRecap, renderAwardRace, renderTrophyCase, renderIronMan, renderUpsetTracker, renderPartyRecap, renderIndividualGamePerformances, renderPlaySearch, renderLeagueHighlights, exportLeagueVideo, leagueExportState, runClipExportFromGroups, leagueClipsByGameChronological, reelClipsChronological, pickRecorderMimeType, getGameVideoSrcForExport, formatDateDisplay, raceCancel, loadVideoSrc, waitForSeek, waitUntilTime, updateLeagueExportButton, pickRecorderExtension, leagueExportVideoSrcCache, getVideoFile, openVideoDB, VIDEO_STORE, VIDEO_DB_NAME, openGameAndSeek, currentVideoEl, PLAY_SEARCH_DETAIL_VERB, PLAY_SEARCH_LABEL_BY_KEY, INDIVIDUAL_GAMES_MODES, individualGamesMode, selectedPooleanSeason, downloadPartyRecapImage, copyPartyRecapText, poolPlayerLink, poolNameOf, partyRecapText, generatePartyRecapCanvas, showImagePreview, wrapCanvasText, renderPlayerAvatar, playerAvatarRingClass, PLAYER_PHOTO_FILES, avatarHueForPlayer, AWARD_TIER_COLOR, AWARD_TIER, awardIconSvg, AWARD_ICON_KEYS, ordinal, WIN_SHARES_FEATURES, turnoverTypeLabel, turnoverTypeTaggedSummaryText, renderSortableHeader, reboundBattleRecordSort, PASSING_CHEMISTRY_GRID_SCALE_MAX, PASSING_CHEMISTRY_ROWS, realMatchupPlayerPool, headToHeadPair, renderPctChart, playerNightlyPcts, PARTY_RANKINGS, realSeasonsInOrder, svgAvatarDot, directionLabel, getCalibrations, calibrationCache, calibrateShotBoundary, CLOSE_RANGE_DEFAULT, THREE_PT_DEEP_DEFAULT, calibrateClutchMargin, calibrateSecondChanceWindow, gamesByDate, SECOND_CHANCE_WINDOW_DEFAULT, SECOND_CHANCE_WINDOWS, nextCheckpoint, isBalancedGame, teamScore, CLUTCH_MARGIN_DEFAULT, shotDistanceFromHoop, findShotBreakpoint, binomialLogLik, shotTypeFgCell, MOVE_CHECK_EDGE_PTS, effShotType, SHOT_TYPE_DEEP_CHECK_MIN, shotTypeCellHtml, defensiveShotZoneSort, totalBandedAttempts, SHOT_ZONES, shotZoneSort, renderHeatmapInto, heatmapCellColor, renderHeatmapSvg, shotChartVbX, SHOT_CHART_VIEWBOX_W, shotChartVbY, SHOT_CHART_VIEWBOX_H, expandedAwards, generateTradingCardCanvas, poolRealRecord, TRADING_CARD_TIER_COLORS, playerGameLogSort, getOrCreatePlayerStats, playerGameResult, turnoverTypeDetailForGame, foulCellHtml, includePastSeasons, INCLUDE_PAST_SEASONS_KEY, updatePastSeasonsBtnLabel, renderLeaderboard, renderPlayerDetail, shareOrCopy, renderPlayerSectionTeasers, updateAdvancedColsBtnLabel, updateImbalancedGamesBtnLabel, updateOutlierGamesBtnLabel, renderLeaderboardHighlights, renderLeaderboardHeader, appendShotTypeExclusionNote, renderWideOpenShootingPanel, renderShotMakingAddedPanel, renderOppAdjReboundPanel, renderTeammateContextPanel, renderOutOfBoundsPanel, renderSecondChancePanel, renderSecondChanceAllowedPanel, renderPointsOffTakeawaysPanel, renderTurnoverTypeBreakdownPanel, renderTovRecomputedPanel, renderTurnoverTypeMixPanel, renderForcedTurnoverCreditPanel, renderTurnoverVsShotTypePanel, renderSelfCreationFullPanel, renderDefensiveLoadPanel, renderContestEngagementPanel, renderShooterQualityDefPanel, renderDefenderQualityOffPanel, renderCloseGameShootingPanel, renderCloseGameDefensePanel, visibleLeaderboardColumns, leaderboardSort, renderLeaderboardSectionTeasers, showAdvancedCols, SHOW_ADVANCED_COLS_KEY, closeGameDefenseSort, closeGameShootingSort, DEFENDER_QUALITY_GATE_FGA, defenderQualityOffSort, SHOOTER_QUALITY_GATE_FGA, shooterQualityDefSort, contestLevelLabel, contestEngagementSort, defensiveLoadPanelSort, selfCreationFullSort, turnoverVsShotTypeSort, forcedTurnoverCreditSort, turnoverTypeMixSort, tovRecomputedSort, turnoverTypeBreakdownSort, pointsOffTakeawaysSort, secondChanceAllowedSort, secondChanceSort, outOfBoundsSort, teammateContextSort, oppAdjReboundSort, shotMakingAddedSort, wideOpenSort, includeOutlierGames, INCLUDE_OUTLIER_GAMES_KEY, includeImbalancedGames, INCLUDE_IMBALANCED_KEY, PAST_SEASONS_TOGGLE_BTN_IDS, leagueAvgOfPlayerTrend, renderTrendLineChart, teammateSynergySort, h2hScorerSort, headToHeadAsScorer, h2hDefenderSort, headToHeadAsDefender, accumulateHeadToHeadFg, gamesForMatchup, watchFilmLinksHtml, wireWatchFilmButtons, playInlineVideoAt, ensureInlineVideoPlayer, loadInlineVideo, formatVideoTime, masterVideoBlobUrls, localVideoBlobUrls, describeDefensiveLoad, DEFENSIVE_LOAD_LOW, DEFENSIVE_LOAD_HIGH, defensiveHeatmapCellColor, watchClipsButtonHtml, wireWatchClipsButtons, startAreaClipExport, shotTypeLabel, shotTypeShape, shotArcRowsByShooter, SHOT_ARC_MIN, shotArcMedian, shotArcPath, PLAYER_TREND_STATS, playerStatTrendKey, pctOrNull, shotPoints, RESISTANCE_LEVEL_SCORE, xptsForShot, ALL_AWARD_RESULTS, renderNeedsReviewSummary, renderBackupReminder, renderShotLocationGapSummary, renderRsvpRecentList, renderStandingsSidebar, renderGamesSidebarRecent, gameMatchesFilter, gamesFilterText, gameMatchesAdvancedFilters, isLiveScoreOnly, liveScoreOf, isCurrentSeasonGame, copyGameShareLink, markGamesWithLocalVideo, renderGamesSectionTeasers, gamesFilterPlayerIds, gamesFilterTeamMode, gamesFilterDateFrom, gamesFilterDateTo, gamesFilterStat, getGameStatValue, renderBalanceRsvpDateSelect, playerAttendedDate, readBackupMeta, BACKUP_NUDGE_DAYS, BACKUP_META_KEY, renderPlayersRoleFilter, playersRoleFilter, getPlayerPhysicalData, physicalProfileTags, editingPhysicalProfileId, renderPhysicalProfileEditor, PLAYER_PHYSICAL_DATA, STORAGE_KEY, noteEditForBackup, writeBackupMeta, LABEL_INTERP_MAX_GAP, labelFrameUrl, renderShotChartBaseSvg, setShotChartDot, showFlaggedUndoToast, loadBackfillVideo, flaggedUndoTimer, sameMomentDismissed, parseVideoTimeInput, shotReviewLimit, shotReviewNeeds, shotReviewShowSkipped, shotReviewSkipped, shotReviewPlayer, countSkippedShotReviewRows, shotReviewNeedsHtml, SHOT_REVIEW_PAGE, gameTeammatesOf, contestLevelButtonsHtml, turnoverTypeReviewLimit, turnoverTypeSkipped, turnoverTypeReviewPlayer, turnoverTypeButtonsHtml, TURNOVER_TYPE_REVIEW_PAGE, SHOT_TYPE_REVIEW_MODES, shotTypeReviewMode, shotTypeReviewLimit, shotTypeReviewMatches, shotTypeSkipped, shotTypeReviewPlayer, shotTypeButtonsHtml, SHOT_TYPE_REVIEW_PAGE, DRIVE_FAR_UNITS, backfillShowMarked, showBackfillUndoToast, backfillUndoTimer, threePtDeepThreshold, closeRangeThreshold, ICONS, AWARD_RESULTS, POOL_DATA_SNAPSHOT_KEY, LEAGUE_RANK_STATS, gameTotalPoints, turnoverPct, padJumpTime, JUMP_LEAD_SECONDS, playerShotDirection, REAL_PLAYMAKING_MIN, gamesForZoneShots, median, seasonVsRecentRate, trendNote, CLIP_CURATION_PAD_SECONDS, shotTypeTipCandidates, gamesForShotType, secondChanceWindowSeconds, LEAGUE_TS_ZONES, playerMarginContribution, winSharesRegressionRows, WIN_SHARES_ALPHA_GRID, leaveOneOutDiagnostics, alphaVectorFor, WIN_SHARES_AST_ALPHA_GRID, fitSignConstrainedRidge, standardizeColumns, projectedRidge, largestEigenvalue, matVec, dotProduct, pearsonCorrelation, winSharesWeightsCache, TAKEAWAY_WINDOW_SECONDS, PASS_OPENNESS_WEIGHT, defensiveShootingStats, pooleanRankAfter, pooleanMinParties, standardizePlayStyleFeatures, kMeans, euclideanDist, describePlayStyleCluster, PLAY_STYLE_FEATURES, PLAY_STYLE_DESCRIPTORS, seededRandom, kMeansPlusPlusInit, AWARD_NOT_FOUND_TEXT, milestoneCache, byPlayOrder, MILESTONE_GAMES, MILESTONE_WINS, MILESTONE_STREAKS, MILESTONE_ATTENDANCE, MILESTONE_CROWNS, poolKnownSlug, AWARD_ICONS, AWARD_PLACEMENT_LABEL, AWARD_STAT_KEYS, AWARD_IS_DUO, MANUAL_AWARD_RESULTS, gameWinningShot, leaderboardCache, HEATMAP_COLS, HEATMAP_ROW_BOUNDARIES, heatmapRowForY, localGameResult, LIVE_HANDOFF_PREFIX, getRealMatchupModel, realMatchupModelCache, fitRealMatchupWeights, sigmoid, realMatchupLookups, UNKNOWN_PLAYER_PCT, REAL_MATCHUP_L2, realMatchupTrackCache, realMatchupFeatures, shrunkEdge, estimatedQualityFromReputation, CLEAN_SWEEP_BONUS, PLAYER_REPUTATION_BY_ID, TIMESTAMP_LEAD_SECONDS, JUMP_SECTION_ID_PREFIX, quantile, PLAYER_REPUTATION_DATA };
