@@ -6,7 +6,8 @@
 /* Poolean Intel's own palette (ported from theme.css, not shadcn's default neutral theme):
    achromatic near-black/near-white neutrals, one warm-coral accent as the only real color. */
 @theme inline {
-    --font-heading: var(--font-display);
+    --font-display: "Anybody", "Hanken Grotesk", sans-serif;
+    --font-heading: "Anybody", "Hanken Grotesk", sans-serif;
     --font-sans: var(--font-body);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -49,74 +50,73 @@
 }
 
 :root {
-    --font-body: "Archivo", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --font-display: "Sora", "Archivo", var(--font-body);
+    --font-body: "Hanken Grotesk", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-    --background: #f4f4f4;
-    --foreground: #0a0a0a;
+    --background: #eef3f4;
+    --foreground: #0b1a20;
     --card: #ffffff;
-    --card-foreground: #0a0a0a;
+    --card-foreground: #0b1a20;
     --popover: #ffffff;
-    --popover-foreground: #0a0a0a;
-    --primary: #d9601a;
+    --popover-foreground: #0b1a20;
+    --primary: #e0502f;
     --primary-foreground: #ffffff;
-    --secondary: #eeeeee;
-    --secondary-foreground: #0a0a0a;
-    --muted: #fafafa;
-    --muted-foreground: #6b6b6b;
-    --accent: #d9601a;
+    --secondary: #e3ecee;
+    --secondary-foreground: #0b1a20;
+    --muted: #e6eef0;
+    --muted-foreground: #54696f;
+    --accent: #e0502f;
     --accent-foreground: #ffffff;
-    --destructive: #b8382d;
-    --border: #e2e2e2;
-    --input: #e2e2e2;
-    --ring: #d9601a;
-    --chart-1: #d9601a;
-    --chart-2: #1f7f4f;
-    --chart-3: #a3620f;
-    --chart-4: #6b3fa0;
-    --chart-5: #1f5599;
-    --radius: 0.9rem;
+    --destructive: #c8383d;
+    --border: #d3dfe2;
+    --input: #c6d5d9;
+    --ring: #e0502f;
+    --chart-1: #e0502f;
+    --chart-2: #1b8a7c;
+    --chart-3: #a3720f;
+    --chart-4: #7a4cc2;
+    --chart-5: #2a6db5;
+    --radius: 0.75rem;
     --sidebar: #ffffff;
-    --sidebar-foreground: #0a0a0a;
-    --sidebar-primary: #d9601a;
+    --sidebar-foreground: #0b1a20;
+    --sidebar-primary: #e0502f;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #eeeeee;
-    --sidebar-accent-foreground: #0a0a0a;
-    --sidebar-border: #e2e2e2;
-    --sidebar-ring: #d9601a;
+    --sidebar-accent: #e6eef0;
+    --sidebar-accent-foreground: #0b1a20;
+    --sidebar-border: #d3dfe2;
+    --sidebar-ring: #e0502f;
 }
 
 .dark {
-    --background: #050505;
-    --foreground: #ffffff;
-    --card: #141414;
-    --card-foreground: #ffffff;
-    --popover: #141414;
-    --popover-foreground: #ffffff;
+    --background: #05090b;
+    --foreground: #e8f0f2;
+    --card: #0f171b;
+    --card-foreground: #e8f0f2;
+    --popover: #0f171b;
+    --popover-foreground: #e8f0f2;
     --primary: #ff6a4d;
-    --primary-foreground: #050505;
-    --secondary: #1c1c1c;
-    --secondary-foreground: #ffffff;
-    --muted: #101010;
-    --muted-foreground: #9a9a9a;
+    --primary-foreground: #05090b;
+    --secondary: #172228;
+    --secondary-foreground: #e8f0f2;
+    --muted: #121c21;
+    --muted-foreground: #8fa3ab;
     --accent: #ff6a4d;
-    --accent-foreground: #050505;
-    --destructive: #f2726b;
-    --border: #2e2e2e;
-    --input: #2e2e2e;
+    --accent-foreground: #05090b;
+    --destructive: #e5484d;
+    --border: #1e2a30;
+    --input: #263339;
     --ring: #ff6a4d;
     --chart-1: #ff6a4d;
-    --chart-2: #4fd97f;
+    --chart-2: #7fd6cc;
     --chart-3: #f2c94c;
     --chart-4: #c9a3f2;
     --chart-5: #7fb4f2;
-    --sidebar: #141414;
-    --sidebar-foreground: #ffffff;
+    --sidebar: #0f171b;
+    --sidebar-foreground: #e8f0f2;
     --sidebar-primary: #ff6a4d;
-    --sidebar-primary-foreground: #050505;
-    --sidebar-accent: #1c1c1c;
-    --sidebar-accent-foreground: #ffffff;
-    --sidebar-border: #2e2e2e;
+    --sidebar-primary-foreground: #05090b;
+    --sidebar-accent: #172228;
+    --sidebar-accent-foreground: #e8f0f2;
+    --sidebar-border: #1e2a30;
     --sidebar-ring: #ff6a4d;
 }
 
@@ -130,4 +130,10 @@
   html {
     @apply font-sans;
     }
+}
+
+/* Painted-sign numerals and headings: Anybody's width axis, wide and heavy. */
+.font-display {
+  font-stretch: 112%;
+  letter-spacing: -0.01em;
 }

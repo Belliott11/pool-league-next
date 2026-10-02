@@ -55,6 +55,29 @@ function ImportScreen({ onImported }: { onImported: (state: PooleanState) => voi
   )
 }
 
+function ThemeToggle() {
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"))
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      onClick={() => {
+        const next = !dark
+        document.documentElement.classList.toggle("dark", next)
+        try {
+          localStorage.setItem("pooleanIntelTheme", next ? "dark" : "light")
+        } catch {
+          /* private mode: the choice just won't persist */
+        }
+        setDark(next)
+      }}
+    >
+      {dark ? "Light" : "Dark"}
+    </Button>
+  )
+}
+
 function AppShell({ initial }: { initial: PooleanState }) {
   const [state, setState] = useState(initial)
   const [tab, setTab] = useState("games")
@@ -101,9 +124,12 @@ function AppShell({ initial }: { initial: PooleanState }) {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 sm:p-6">
-      <h1 className="font-display text-2xl font-bold">
-        Poolean <span className="text-accent">Intel</span>
-      </h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-bold">
+          Poolean <span className="text-accent">Intel</span>
+        </h1>
+        <ThemeToggle />
+      </div>
       <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList>
           <TabsTrigger value="games">Games</TabsTrigger>
