@@ -12,13 +12,11 @@ import {
   computeLeagueRanks,
   computePassingChemistryPair,
   computePowerRankingVsPerformance,
-  computeQuadrantData,
   computeLeagueZonePointsPerAttempt,
   computeXptsCombos,
   formatDateDisplay,
   ordinal,
 } from "@/lib/legacy-core"
-import { playerPhotoUrl } from "@/lib/players"
 import { nativeSelect } from "@/pages/games/GameLog"
 import type { PooleanState } from "@/lib/types"
 
@@ -211,55 +209,6 @@ export function PowerRankingVsPerformance({ onOpen }: { onOpen: Open }) {
           ))}
         </div>
       ))}
-    </div>
-  )
-}
-
-/* ---------- Two-Way Quadrant: offense across, defense up, photos as the dots ---------- */
-export function TwoWayQuadrant({ onOpen }: { onOpen: Open }) {
-  const data = computeQuadrantData() as { player: { id: string; name: string }; offRtg: number; defRtg: number }[]
-  if (data.length === 0) return <p className="text-sm text-muted-foreground">No games logged yet.</p>
-  const W = 360
-  const H = 360
-  const PAD = 40
-  const mx = Math.max(1, ...data.map((d) => Math.abs(d.offRtg))) * 1.2
-  const my = Math.max(1, ...data.map((d) => Math.abs(d.defRtg))) * 1.2
-  const x = (v: number) => PAD + ((v + mx) / (2 * mx)) * (W - PAD * 2)
-  const y = (v: number) => H - PAD - ((v + my) / (2 * my)) * (H - PAD * 2)
-  const zx = x(0)
-  const zy = y(0)
-  const corner = "fill-muted-foreground text-[10px]"
-  return (
-    <div className="tile mx-auto max-w-md rounded-xl border p-2">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Offense versus defense rating per player">
-        <rect x={zx} y={PAD} width={W - PAD - zx} height={zy - PAD} className="fill-chart-2/10" />
-        <line x1={zx} x2={zx} y1={PAD} y2={H - PAD} className="stroke-foreground/40" />
-        <line x1={PAD} x2={W - PAD} y1={zy} y2={zy} className="stroke-foreground/40" />
-        <text x={W - PAD - 4} y={PAD + 12} textAnchor="end" className={corner}>Two-way</text>
-        <text x={PAD + 4} y={PAD + 12} className={corner}>Defender</text>
-        <text x={W - PAD - 4} y={H - PAD - 6} textAnchor="end" className={corner}>Scorer</text>
-        <text x={W / 2} y={H - 10} textAnchor="middle" className={corner}>Off Rating/20</text>
-        <text transform={`translate(12 ${H / 2}) rotate(-90)`} textAnchor="middle" className={corner}>Def Rating/20</text>
-        {data.map((d) => {
-          const cx = x(d.offRtg)
-          const cy = y(d.defRtg)
-          const photo = playerPhotoUrl(d.player.id)
-          return (
-            <g key={d.player.id} className="cursor-pointer" onClick={() => onOpen(d.player.id)}>
-              <title>{`${d.player.name}: ${d.offRtg.toFixed(1)} Off, ${d.defRtg.toFixed(1)} Def`}</title>
-              <clipPath id={`q-${d.player.id}`}>
-                <circle cx={cx} cy={cy} r={11} />
-              </clipPath>
-              <circle cx={cx} cy={cy} r={11} className="fill-primary" />
-              {photo && <image href={photo} x={cx - 11} y={cy - 11} width={22} height={22} clipPath={`url(#q-${d.player.id})`} preserveAspectRatio="xMidYMid slice" />}
-              <circle cx={cx} cy={cy} r={11} className="fill-none stroke-card" strokeWidth={2} />
-              <text x={cx} y={cy - 15} textAnchor="middle" className="fill-foreground text-[10px] font-semibold">
-                {d.player.name}
-              </text>
-            </g>
-          )
-        })}
-      </svg>
     </div>
   )
 }

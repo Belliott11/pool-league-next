@@ -144,6 +144,7 @@
     linear-gradient(color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px);
   background-size: 28px 28px;
+  background-position: center;
 }
 
 /* Keyboard focus is always visible, including on plain buttons, selects and expandable headers. */
