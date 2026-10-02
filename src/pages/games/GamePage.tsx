@@ -4,7 +4,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { GameVideoPanel } from "@/components/GameVideoPanel"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
+import { useReadOnly } from "@/lib/mode"
+import type { Update } from "@/lib/store"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import {
@@ -343,7 +346,8 @@ function TeamScore({ state, game, ids, label, score }: { state: PooleanState; ga
 // Read-only version of the classic site's Stat Entry page for one game: scoreboard, everyone's
 // line, the full shot log, turnovers/steals/fouls, defensive matchups, and the highlight reel.
 // Editing (logging shots, assigning rosters) and the video player are not part of this app yet.
-export function GamePage({ state, game, onBack }: { state: PooleanState; game: Game; onBack: () => void }) {
+export function GamePage({ state, update, game, onBack }: { state: PooleanState; update: Update; game: Game; onBack: () => void }) {
+  const readOnly = useReadOnly()
   const liveOnly = isLiveScoreOnly(game)
   const scoreA = liveOnly ? liveScoreOf(game, game.teamA) : teamScore(game, game.teamA)
   const scoreB = liveOnly ? liveScoreOf(game, game.teamB) : teamScore(game, game.teamB)
@@ -363,11 +367,6 @@ export function GamePage({ state, game, onBack }: { state: PooleanState; game: G
             {game.teamA.length}v{game.teamB.length}
           </Badge>
         )}
-        {game.videoUrl && (
-          <a className="text-sm underline" href={game.videoUrl} target="_blank" rel="noreferrer">
-            Watch video
-          </a>
-        )}
       </div>
 
       <Card>
@@ -377,6 +376,8 @@ export function GamePage({ state, game, onBack }: { state: PooleanState; game: G
           <TeamScore state={state} game={game} ids={game.teamB} label="Team B" score={scoreB} />
         </CardContent>
       </Card>
+
+      <GameVideoPanel game={game} update={update} readOnly={readOnly} />
 
       {!reviewed ? (
         <Card>

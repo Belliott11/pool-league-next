@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { installDataViz } from "@/lib/dataViz"
+import { findLiveGame } from "@/lib/live"
 import { ReadOnlyContext } from "@/lib/mode"
+import { LiveMiniBar } from "@/pages/live/LiveMiniBar"
 import { useCloud, type Cloud } from "@/lib/useCloud"
 import { installStackTables } from "@/lib/stackTables"
 import { loadToggles, saveToggles, type Toggles } from "@/lib/toggles"
@@ -105,6 +107,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     if (mode === "admin") cloud?.push(next)
   }
   const [tab, setTab] = useState("games")
+  const [liveOpen, setLiveOpen] = useState(false)
   useEffect(() => installStackTables(), [])
   useEffect(() => installDataViz(), [])
   // The header shrinks once the page is scrolled, and a new tab always starts at the top.
@@ -209,6 +212,15 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           </Button>
         </div>
       )}
+      {!readOnly && !liveOpen && findLiveGame(state) && (
+        <LiveMiniBar
+          state={state}
+          onOpen={() => {
+            setTab("games")
+            setLiveOpen(true)
+          }}
+        />
+      )}
       <main id="main" tabIndex={-1} className="outline-none">
       <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList className="max-sm:hidden">
@@ -222,6 +234,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           <GamesPage
             state={state}
             update={update}
+            liveOpen={liveOpen}
+            setLiveOpen={setLiveOpen}
             onOpenPlayer={(id) => {
               setPlayerId(id)
               setTab("player")
