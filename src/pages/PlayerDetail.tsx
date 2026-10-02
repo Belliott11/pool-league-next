@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PanelBoundary } from "@/components/PanelBoundary"
-import { PlayerAvatar } from "@/components/PlayerAvatar"
+import { PlayerHero } from "@/components/PlayerHero"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
@@ -143,7 +142,7 @@ export function PlayerDetailPage({
     if (pid) renderPlayerRankPill(pid)
   }, [pid, version])
 
-  if (!player || !pid) return <p className="text-muted-foreground">No players yet.</p>
+  if (!player || !pid) return <p className="text-muted-foreground">No players yet. Add one in the Players tab, then pick them here.</p>
 
   const record = row ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}` : null
 
@@ -176,45 +175,13 @@ export function PlayerDetailPage({
         </SelectContent>
       </Select>
 
-      <Card className="tile overflow-hidden">
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <PlayerAvatar id={pid} name={player.name} size="lg" />
-            <h2 className="font-display text-2xl font-bold">{player.name}</h2>
-            <div id="playerRankPill" className="legacy" />
-            <span className="ml-auto flex gap-2">
-              <Button size="sm" variant="outline" onClick={share}>
-                Share
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => downloadTradingCard(pid)}>
-                Card
-              </Button>
-            </span>
-          </div>
-          {row ? (
-            <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-              <div>
-                <div className="font-display text-7xl font-extrabold leading-none tabular-nums text-primary sm:text-8xl">{fmtRate(row.twoWayPer20)}</div>
-                <div className="mt-1 text-sm text-muted-foreground">Two-Way/20</div>
-              </div>
-              <dl className="flex gap-6 border-l border-dashed pl-6">
-                {[
-                  ["Record", record],
-                  ["PTS/20", fmtRate(row.rate.pts)],
-                  ["Off/20", fmtRate(row.offRatingPer20)],
-                ].map(([k, v]) => (
-                  <div key={k}>
-                    <dd className="font-display text-xl font-bold tabular-nums">{v}</dd>
-                    <dt className="text-xs text-muted-foreground">{k}</dt>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">No games yet</p>
-          )}
-        </CardContent>
-      </Card>
+      <PlayerHero
+        pid={pid}
+        name={player.name}
+        stats={row ? { twoWay: fmtRate(row.twoWayPer20), record: record!, pts: fmtRate(row.rate.pts), off: fmtRate(row.offRatingPer20) } : null}
+        onShare={share}
+        onCard={() => downloadTradingCard(pid)}
+      />
 
       <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as shot chart or tips (press /)" />
       <nav className="flex flex-wrap gap-2" aria-label="Player sections">
