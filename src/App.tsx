@@ -5,6 +5,7 @@ import { PageSkeleton } from "@/components/PageSkeleton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { installStackTables } from "@/lib/stackTables"
 import { loadToggles, saveToggles, type Toggles } from "@/lib/toggles"
 import { importStateFromJson, loadState, saveState } from "@/lib/state"
 import type { Update } from "@/lib/store"
@@ -84,6 +85,7 @@ function ThemeToggle() {
 function AppShell({ initial }: { initial: PooleanState }) {
   const [state, setState] = useState(initial)
   const [tab, setTab] = useState("games")
+  useEffect(() => installStackTables(), [])
   // The header shrinks once the page is scrolled, and a new tab always starts at the top.
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {

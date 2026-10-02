@@ -278,3 +278,146 @@
 .legacy.legacy select,
 .legacy.legacy input:not([type="checkbox"]):not([type="radio"]) { max-width: 100%; min-width: 0; }
 .legacy.legacy .stat-trend-picker { display: flex; flex-direction: column; align-items: stretch; gap: 0.25rem; max-width: 100%; }
+
+/* ================= Shared building blocks for the classic-markup panels =================
+   List rows, stat tiles and rank tiles written once, so Milestones, Tips, Streaks, Partners,
+   Self-Creation and the rest read as the same family as the rebuilt panels. */
+
+/* list rows: icon in a round chip, text, then a right-aligned date or note */
+.legacy.legacy .player-tips-list,
+.legacy.legacy .notable-matchups-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+.legacy.legacy .player-tips-list > li,
+.legacy.legacy .notable-matchups-list > li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border: 0;
+  border-bottom: 1px dashed var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+.legacy.legacy .player-tips-list > li:last-child,
+.legacy.legacy .notable-matchups-list > li:last-child { border-bottom: 0; }
+.legacy.legacy .player-tips-list > li > svg.icon,
+.legacy.legacy .player-tip-icon {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  padding: 0.45rem;
+  border-radius: 999px;
+  background: var(--sh-muted);
+  color: var(--primary);
+}
+.legacy.legacy .player-tip-icon { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.legacy.legacy .player-tip-icon svg { width: 1rem; height: 1rem; }
+.legacy.legacy .player-tips-list > li > .hint { margin-left: auto !important; flex: none; font-variant-numeric: tabular-nums; }
+
+/* tile grids */
+.legacy.legacy .league-rank-grid,
+.legacy.legacy .real-partner-grid,
+.legacy.legacy .trophy-case-grid,
+.legacy.legacy .profile-stat-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+/* tiles: a quiet label, a big number */
+.legacy.legacy .profile-stat-tile,
+.legacy.legacy .league-rank-badge,
+.legacy.legacy .real-partner-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  text-align: left;
+}
+.legacy.legacy .league-rank-badge { align-items: center; text-align: center; }
+.legacy.legacy .profile-stat-value,
+.legacy.legacy .league-rank-place,
+.legacy.legacy .real-partner-pct,
+.legacy.legacy .score-display {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}
+.legacy.legacy .profile-stat-label,
+.legacy.legacy .league-rank-label,
+.legacy.legacy .real-partner-label,
+.legacy.legacy .real-partner-record {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.legacy.legacy .league-rank-top { border-color: var(--gold); }
+.legacy.legacy .league-rank-top .league-rank-place { color: var(--gold); }
+.legacy.legacy .score-display { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+.legacy.legacy .score-display .hint { font-family: var(--font-sans); font-weight: 400; font-size: 0.8rem; }
+
+/* ================= Phone: tables become stacked cards =================
+   Tables with a few columns (see lib/stackTables.ts) stop scrolling sideways: each row is a card, the
+   first column is its title, and the header row stays as a wrapping set of sort chips. */
+@media (max-width: 640px) {
+  .legacy.legacy table.stack-rows,
+  .legacy.legacy table.stack-rows tbody { display: block; width: 100%; }
+  .legacy.legacy table.stack-rows thead { display: block; margin-bottom: 0.5rem; }
+  .legacy.legacy table.stack-rows thead tr { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .legacy.legacy table.stack-rows thead th {
+    height: auto;
+    padding: 0.125rem 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 0.75rem;
+  }
+  .legacy.legacy table.stack-rows tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+  }
+  .legacy.legacy table.stack-rows tbody td {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0;
+    border: 0;
+    font-size: 0.8125rem;
+  }
+  .legacy.legacy table.stack-rows tbody td::before {
+    content: attr(data-label);
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+  }
+  .legacy.legacy table.stack-rows tbody td:first-child {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    font-weight: 700;
+    font-size: 0.9375rem;
+  }
+  .legacy.legacy table.stack-rows tbody td:first-child::before { display: none; }
+  .legacy.legacy table.stack-rows .sticky-col { position: static; background: transparent; }
+}
+@media (max-width: 640px) {
+  .legacy.legacy .table-scroll:has(> table.stack-rows) { overflow: visible; max-height: none; }
+}
