@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { Section } from "@/components/Section"
 import { syncLegacy } from "@/lib/legacy"
@@ -53,8 +54,8 @@ function ExportPanel({ spec, version }: { spec: ExportPanelSpec; version: unknow
     }
   }, [spec, version])
   return (
-    <details open={spec.open} className="group rounded-xl border bg-card" data-export-panel={spec.title}>
-      <summary className="flex cursor-pointer list-none items-center gap-2 p-4 [&::-webkit-details-marker]:hidden">
+    <details open={spec.open} className="group export-panel overflow-hidden rounded-xl border bg-card" data-export-panel={spec.title}>
+      <summary className="tile flex cursor-pointer list-none items-center gap-2 p-4 [&::-webkit-details-marker]:hidden">
         <span className="text-muted-foreground transition-transform group-open:rotate-90">&#9656;</span>
         <h3 className="font-display text-base font-bold">{spec.title}</h3>
         {spec.tag && <Badge variant="secondary">{spec.tag}</Badge>}
@@ -79,10 +80,11 @@ export function ExportPage({ state, toggles }: { state: PooleanState; toggles: T
     <div className="flex min-w-0 flex-col gap-4">
       <nav className="flex flex-wrap gap-2" aria-label="Export sections">
         {SECTIONS.map((s) => (
-          <button
+          <Button
             key={s.key}
             type="button"
-            className="rounded-full border px-3 py-1 text-sm hover:bg-muted"
+            size="sm"
+            variant="outline"
             onClick={() => {
               const el = document.getElementById(`export-section-${s.key}`) as HTMLDetailsElement | null
               if (el) {
@@ -92,7 +94,7 @@ export function ExportPage({ state, toggles }: { state: PooleanState; toggles: T
             }}
           >
             {s.title}
-          </button>
+          </Button>
         ))}
       </nav>
       {SECTIONS.map((s) => (
