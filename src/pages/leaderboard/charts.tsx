@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { computeLeagueTsByZone, computeQuadrantData, computeVolumeEfficiencyData } from "@/lib/legacy-core"
+import { computeLeagueTsByZone, computeLeagueTsOverTime, formatDateDisplay, computeQuadrantData, computeVolumeEfficiencyData } from "@/lib/legacy-core"
 import { playerPhotoUrl } from "@/lib/players"
 
 type Open = (id: string) => void
@@ -179,5 +179,53 @@ export function TsByZone() {
         })}
       </svg>
     </Frame>
+  )
+}
+
+/* ---------- League TS% Over Time: one point per night, evenly spaced, on a stepped % scale ---------- */
+export function LeagueTsOverTime() {
+  const pts = computeLeagueTsOverTime() as { date: string; ts: number }[]
+  if (pts.length === 0) return <p className="text-sm text-muted-foreground">No games logged yet.</p>
+  const W = 560
+  const H = 240
+  const L = 44
+  const R = 20
+  const T = 22
+  const B = 40
+  const vals = pts.map((p) => p.ts)
+  const ay = axis(Math.max(0, Math.min(...vals) - 5), Math.min(100, Math.max(...vals) + 5), 4)
+  const x = (i: number) => (pts.length === 1 ? (L + W - R) / 2 : L + (i / (pts.length - 1)) * (W - L - R))
+  const y = (v: number) => H - B - ((v - ay.lo) / (ay.hi - ay.lo)) * (H - T - B)
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p.ts)}`).join(" ")
+  const area = `${line} L${x(pts.length - 1)},${H - B} L${x(0)},${H - B} Z`
+  const last = pts.length - 1
+  return (
+    <div className="w-full rounded-xl border bg-card p-2">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="League true shooting percentage by night">
+        {ay.ticks.map((t) => (
+          <g key={t}>
+            <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} className="stroke-border" />
+            <text x={L - 5} y={y(t) + 3} textAnchor="end" className={tickText}>{t}%</text>
+          </g>
+        ))}
+        {pts.map((p, i) => (
+          <g key={p.date}>
+            <line x1={x(i)} x2={x(i)} y1={T} y2={H - B} className="stroke-border" />
+            <text x={x(i)} y={H - B + 14} textAnchor="middle" className={tickText}>{formatDateDisplay(p.date)}</text>
+          </g>
+        ))}
+        <path d={area} className="fill-chart-2/15" />
+        <path d={line} className="fill-none stroke-chart-2" strokeWidth={2.5} strokeLinejoin="round" />
+        {pts.map((p, i) => (
+          <g key={p.date}>
+            <title>{`${formatDateDisplay(p.date)}: ${p.ts}% TS`}</title>
+            <circle cx={x(i)} cy={y(p.ts)} r={i === last ? 5 : 3.5} className={i === last ? "fill-primary stroke-card" : "fill-chart-2 stroke-card"} strokeWidth={2} />
+            {(i === last || i === 0 || pts.length <= 8) && (
+              <text x={x(i)} y={y(p.ts) - 9} textAnchor="middle" className="fill-foreground text-[11px] font-bold">{p.ts}%</text>
+            )}
+          </g>
+        ))}
+      </svg>
+    </div>
   )
 }
