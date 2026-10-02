@@ -141,7 +141,7 @@ export function PlayersPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-display">Roster</CardTitle>
+          <CardTitle className="font-display">Roster ({state.players.length})</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
@@ -161,62 +161,78 @@ export function PlayersPage({
           ) : visible.length === 0 ? (
             <p className="text-sm text-muted-foreground">No players match the selected role filter.</p>
           ) : (
-            visible.map((p) => {
-              const phys = getPlayerPhysicalData(state, p.id)
-              const note = phys?.effort !== undefined ? `Effort: ${EFFORT_LABELS[phys.effort]}${phys.note ? ` (${phys.note})` : ""}` : phys?.note
-              return (
-                <div key={p.id} className="flex flex-col gap-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2">
-                    <span className="flex flex-wrap items-center gap-2" title={note || undefined}>
-                      <button type="button" className="flex items-center gap-2 font-bold text-accent hover:underline" onClick={() => onOpenPlayer(p.id)}>
-                        <PlayerAvatar id={p.id} name={p.name} size="sm" />
-                        {p.name}
-                      </button>
-                      {(phys?.roles ?? []).map((r) => (
-                        <Badge key={r} variant="secondary">
-                          {PHYSICAL_ROLE_LABELS[r]}
-                        </Badge>
-                      ))}
-                    </span>
-                    <span className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setEditing(editing === p.id ? null : p.id)}>
-                        {editing === p.id ? "Close" : "Edit Tags"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          if (!confirm(`Remove ${p.name} from the roster? Their recorded stats stay in past games.`)) return
-                          update((s) => ({ ...s, players: s.players.filter((x) => x.id !== p.id) }))
+            <div className="grid gap-3 sm:grid-cols-2">
+              {visible.map((p) => {
+                const phys = getPlayerPhysicalData(state, p.id)
+                const note = phys?.effort !== undefined ? `Effort: ${EFFORT_LABELS[phys.effort]}${phys.note ? ` (${phys.note})` : ""}` : phys?.note
+                const build = phys ? BUILD_LABELS[phys.build] : null
+                return (
+                  <div key={p.id} className={`flex flex-col gap-3 ${editing === p.id ? "sm:col-span-2" : ""}`}>
+                    <div className="tile flex flex-col gap-3 rounded-xl border p-3">
+                      <div className="flex items-center gap-3">
+                        <PlayerAvatar id={p.id} name={p.name} size="lg" />
+                        <div className="min-w-0">
+                          <button type="button" className="font-display block truncate text-left text-lg font-bold hover:underline" onClick={() => onOpenPlayer(p.id)}>
+                            {p.name}
+                          </button>
+                          {phys && (
+                            <div className="text-sm text-muted-foreground">
+                              {Math.floor(phys.heightIn / 12)}&apos;{phys.heightIn % 12}&quot;{build ? ` - ${build}` : ""}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {(phys?.roles ?? []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {(phys?.roles ?? []).map((r) => (
+                            <Badge key={r} variant="secondary">
+                              {PHYSICAL_ROLE_LABELS[r]}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {note && <p className="text-xs text-muted-foreground">{note}</p>}
+                      <div className="flex gap-2 border-t border-dashed pt-3">
+                        <Button size="sm" variant="outline" onClick={() => setEditing(editing === p.id ? null : p.id)}>
+                          {editing === p.id ? "Close" : "Edit Tags"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="ml-auto text-destructive"
+                          onClick={() => {
+                            if (!confirm(`Remove ${p.name} from the roster? Their recorded stats stay in past games.`)) return
+                            update((s) => ({ ...s, players: s.players.filter((x) => x.id !== p.id) }))
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                    {editing === p.id && (
+                      <ProfileEditor
+                        key={p.id}
+                        phys={phys}
+                        hasOverride={!!overrides[p.id]}
+                        onCancel={() => setEditing(null)}
+                        onSave={(next) => {
+                          update((s) => ({ ...s, playerPhysicalOverrides: { ...((s.playerPhysicalOverrides ?? {}) as object), [p.id]: next } }))
+                          setEditing(null)
                         }}
-                      >
-                        Remove
-                      </Button>
-                    </span>
+                        onReset={() => {
+                          update((s) => {
+                            const rest = { ...((s.playerPhysicalOverrides ?? {}) as Record<string, PhysicalData>) }
+                            delete rest[p.id]
+                            return { ...s, playerPhysicalOverrides: rest }
+                          })
+                          setEditing(null)
+                        }}
+                      />
+                    )}
                   </div>
-                  {editing === p.id && (
-                    <ProfileEditor
-                      key={p.id}
-                      phys={phys}
-                      hasOverride={!!overrides[p.id]}
-                      onCancel={() => setEditing(null)}
-                      onSave={(next) => {
-                        update((s) => ({ ...s, playerPhysicalOverrides: { ...((s.playerPhysicalOverrides ?? {}) as object), [p.id]: next } }))
-                        setEditing(null)
-                      }}
-                      onReset={() => {
-                        update((s) => {
-                          const rest = { ...((s.playerPhysicalOverrides ?? {}) as Record<string, PhysicalData>) }
-                          delete rest[p.id]
-                          return { ...s, playerPhysicalOverrides: rest }
-                        })
-                        setEditing(null)
-                      }}
-                    />
-                  )}
-                </div>
-              )
-            })
+                )
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
