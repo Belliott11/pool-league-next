@@ -35,6 +35,31 @@ const JUMP_ITEMS: JumpItem[] = [
   })),
 ]
 
+// Phones only: one row of chips pinned under the header, so the long page is a jump away instead of a scroll.
+const NAV = [
+  { id: "lb-ranking", label: "Ranking" },
+  { id: "lb-rates", label: "Season rates" },
+  ...SECTIONS.map((s) => ({ id: `lb-section-${s.key}`, label: s.title })),
+]
+
+function QuickNav() {
+  const go = (id: string) => {
+    const el = document.getElementById(id)
+    if (!el) return
+    if (el instanceof HTMLDetailsElement) el.open = true
+    el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" })
+  }
+  return (
+    <nav aria-label="Jump to a part of the leaderboard" data-no-swipe className="sticky top-0 z-20 -mx-4 flex gap-2 overflow-x-auto bg-background/90 px-4 py-2 backdrop-blur sm:hidden">
+      {NAV.map((n, i) => (
+        <button key={n.id} type="button" onClick={() => go(n.id)} style={{ "--i": i } as React.CSSProperties} className="anim-chip shrink-0 rounded-full border bg-card px-3 py-1.5 text-sm font-medium">
+          {n.label}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
 export function LeaderboardPage({
   state,
   toggles,
@@ -55,12 +80,19 @@ export function LeaderboardPage({
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as heatmap or turnovers (press /)" />
-      <LaneBars onOpenPlayer={onOpenPlayer} />
-      <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
-      {SECTIONS.map((s) => (
-        <Section key={s.key} id={`lb-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
-          <LegacyPanels state={state} section={s.key} onOpenPlayer={onOpenPlayer} version={version} />
-        </Section>
+      <QuickNav />
+      <div id="lb-ranking" className="anim-rise scroll-mt-28" style={{ "--i": 0 } as React.CSSProperties}>
+        <LaneBars onOpenPlayer={onOpenPlayer} />
+      </div>
+      <div id="lb-rates" className="anim-rise scroll-mt-28" style={{ "--i": 1 } as React.CSSProperties}>
+        <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
+      </div>
+      {SECTIONS.map((s, i) => (
+        <div key={s.key} className="anim-rise" style={{ "--i": i + 2 } as React.CSSProperties}>
+          <Section id={`lb-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
+            <LegacyPanels state={state} section={s.key} onOpenPlayer={onOpenPlayer} version={version} />
+          </Section>
+        </div>
       ))}
     </div>
   )

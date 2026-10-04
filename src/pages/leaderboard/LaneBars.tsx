@@ -18,6 +18,9 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
   // re-renders (toggles) do not replay it. Before that, and without IntersectionObserver or with
   // reduced motion, the chart simply renders in its full resting layout.
   const [played, setPlayed] = useState(false)
+  // On phones only the top few lanes show until asked, so the page is not one long scroll.
+  const [showAll, setShowAll] = useState(false)
+  const PHONE_ROWS = 6
   const card = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = card.current
@@ -70,7 +73,7 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
           const anim = played ? { animationDelay: `${i * 40}ms` } : {}
           const color = i === 0 ? "bg-primary" : v >= 0 ? "bg-pos" : "bg-neg"
           return (
-            <div key={r.player.id} className="flex items-center gap-3 border-b border-dashed border-border py-1.5 last:border-b-0">
+            <div key={r.player.id} className={`flex items-center gap-3 border-b border-dashed border-border py-1.5 last:border-b-0 ${i >= PHONE_ROWS && !showAll ? "max-sm:hidden" : ""}`}>
               <button
                 type="button"
                 className="w-16 shrink-0 truncate text-left text-sm font-semibold hover:underline sm:w-24"
@@ -97,6 +100,11 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
             </div>
           )
         })}
+        {rows.length > PHONE_ROWS && (
+          <button type="button" onClick={() => setShowAll((v) => !v)} className="mt-2 w-full rounded-lg border py-2 text-sm font-medium sm:hidden" aria-expanded={showAll}>
+            {showAll ? "Show top " + PHONE_ROWS : `Show all ${rows.length}`}
+          </button>
+        )}
       </div>
     </Panel>
   )

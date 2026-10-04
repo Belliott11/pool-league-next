@@ -7,6 +7,7 @@ import { findLiveGame, liveTargetOf, liveTotals } from "@/lib/live"
 import { playerName } from "@/lib/players"
 import { liveScoreOf } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
+import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
 import { Confetti, useScorePops, type Pop } from "./LiveGamePage"
 import { LiveOdds, LiveOddsMini } from "./LiveOdds"
@@ -37,8 +38,8 @@ function Side({ side, ids, total, other, game, state, pops }: { side: "A" | "B";
   const scored = pops.some((p) => ids.includes(p.pid))
   return (
     <section className="flex min-w-0 flex-col gap-2" aria-label={`Team ${side}`}>
-      <div className={cn("rounded-xl border-2 p-3 text-center transition-colors duration-300", total > other ? "border-accent bg-accent/15" : "border-border bg-card")}>
-        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Team {side}</div>
+      <div className={cn("rounded-xl border-2 p-3 text-center transition-colors duration-300", total > other ? cn(TEAM[side].border, TEAM[side].tint) : "border-border bg-card")}>
+        <div className={cn("text-xs font-semibold uppercase tracking-wide", TEAM[side].text)}>Team {side}</div>
         <div key={total} className={cn("font-display text-6xl leading-none tabular-nums", scored && "anim-bump")}>
           {total}
         </div>

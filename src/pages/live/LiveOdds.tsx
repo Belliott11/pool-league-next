@@ -1,17 +1,18 @@
 import { liveProbHistory, liveWinProbability } from "@/lib/live"
 import type { Game } from "@/lib/types"
+import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
 
 const pct = (p: number) => Math.round(p * 100)
 
-// The favored side gets the accent; the other side stays quiet. Widths ease to each new value.
+// Each side keeps its own colour; the favored side is full strength and the other is dimmed. Widths ease to each new value.
 function Bar({ pA, className }: { pA: number; className?: string }) {
   const a = pct(pA)
   const aFav = pA >= 0.5
   return (
     <div className={cn("flex overflow-hidden rounded-full bg-muted", className)} aria-hidden>
-      <span className={cn("transition-[width] duration-500 ease-out", aFav ? "bg-primary" : "bg-muted-foreground/40")} style={{ width: `${a}%` }} />
-      <span className={cn("transition-[width] duration-500 ease-out", aFav ? "bg-muted-foreground/40" : "bg-primary")} style={{ width: `${100 - a}%` }} />
+      <span className={cn("transition-[width] duration-500 ease-out", TEAM.A.bg, !aFav && "opacity-50")} style={{ width: `${a}%` }} />
+      <span className={cn("transition-[width] duration-500 ease-out", TEAM.B.bg, aFav && "opacity-50")} style={{ width: `${100 - a}%` }} />
     </div>
   )
 }
@@ -43,13 +44,13 @@ export function LiveOdds({ game }: { game: Game }) {
     <section className="rounded-xl border bg-card p-3" aria-label="Win probability">
       <div className="flex items-end justify-between">
         <div>
-          <div className={cn("font-display text-3xl leading-none tabular-nums", aFav && "text-primary")}>{a}%</div>
-          <div className="mt-1 text-xs text-muted-foreground">Team A</div>
+          <div className={cn("font-display text-3xl leading-none tabular-nums", TEAM.A.text, !aFav && "opacity-60")}>{a}%</div>
+          <div className={cn("mt-1 text-xs font-medium", TEAM.A.text)}>Team A</div>
         </div>
         <div className="pb-0.5 text-xs font-medium text-muted-foreground">Win probability</div>
         <div className="text-right">
-          <div className={cn("font-display text-3xl leading-none tabular-nums", !aFav && "text-primary")}>{100 - a}%</div>
-          <div className="mt-1 text-xs text-muted-foreground">Team B</div>
+          <div className={cn("font-display text-3xl leading-none tabular-nums", TEAM.B.text, aFav && "opacity-60")}>{100 - a}%</div>
+          <div className={cn("mt-1 text-xs font-medium", TEAM.B.text)}>Team B</div>
         </div>
       </div>
       <Bar pA={pA} className="mt-2 h-3" />
@@ -69,9 +70,9 @@ export function LiveOddsMini({ game }: { game: Game }) {
   const a = pct(pA)
   return (
     <div className="flex max-w-xs items-center gap-2 text-xs text-muted-foreground" role="group" aria-label={`Win probability: Team A ${a} percent, Team B ${100 - a} percent`}>
-      <span className="tabular-nums">A {a}%</span>
+      <span className={cn("tabular-nums", TEAM.A.text)}>A {a}%</span>
       <Bar pA={pA} className="h-1.5 flex-1" />
-      <span className="tabular-nums">B {100 - a}%</span>
+      <span className={cn("tabular-nums", TEAM.B.text)}>B {100 - a}%</span>
     </div>
   )
 }

@@ -1,3 +1,5 @@
+import { TEAM } from "@/lib/teamColors"
+import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/EmptyState"
 import type { ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -122,7 +124,7 @@ function GameStats({ state, game }: { state: PooleanState; game: Game }) {
               <TableCell>
                 <PlayerCell state={state} id={id} />
               </TableCell>
-              <TableCell>{game.teamA.includes(id) ? "A" : "B"}</TableCell>
+              <TableCell className={game.teamA.includes(id) ? TEAM.A.text : TEAM.B.text}>{game.teamA.includes(id) ? "A" : "B"}</TableCell>
               <TableCell className="font-semibold tabular-nums">{s.pts}</TableCell>
               <TableCell>{s.oreb}</TableCell>
               <TableCell>{s.dreb}</TableCell>
@@ -330,7 +332,7 @@ function TeamScore({ state, game, ids, label, score }: { state: PooleanState; ga
   void game
   return (
     <div className="flex flex-1 flex-col items-center gap-2 text-center">
-      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className={cn("text-sm font-semibold", label === "Team A" ? TEAM.A.text : TEAM.B.text)}>{label}</span>
       <span className="font-display text-5xl font-bold tabular-nums">{score}</span>
       <div className="flex flex-wrap justify-center gap-2">
         {ids.map((id) => (

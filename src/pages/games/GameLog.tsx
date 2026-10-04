@@ -1,3 +1,4 @@
+import { TEAM } from "@/lib/teamColors"
 import { EmptyState } from "@/components/EmptyState"
 import { useMemo, useState } from "react"
 import { useReadOnly } from "@/lib/mode"
@@ -97,11 +98,11 @@ function GameCard({
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex flex-col gap-0.5">
             {[
-              { team: game.teamA, score: scoreA, fb: "Team A", won: scoreA > scoreB },
-              { team: game.teamB, score: scoreB, fb: "Team B", won: scoreB > scoreA },
+              { team: game.teamA, score: scoreA, fb: "Team A", won: scoreA > scoreB, c: TEAM.A },
+              { team: game.teamB, score: scoreB, fb: "Team B", won: scoreB > scoreA, c: TEAM.B },
             ].map((t, i) => (
               <span key={i} className="flex items-baseline gap-3">
-                <span className={`font-display w-9 text-right text-2xl font-extrabold tabular-nums ${t.won ? "text-primary" : ""}`}>{t.score}</span>
+                <span className={`font-display w-9 text-right text-2xl font-extrabold tabular-nums ${t.c.text} ${t.won ? "" : "opacity-60"}`}>{t.score}</span>
                 <span className={`text-sm ${t.won ? "font-bold" : "text-muted-foreground"}`}>{names(state, t.team, t.fb)}</span>
               </span>
             ))}
@@ -113,8 +114,8 @@ function GameCard({
               aria-label={`Score split ${scoreA} to ${scoreB}`}
               className="flex h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-muted"
             >
-              <span className={scoreA > scoreB ? "bg-primary" : "bg-muted-foreground/40"} style={{ width: `${(scoreA / (scoreA + scoreB)) * 100}%` }} />
-              <span className={scoreB > scoreA ? "bg-primary" : "bg-muted-foreground/40"} style={{ width: `${(scoreB / (scoreA + scoreB)) * 100}%` }} />
+              <span className={`${TEAM.A.bg} ${scoreA > scoreB ? "" : "opacity-50"}`} style={{ width: `${(scoreA / (scoreA + scoreB)) * 100}%` }} />
+              <span className={`${TEAM.B.bg} ${scoreB > scoreA ? "" : "opacity-50"}`} style={{ width: `${(scoreB / (scoreA + scoreB)) * 100}%` }} />
             </div>
           )}
           <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">

@@ -57,6 +57,10 @@ function barTone(v: number, r: Range, mode: "plain" | "sorted" | "strong") {
   return mode === "sorted" ? "bg-primary/15" : "bg-foreground/[0.07]"
 }
 
+// On phones each player card shows the headline stats and tucks the rest behind a tap.
+const PHONE_STATS = 6
+const PHONE_CARDS = 4
+
 function cellText<R>(col: Column<R>, r: R): string {
   if (col.display) return col.display(r)
   const v = col.accessor(r)
@@ -72,6 +76,7 @@ function Cell<R>({ col, r }: { col: Column<R>; r: R }) {
 
 export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, heroKey, highlight, empty, emptyHint }: Props<R>) {
   const [sort, setSort] = useState<Sort | null>(defaultSort ?? null)
+  const [allCards, setAllCards] = useState(false)
 
   const sorted = useMemo(() => {
     const col = sort ? columns.find((c) => c.key === sort.key) : undefined
@@ -177,7 +182,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
       </div>
 
       <div className="flex flex-col gap-3 md:hidden">
-        {sorted.map((r, i) => (
+        {(allCards ? sorted : sorted.slice(0, PHONE_CARDS)).map((r, i) => (
           <Card key={rowKey(r, i)}>
             <CardContent className="flex flex-col gap-2">
               <div className="font-medium">{renderFirst ? renderFirst(r) : <Cell col={first} r={r} />}</div>
@@ -187,9 +192,9 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                   <span className="font-display text-2xl font-bold tabular-nums text-accent"><Cell col={hero} r={r} /></span>
                 </div>
               )}
-              {columns
-                .filter((c) => c.key !== first.key && c.key !== hero?.key)
-                .map((c) => {
+              {(() => {
+                const stats = columns.filter((c) => c.key !== first.key && c.key !== hero?.key)
+                const renderStat = (c: Column<R>) => {
                   const v = c.accessor(r)
                   const rg = ranges[c.key]
                   return (
@@ -209,10 +214,30 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                       )}
                     </div>
                   )
-                })}
+                }
+                return (
+                  <>
+                    {stats.slice(0, PHONE_STATS).map(renderStat)}
+                    {stats.length > PHONE_STATS && (
+                      <details className="group/more">
+                        <summary className="cursor-pointer list-none rounded-md border py-2 text-center text-sm font-medium [&::-webkit-details-marker]:hidden">
+                          <span className="group-open/more:hidden">More stats ({stats.length - PHONE_STATS})</span>
+                          <span className="hidden group-open/more:inline">Fewer stats</span>
+                        </summary>
+                        <div className="mt-2 flex flex-col gap-2">{stats.slice(PHONE_STATS).map(renderStat)}</div>
+                      </details>
+                    )}
+                  </>
+                )
+              })()}
             </CardContent>
           </Card>
         ))}
+        {sorted.length > PHONE_CARDS && (
+          <button type="button" aria-expanded={allCards} onClick={() => setAllCards((v) => !v)} className="rounded-lg border bg-card py-2.5 text-sm font-medium">
+            {allCards ? `Show top ${PHONE_CARDS}` : `Show all ${sorted.length}`}
+          </button>
+        )}
       </div>
     </>
   )
