@@ -79,10 +79,20 @@ export interface Rsvp {
   playerIds: string[]
 }
 
+// One recording that several games share (a whole night). Each game keeps its own start and end inside it.
+export interface MasterVideo {
+  id: string
+  name: string
+  fileName?: string | null
+  url?: string
+  path?: string
+}
+
 export interface PooleanState {
   players: Player[]
   games: Game[]
   rsvps?: Rsvp[]
+  masterVideos?: MasterVideo[]
   currentSeasonStartedAt?: string | null
   [key: string]: unknown
 }

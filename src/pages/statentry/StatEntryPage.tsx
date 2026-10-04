@@ -1,7 +1,7 @@
 import { ArrowLeft, Undo2 } from "lucide-react"
 import { useRef, useState } from "react"
 import { YouTubePlayer, type PlayerControl } from "@/components/YouTubePlayer"
-import { youtubeId } from "@/lib/video"
+import { gameVideoUrl, youtubeId } from "@/lib/video"
 import { EmptyState } from "@/components/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,8 +28,9 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
   const videoRef = useRef<HTMLVideoElement>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const direct = isDirectVideoUrl(game.videoUrl)
-  const yt = !direct && game.videoUrl ? youtubeId(game.videoUrl) : null
+  const videoUrl = gameVideoUrl(state, game)
+  const direct = isDirectVideoUrl(videoUrl)
+  const yt = !direct && videoUrl ? youtubeId(videoUrl) : null
   const ytControl = useRef<PlayerControl | null>(null)
   const scoreA = teamScore(game, game.teamA)
   const scoreB = teamScore(game, game.teamB)
@@ -102,7 +103,7 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
       ) : direct ? (
         <video
           ref={videoRef}
-          src={game.videoUrl}
+          src={videoUrl}
           controls
           playsInline
           preload="metadata"
@@ -113,11 +114,11 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
         />
       ) : (
         <EmptyState
-          title={game.videoUrl ? "This video link is not a direct file" : "No video for this game"}
+          title={videoUrl ? "This video link is not a direct file" : "No video for this game"}
           hint="Event times can't be captured automatically. Type the time (m:ss) into each event, or leave it blank."
           action={
-            game.videoUrl ? (
-              <a href={game.videoUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
+            videoUrl ? (
+              <a href={videoUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
                 Open the video in a new tab
               </a>
             ) : undefined

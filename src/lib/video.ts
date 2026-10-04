@@ -3,6 +3,7 @@
 // no issue. If that function is not set up, files under 50 MB go to Supabase Storage (bucket `game-videos`,
 // see supabase/storage.sql) instead. Both use XMLHttpRequest so the progress bar is real.
 import { getClient, loadCloudConfig } from "./cloud"
+import type { Game, MasterVideo, PooleanState } from "./types"
 
 const BUCKET = "game-videos"
 const MAX_BYTES = 50 * 1024 * 1024 // Supabase free plan, per file
@@ -49,6 +50,13 @@ export function youtubeId(url: string): string | null {
     return null
   }
 }
+
+// The master (whole-night) recording a game belongs to, if any.
+export const masterOf = (state: PooleanState, game: Game): MasterVideo | undefined =>
+  game.masterVideoId ? state.masterVideos?.find((m) => m.id === game.masterVideoId) : undefined
+
+// The video a game plays: its own, or its master recording's.
+export const gameVideoUrl = (state: PooleanState, game: Game): string => game.videoUrl || masterOf(state, game)?.url || ""
 
 export function embedKind(url: string): "file" | "youtube" | "vimeo" | "other" {
   if (isDirectVideoUrl(url)) return "file"

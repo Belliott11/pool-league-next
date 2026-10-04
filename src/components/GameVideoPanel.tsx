@@ -7,30 +7,40 @@ import { getClient } from "@/lib/cloud"
 import { formatDateDisplay } from "@/lib/format"
 import { formatVideoTime, parseVideoTimeInput } from "@/lib/legacy-core"
 import type { Update } from "@/lib/store"
-import type { Game } from "@/lib/types"
-import { deleteGameVideo, uploadGameVideo, videoPathFromUrl } from "@/lib/video"
+import type { Game, PooleanState } from "@/lib/types"
+import { deleteGameVideo, gameVideoUrl, masterOf, uploadGameVideo, videoPathFromUrl } from "@/lib/video"
 
 // Several games can point at one recording (a whole night on one video). Each game then keeps its own
 // "starts at" time, and the file is only deleted when no other game still uses it.
-export function GameVideoPanel({ game, games, update, readOnly }: { game: Game; games: Game[]; update: Update; readOnly: boolean }) {
+export function GameVideoPanel({ state, game, update, readOnly }: { state: PooleanState; game: Game; update: Update; readOnly: boolean }) {
+  const games = state.games
   const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState("")
   const [link, setLink] = useState("")
   const [startText, setStartText] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const url = game.videoUrl || ""
+  const master = masterOf(state, game)
+  const url = gameVideoUrl(state, game)
+  // A game in a master recording (carried over from the classic site) sets the video once for the whole
+  // group; its own start and end times stay per game.
+  const useMaster = !!master && !game.videoUrl
+  const groupSize = master ? games.filter((g) => g.masterVideoId === master.id).length : 0
 
   if (readOnly) return url ? <GameVideo url={url} start={game.videoStart} /> : null
 
   const busy = progress !== null
   const cloudOn = !!getClient()
-  const ownPath = game.videoPath || (url ? videoPathFromUrl(url) : null)
+  const ownPath = (useMaster ? master?.path : game.videoPath) || (url ? videoPathFromUrl(url) : null)
   const setVideo = (videoUrl: string | undefined, videoPath: string | undefined, videoStart?: number) =>
-    update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, videoUrl, videoPath, videoStart } : g)) }))
+    update((s) =>
+      useMaster
+        ? { ...s, masterVideos: (s.masterVideos ?? []).map((m) => (m.id === master!.id ? { ...m, url: videoUrl, path: videoPath } : m)) }
+        : { ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, videoUrl, videoPath, ...(videoStart !== undefined ? { videoStart } : {}) } : g)) },
+    )
   // Another game uses this same recording, so its file must stay.
-  const sharedWithOthers = (u: string) => games.some((g) => g.id !== game.id && g.videoUrl === u)
+  const sharedWithOthers = (u: string) => (useMaster ? false : games.some((g) => g.id !== game.id && (g.videoUrl === u || masterOf(state, g)?.url === u)))
   // Recordings other games already have, one entry per distinct video, for "use the same video".
-  const reusable = [...new Map(games.filter((g) => g.id !== game.id && g.videoUrl && g.videoUrl !== url).map((g) => [g.videoUrl as string, g])).values()]
+  const reusable = useMaster ? [] : [...new Map(games.filter((g) => g.id !== game.id && g.videoUrl && g.videoUrl !== url).map((g) => [g.videoUrl as string, g])).values()]
   const startSeconds = game.videoStart ?? 0
 
   async function onFile(file: File | undefined) {
@@ -61,7 +71,12 @@ export function GameVideoPanel({ game, games, update, readOnly }: { game: Game; 
 
   async function remove() {
     const shared = sharedWithOthers(url)
-    if (!confirm(shared ? "Remove this video from this game? Other games keep using it." : "Remove this video from the game? An uploaded file is deleted for everyone.")) return
+    const text = useMaster
+      ? `Remove this video from all ${groupSize} games that share it?`
+      : shared
+        ? "Remove this video from this game? Other games keep using it."
+        : "Remove this video from the game? An uploaded file is deleted for everyone."
+    if (!confirm(text)) return
     setError("")
     try {
       if (ownPath && !shared) await deleteGameVideo(ownPath)
@@ -90,6 +105,11 @@ export function GameVideoPanel({ game, games, update, readOnly }: { game: Game; 
 
   return (
     <div className="flex flex-col gap-3">
+      {master && (
+        <p className="text-sm text-muted-foreground">
+          Part of the recording <span className="font-medium text-foreground">{master.name}</span>, shared by {groupSize} game{groupSize === 1 ? "" : "s"}. {url ? "Set where this game starts below." : "Add the video once and every game in it gets it."}
+        </p>
+      )}
       <GameVideo key={`${url}|${startSeconds}`} url={url} start={startSeconds} />
       <div className="flex flex-wrap items-center gap-2">
         <input ref={fileRef} type="file" accept="video/*" className="sr-only" aria-label="Choose a video file to upload" disabled={!cloudOn || busy} onChange={(e) => void onFile(e.target.files?.[0])} />
