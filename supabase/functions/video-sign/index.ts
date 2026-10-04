@@ -23,7 +23,7 @@ async function hmac(key: ArrayBuffer | Uint8Array, data: string): Promise<ArrayB
 const uriEncode = (s: string) => encodeURIComponent(s).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase())
 
 // AWS Signature Version 4, query-string style, which R2 accepts as a presigned URL.
-async function presign(method: "PUT" | "DELETE", key: string, expires: number): Promise<string> {
+async function presign(method: "PUT" | "DELETE" | "HEAD", key: string, expires: number): Promise<string> {
   const account = Deno.env.get("R2_ACCOUNT_ID")!
   const accessKey = Deno.env.get("R2_ACCESS_KEY_ID")!
   const secret = Deno.env.get("R2_SECRET_ACCESS_KEY")!
@@ -52,6 +52,8 @@ async function presign(method: "PUT" | "DELETE", key: string, expires: number): 
   return `https://${host}${path}?${canonicalQuery}&X-Amz-Signature=${signature}`
 }
 
+const REQUIRED = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_PUBLIC_URL"]
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
   if (req.method !== "POST") return json({ error: "Use POST." }, 405)
@@ -63,6 +65,19 @@ Deno.serve(async (req) => {
   // RLS shows an account only its own row, so a row here means this account is an editor.
   const { data: admin } = await supabase.from("admins").select("user_id").maybeSingle()
   if (!admin) return json({ error: "Only editors can upload videos." }, 403)
+
+  // R2 answers a bad key with an error that browsers hide (no CORS headers), which shows up as a vague
+  // "check your connection". Checking here, with a throwaway lookup, turns it into a readable message.
+  const missing = REQUIRED.filter((n) => !Deno.env.get(n))
+  if (missing.length) return json({ error: `Setup is missing these Supabase secrets: ${missing.join(", ")}.` }, 500)
+  try {
+    const probe = await fetch(await presign("HEAD", "videos/.check", 60), { method: "HEAD" })
+    if (probe.status !== 404 && !probe.ok) {
+      return json({ error: `Cloudflare rejected the credentials (${probe.status}). Re-check R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET for typos or extra spaces.` }, 500)
+    }
+  } catch {
+    return json({ error: "Could not reach Cloudflare R2. Check R2_ACCOUNT_ID." }, 500)
+  }
 
   let body: { action?: string; gameId?: string; name?: string; key?: string }
   try {
