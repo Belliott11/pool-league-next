@@ -73,3 +73,35 @@ Limits on the free plan: each video can be at most 50 MB, and all your videos to
 Visitors can watch because the video bucket is public: anyone who has a video's address can open it, but only editors can upload, replace or delete.
 
 If a video is too big, paste a link instead (a YouTube or Vimeo link, or a direct .mp4 link). Links use no storage. YouTube and Vimeo videos play in the page, but jumping to a moment from a clip only works for uploaded files.
+
+## Big videos with Cloudflare R2 (any size, free up to 10 GB)
+
+Phone videos are usually far over 50 MB. With R2 set up, **Upload video** sends the file straight from the phone to Cloudflare. The site still works without this: files under 50 MB then go to Supabase as above.
+
+1. **Cloudflare account.** Sign up free at cloudflare.com, then open **R2 Object Storage** in the sidebar. It asks for a card to enable R2, but the free tier (10 GB stored, no charge for viewing) does not bill.
+2. **Bucket.** Create a bucket, for example `pool-league-videos`.
+3. **Public address.** Open the bucket, then **Settings**, then **Public Development URL**, and enable it. Copy the address (`https://pub-....r2.dev`).
+4. **CORS.** In the same Settings page, under **CORS policy**, add:
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://belliott11.github.io"],
+       "AllowedMethods": ["GET", "HEAD", "PUT"],
+       "AllowedHeaders": ["*"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+5. **API token.** On the R2 overview page choose **Manage API Tokens**, then **Create API Token**. Give it **Object Read & Write** on just this bucket. Copy the **Access Key ID**, the **Secret Access Key**, and your **Account ID** (shown on the R2 overview page).
+6. **Signing function.** In the Supabase dashboard open **Edge Functions**, then **Deploy a new function** and **Via Editor**. Name it `video-sign`, paste the contents of `supabase/functions/video-sign/index.ts`, and deploy.
+7. **Secrets.** In Supabase, **Edge Functions**, **Secrets**, add these five:
+
+   | Name | Value |
+   | --- | --- |
+   | `R2_ACCOUNT_ID` | your Cloudflare account ID |
+   | `R2_ACCESS_KEY_ID` | the access key ID from step 5 |
+   | `R2_SECRET_ACCESS_KEY` | the secret from step 5 |
+   | `R2_BUCKET` | the bucket name from step 2 |
+   | `R2_PUBLIC_URL` | the `https://pub-....r2.dev` address from step 3 |
+
+Then sign in as an editor, open a game, and upload. The secret key stays inside Supabase; the page only ever sees a link that works for one hour and one file. Only accounts in the `admins` table can get one.

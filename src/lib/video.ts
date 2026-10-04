@@ -1,9 +1,13 @@
-// Game videos in Supabase Storage (bucket `game-videos`, see supabase/storage.sql).
-// Uploads use the Storage REST API through XMLHttpRequest so the progress bar is real.
+// Game videos. Preferred home is Cloudflare R2: the `video-sign` Supabase function checks the caller is an
+// editor and hands back a short-lived upload link, and the phone sends the file straight to R2, so size is
+// no issue. If that function is not set up, files under 50 MB go to Supabase Storage (bucket `game-videos`,
+// see supabase/storage.sql) instead. Both use XMLHttpRequest so the progress bar is real.
 import { getClient, loadCloudConfig } from "./cloud"
 
 const BUCKET = "game-videos"
-const MAX_BYTES = 50 * 1024 * 1024
+const MAX_BYTES = 50 * 1024 * 1024 // Supabase free plan, per file
+const MAX_R2_BYTES = 4 * 1024 * 1024 * 1024
+const R2_PREFIX = "r2:"
 const PUBLIC_MARKER = `/storage/v1/object/public/${BUCKET}/`
 const MIME_BY_EXT: Record<string, string> = { mp4: "video/mp4", m4v: "video/x-m4v", mov: "video/quicktime", webm: "video/webm" }
 const ALLOWED_MIME = Object.values(MIME_BY_EXT)
@@ -19,9 +23,7 @@ export function videoMime(file: { name: string; type: string }): string | null {
 // Returns a friendly message when the file cannot be uploaded, otherwise null.
 export function checkVideoFile(file: { name: string; size: number; type: string }): string | null {
   if (!videoMime(file)) return "That does not look like a video. Use an MP4, MOV, M4V or WebM file, or paste a link instead."
-  if (file.size > MAX_BYTES) {
-    return `This file is ${Math.round(file.size / 1024 / 1024)} MB. The free plan allows 50 MB per video. Upload it to YouTube as Unlisted and paste the link here instead; stat entry can time events from it.`
-  }
+  if (file.size > MAX_R2_BYTES) return "This video is over 4 GB. Trim it, or paste a link instead."
   return null
 }
 
@@ -55,6 +57,34 @@ export function embedKind(url: string): "file" | "youtube" | "vimeo" | "other" {
   return "other"
 }
 
+// Asks the signing function for something; returns null when it is not deployed so callers can fall back.
+async function callSign<T>(body: Record<string, string>): Promise<T | null> {
+  const client = getClient()
+  if (!client) return null
+  const { data, error } = await client.functions.invoke("video-sign", { body })
+  if (!error) return data as T
+  const status = (error as { context?: Response }).context?.status
+  if (status === 404 || error.name === "FunctionsFetchError") return null
+  let msg = ""
+  try { msg = ((await (error as { context: Response }).context.json()) as { error?: string }).error ?? "" } catch { /* not json */ }
+  throw new Error(msg || "Could not start the upload.")
+}
+
+function putWithProgress(url: string, file: File, mime: string, onProgress?: (fraction: number) => void): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("PUT", url)
+    xhr.setRequestHeader("Content-Type", mime)
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded / e.total)
+    }
+    xhr.onerror = () => reject(new Error("The upload failed. Check your connection and try again."))
+    xhr.onabort = () => reject(new Error("The upload was cancelled."))
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`The upload failed (${xhr.status}).`)))
+    xhr.send(file)
+  })
+}
+
 export async function uploadGameVideo(
   file: File,
   gameId: string,
@@ -68,6 +98,16 @@ export async function uploadGameVideo(
   const { data } = await client.auth.getSession()
   const token = data.session?.access_token
   if (!token) throw new Error("Sign in as an editor to upload videos.")
+
+  const signed = await callSign<{ uploadUrl: string; key: string; publicUrl: string }>({ action: "put", gameId, name: file.name })
+  if (signed) {
+    await putWithProgress(signed.uploadUrl, file, videoMime(file)!, onProgress)
+    onProgress?.(1)
+    return { url: signed.publicUrl, path: R2_PREFIX + signed.key }
+  }
+  if (file.size > MAX_BYTES) {
+    throw new Error(`This file is ${Math.round(file.size / 1024 / 1024)} MB and big uploads are not set up yet. Under 50 MB works, or paste a YouTube link.`)
+  }
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(-80) || "video"
   const path = `${gameId}/${Date.now()}-${safeName}`
@@ -102,6 +142,10 @@ export async function uploadGameVideo(
 export async function deleteGameVideo(path: string): Promise<void> {
   const client = getClient()
   if (!client) throw new Error("The shared-data cloud is not set up.")
+  if (path.startsWith(R2_PREFIX)) {
+    await callSign({ action: "delete", key: path.slice(R2_PREFIX.length) })
+    return
+  }
   const { error } = await client.storage.from(BUCKET).remove([path])
   if (error) throw new Error(error.message)
 }
