@@ -4,24 +4,34 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GameVideo } from "@/components/GameVideo"
 import { getClient } from "@/lib/cloud"
+import { formatDateDisplay } from "@/lib/format"
+import { formatVideoTime, parseVideoTimeInput } from "@/lib/legacy-core"
 import type { Update } from "@/lib/store"
 import type { Game } from "@/lib/types"
 import { deleteGameVideo, uploadGameVideo, videoPathFromUrl } from "@/lib/video"
 
-export function GameVideoPanel({ game, update, readOnly }: { game: Game; update: Update; readOnly: boolean }) {
+// Several games can point at one recording (a whole night on one video). Each game then keeps its own
+// "starts at" time, and the file is only deleted when no other game still uses it.
+export function GameVideoPanel({ game, games, update, readOnly }: { game: Game; games: Game[]; update: Update; readOnly: boolean }) {
   const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState("")
   const [link, setLink] = useState("")
+  const [startText, setStartText] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const url = game.videoUrl || ""
 
-  if (readOnly) return url ? <GameVideo url={url} /> : null
+  if (readOnly) return url ? <GameVideo url={url} start={game.videoStart} /> : null
 
   const busy = progress !== null
   const cloudOn = !!getClient()
   const ownPath = game.videoPath || (url ? videoPathFromUrl(url) : null)
-  const setVideo = (videoUrl: string | undefined, videoPath: string | undefined) =>
-    update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, videoUrl, videoPath } : g)) }))
+  const setVideo = (videoUrl: string | undefined, videoPath: string | undefined, videoStart?: number) =>
+    update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, videoUrl, videoPath, videoStart } : g)) }))
+  // Another game uses this same recording, so its file must stay.
+  const sharedWithOthers = (u: string) => games.some((g) => g.id !== game.id && g.videoUrl === u)
+  // Recordings other games already have, one entry per distinct video, for "use the same video".
+  const reusable = [...new Map(games.filter((g) => g.id !== game.id && g.videoUrl && g.videoUrl !== url).map((g) => [g.videoUrl as string, g])).values()]
+  const startSeconds = game.videoStart ?? 0
 
   async function onFile(file: File | undefined) {
     if (!file) return
@@ -29,9 +39,10 @@ export function GameVideoPanel({ game, update, readOnly }: { game: Game; update:
     setProgress(0)
     try {
       const old = ownPath
+      const oldUrl = url
       const res = await uploadGameVideo(file, game.id, setProgress)
       setVideo(res.url, res.path)
-      if (old) void deleteGameVideo(old).catch(() => {})
+      if (old && !sharedWithOthers(oldUrl)) void deleteGameVideo(old).catch(() => {})
     } catch (e) {
       setError(e instanceof Error ? e.message : "The upload failed.")
     } finally {
@@ -49,19 +60,37 @@ export function GameVideoPanel({ game, update, readOnly }: { game: Game; update:
   }
 
   async function remove() {
-    if (!confirm("Remove this video from the game? An uploaded file is deleted for everyone.")) return
+    const shared = sharedWithOthers(url)
+    if (!confirm(shared ? "Remove this video from this game? Other games keep using it." : "Remove this video from the game? An uploaded file is deleted for everyone.")) return
     setError("")
     try {
-      if (ownPath) await deleteGameVideo(ownPath)
+      if (ownPath && !shared) await deleteGameVideo(ownPath)
       setVideo(undefined, undefined)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not delete the video.")
     }
   }
 
+  function useExisting(from: string) {
+    const src = games.find((g) => g.videoUrl === from)
+    if (!src?.videoUrl) return
+    setError("")
+    setVideo(src.videoUrl, src.videoPath, 0)
+    setStartText(null)
+  }
+
+  function saveStart() {
+    const text = (startText ?? "").trim()
+    const secs = text === "" ? 0 : parseVideoTimeInput(text)
+    if (secs === null || secs === undefined || Number.isNaN(secs) || secs < 0) return setError("Type the start as m:ss, for example 42:10.")
+    setError("")
+    update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, videoStart: secs > 0 ? secs : undefined } : g)) }))
+    setStartText(null)
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <GameVideo url={url} />
+      <GameVideo key={`${url}|${startSeconds}`} url={url} start={startSeconds} />
       <div className="flex flex-wrap items-center gap-2">
         <input ref={fileRef} type="file" accept="video/*" className="sr-only" aria-label="Choose a video file to upload" disabled={!cloudOn || busy} onChange={(e) => void onFile(e.target.files?.[0])} />
         <Button type="button" variant="outline" disabled={!cloudOn || busy} onClick={() => fileRef.current?.click()}>
@@ -85,6 +114,38 @@ export function GameVideoPanel({ game, update, readOnly }: { game: Game; update:
           <Link2 aria-hidden /> Save link
         </Button>
       </div>
+      {reusable.length > 0 && (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-muted-foreground">Or use a video another game already has</span>
+          <select className="h-10 rounded-md border bg-background px-2" value="" onChange={(e) => e.target.value && useExisting(e.target.value)} disabled={busy}>
+            <option value="">Choose a game's video</option>
+            {reusable.map((g) => (
+              <option key={g.id} value={g.videoUrl}>
+                {formatDateDisplay(g.date)}: {g.teamA.length + g.teamB.length} players
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {url && (
+        <div className="flex flex-col gap-1">
+          <div className="flex gap-2">
+            <Input
+              inputMode="numeric"
+              value={startText ?? (startSeconds > 0 ? formatVideoTime(startSeconds) : "")}
+              onChange={(e) => setStartText(e.target.value)}
+              placeholder="This game starts at (m:ss)"
+              aria-label="Where this game starts in the video"
+              disabled={busy}
+              onKeyDown={(e) => e.key === "Enter" && saveStart()}
+            />
+            <Button type="button" variant="outline" disabled={busy || startText === null} onClick={saveStart}>
+              Set start
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">One recording for the whole night? Set where this game begins and the video opens there.</p>
+        </div>
+      )}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </div>
   )

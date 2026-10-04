@@ -98,9 +98,19 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
       </div>
 
       {yt ? (
-        <YouTubePlayer id={yt} control={ytControl} className="max-h-[40vh]" />
+        <YouTubePlayer id={yt} control={ytControl} className="max-h-[40vh]" start={game.videoStart ?? 0} />
       ) : direct ? (
-        <video ref={videoRef} src={game.videoUrl} controls playsInline preload="metadata" className="max-h-[40vh] w-full rounded-xl bg-muted" />
+        <video
+          ref={videoRef}
+          src={game.videoUrl}
+          controls
+          playsInline
+          preload="metadata"
+          className="max-h-[40vh] w-full rounded-xl bg-muted"
+          onLoadedMetadata={(e) => {
+            if (game.videoStart) e.currentTarget.currentTime = game.videoStart
+          }}
+        />
       ) : (
         <EmptyState
           title={game.videoUrl ? "This video link is not a direct file" : "No video for this game"}

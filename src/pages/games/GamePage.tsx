@@ -386,7 +386,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry }: { state: 
         </CardContent>
       </Card>
 
-      <GameVideoPanel game={game} update={update} readOnly={readOnly} />
+      <GameVideoPanel game={game} games={state.games} update={update} readOnly={readOnly} />
 
       {!reviewed ? (
         <Card>

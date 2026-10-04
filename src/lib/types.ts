@@ -62,6 +62,8 @@ export interface Game {
   stoppedEarly?: boolean
   videoUrl?: string
   videoPath?: string
+  // Seconds into the video where this game begins, for one recording shared by several games.
+  videoStart?: number
   masterVideoId?: string | null
   liveInProgress?: boolean
   liveScores?: { pid: string; points: number }[]

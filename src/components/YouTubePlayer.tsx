@@ -43,7 +43,7 @@ function loadApi(): Promise<YTApi> {
 
 // A YouTube video whose time can be read, so a shot logged while watching gets its timestamp just like
 // a video file does. The player is created once per video id.
-export function YouTubePlayer({ id, control, className }: { id: string; control: MutableRefObject<PlayerControl | null>; className?: string }) {
+export function YouTubePlayer({ id, control, className, start = 0 }: { id: string; control: MutableRefObject<PlayerControl | null>; className?: string; start?: number }) {
   const host = useRef<HTMLDivElement>(null)
   useEffect(() => {
     let player: YTPlayer | null = null
@@ -56,7 +56,7 @@ export function YouTubePlayer({ id, control, className }: { id: string; control:
         if (dead) return
         player = new YT.Player(mount, {
           videoId: id,
-          playerVars: { playsinline: 1, rel: 0 },
+          playerVars: { playsinline: 1, rel: 0, start: Math.floor(start) },
           events: {
             onReady: () => {
               control.current = {
