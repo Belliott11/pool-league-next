@@ -20,7 +20,7 @@ export function videoMime(file: { name: string; type: string }): string | null {
 export function checkVideoFile(file: { name: string; size: number; type: string }): string | null {
   if (!videoMime(file)) return "That does not look like a video. Use an MP4, MOV, M4V or WebM file, or paste a link instead."
   if (file.size > MAX_BYTES) {
-    return `This file is ${Math.round(file.size / 1024 / 1024)} MB. The free plan allows 50 MB per video. Trim it, or paste a link instead.`
+    return `This file is ${Math.round(file.size / 1024 / 1024)} MB. The free plan allows 50 MB per video. Upload it to YouTube as Unlisted and paste the link here instead; stat entry can time events from it.`
   }
   return null
 }
@@ -34,6 +34,18 @@ export function videoPathFromUrl(url: string): string | null {
 
 export function isDirectVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov|m4v)$/i.test(url.split(/[?#]/)[0]) || videoPathFromUrl(url) !== null
+}
+
+// The 11-character id of a YouTube link (watch, short, embed, live or youtu.be), or null.
+export function youtubeId(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (!/(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/i.test(u.hostname)) return null
+    const id = u.hostname.includes("youtu.be") ? u.pathname.slice(1) : (u.searchParams.get("v") ?? u.pathname.match(/^\/(?:embed|shorts|live)\/([^/]+)/)?.[1])
+    return id && /^[\w-]{11}$/.test(id) ? id : null
+  } catch {
+    return null
+  }
 }
 
 export function embedKind(url: string): "file" | "youtube" | "vimeo" | "other" {

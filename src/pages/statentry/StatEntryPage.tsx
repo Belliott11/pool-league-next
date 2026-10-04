@@ -1,5 +1,7 @@
 import { ArrowLeft, Undo2 } from "lucide-react"
 import { useRef, useState } from "react"
+import { YouTubePlayer, type PlayerControl } from "@/components/YouTubePlayer"
+import { youtubeId } from "@/lib/video"
 import { EmptyState } from "@/components/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,6 +29,8 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
   const [draft, setDraft] = useState<Draft | null>(null)
   const [error, setError] = useState<string | null>(null)
   const direct = isDirectVideoUrl(game.videoUrl)
+  const yt = !direct && game.videoUrl ? youtubeId(game.videoUrl) : null
+  const ytControl = useRef<PlayerControl | null>(null)
   const scoreA = teamScore(game, game.teamA)
   const scoreB = teamScore(game, game.teamB)
 
@@ -40,8 +44,12 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
     }
   }
 
-  const captureTime = () => (direct && videoRef.current ? Math.max(0, videoRef.current.currentTime - TIMESTAMP_LEAD_SECONDS) : null)
+  const captureTime = () => {
+    if (yt) return ytControl.current ? Math.max(0, ytControl.current.time() - TIMESTAMP_LEAD_SECONDS) : null
+    return direct && videoRef.current ? Math.max(0, videoRef.current.currentTime - TIMESTAMP_LEAD_SECONDS) : null
+  }
   const seek = (t: number) => {
+    if (yt) return ytControl.current?.seek(Math.max(0, t - JUMP_LEAD_SECONDS))
     const v = videoRef.current
     if (!v) return
     v.currentTime = Math.max(0, t - JUMP_LEAD_SECONDS)
@@ -89,7 +97,9 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
         </div>
       </div>
 
-      {direct ? (
+      {yt ? (
+        <YouTubePlayer id={yt} control={ytControl} className="max-h-[40vh]" />
+      ) : direct ? (
         <video ref={videoRef} src={game.videoUrl} controls playsInline preload="metadata" className="max-h-[40vh] w-full rounded-xl bg-muted" />
       ) : (
         <EmptyState
@@ -128,7 +138,7 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
           game={game}
           draft={draft}
           captureTime={captureTime}
-          hasVideo={direct}
+          hasVideo={direct || !!yt}
           onSave={apply}
           onClose={() => setDraft(null)}
         />
