@@ -75,10 +75,21 @@ function putWithProgress(url: string, file: File, mime: string, onProgress?: (fr
     const xhr = new XMLHttpRequest()
     xhr.open("PUT", url)
     xhr.setRequestHeader("Content-Type", mime)
+    let sent = 0
     xhr.upload.onprogress = (e) => {
+      sent = e.loaded
       if (e.lengthComputable) onProgress?.(e.loaded / e.total)
     }
-    xhr.onerror = () => reject(new Error("The upload failed. Check your connection and try again."))
+    // Nothing sent means the browser refused the request (storage rules or a rejected link); some sent
+    // means the connection dropped part way.
+    xhr.onerror = () =>
+      reject(
+        new Error(
+          sent === 0
+            ? "The upload was blocked before any of the video was sent. The storage rules or the upload link were refused."
+            : `The connection dropped after ${Math.round(sent / 1024 / 1024)} of ${Math.round(file.size / 1024 / 1024)} MB. Stay on the page with the screen on, and try again.`,
+        ),
+      )
     xhr.onabort = () => reject(new Error("The upload was cancelled."))
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`The upload failed (${xhr.status}).`)))
     xhr.send(file)
