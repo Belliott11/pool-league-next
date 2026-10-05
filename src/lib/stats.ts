@@ -276,11 +276,11 @@ export function getGameStats(game: Game, playerId: string): PlayerGameStats {
 }
 
 export function liveScoreOf(game: Game, team: string[]): number {
-  return (game.liveScores ?? []).filter((s) => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0)
+  return [...(game.liveScores ?? []), ...(game.scorekeeperScores ?? [])].filter((s) => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0)
 }
 
 export function isLiveScoreOnly(game: Game): boolean {
-  return game.scoringEvents.length === 0 && (game.liveScores ?? []).length > 0
+  return game.scoringEvents.length === 0 && (game.liveScores ?? []).length + (game.scorekeeperScores ?? []).length > 0
 }
 
 export function isCurrentSeasonGame(state: PooleanState, game: Game): boolean {

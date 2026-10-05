@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { connect, fetchRemote, isEditor, loadCloudConfig, saveRemote, type Remote } from "./cloud"
+import { adoptScorekeeperScores } from "./live"
 import type { PooleanState } from "./types"
 
 export type CloudStatus = "loading" | "off" | "ready"
@@ -53,6 +54,13 @@ export function useCloud() {
   const retryMs = useRef(RETRY_START_MS)
   // True when this device had edits the cloud never received, so the editor view starts from them.
   const [recoverLocal, setRecoverLocal] = useState(false)
+  // While the editor has a live game, friends may be adding baskets; the editor's app watches for them.
+  const [watchLive, setWatchLive] = useState(false)
+  const watchRef = useRef(false)
+  watchRef.current = watchLive
+  const [external, setExternal] = useState<Remote | null>(null)
+  const inflight = useRef(false)
+  const mergeTries = useRef(0)
 
   const refresh = useCallback(async () => {
     const c = clientRef.current
@@ -136,6 +144,26 @@ export function useCloud() {
     }
   }, [evaluateSession, refresh])
 
+  const adminPoll = useCallback(async () => {
+    const c = clientRef.current
+    if (!c || pending.current || inflight.current) return
+    try {
+      const r = await fetchRemote(c)
+      if (!r || pending.current || inflight.current || r.updatedAt === version.current) return
+      version.current = r.updatedAt
+      lsSet(VERSION_KEY, r.updatedAt)
+      setExternal(r)
+    } catch {
+      /* no signal: try again next time */
+    }
+  }, [])
+
+  useEffect(() => {
+    if (status !== "ready" || !admin || !watchLive) return
+    const id = setInterval(() => void adminPoll(), 6_000)
+    return () => clearInterval(id)
+  }, [status, admin, watchLive, adminPoll])
+
   const liveNow = !!remote?.state.games.some((g) => g.liveInProgress)
   // Viewers pick up the editor's changes: every minute, and whenever the tab comes back into view.
   useEffect(() => {
@@ -155,8 +183,12 @@ export function useCloud() {
     const next = pending.current
     if (!c || !next) return
     pending.current = null
-    const r = await saveRemote(c, next, version.current)
+    inflight.current = true
+    const r = await saveRemote(c, next, version.current).finally(() => {
+      inflight.current = false
+    })
     if (r.ok) {
+      mergeTries.current = 0
       version.current = r.updatedAt
       lsSet(VERSION_KEY, r.updatedAt)
       retryMs.current = RETRY_START_MS
@@ -164,6 +196,23 @@ export function useCloud() {
       setSync(pending.current ? "saving" : "saved")
       setSyncMessage("")
     } else {
+      // During a live game a conflict is usually a friend's basket: take their baskets and save again.
+      if (r.conflict && watchRef.current && mergeTries.current < 3) {
+        mergeTries.current++
+        try {
+          const latest = await fetchRemote(c)
+          if (latest) {
+            pending.current = adoptScorekeeperScores(pending.current ?? next, latest.state)
+            version.current = latest.updatedAt
+            setExternal(latest)
+            setSync("saving")
+            void flush()
+            return
+          }
+        } catch {
+          /* fall through to the normal conflict handling */
+        }
+      }
       pending.current ??= next
       setSync(r.conflict ? "conflict" : "error")
       setSyncMessage(r.message)
@@ -250,7 +299,7 @@ export function useCloud() {
     await refresh()
   }, [evaluateSession, refresh])
 
-  return { status, admin, email, remote, loaded, error, sync, syncMessage, recoverLocal, refresh, push, overwrite, acceptRemote, signIn, signOut }
+  return { status, admin, email, remote, loaded, error, sync, syncMessage, recoverLocal, external, setWatchLive, refresh, push, overwrite, acceptRemote, signIn, signOut }
 }
 
 export type Cloud = ReturnType<typeof useCloud>

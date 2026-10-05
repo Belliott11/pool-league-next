@@ -113,7 +113,7 @@ export interface Pop {
 // Each new score becomes a short-lived "pop" that the tiles animate. The count at mount is the
 // baseline, so opening or reloading a game in progress does not replay its old scores.
 export function useScorePops(game: Game): Pop[] {
-  const scores = game.liveScores ?? []
+  const scores = [...(game.liveScores ?? []), ...(game.scorekeeperScores ?? [])]
   const seen = useRef(scores.length)
   const [pops, setPops] = useState<Pop[]>([])
   useEffect(() => {
@@ -124,7 +124,8 @@ export function useScorePops(game: Game): Pop[] {
       setTimeout(() => setPops((p) => p.filter((x) => x.key !== key)), 1100)
     }
     seen.current = scores.length
-  }, [scores])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scores.length])
   return pops
 }
 
@@ -207,7 +208,7 @@ function PlayerTile({ id, name, on, setSel, score, mine, add }: {
   )
 }
 
-function TeamColumn({ side, ids, total, other, game, state, sel, setSel, add, pops }: {
+export function TeamColumn({ side, ids, total, other, game, state, sel, setSel, add, pops }: {
   side: "A" | "B"
   ids: string[]
   total: number

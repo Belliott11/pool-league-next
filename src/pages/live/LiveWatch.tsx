@@ -11,6 +11,7 @@ import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
 import { Confetti, useScorePops, type Pop } from "./LiveGamePage"
 import { LiveOdds, LiveOddsMini } from "./LiveOdds"
+import { Scorekeeper } from "./Scorekeeper"
 
 const NONE: Game = { id: "", date: "", teamA: [], teamB: [], stats: [], scoringEvents: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
 
@@ -104,7 +105,7 @@ export function LiveWatch({ state, onClose }: { state: PooleanState; onClose: ()
   }
 
   const isLive = !!game.liveInProgress
-  const last = (game.liveScores ?? []).at(-1)
+  const last = [...(game.liveScores ?? []), ...(game.scorekeeperScores ?? [])].at(-1)
   const hint = !isLive
     ? `Final: Team ${a > b ? "A" : b > a ? "B" : "A and B tied"}${a === b ? "" : " won"}, ${a} to ${b}.`
     : over && a === b
@@ -128,10 +129,19 @@ export function LiveWatch({ state, onClose }: { state: PooleanState; onClose: ()
       <p className={cn("rounded-lg px-3 py-2 text-center text-sm font-medium", !isLive && a !== b ? "bg-pos text-white" : "bg-muted")} role="status">
         {hint}
       </p>
-      <div className="grid grid-cols-2 gap-3">
-        <Side side="A" ids={game.teamA} total={a} other={b} game={game} state={state} pops={pops} />
-        <Side side="B" ids={game.teamB} total={b} other={a} game={game} state={state} pops={pops} />
-      </div>
+      {isLive ? (
+        <Scorekeeper game={game} state={state} pops={pops} a={a} b={b}>
+        <div className="grid grid-cols-2 gap-3">
+          <Side side="A" ids={game.teamA} total={a} other={b} game={game} state={state} pops={pops} />
+          <Side side="B" ids={game.teamB} total={b} other={a} game={game} state={state} pops={pops} />
+        </div>
+        </Scorekeeper>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <Side side="A" ids={game.teamA} total={a} other={b} game={game} state={state} pops={pops} />
+          <Side side="B" ids={game.teamB} total={b} other={a} game={game} state={state} pops={pops} />
+        </div>
+      )}
       {last && (
         <p className="text-center text-sm text-muted-foreground" aria-live="polite">
           Last score: {playerName(state, last.pid)} +{last.points}

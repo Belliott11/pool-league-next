@@ -40,8 +40,27 @@ export function finishLive(state: PooleanState, id: string): PooleanState {
     const [a, b] = liveTotals(g)
     const rest = { ...g }
     delete rest.liveInProgress
+    // Friends' baskets become part of the game's score so the stats see one list.
+    if (rest.scorekeeperScores?.length) rest.liveScores = [...(rest.liveScores ?? []), ...rest.scorekeeperScores]
+    delete rest.scorekeeperScores
     return { ...rest, winner: a > b ? "A" : b > a ? "B" : null }
   })
+}
+
+// The editor's app does not replace its whole copy while a game is live; it only takes the friends' baskets
+// from the shared copy, so the editor's own baskets are never overwritten.
+export function adoptScorekeeperScores(local: PooleanState, remote: PooleanState): PooleanState {
+  let changed = false
+  const games = local.games.map((g) => {
+    if (!g.liveInProgress) return g
+    const r = remote.games.find((x) => x.id === g.id)
+    const theirs = r?.scorekeeperScores ?? []
+    const mine = g.scorekeeperScores ?? []
+    if (!r || (theirs.length === mine.length && theirs.every((s, i) => s.pid === mine[i].pid && s.points === mine[i].points))) return g
+    changed = true
+    return { ...g, scorekeeperScores: theirs }
+  })
+  return changed ? { ...local, games } : local
 }
 
 export function discardLive(state: PooleanState, id: string): PooleanState {
@@ -105,7 +124,7 @@ export function winProbabilityFrom(a: number, b: number, target: number, pregame
 function liveCounts(game: Game) {
   let nA = 0
   let nB = 0
-  for (const s of game.liveScores ?? []) {
+  for (const s of [...(game.liveScores ?? []), ...(game.scorekeeperScores ?? [])]) {
     if (game.teamA.includes(s.pid)) nA++
     else if (game.teamB.includes(s.pid)) nB++
   }
@@ -127,7 +146,7 @@ export function liveWinProbability(game: Game): { pA: number; pregameA: number |
 export function liveProbHistory(game: Game): number[] {
   const pregameA = pregameOf(game)
   const target = liveTargetOf(game)
-  const scores = game.liveScores ?? []
+  const scores = [...(game.liveScores ?? []), ...(game.scorekeeperScores ?? [])]
   const out = [winProbabilityFrom(0, 0, target, pregameA)]
   let a = 0
   let b = 0

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { installDataViz } from "@/lib/dataViz"
-import { findLiveGame } from "@/lib/live"
+import { adoptScorekeeperScores, findLiveGame } from "@/lib/live"
 import { useTabSwipe } from "@/lib/useSwipe"
 import { ReadOnlyContext } from "@/lib/mode"
 import { LiveMiniBar } from "@/pages/live/LiveMiniBar"
@@ -103,6 +103,29 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   const readOnly = mode === "viewer"
   const [state, setState] = useState(initial)
   setAppGames(state.games)
+  // The editor's app watches for friends' baskets while a game is live and takes only those baskets in.
+  const hasLive = !!findLiveGame(state)
+  useEffect(() => {
+    if (mode === "admin") cloud?.setWatchLive(hasLive)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLive, mode])
+  useEffect(() => {
+    const ext = cloud?.external
+    if (mode !== "admin" || !ext) return
+    setState((s) => {
+      const next = adoptScorekeeperScores(s, ext.state)
+      if (next !== s) saveState(next)
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloud?.external])
+  // A scorekeeper's basket asks for a fresh copy right away instead of waiting for the next poll.
+  useEffect(() => {
+    const on = () => void cloud?.refresh()
+    window.addEventListener("poolean-refresh", on)
+    return () => window.removeEventListener("poolean-refresh", on)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // Edits made offline last time: send them now that the app is open again.
   useEffect(() => {
     if (mode === "admin" && cloud?.recoverLocal) cloud.push(state)
