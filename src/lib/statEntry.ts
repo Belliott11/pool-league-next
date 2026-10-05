@@ -245,3 +245,25 @@ const DIRECT_VIDEO = /\.(mp4|webm|mov|m4v|ogv|ogg)(?:[?#].*)?$/i
 export function isDirectVideoUrl(url: string | undefined | null): url is string {
   return !!url && (url.startsWith("blob:") || DIRECT_VIDEO.test(url))
 }
+
+// ---- the rest of Stat Entry: court side, defensive matchups, highlight / lowlight clips.
+// These do not change the box score, so they only replace the lists on the game.
+export function setDirection(game: Game, dir: "left" | "right" | null): Game {
+  return { ...game, teamADirection: dir }
+}
+
+export function addMatchup(game: Game, m: { defenderId: string; offenderId: string; note?: string; videoTime?: number | null }): Game {
+  return { ...game, matchups: [...(game.matchups ?? []), { id: uid("matchup"), ...m }] }
+}
+
+export function deleteMatchup(game: Game, id: string): Game {
+  return { ...game, matchups: (game.matchups ?? []).filter((m) => m.id !== id) }
+}
+
+export function addPlay(game: Game, p: { type: "highlight" | "lowlight"; start: number; end: number; playerId?: string | null; note?: string }): Game {
+  return { ...game, plays: [...(game.plays ?? []), { id: uid("play"), ...p }] }
+}
+
+export function deletePlay(game: Game, id: string): Game {
+  return { ...game, plays: (game.plays ?? []).filter((p) => p.id !== id) }
+}

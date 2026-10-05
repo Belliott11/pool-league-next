@@ -9480,7 +9480,7 @@ async function loadBackfillVideo(game, videoWrap) {
       if (file) { url = URL.createObjectURL(file); localVideoBlobUrls[game.id] = url; }
     }
   }
-  if (!url && game.videoUrl && /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(game.videoUrl)) url = game.videoUrl;
+  if (!url && cloudVideoUrl(game) && /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(cloudVideoUrl(game))) url = cloudVideoUrl(game);
   if (!videoWrap.isConnected) return; // panel moved on before this resolved — nothing to update
   if (url) {
     videoWrap.innerHTML = `<video controls class="backfill-video"></video>`;

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GameVideo } from "@/components/GameVideo"
 import { getClient } from "@/lib/cloud"
-import { formatDateDisplay } from "@/lib/format"
+import { formatDateDisplay, uid } from "@/lib/format"
 import { formatVideoTime, parseVideoTimeInput } from "@/lib/legacy-core"
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
@@ -19,6 +19,8 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
   const [error, setError] = useState("")
   const [link, setLink] = useState("")
   const [startText, setStartText] = useState<string | null>(null)
+  const [endText, setEndText] = useState<string | null>(null)
+  const [newName, setNewName] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
   const master = masterOf(state, game)
   const url = gameVideoUrl(state, game)
@@ -95,6 +97,33 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
     setStartText(null)
   }
 
+  // Shared recordings: put this game in one (or make a new one), and say where it ends inside it.
+  const masters = state.masterVideos ?? []
+  const setGame = (patch: Partial<Game>) => update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, ...patch } : g)) }))
+  function joinRecording(id: string) {
+    if (!id) return
+    setGame({ masterVideoId: id, videoStart: 0 })
+  }
+  function makeRecording() {
+    const name = newName.trim()
+    if (!name) return
+    const id = uid("master")
+    update((s) => ({
+      ...s,
+      masterVideos: [...(s.masterVideos ?? []), { id, name }],
+      games: s.games.map((g) => (g.id === game.id ? { ...g, masterVideoId: id, videoStart: 0 } : g)),
+    }))
+    setNewName("")
+  }
+  function saveEnd() {
+    const text = (endText ?? "").trim()
+    const secs = text === "" ? null : parseVideoTimeInput(text)
+    if (text !== "" && (secs === null || secs === undefined || Number.isNaN(secs) || secs <= startSeconds)) return setError("Type the end as m:ss, after the start.")
+    setError("")
+    setGame({ videoEnd: secs })
+    setEndText(null)
+  }
+
   function saveStart() {
     const text = (startText ?? "").trim()
     const secs = text === "" ? 0 : parseVideoTimeInput(text)
@@ -134,6 +163,53 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
         <Button type="button" variant="outline" disabled={busy || !link.trim()} onClick={saveLink}>
           <Link2 aria-hidden /> Save link
         </Button>
+      </div>
+      <div className="flex flex-col gap-2 rounded-lg border p-3">
+        <p className="text-sm font-medium">Shared recording</p>
+        {master ? (
+          <>
+            <p className="text-xs text-muted-foreground">
+              This game is part of <span className="font-medium text-foreground">{master.name}</span>. Set where it starts and ends in that recording.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                inputMode="numeric"
+                value={endText ?? (typeof game.videoEnd === "number" ? formatVideoTime(game.videoEnd) : "")}
+                onChange={(e) => setEndText(e.target.value)}
+                placeholder="This game ends at (m:ss)"
+                aria-label="Where this game ends in the video"
+                disabled={busy}
+                onKeyDown={(e) => e.key === "Enter" && saveEnd()}
+              />
+              <Button type="button" variant="outline" disabled={busy || endText === null} onClick={saveEnd}>
+                Set end
+              </Button>
+            </div>
+            <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setGame({ masterVideoId: null, videoStart: 0, videoEnd: null })}>
+              Take this game out of the recording
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">One recording of the whole night? Put each game in it, then add the video once.</p>
+            {masters.length > 0 && (
+              <select className="h-10 rounded-md border bg-background px-2 text-sm" value="" onChange={(e) => joinRecording(e.target.value)} disabled={busy} aria-label="Put this game in a shared recording">
+                <option value="">Put this game in a recording</option>
+                {masters.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="flex gap-2">
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Or name a new recording, such as Oct 4 night" aria-label="Name for a new shared recording" onKeyDown={(e) => e.key === "Enter" && makeRecording()} />
+              <Button type="button" variant="outline" disabled={!newName.trim()} onClick={makeRecording}>
+                Create
+              </Button>
+            </div>
+          </>
+        )}
       </div>
       {reusable.length > 0 && (
         <label className="flex flex-col gap-1 text-sm">

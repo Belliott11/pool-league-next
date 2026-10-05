@@ -16,6 +16,7 @@ import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
 import { EventForm, type Apply, type Draft } from "./EventForm"
 import { EventLog } from "./EventLog"
+import { ExtraEntry } from "./ExtraForms"
 
 const ADD: { kind: Draft["kind"]; label: string }[] = [
   { kind: "shot", label: "Add shot" },
@@ -158,6 +159,8 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
           }}
         />
       )}
+
+      <ExtraEntry state={state} game={game} apply={apply} hasVideo={direct || !!yt} now={() => (yt ? (ytControl.current?.time() ?? null) : (videoRef.current?.currentTime ?? null))} />
 
       <EventLog
         state={state}

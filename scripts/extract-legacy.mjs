@@ -599,6 +599,11 @@ const videoHooks = (code) => {
   const area = /function startAreaClipExport\(playerId, categoryKey, categoryLabel\) \{[\s\S]*?\n\}\n/
   if (!area.test(code)) throw new Error("startAreaClipExport not found")
   code = code.replace(area, () => 'function startAreaClipExport(playerId, categoryKey, categoryLabel) {\n  const grouped = computeCategoryClipGroups(playerId, categoryKey);\n  if (grouped.length === 0) return;\n  const btn = document.querySelector(`[data-player-id="${playerId}"][data-category-key="${categoryKey}"]`);\n  playClipSequence((btn && btn.parentElement) || document.body, grouped, categoryLabel);\n}\n')
+  // The review tools (backfill locations, dunks, shot and turnover types, ...) show the clip from the game's video.
+  swap(
+    'if (!url && game.videoUrl && /\\.(mp4|webm|ogg|mov)(\\?.*)?$/i.test(game.videoUrl)) url = game.videoUrl;',
+    'if (!url && cloudVideoUrl(game) && /\\.(mp4|webm|ogg|mov)(\\?.*)?$/i.test(cloudVideoUrl(game))) url = cloudVideoUrl(game);',
+  )
   const open = /function openGameAndSeek\(gameId, videoTime\) \{[\s\S]*?\n\}\n/
   if (!open.test(code)) throw new Error("openGameAndSeek not found")
   code = code.replace(open, () => 'function openGameAndSeek(gameId, videoTime) {\n  window.dispatchEvent(new CustomEvent("legacy-open-game", { detail: { id: gameId, time: videoTime === undefined ? null : videoTime } }));\n}\n')
