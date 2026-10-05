@@ -1,0 +1,68 @@
+import { Newspaper, Trophy } from "lucide-react"
+import { useMemo } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatDateDisplay } from "@/lib/format"
+import { playerName } from "@/lib/players"
+import { RECORD_KEYS, RECORD_LABEL, recordBook } from "@/lib/records"
+import { seasonStories } from "@/lib/storylines"
+import type { PooleanState } from "@/lib/types"
+
+// The league's single-game records, with who holds each and when.
+export function RecordsCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+  const book = useMemo(() => recordBook(state), [state])
+  const keys = RECORD_KEYS.filter((k) => book[k])
+  if (keys.length === 0) return null
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 font-display">
+          <Trophy aria-hidden className="size-4 text-gold" /> League records
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="flex flex-col gap-2 text-sm">
+          {keys.map((k) => {
+            const r = book[k]!
+            return (
+              <li key={k} className="flex items-baseline justify-between gap-3">
+                <span className="text-muted-foreground">{RECORD_LABEL[k]}</span>
+                <span className="text-right">
+                  <span className="font-display font-bold tabular-nums">{Number.isInteger(r.value) ? r.value : r.value.toFixed(1)}</span>{" "}
+                  <button type="button" className="hover:underline" onClick={() => onOpenPlayer(r.playerId)}>
+                    {playerName(state, r.playerId)}
+                  </button>
+                  <span className="block text-xs text-muted-foreground">{formatDateDisplay(r.date)}</span>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Storylines for the season so far: who leads, the longest streak, the closest race.
+export function SeasonStoriesCard({ state }: { state: PooleanState }) {
+  const stories = useMemo(() => seasonStories(state, (id) => playerName(state, id)), [state])
+  if (stories.length === 0) return null
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 font-display">
+          <Newspaper aria-hidden className="size-4 text-accent" /> The season so far
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="flex flex-col gap-2 text-sm">
+          {stories.map((x) => (
+            <li key={x} className="flex gap-2">
+              <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-accent" />
+              <span>{x}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}

@@ -93,11 +93,24 @@ export interface MasterVideo {
   path?: string
 }
 
+export type InjuryStatus = "out" | "away" | "questionable" | "dayToDay" | "returning"
+
+// A line on the injury board: who is away or banged up, and a note about it.
+export interface Injury {
+  id: string
+  playerId: string
+  status: InjuryStatus
+  note: string
+  updatedAt: string // ISO time of the last change
+  until?: string | null // optional date they are expected back (YYYY-MM-DD)
+}
+
 export interface PooleanState {
   players: Player[]
   games: Game[]
   rsvps?: Rsvp[]
   masterVideos?: MasterVideo[]
+  injuries?: Injury[]
   currentSeasonStartedAt?: string | null
   [key: string]: unknown
 }

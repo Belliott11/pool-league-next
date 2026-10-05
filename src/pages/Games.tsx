@@ -138,7 +138,7 @@ export function GamesPage({
           </>
         )}
       </div>
-      <Sidebar state={state} onOpenPlayer={onOpenPlayer} onOpenGame={open} />
+      <Sidebar state={state} update={update} onOpenPlayer={onOpenPlayer} onOpenGame={open} />
     </div>
   )
 }

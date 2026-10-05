@@ -1,3 +1,4 @@
+import { injuryBoard, statusInfo } from "@/lib/injuries"
 import type { NightSummary } from "@/lib/nightRecap"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
 import { RECORD_LABEL, recordBook, type Callout } from "@/lib/records"
@@ -114,6 +115,11 @@ export function nightStories(
 // ---- going into a night ---------------------------------------------------------------------------------
 export function previewStories(state: PooleanState, name: Name): string[] {
   const out: string[] = []
+  // The injury board comes first: it changes who plays.
+  const hurt = injuryBoard(state).filter((i) => i.status !== "returning")
+  if (hurt.length) out.push(`On the injury report: ${hurt.map((i) => `${name(i.playerId)} (${statusInfo(i.status).label.toLowerCase()})`).join(", ")}.`)
+  const back = injuryBoard(state).filter((i) => i.status === "returning")
+  if (back.length) out.push(`Back in the mix: ${back.map((i) => name(i.playerId)).join(", ")}.`)
   const rs = results(state)
   if (rs.length < 4) return out
 
@@ -200,5 +206,61 @@ export function previewStories(state: PooleanState, name: Name): string[] {
       break
     }
   }
+  return out.slice(0, 6)
+}
+
+// ---- the season so far ----------------------------------------------------------------------------------
+export function seasonStories(state: PooleanState, name: Name): string[] {
+  const since = state.currentSeasonStartedAt || ""
+  const rs = results(state).filter((r) => !since || r.date >= since)
+  const out: string[] = []
+  if (rs.length < 3) return out
+
+  const dates = new Set(rs.map((r) => r.date))
+  const totalPts = rs.reduce((n, r) => n + r.a + r.b, 0)
+  out.push(`${plural(rs.length, "game")} over ${plural(dates.size, "night")} so far, ${totalPts} points scored.`)
+
+  const rec = new Map<string, { w: number; l: number; pts: number; gp: number; tw: number[] }>()
+  for (const r of rs) {
+    for (const [ids, won] of [[r.winners, true], [r.losers, false]] as const) {
+      for (const id of ids) {
+        const cur = rec.get(id) ?? { w: 0, l: 0, pts: 0, gp: 0, tw: [] }
+        if (won) cur.w++
+        else cur.l++
+        cur.gp++
+        const line = playerLine(r.game, id)
+        cur.pts += line.pts
+        if (line.twoWay !== null) cur.tw.push(line.twoWay)
+        rec.set(id, cur)
+      }
+    }
+  }
+  const all = [...rec.entries()]
+  const winPct = (v: { w: number; l: number }) => v.w / (v.w + v.l)
+  const ranked = all.filter(([, v]) => v.gp >= 5).sort((x, y) => winPct(y[1]) - winPct(x[1]) || y[1].w - x[1].w)
+  if (ranked[0]) out.push(`${name(ranked[0][0])} sets the pace at ${ranked[0][1].w}-${ranked[0][1].l} (${pct(winPct(ranked[0][1]))}%).`)
+  if (ranked[1] && winPct(ranked[0][1]) - winPct(ranked[1][1]) <= 0.05) out.push(`${name(ranked[0][0])} and ${name(ranked[1][0])} are neck and neck for the top spot.`)
+
+  const scorer = [...all].sort((x, y) => y[1].pts - x[1].pts)[0]
+  if (scorer && scorer[1].pts > 0) out.push(`${name(scorer[0])} is the top scorer with ${scorer[1].pts} points, ${(scorer[1].pts / scorer[1].gp).toFixed(1)} a game.`)
+  const tw = all.filter(([, v]) => v.tw.length >= 3).sort((x, y) => y[1].tw.reduce((a, b) => a + b, 0) / y[1].tw.length - x[1].tw.reduce((a, b) => a + b, 0) / x[1].tw.length)[0]
+  if (tw) out.push(`${name(tw[0])} leads in two-way score, ${(tw[1].tw.reduce((a, b) => a + b, 0) / tw[1].tw.length).toFixed(1)} per game.`)
+
+  // Longest win streak of the season.
+  const run = new Map<string, number>()
+  let best: { id: string; n: number } | null = null
+  for (const r of rs) {
+    for (const id of r.winners) {
+      const n = (run.get(id) ?? 0) + 1
+      run.set(id, n)
+      if (!best || n > best.n) best = { id, n }
+    }
+    for (const id of r.losers) run.set(id, 0)
+  }
+  const b = best as { id: string; n: number } | null
+  if (b && b.n >= 4) out.push(`${name(b.id)}'s ${b.n}-game win streak is the longest of the season.`)
+
+  const iron = [...all].sort((x, y) => y[1].gp - x[1].gp)[0]
+  if (iron && iron[1].gp >= 5) out.push(`${name(iron[0])} has played in ${iron[1].gp} of ${rs.length} games, the most of anyone.`)
   return out.slice(0, 6)
 }

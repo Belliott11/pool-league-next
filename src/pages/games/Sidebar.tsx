@@ -1,7 +1,10 @@
 import { EmptyState } from "@/components/EmptyState"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { InjuryBoard } from "@/components/InjuryBoard"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
+import type { Update } from "@/lib/store"
+import { RecordsCard, SeasonStoriesCard } from "./SeasonCards"
 import { formatDateDisplay } from "@/lib/format"
 import { computeLeaderboard, teamScore } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
@@ -10,7 +13,9 @@ export function Sidebar({
   state,
   onOpenPlayer,
   onOpenGame,
+  update,
 }: {
+  update: Update
   state: PooleanState
   onOpenPlayer: (id: string) => void
   onOpenGame: (g: Game) => void
@@ -22,6 +27,8 @@ export function Sidebar({
 
   return (
     <div className="flex flex-col gap-4">
+      <InjuryBoard state={state} update={update} onOpenPlayer={onOpenPlayer} />
+      <SeasonStoriesCard state={state} />
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Standings</CardTitle>
@@ -76,6 +83,7 @@ export function Sidebar({
           )}
         </CardContent>
       </Card>
+      <RecordsCard state={state} onOpenPlayer={onOpenPlayer} />
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Recent Games</CardTitle>
