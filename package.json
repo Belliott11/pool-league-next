@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run",
     "compare-models": "node scripts/compare-models.mjs",
     "preview": "vite preview",
     "extract-legacy": "node scripts/extract-legacy.mjs ../dashboard/app.js src/lib/legacy-core.ts ../dashboard/index.html",
@@ -35,6 +36,7 @@
     "oxlint": "^1.81.0",
     "postcss": "^8.5.28",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vitest": "^5.0.3"
   }
 }

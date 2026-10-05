@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ClipboardPenLine } from "lucide-react"
+import { ClipboardPenLine, Share2 } from "lucide-react"
+import { shareGameCard } from "@/lib/shareCard"
 import { GameVideoPanel } from "@/components/GameVideoPanel"
 import { WatchContext, WatchTime } from "@/components/WatchTime"
 import type { PlayerControl } from "@/components/YouTubePlayer"
@@ -385,6 +386,10 @@ export function GamePage({ state, update, game, onBack, onStatEntry }: { state: 
             Stat entry
           </Button>
         )}
+        <Button size="sm" variant="outline" className={readOnly || !onStatEntry ? "ml-auto" : ""} onClick={() => void shareGameCard(state, game).catch(() => {})}>
+          <Share2 aria-hidden />
+          Share picture
+        </Button>
         {game.stoppedEarly && <Badge variant="secondary">Stopped Early</Badge>}
         {!isBalancedGame(game) && (
           <Badge variant="secondary">

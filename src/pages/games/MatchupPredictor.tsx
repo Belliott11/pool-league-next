@@ -53,6 +53,9 @@ function TrackRecord() {
   )
 }
 
+// How much to trust the number: it rests on only a few dozen games, so it stays a lean until there are many more.
+const confidence = (games: number) => (games < 100 ? "Low confidence" : games < 200 ? "Medium confidence" : "Good confidence")
+
 export function MatchupPredictor({ state }: { state: PooleanState }) {
   const [sides, setSides] = useState<Record<string, Side>>({})
   const model = getRealMatchupModel()
@@ -145,7 +148,7 @@ export function MatchupPredictor({ state }: { state: PooleanState }) {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  {realMatchupAccuracyText(model)} Trained on {model.n} real games.
+                  <span className="font-medium text-foreground">{confidence(model.n)}.</span> {realMatchupAccuracyText(model)} Trained on {model.n} real games.
                 </p>
               </div>
             )}
