@@ -11,7 +11,8 @@ import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
 import { Confetti, useScorePops, type Pop } from "./LiveGamePage"
 import { LiveOdds, LiveOddsMini } from "./LiveOdds"
-import { Scorekeeper } from "./Scorekeeper"
+import { getClient } from "@/lib/cloud"
+import { Scorekeeper, ViewerSetup } from "./Scorekeeper"
 
 const NONE: Game = { id: "", date: "", teamA: [], teamB: [], stats: [], scoringEvents: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
 
@@ -95,6 +96,8 @@ export function LiveWatch({ state, onClose }: { state: PooleanState; onClose: ()
   }, [over, shown.id])
 
   if (!game) {
+    // With the shared-data cloud, anyone can start a game from here.
+    if (getClient()) return <ViewerSetup state={state} onClose={onClose} />
     return (
       <EmptyState
         title="No live game right now"

@@ -159,8 +159,9 @@ export function useCloud() {
   }, [])
 
   useEffect(() => {
-    if (status !== "ready" || !admin || !watchLive) return
-    const id = setInterval(() => void adminPoll(), 6_000)
+    if (status !== "ready" || !admin) return
+    // Quick while a game is live (friends add baskets); slow otherwise, to notice games others started or finished.
+    const id = setInterval(() => void adminPoll(), watchLive ? 6_000 : 20_000)
     return () => clearInterval(id)
   }, [status, admin, watchLive, adminPoll])
 

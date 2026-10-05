@@ -112,8 +112,11 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   useEffect(() => {
     const ext = cloud?.external
     if (mode !== "admin" || !ext) return
+    // With nothing unsent, take the cloud's copy whole (a friend may have started or finished a game);
+    // with edits in flight, only take friends' baskets so the editor's own changes are never overwritten.
+    const idle = cloud.sync === "idle" || cloud.sync === "saved"
     setState((s) => {
-      const next = adoptScorekeeperScores(s, ext.state)
+      const next = idle ? ext.state : adoptScorekeeperScores(s, ext.state)
       if (next !== s) saveState(next)
       return next
     })

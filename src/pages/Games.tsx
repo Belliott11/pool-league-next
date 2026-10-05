@@ -1,4 +1,5 @@
 import { Radio } from "lucide-react"
+import { getClient } from "@/lib/cloud"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import type { Update } from "@/lib/store"
@@ -73,6 +74,12 @@ export function GamesPage({
           </Button>
         )}
         {readOnly && <LiveBanner state={state} onOpen={() => setLiveOpen(true)} />}
+        {readOnly && !findLiveGame(state) && getClient() && (
+          <Button className="self-start" variant="outline" onClick={() => setLiveOpen(true)}>
+            <Radio />
+            Start a live game
+          </Button>
+        )}
         <GameLog state={state} update={update} onOpen={open} />
         {!readOnly && (
           <>

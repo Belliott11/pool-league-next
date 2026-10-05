@@ -120,12 +120,12 @@ Videos over 64 MB upload to R2 in 16 MB parts, so a dropped connection repeats o
 
 ## Anyone keeping score
 
-Anyone who opens the site can help keep score of the live game, with no account and no code. They can only add a basket for a player in the live game and undo the last basket added this way. They cannot start, finish, edit or delete anything, and when no game is live it does nothing.
+Anyone who opens the site can run a live game, with no account and no code. They can start a game from the players already in the league (when none is live), add baskets, undo the last one they added, and finish the game. They cannot add or remove players, or edit or delete past games.
 
 1. In Supabase open **Edge Functions**, then **Deploy a new function**, then **Via Editor**. Name it `live-score` and paste the contents of `supabase/functions/live-score/index.ts`.
 2. Open the function's settings and turn **off** "Verify JWT", because visitors are not signed in.
 3. Deploy the function. There is nothing else to set up.
 
-How it works on the night: you (the editor) start the live game as usual. A friend opens the site, taps the live banner, then **Keep score**, and taps baskets for players. Everyone watching sees them within a few seconds. Your app picks up their baskets by itself while a game is live, and your own baskets are never overwritten. When you finish the game, their baskets are counted in the final score.
+How it works on the night: you (the editor) start the live game as usual. A friend opens the site and taps **Start a live game** (or the live banner if one is running), then **Keep score**, and taps baskets for players. They can finish the game when it is over. Everyone watching sees them within a few seconds. Your app picks up their baskets by itself while a game is live, and your own baskets are never overwritten. When you finish the game, their baskets are counted in the final score.
 
 Because there is no code, anyone with the link could add a basket during a live game. If that ever becomes a problem, you can finish or discard the game, or remove the `live-score` function to turn it off.

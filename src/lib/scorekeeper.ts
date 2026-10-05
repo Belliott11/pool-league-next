@@ -1,7 +1,7 @@
 import { getClient } from "./cloud"
 
-// Anyone watching a live game can keep score: they add baskets to it through the `live-score` function,
-// which only ever adds a basket for a player in the live game or undoes the last one added this way.
+// Anyone watching can run a live game through the `live-score` function: start one (from existing players,
+// when none is live), add baskets, undo the last one added this way, and finish it. Nothing else.
 
 type Reply = { ok: true } | { ok: false; error: string }
 
@@ -24,4 +24,7 @@ async function call(body: Record<string, unknown>): Promise<Reply> {
 }
 
 export const sendBasket = (gameId: string, pid: string, points: number): Promise<Reply> => call({ action: "add", gameId, pid, points })
+export const startGame = (gameId: string, date: string, teamA: string[], teamB: string[], target: number): Promise<Reply> =>
+  call({ action: "start", gameId, date, teamA, teamB, target })
+export const finishGame = (gameId: string): Promise<Reply> => call({ action: "finish", gameId })
 export const undoBasket = (gameId: string): Promise<Reply> => call({ action: "undo", gameId })
