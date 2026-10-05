@@ -1,12 +1,12 @@
-// Lets friends who are not editors keep score of the live game, using a shared scorekeeper code.
+// Lets anyone watching keep score of the live game, with no sign-in and no code.
 // It can do exactly two things to the live game and nothing else: add a basket for one of its players,
 // and undo the last basket a scorekeeper added. It cannot start, finish, edit or delete anything.
 // Their baskets go in their own list on the game (scorekeeperScores), separate from the editor's, so the
 // editor's app and this function can both write during a game without overwriting each other's baskets.
 //
-// In Supabase: Edge Functions > live-score > turn OFF "Verify JWT" (visitors are not signed in; the
-// code is what authorizes them). Secret to set: SCOREKEEPER_CODE (any phrase you choose).
+// In Supabase: Edge Functions > live-score > turn OFF "Verify JWT" (visitors are not signed in).
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase itself.
+// It only ever acts on the game that is currently live, so with no live game it does nothing.
 import { createClient } from "npm:@supabase/supabase-js@2"
 
 const CORS = {
@@ -16,31 +16,18 @@ const CORS = {
 }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } })
 
-// Compares without stopping at the first difference.
-function sameCode(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let diff = 0
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return diff === 0
-}
-
 const MAX_SCORES = 400
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
   if (req.method !== "POST") return json({ error: "Use POST." }, 405)
 
-  let body: { code?: string; action?: string; gameId?: string; pid?: string; points?: number }
+  let body: { action?: string; gameId?: string; pid?: string; points?: number }
   try {
     body = await req.json()
   } catch {
     return json({ error: "Bad request." }, 400)
   }
-
-  const secret = Deno.env.get("SCOREKEEPER_CODE") ?? ""
-  if (!secret) return json({ error: "The scorekeeper code is not set up yet. The league editor needs to add it." }, 500)
-  if (!sameCode(String(body.code ?? "").trim(), secret.trim())) return json({ error: "That code is not right." }, 401)
-  if (body.action === "check") return json({ ok: true })
 
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
 

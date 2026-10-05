@@ -118,15 +118,14 @@ Every save replaces the one shared copy, so history is the safety net for a bad 
 
 Videos over 64 MB upload to R2 in 16 MB parts, so a dropped connection repeats one part instead of the whole video. This needs the current `supabase/functions/video-sign/index.ts`; after updating the repo, paste it into the function again and redeploy it. Smaller files, and any case where the function is out of date, use the single-request upload.
 
-## Friends keeping score (no editor account)
+## Anyone keeping score
 
-A friend who is not an editor can add baskets to the live game with a shared scorekeeper code. They can only add a basket for a player in the live game and undo the baskets they added. They cannot start, finish, edit or delete anything.
+Anyone who opens the site can help keep score of the live game, with no account and no code. They can only add a basket for a player in the live game and undo the last basket added this way. They cannot start, finish, edit or delete anything, and when no game is live it does nothing.
 
 1. In Supabase open **Edge Functions**, then **Deploy a new function**, then **Via Editor**. Name it `live-score` and paste the contents of `supabase/functions/live-score/index.ts`.
-2. Open the function's settings and turn **off** "Verify JWT". Friends are not signed in, so the code is what lets them in.
-3. Under **Edge Functions**, **Secrets**, add `SCOREKEEPER_CODE` with a phrase you choose, for example a few random words. Share it only with the people you want keeping score.
-4. Deploy the function.
+2. Open the function's settings and turn **off** "Verify JWT", because visitors are not signed in.
+3. Deploy the function. There is nothing else to set up.
 
-How it works on the night: you (the editor) start the live game as usual. A friend opens the site, taps the live banner, taps **Keep score**, and types the code once (their phone remembers it). They tap baskets for players, and everyone watching sees them within a few seconds. Your app picks up their baskets by itself while a game is live, and your own baskets are never overwritten. When you finish the game, their baskets are counted in the final score.
+How it works on the night: you (the editor) start the live game as usual. A friend opens the site, taps the live banner, then **Keep score**, and taps baskets for players. Everyone watching sees them within a few seconds. Your app picks up their baskets by itself while a game is live, and your own baskets are never overwritten. When you finish the game, their baskets are counted in the final score.
 
-To stop someone keeping score, change `SCOREKEEPER_CODE` and tell the others the new one.
+Because there is no code, anyone with the link could add a basket during a live game. If that ever becomes a problem, you can finish or discard the game, or remove the `live-score` function to turn it off.
