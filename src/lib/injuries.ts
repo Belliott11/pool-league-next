@@ -1,4 +1,12 @@
+import { labelInjuryNotes } from "@/lib/labels"
 import type { Injury, InjuryStatus, PooleanState } from "@/lib/types"
+
+export const TIMELINES: { key: NonNullable<Injury["timeline"]>; label: string }[] = [
+  { key: "dayToDay", label: "Day to day" },
+  { key: "weeks", label: "1-2 weeks" },
+  { key: "longTerm", label: "Long term" },
+]
+export const timelineLabel = (t: Injury["timeline"] | undefined) => TIMELINES.find((x) => x.key === t)?.label ?? ""
 
 // The injury board: who is away or out for a bit, in the style of a sports news ticker. Statuses are ordered
 // from most to least serious so the worst cases sit at the top.
@@ -72,8 +80,12 @@ const GOOFY: Record<InjuryStatus, string[]> = {
   ],
 }
 
-export function goofyNote(status: InjuryStatus, avoid?: string): string {
-  const pool = GOOFY[status].filter((n) => n !== avoid)
+// A silly note for the status. With a player, their own labels' lines are added to the pool, doubled so they come
+// up more often than the generic ones.
+export function goofyNote(status: InjuryStatus, avoid?: string, state?: PooleanState, playerId?: string): string {
+  const kind = status === "away" ? "away" : status === "returning" ? "back" : "injury"
+  const personal = state && playerId ? labelInjuryNotes(state, playerId, kind) : []
+  const pool = [...GOOFY[status], ...personal, ...personal].filter((n) => n !== avoid)
   return pool[Math.floor(Math.random() * pool.length)] ?? GOOFY[status][0]
 }
 
@@ -123,6 +135,8 @@ export function injuryHeadlines(state: PooleanState, name: (id: string) => strin
     if (days >= 14) out.push(pickOne(day + oldest.id, `${name(oldest.playerId)} has been on the report for ${days} days. At this point it is a lifestyle.`, `${days} days on the IR for ${name(oldest.playerId)}. Is this an injury or a vacation with extra steps?`))
   }
 
+  const longTerm = board.filter((i) => i.timeline === "longTerm" && i.status !== "returning")
+  if (longTerm.length) out.push(pickOne(day + "long", `${longTerm.map((i) => name(i.playerId)).join(" and ")} ${longTerm.length === 1 ? "is" : "are"} out long term. Light a candle.`, `Long term for ${longTerm.map((i) => name(i.playerId)).join(" and ")}. The couch has a new best friend.`))
   const back = board.filter((i) => i.status === "returning")
   if (back.length) out.push(pickOne(day + "back", `${back.map((i) => name(i.playerId)).join(" and ")} ${back.length === 1 ? "is" : "are"} back. Somebody tell the rim.`, `${back.map((i) => name(i.playerId)).join(" and ")} cleared to return. The doctor wants to see the paperwork on that jump shot.`))
   return out.slice(0, 2)

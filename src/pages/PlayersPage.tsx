@@ -1,5 +1,7 @@
 import { EmptyState } from "@/components/EmptyState"
 import { useState } from "react"
+import { PlayerLabels } from "@/components/PlayerLabels"
+import { labelName, labelsOf } from "@/lib/labels"
 import { useReadOnly } from "@/lib/mode"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -109,6 +111,7 @@ export function PlayersPage({
   const [name, setName] = useState("")
   const [roleFilter, setRoleFilter] = useState<string[]>([])
   const [editing, setEditing] = useState<string | null>(null)
+  const [labelFor, setLabelFor] = useState<string | null>(null)
 
   const sorted = [...state.players].sort((a, b) => a.name.localeCompare(b.name))
   const visible =
@@ -196,11 +199,23 @@ export function PlayersPage({
                           ))}
                         </div>
                       )}
+                      {labelsOf(state, p.id).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5" aria-label="Labels">
+                          {labelsOf(state, p.id).map((k) => (
+                            <Badge key={k} className="bg-accent/15 text-accent">
+                              {labelName(k)}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                       {note && <p className="text-xs text-muted-foreground">{note}</p>}
                       {!readOnly && (
                       <div className="flex gap-2 border-t border-dashed pt-3">
                         <Button size="sm" variant="outline" onClick={() => setEditing(editing === p.id ? null : p.id)}>
                           {editing === p.id ? "Close" : "Edit Tags"}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setLabelFor(labelFor === p.id ? null : p.id)}>
+                          Labels
                         </Button>
                         <Button
                           size="sm"
@@ -216,6 +231,7 @@ export function PlayersPage({
                       </div>
                       )}
                     </div>
+                    {labelFor === p.id && !readOnly && <PlayerLabels state={state} playerId={p.id} update={update} onClose={() => setLabelFor(null)} />}
                     {editing === p.id && (
                       <ProfileEditor
                         key={p.id}

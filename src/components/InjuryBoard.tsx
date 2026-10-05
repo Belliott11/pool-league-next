@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { formatDateDisplay, uid } from "@/lib/format"
-import { INJURY_STATUSES, goofyNote, injuryBoard, injuryHeadlines, statusInfo } from "@/lib/injuries"
+import { INJURY_STATUSES, TIMELINES, goofyNote, injuryBoard, injuryHeadlines, statusInfo, timelineLabel } from "@/lib/injuries"
 import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
 import type { Injury, InjuryStatus, PooleanState } from "@/lib/types"
@@ -73,8 +73,7 @@ export function InjuryBoard({ state, update, onOpenPlayer }: { state: PooleanSta
                   </div>
                   {i.note && <p className="text-sm">{i.note}</p>}
                   <p className="text-xs text-muted-foreground">
-                    Updated {formatDateDisplay(i.updatedAt.slice(0, 10))}
-                    {i.until ? `, expected back ${formatDateDisplay(i.until)}` : ""}
+                    {i.timeline ? `${timelineLabel(i.timeline)}. ` : ""}Updated {formatDateDisplay(i.updatedAt.slice(0, 10))}
                   </p>
                 </div>
                 {!readOnly && (
@@ -102,7 +101,7 @@ function Form({ state, initial, onSave, onCancel }: { state: PooleanState; initi
   const [playerId, setPlayerId] = useState(initial?.playerId ?? "")
   const [status, setStatus] = useState<InjuryStatus>(initial?.status ?? "out")
   const [note, setNote] = useState(initial?.note ?? "")
-  const [until, setUntil] = useState(initial?.until ?? "")
+  const [timeline, setTimeline] = useState<Injury["timeline"] | null>(initial?.timeline ?? null)
 
   return (
     <form
@@ -110,7 +109,7 @@ function Form({ state, initial, onSave, onCancel }: { state: PooleanState; initi
       onSubmit={(e) => {
         e.preventDefault()
         if (!playerId) return
-        onSave({ id: initial?.id ?? uid("injury"), playerId, status, note: note.trim(), until: until || null, updatedAt: new Date().toISOString() })
+        onSave({ id: initial?.id ?? uid("injury"), playerId, status, note: note.trim(), timeline: timeline ?? undefined, updatedAt: new Date().toISOString() })
       }}
     >
       <select className="h-10 rounded-md border bg-background px-2 text-sm" value={playerId} onChange={(e) => setPlayerId(e.target.value)} disabled={!!initial} aria-label="Who">
@@ -136,14 +135,24 @@ function Form({ state, initial, onSave, onCancel }: { state: PooleanState; initi
       </div>
       <div className="flex gap-2">
         <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="The details, as silly as you like" aria-label="Note" />
-        <Button type="button" variant="outline" size="icon" aria-label="Surprise me with a note" title="Surprise me" onClick={() => setNote(goofyNote(status, note))}>
+        <Button type="button" variant="outline" size="icon" aria-label="Surprise me with a note" title="Surprise me" onClick={() => setNote(goofyNote(status, note, state, playerId))}>
           <Dices />
         </Button>
       </div>
-      <label className="flex items-center gap-2 text-xs text-muted-foreground">
-        Expected back
-        <Input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="h-9 w-40" aria-label="Expected back" />
-      </label>
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="How long">
+        <span className="text-xs text-muted-foreground">How long</span>
+        {TIMELINES.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            aria-pressed={timeline === t.key}
+            onClick={() => setTimeline(timeline === t.key ? null : t.key)}
+            className={cn("min-h-9 rounded-lg border px-2.5 text-xs font-medium", timeline === t.key ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={!playerId}>
           Post

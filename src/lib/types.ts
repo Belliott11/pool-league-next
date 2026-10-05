@@ -102,7 +102,9 @@ export interface Injury {
   status: InjuryStatus
   note: string
   updatedAt: string // ISO time of the last change
-  until?: string | null // optional date they are expected back (YYYY-MM-DD)
+  // How long the absence is expected to last: a day or two, a week or two, or a long time.
+  timeline?: "dayToDay" | "weeks" | "longTerm"
+  until?: string | null // older entries carried an expected date; no longer shown
 }
 
 export interface PooleanState {
@@ -111,6 +113,8 @@ export interface PooleanState {
   rsvps?: Rsvp[]
   masterVideos?: MasterVideo[]
   injuries?: Injury[]
+  // Labels assigned to players on the Players tab (a library key or custom text), used to personalize headlines.
+  playerLabels?: Record<string, string[]>
   currentSeasonStartedAt?: string | null
   [key: string]: unknown
 }

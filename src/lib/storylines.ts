@@ -1,4 +1,5 @@
 import { injuryBoard, statusInfo } from "@/lib/injuries"
+import { labelLine } from "@/lib/labels"
 import type { NightSummary } from "@/lib/nightRecap"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
 import { RECORD_LABEL, recordBook, type Callout } from "@/lib/records"
@@ -66,12 +67,12 @@ export function nightStories(
   const done = s.games.filter((g) => !g.live && g.winner)
 
   if (s.mvp && s.mvp.boxGames > 0) {
-    out.push(say(s.date + "mvp", `${name(s.mvp.id)} was the night's MVP: two-way ${s.mvp.twoWay.toFixed(1)}, ${s.mvp.pts} points, zero mercy.`, `${name(s.mvp.id)} ran the night with a two-way score of ${s.mvp.twoWay.toFixed(1)}. The rest of you attended.`, `MVP voting was a formality. ${name(s.mvp.id)}, ${s.mvp.pts} points, two-way ${s.mvp.twoWay.toFixed(1)}.`, `${name(s.mvp.id)} took the night hostage: ${s.mvp.pts} points and a ${s.mvp.twoWay.toFixed(1)} two-way score.`))
+    out.push(labelLine(state, s.mvp.id, "mvp", { n: name(s.mvp.id), pts: s.mvp.pts }, s.date) ?? say(s.date + "mvp", `${name(s.mvp.id)} was the night's MVP: two-way ${s.mvp.twoWay.toFixed(1)}, ${s.mvp.pts} points, zero mercy.`, `${name(s.mvp.id)} ran the night with a two-way score of ${s.mvp.twoWay.toFixed(1)}. The rest of you attended.`, `MVP voting was a formality. ${name(s.mvp.id)}, ${s.mvp.pts} points, two-way ${s.mvp.twoWay.toFixed(1)}.`, `${name(s.mvp.id)} took the night hostage: ${s.mvp.pts} points and a ${s.mvp.twoWay.toFixed(1)} two-way score.`))
   }
 
   for (const p of s.players) {
-    if (p.games >= 3 && p.losses === 0) out.push(say(s.date + p.id + "sweep", `${name(p.id)} swept the night, ${p.wins}-0, and left no survivors.`, `${p.wins}-0 for ${name(p.id)}. Everyone else owes rent.`, `${name(p.id)} went ${p.wins}-0. Check the shoes for a cape.`))
-    else if (p.games >= 3 && p.wins === 0) out.push(say(s.date + p.id + "winless", `${name(p.id)} went 0-${p.losses}. Bring a ball next time, not just vibes.`, `0-${p.losses} for ${name(p.id)}. The couch would have been a better teammate.`, `${name(p.id)} left 0-${p.losses} with a story nobody wants to hear.`))
+    if (p.games >= 3 && p.losses === 0) out.push(labelLine(state, p.id, "sweep", { n: name(p.id), w: p.wins }, s.date) ?? say(s.date + p.id + "sweep", `${name(p.id)} swept the night, ${p.wins}-0, and left no survivors.`, `${p.wins}-0 for ${name(p.id)}. Everyone else owes rent.`, `${name(p.id)} went ${p.wins}-0. Check the shoes for a cape.`))
+    else if (p.games >= 3 && p.wins === 0) out.push(labelLine(state, p.id, "winless", { n: name(p.id), l: p.losses }, s.date) ?? say(s.date + p.id + "winless", `${name(p.id)} went 0-${p.losses}. Bring a ball next time, not just vibes.`, `0-${p.losses} for ${name(p.id)}. The couch would have been a better teammate.`, `${name(p.id)} left 0-${p.losses} with a story nobody wants to hear.`))
   }
 
   for (const c of callouts.filter((x) => x.kind === "record")) {
@@ -110,9 +111,9 @@ export function nightStories(
   }
 
   const hot = streaks(state, s.date).filter((x) => x.kind === "W" && x.n >= 4).sort((x, y) => y.n - x.n)[0]
-  if (hot) out.push(say(s.date + hot.id + "hot", `${name(hot.id)} has won ${hot.n} straight. Somebody check the orange slices.`, `${name(hot.id)} is ${hot.n} wins deep and nobody has an answer.`))
+  if (hot) out.push(labelLine(state, hot.id, "streakW", { n: name(hot.id), k: hot.n }, s.date) ?? say(s.date + hot.id + "hot", `${name(hot.id)} has won ${hot.n} straight. Somebody check the orange slices.`, `${name(hot.id)} is ${hot.n} wins deep and nobody has an answer.`))
   const cold = streaks(state, s.date).filter((x) => x.kind === "L" && x.n >= 4).sort((x, y) => y.n - x.n)[0]
-  if (cold) out.push(say(s.date + cold.id + "cold", `${name(cold.id)} has lost ${cold.n} in a row. Thoughts and prayers.`, `${cold.n} straight losses for ${name(cold.id)}. The streak has its own gravity now.`))
+  if (cold) out.push(labelLine(state, cold.id, "streakL", { n: name(cold.id), k: cold.n }, s.date) ?? say(s.date + cold.id + "cold", `${name(cold.id)} has lost ${cold.n} in a row. Thoughts and prayers.`, `${cold.n} straight losses for ${name(cold.id)}. The streak has its own gravity now.`))
 
   const extra = extraNightStories(state, s, name)
   // The lead story first, then good and bad news taking turns, so the list is never all praise or all roast.
@@ -150,9 +151,9 @@ export function previewStories(state: PooleanState, name: Name): string[] {
 
   const run = streaks(state)
   const hot = run.filter((x) => x.kind === "W" && x.n >= 3).sort((x, y) => y.n - x.n)[0]
-  if (hot) out.push(say(lastDate + hot.id + "hot", `${name(hot.id)} arrives on a ${hot.n}-game win streak. Bring a jacket, it is hot out there.`, `${name(hot.id)} has won ${hot.n} straight. Somebody has to stop that, and it probably will not be you.`))
+  if (hot) out.push(labelLine(state, hot.id, "streakW", { n: name(hot.id), k: hot.n }, lastDate) ?? say(lastDate + hot.id + "hot", `${name(hot.id)} arrives on a ${hot.n}-game win streak. Bring a jacket, it is hot out there.`, `${name(hot.id)} has won ${hot.n} straight. Somebody has to stop that, and it probably will not be you.`))
   const cold = run.filter((x) => x.kind === "L" && x.n >= 3).sort((x, y) => y.n - x.n)[0]
-  if (cold) out.push(say(lastDate + cold.id + "cold", `${name(cold.id)} is looking to escape a ${cold.n}-game losing streak. Or add to the museum.`, `${name(cold.id)} has lost ${cold.n} in a row and the rim has stopped making eye contact.`))
+  if (cold) out.push(labelLine(state, cold.id, "streakL", { n: name(cold.id), k: cold.n }, lastDate) ?? say(lastDate + cold.id + "cold", `${name(cold.id)} is looking to escape a ${cold.n}-game losing streak. Or add to the museum.`, `${name(cold.id)} has lost ${cold.n} in a row and the rim has stopped making eye contact.`))
 
   // Season-long two-way leader and hot hands, from games with a box score.
   const per = new Map<string, { tw: number[]; pts: number[] }>()
@@ -321,21 +322,21 @@ function extraNightStories(state: PooleanState, s: NightSummary, name: Name): { 
   // Shooting, hot and cold.
   const shooters = boxed.filter((p) => p.fga >= 6)
   const hot = [...shooters].sort((x, y) => y.fgm / y.fga - x.fgm / x.fga)[0]
-  if (hot && hot.fgm / hot.fga >= 0.6) good.push(say(s.date + hot.id + "fg", `${name(hot.id)} shot ${fg(hot.fgm, hot.fga)}. The rim was a suggestion.`, `${fg(hot.fgm, hot.fga)} from the field for ${name(hot.id)}. Call the fire department.`))
+  if (hot && hot.fgm / hot.fga >= 0.6) good.push(labelLine(state, hot.id, "hot", { n: name(hot.id), fg: fg(hot.fgm, hot.fga) }, s.date) ?? say(s.date + hot.id + "fg", `${name(hot.id)} shot ${fg(hot.fgm, hot.fga)}. The rim was a suggestion.`, `${fg(hot.fgm, hot.fga)} from the field for ${name(hot.id)}. Call the fire department.`))
   const cold = [...shooters].sort((x, y) => x.fgm / x.fga - y.fgm / y.fga)[0]
-  if (cold && cold.fgm / cold.fga <= 0.3 && cold.id !== hot?.id) bad.push(say(s.date + cold.id + "fg", `${name(cold.id)} went ${fg(cold.fgm, cold.fga)}. The rim filed a restraining order.`, `${name(cold.id)} shot ${fg(cold.fgm, cold.fga)} and kept firing. Bold strategy.`, `${fg(cold.fgm, cold.fga)} for ${name(cold.id)}. That is not shooting, that is donating basketballs to the rim.`))
+  if (cold && cold.fgm / cold.fga <= 0.3 && cold.id !== hot?.id) bad.push(labelLine(state, cold.id, "cold", { n: name(cold.id), fg: fg(cold.fgm, cold.fga) }, s.date) ?? say(s.date + cold.id + "fg", `${name(cold.id)} went ${fg(cold.fgm, cold.fga)}. The rim filed a restraining order.`, `${name(cold.id)} shot ${fg(cold.fgm, cold.fga)} and kept firing. Bold strategy.`, `${fg(cold.fgm, cold.fga)} for ${name(cold.id)}. That is not shooting, that is donating basketballs to the rim.`))
 
   // Rough nights.
   const worst = [...boxed].sort((x, y) => x.twoWay - y.twoWay)[0]
   if (worst && worst.twoWay < 0 && worst.id !== s.mvp?.id) bad.push(say(s.date + worst.id + "tw", `${name(worst.id)} posted a two-way score of ${worst.twoWay.toFixed(1)}. The team was better with an empty chair.`, `${name(worst.id)} was a net negative at ${worst.twoWay.toFixed(1)}. Someone should check if they were playing.`))
   const sloppy = [...boxed].sort((x, y) => y.tov - x.tov)[0]
-  if (sloppy && sloppy.tov >= 4) bad.push(say(s.date + sloppy.id + "tov", `${name(sloppy.id)} gave it away ${sloppy.tov} times. Charity night, evidently.`, `${sloppy.tov} turnovers for ${name(sloppy.id)}. The ball wanted a different owner.`))
+  if (sloppy && sloppy.tov >= 4) bad.push(labelLine(state, sloppy.id, "tov", { n: name(sloppy.id), k: sloppy.tov }, s.date) ?? say(s.date + sloppy.id + "tov", `${name(sloppy.id)} gave it away ${sloppy.tov} times. Charity night, evidently.`, `${sloppy.tov} turnovers for ${name(sloppy.id)}. The ball wanted a different owner.`))
   const fouls = [...boxed].sort((x, y) => y.pf - x.pf)[0]
   if (fouls && fouls.pf >= 4) bad.push(say(s.date + fouls.id + "pf", `${name(fouls.id)} collected ${fouls.pf} fouls and a reputation.`, `${fouls.pf} fouls for ${name(fouls.id)}. Ask how many were on purpose.`))
 
   // Scoring droughts.
   const scoreless = s.players.filter((p) => p.games >= 2 && p.pts === 0)
-  scoreless.forEach((p) => bad.push(say(s.date + p.id + "zero", `${name(p.id)} scored zero across ${plural(p.games, "game")}. Impressive in its own way.`, `${name(p.id)} played ${plural(p.games, "game")} and the scoreboard never found out.`)))
+  scoreless.forEach((p) => bad.push(labelLine(state, p.id, "zero", { n: name(p.id), g: p.games }, s.date) ?? say(s.date + p.id + "zero", `${name(p.id)} scored zero across ${plural(p.games, "game")}. Impressive in its own way.`, `${name(p.id)} played ${plural(p.games, "game")} and the scoreboard never found out.`)))
   const quiet = [...s.players].filter((p) => p.games >= 3 && p.pts > 0).sort((x, y) => x.pts / x.games - y.pts / y.games)[0]
   if (quiet && quiet.pts / quiet.games <= 3) bad.push(`${name(quiet.id)} scored ${quiet.pts} in ${plural(quiet.games, "game")}. Were you there?`)
 
@@ -376,7 +377,7 @@ function extraNightStories(state: PooleanState, s: NightSummary, name: Name): { 
     }
     const tonight = new Set(s.players.map((p) => p.id))
     const regulars = [...played.entries()].filter(([id, d]) => d.size / nights.length >= 0.6 && !tonight.has(id)).sort((x, y) => y[1].size - x[1].size)
-    regulars.slice(0, 2).forEach(([id]) => bad.push(say(s.date + id + "ns", `${name(id)} was a no-show. Missing: one player, last seen on the couch.`, `${name(id)} skipped the night. The group chat has questions.`)))
+    regulars.slice(0, 2).forEach(([id]) => bad.push(labelLine(state, id, "noshow", { n: name(id) }, s.date) ?? say(s.date + id + "ns", `${name(id)} was a no-show. Missing: one player, last seen on the couch.`, `${name(id)} skipped the night. The group chat has questions.`)))
   }
 
   // How the whole night felt.
