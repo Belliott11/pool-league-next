@@ -27,6 +27,7 @@ const ADD: { kind: Draft["kind"]; label: string }[] = [
 export function StatEntryPage({ state, game, update, onBack }: { state: PooleanState; game: Game; update: Update; onBack: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [addCount, setAddCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const videoUrl = gameVideoUrl(state, game)
   const direct = isDirectVideoUrl(videoUrl)
@@ -144,14 +145,17 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
 
       {draft && (
         <EventForm
-          key={draft.edit ? draft.edit.kind + draft.edit.ev.id : `new-${draft.kind}`}
+          key={draft.edit ? draft.edit.kind + draft.edit.ev.id : `new-${draft.kind}-${addCount}`}
           state={state}
           game={game}
           draft={draft}
           captureTime={captureTime}
           hasVideo={direct || !!yt}
           onSave={apply}
-          onClose={() => setDraft(null)}
+          onClose={(again) => {
+            if (again && !draft.edit) setAddCount((c) => c + 1)
+            else setDraft(null)
+          }}
         />
       )}
 

@@ -21,7 +21,8 @@ interface Props {
   captureTime: () => number | null
   hasVideo: boolean
   onSave: Apply
-  onClose: () => void
+  // again = true reopens a blank form of the same kind, for logging a run of events from film.
+  onClose: (again?: boolean) => void
 }
 
 const TITLES = { shot: "Shot", tov: "Turnover", stl: "Steal", pf: "Foul" }
@@ -78,21 +79,32 @@ interface FieldsProps {
   timeBad: boolean
   timeField: React.ReactNode
   onSave: Apply
-  onClose: () => void
+  onClose: (again?: boolean) => void
 }
 
-function Actions({ canSave, label, onSave, onClose }: { canSave: boolean; label: string; onSave: () => void; onClose: () => void }) {
+function Actions({ canSave, label, onSave, onClose, again }: { canSave: boolean; label: string; onSave: (again?: boolean) => void; onClose: () => void; again?: boolean }) {
   return (
-    <div className="flex gap-2">
-      <Button type="button" className="h-11 flex-1 text-base" disabled={!canSave} onClick={onSave}>
-        {label}
-      </Button>
-      <Button type="button" variant="outline" className="h-11 px-4" onClick={onClose}>
-        Cancel
-      </Button>
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-2">
+        <Button type="button" className="h-11 flex-1 text-base" disabled={!canSave} onClick={() => onSave()}>
+          {label}
+        </Button>
+        <Button type="button" variant="outline" className="h-11 px-4" onClick={() => onClose()}>
+          Cancel
+        </Button>
+      </div>
+      {again && (
+        <Button type="button" variant="outline" className="h-11 text-base" disabled={!canSave} onClick={() => onSave(true)}>
+          {label} and log the next
+        </Button>
+      )}
     </div>
   )
 }
+
+// Remembers the last shot logged in each game, so a run of shots by the same player starts with their
+// name, value and result already chosen.
+const lastShot: Record<string, { scorerId: string; points: 1 | 2 | 3; made: boolean }> = {}
 
 function teamsOf(game: Game, id: string | null) {
   const onA = id ? game.teamA.includes(id) : false
@@ -102,9 +114,10 @@ function teamsOf(game: Game, id: string | null) {
 }
 
 function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClose }: FieldsProps & { edit?: ScoringEvent }) {
-  const [scorerId, setScorerId] = useState<string | null>(edit?.scorerId ?? null)
-  const [points, setPoints] = useState<1 | 2 | 3>(edit?.points ?? 2)
-  const [made, setMade] = useState(edit ? edit.made !== false : true)
+  const last = edit ? undefined : lastShot[game.id]
+  const [scorerId, setScorerId] = useState<string | null>(edit?.scorerId ?? last?.scorerId ?? null)
+  const [points, setPoints] = useState<1 | 2 | 3>(edit?.points ?? last?.points ?? 2)
+  const [made, setMade] = useState(edit ? edit.made !== false : (last?.made ?? true))
   const [assistId, setAssistId] = useState<string | null>(edit?.assistId ?? null)
   const [passerId, setPasserId] = useState<string | null>(edit?.passerId ?? null)
   const [rebounderId, setRebounderId] = useState<string | null>(edit?.rebounderId ?? null)
@@ -132,12 +145,15 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
   const toggleDef = (id: string) => setDefenderIds((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))
   const one = (cur: string | null, set: (v: string | null) => void, id: string) => set(cur === id ? null : id)
 
-  const save = () => {
+  const save = (again?: boolean) => {
     if (!scorerId) return
     const common = { assistId, passerId, rebounderId, blockerId, defenderIds, contestLevel, shotType, dunk, shotLocation: loc, videoTime: time }
     if (edit) onSave((g) => editShot(g, edit.id, common))
-    else onSave((g) => addShot(g, { scorerId, points, made, outOfBounds: oob, ...common }))
-    onClose()
+    else {
+      onSave((g) => addShot(g, { scorerId, points, made, outOfBounds: oob, ...common }))
+      lastShot[game.id] = { scorerId, points, made }
+    }
+    onClose(again)
   }
 
   return (
@@ -254,7 +270,7 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
       )}
       {timeField}
       {timeBad && <p role="alert" className="text-sm text-neg">Time must look like 1:23 or 83.</p>}
-      <Actions canSave={!!scorerId && !timeBad} label={edit ? "Save changes" : `Add ${made ? "make" : "miss"}`} onSave={save} onClose={onClose} />
+      <Actions canSave={!!scorerId && !timeBad} label={edit ? "Save changes" : `Add ${made ? "make" : "miss"}`} onSave={save} onClose={() => onClose()} again={!edit} />
     </>
   )
 }
@@ -271,11 +287,11 @@ function TagFields({ state, game, kind, edit, time, timeBad, timeField, onSave, 
   const other = { tov: "Who forced or recovered it", stl: "Who did they steal it from", pf: "Who was fouled" }[kind]
   const needOpp = kind === "stl"
 
-  const save = () => {
+  const save = (again?: boolean) => {
     if (!playerId) return
     if (edit) onSave((g) => editTagged(g, kind, edit.id, { playerId, opponentId, videoTime: time, ...(kind === "tov" ? { turnoverType: type } : {}) }))
     else onSave((g) => addTagged(g, kind, playerId, opponentId, time, type))
-    onClose()
+    onClose(again)
   }
 
   return (
@@ -315,7 +331,7 @@ function TagFields({ state, game, kind, edit, time, timeBad, timeField, onSave, 
       )}
       {timeField}
       {timeBad && <p role="alert" className="text-sm text-neg">Time must look like 1:23 or 83.</p>}
-      <Actions canSave={!!playerId && (!needOpp || !!opponentId) && !timeBad} label={edit ? "Save changes" : `Add ${TITLES[kind].toLowerCase()}`} onSave={save} onClose={onClose} />
+      <Actions canSave={!!playerId && (!needOpp || !!opponentId) && !timeBad} label={edit ? "Save changes" : `Add ${TITLES[kind].toLowerCase()}`} onSave={save} onClose={() => onClose()} again={!edit} />
     </>
   )
 }
