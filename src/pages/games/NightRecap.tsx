@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatDateDisplay } from "@/lib/format"
-import { gameDays, recapText, summarizeNight } from "@/lib/nightRecap"
+import { LEADER_LABEL, gameDays, recapText, summarizeNight, type LeaderKey } from "@/lib/nightRecap"
+import { predictRealMatchup } from "@/lib/matchup"
+import { RECORD_KEYS, RECORD_LABEL, nightCallouts, recordBook } from "@/lib/records"
+import { nightStories } from "@/lib/storylines"
 import { playerName } from "@/lib/players"
 import { shareNightCard } from "@/lib/shareCard"
 import { TEAM } from "@/lib/teamColors"
@@ -21,6 +24,9 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
   const [date, setDate] = useState(initialDate && days.includes(initialDate) ? initialDate : (days[0] ?? ""))
   const [copied, setCopied] = useState(false)
   const s = useMemo(() => summarizeNight(state, date), [state, date])
+  const callouts = useMemo(() => nightCallouts(state, date), [state, date])
+  const book = useMemo(() => recordBook(state), [state])
+  const stories = useMemo(() => nightStories(state, s, callouts, (id) => playerName(state, id), (a, b) => predictRealMatchup(a, b)), [state, s, callouts])
   const label = formatDateDisplay(date)
   const name = (id: string) => playerName(state, id)
   const names = (ids: string[]) => ids.map(name).join(", ")
@@ -59,7 +65,7 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
             size="sm"
             variant="outline"
             onClick={() => {
-              void navigator.clipboard?.writeText(recapText(state, s, label, name)).then(() => {
+              void navigator.clipboard?.writeText(recapText(s, label, name, stories)).then(() => {
                 setCopied(true)
                 setTimeout(() => setCopied(false), 1800)
               })
@@ -129,6 +135,108 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
         )}
       </div>
 
+      {stories.length > 0 && (
+        <section className="flex flex-col gap-2 rounded-xl border bg-card p-4" aria-label="Storylines">
+          <h3 className="font-display text-lg font-bold">The story of the night</h3>
+          <ul className="flex flex-col gap-2 text-sm">
+            {stories.map((x) => (
+              <li key={x} className="flex gap-2">
+                <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-accent" />
+                <span>{x}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {s.mvp && (
+        <section className="rounded-xl border-2 border-accent bg-accent/10 p-4" aria-label="Night MVP">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Night MVP</p>
+          <button type="button" className="mt-1 flex items-center gap-3 text-left" onClick={() => onOpenPlayer(s.mvp!.id)}>
+            <PlayerAvatar id={s.mvp.id} name={name(s.mvp.id)} />
+            <span>
+              <span className="font-display text-2xl font-bold">{name(s.mvp.id)}</span>
+              <span className="block text-sm text-muted-foreground">
+                Total two-way score {s.mvp.twoWay.toFixed(1)} over {s.mvp.boxGames} game{s.mvp.boxGames === 1 ? "" : "s"}: {s.mvp.pts} pts, {s.mvp.reb} reb, {s.mvp.ast} ast, {s.mvp.stl} stl, {s.mvp.blk} blk
+              </span>
+            </span>
+          </button>
+        </section>
+      )}
+
+      {Object.values(s.leaders).some((l) => l.length > 0) && (
+        <section className="flex flex-col gap-2" aria-label="Leaders">
+          <h3 className="font-display text-lg font-bold">Leaders</h3>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {(Object.keys(LEADER_LABEL) as LeaderKey[])
+              .filter((k) => s.leaders[k].length > 0)
+              .map((k) => (
+                <div key={k} className="rounded-xl border bg-card p-3">
+                  <p className="text-xs font-medium text-muted-foreground">{LEADER_LABEL[k]}</p>
+                  <ol className="mt-1 flex flex-col gap-0.5 text-sm">
+                    {s.leaders[k].map((p, i) => (
+                      <li key={p.id} className="flex justify-between gap-2">
+                        <span className={cn("truncate", i === 0 && "font-semibold")}>{name(p.id)}</span>
+                        <span className="tabular-nums">{p[k]}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
+
+      {(s.duos.length > 0 || s.trios.length > 0) && (
+        <section className="flex flex-col gap-2" aria-label="Lineups">
+          <h3 className="font-display text-lg font-bold">Best lineups</h3>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[["Duos", s.duos], ["Trios", s.trios]].map(([title, rows]) => (
+              <div key={title as string} className="rounded-xl border bg-card p-3">
+                <p className="text-xs font-medium text-muted-foreground">{title as string}</p>
+                <ul className="mt-1 flex flex-col gap-1 text-sm">
+                  {(rows as typeof s.duos).map((l) => (
+                    <li key={l.ids.join("|")} className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate">{l.ids.map(name).join(" + ")}</span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {l.wins}-{l.games - l.wins}, {l.pf - l.pa >= 0 ? "+" : ""}
+                        {((l.pf - l.pa) / l.games).toFixed(1)}/g
+                      </span>
+                    </li>
+                  ))}
+                  {(rows as typeof s.duos).length === 0 && <li className="text-muted-foreground">Not enough games.</li>}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {Object.keys(book).length > 0 && (
+        <section className="flex flex-col gap-2" aria-label="Record book">
+          <h3 className="font-display text-lg font-bold">League records</h3>
+          <div className="overflow-x-auto rounded-xl border bg-card">
+            <table className="w-full text-sm">
+              <tbody>
+                {RECORD_KEYS.filter((k) => book[k]).map((k) => {
+                  const r = book[k]!
+                  const tonight = callouts.some((c) => c.key === k && (c.kind === "record" || c.kind === "tied") && c.playerId === r.playerId) && r.date === date
+                  return (
+                    <tr key={k} className="border-b last:border-b-0">
+                      <td className="px-3 py-2 text-muted-foreground">{RECORD_LABEL[k]}</td>
+                      <td className="px-3 py-2 font-display font-bold tabular-nums">{Number.isInteger(r.value) ? r.value : r.value.toFixed(1)}</td>
+                      <td className="px-3 py-2">{name(r.playerId)}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{formatDateDisplay(r.date)}</td>
+                      <td className="px-3 py-2">{tonight && <Badge>New</Badge>}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {s.players.length > 0 && (
         <section className="flex flex-col gap-2" aria-label="Player lines">
           <h3 className="font-display text-lg font-bold">The night by player</h3>
@@ -145,6 +253,7 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
                     <TableHead>AST</TableHead>
                     <TableHead>STL</TableHead>
                     <TableHead>BLK</TableHead>
+                    <TableHead>2-WAY</TableHead>
                   </>
                 )}
               </TableRow>
@@ -169,6 +278,7 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
                       <TableCell className="tabular-nums">{p.boxGames ? p.ast : "-"}</TableCell>
                       <TableCell className="tabular-nums">{p.boxGames ? p.stl : "-"}</TableCell>
                       <TableCell className="tabular-nums">{p.boxGames ? p.blk : "-"}</TableCell>
+                      <TableCell className="tabular-nums">{p.boxGames ? p.twoWay.toFixed(1) : "-"}</TableCell>
                     </>
                   )}
                 </TableRow>

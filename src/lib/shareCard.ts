@@ -175,6 +175,12 @@ export async function drawNightCard(state: PooleanState, s: NightSummary, dateLa
   ctx.font = `600 38px ${body}`
   ctx.fillText(`${dateLabel}  ·  ${s.games.length} game${s.games.length === 1 ? "" : "s"}  ·  ${s.totalPoints} points`, 72, 190)
 
+  if (s.mvp) {
+    ctx.fillStyle = teamB
+    ctx.font = `700 34px ${body}`
+    ctx.fillText(`Night MVP: ${fit(ctx, playerName(state, s.mvp.id), 420)}  ·  two-way ${s.mvp.twoWay.toFixed(1)}`, 72, 244)
+  }
+
   // results, up to 7 rows
   const games = s.games.slice(0, 7)
   games.forEach((g, i) => {

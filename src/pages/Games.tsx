@@ -14,6 +14,7 @@ import { Sidebar } from "./games/Sidebar"
 import { LiveGamePage } from "./live/LiveGamePage"
 import { LiveBanner, LiveWatch } from "./live/LiveWatch"
 import { NightRecap } from "./games/NightRecap"
+import { GoingIn } from "./games/GoingIn"
 import { StatEntryPage } from "./statentry/StatEntryPage"
 import { findLiveGame } from "@/lib/live"
 
@@ -124,6 +125,7 @@ export function GamesPage({
             Start a live game
           </Button>
         )}
+        <GoingIn state={state} />
         <GameLog state={state} update={update} onOpen={open} />
         {!readOnly && (
           <>
