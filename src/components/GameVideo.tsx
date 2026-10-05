@@ -23,6 +23,8 @@ function embedSrc(url: string, kind: "youtube" | "vimeo", start = 0): string | n
 
 function FileVideo({ url, videoRef, className, onTimeUpdate, start, control }: { url: string; videoRef?: Ref<HTMLVideoElement>; className?: string; onTimeUpdate?: (t: number) => void; start: number; control?: MutableRefObject<PlayerControl | null> }) {
   const own = useRef<HTMLVideoElement | null>(null)
+  // Once something has asked for a moment, the game's own start must not move the video off it.
+  const sought = useRef(false)
   useEffect(() => {
     if (!control) return
     control.current = {
@@ -30,8 +32,14 @@ function FileVideo({ url, videoRef, className, onTimeUpdate, start, control }: {
       seek: (t) => {
         const v = own.current
         if (!v) return
-        v.currentTime = Math.max(0, t)
-        void v.play().catch(() => {})
+        sought.current = true
+        const go = () => {
+          v.currentTime = Math.max(0, t)
+          void v.play().catch(() => {})
+        }
+        // Before the video knows its length a seek can be ignored, so wait for it.
+        if (v.readyState >= 1) go()
+        else v.addEventListener("loadedmetadata", go, { once: true })
       },
       pause: () => own.current?.pause(),
     }
@@ -52,7 +60,7 @@ function FileVideo({ url, videoRef, className, onTimeUpdate, start, control }: {
       preload="metadata"
       className={cn("aspect-video w-full rounded-xl bg-muted", className)}
       onLoadedMetadata={(e) => {
-        if (start > 0) e.currentTarget.currentTime = start
+        if (start > 0 && !sought.current) e.currentTarget.currentTime = start
       }}
       onTimeUpdate={(e) => onTimeUpdate?.(e.currentTarget.currentTime)}
     />

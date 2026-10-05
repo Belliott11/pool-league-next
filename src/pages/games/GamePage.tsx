@@ -367,11 +367,11 @@ export function GamePage({ state, update, game, onBack, onStatEntry, autoSeek }:
   const clipTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   useEffect(() => () => clearInterval(clipTimer.current), [])
   // Plays one moment; with an end time it pauses there, and `then` runs when it does (to chain clips).
-  const play = (t: number, end?: number, then?: () => void) => {
+  const play = (t: number, end?: number, then?: () => void, exact = false) => {
     clearInterval(clipTimer.current)
     videoBox.current?.scrollIntoView({ behavior: "smooth", block: "center" })
     // A tagged clip has its own start, so it begins exactly there; a single event starts a few seconds early.
-    const lead = end === undefined ? JUMP_LEAD_SECONDS : 0
+    const lead = end === undefined && !exact ? JUMP_LEAD_SECONDS : 0
     control.current?.seek(Math.max(0, t - lead))
     if (end === undefined) return
     // Give the seek a moment to land, then watch the clock until the clip's end.
@@ -403,7 +403,8 @@ export function GamePage({ state, update, game, onBack, onStatEntry, autoSeek }:
     const id = setInterval(() => {
       if (control.current || ++tries > 40) {
         clearInterval(id)
-        if (control.current) play(autoSeek.time as number)
+        // A Jump button names the exact moment, so start right there.
+        if (control.current) play(autoSeek.time as number, undefined, undefined, true)
       }
     }, 250)
     return () => clearInterval(id)
