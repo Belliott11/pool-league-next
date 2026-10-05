@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { Panel } from "@/components/Panel"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { computeLeaderboard } from "@/lib/legacy-core"
+import { GUEST, useWho } from "@/lib/identity"
 import { axis } from "./charts"
 
 interface Row {
@@ -18,6 +19,7 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
   // re-renders (toggles) do not replay it. Before that, and without IntersectionObserver or with
   // reduced motion, the chart simply renders in its full resting layout.
   const [played, setPlayed] = useState(false)
+  const who = useWho()
   // On phones only the top few lanes show until asked, so the page is not one long scroll.
   const [showAll, setShowAll] = useState(false)
   const PHONE_ROWS = 6
@@ -80,6 +82,7 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
                 onClick={() => onOpenPlayer(r.player.id)}
               >
                 {r.player.name}
+                {who && who !== GUEST && who === r.player.id && <span className="ml-1 text-xs font-medium text-accent">you</span>}
               </button>
               <div className="relative h-8 min-w-0 flex-1">
                 {ticks.map((t) => (

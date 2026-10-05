@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import { setAppGames } from "@/lib/matchup"
 import { AccountMenu } from "@/components/AccountMenu"
+import { SyncChip } from "@/components/SyncChip"
+import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
+import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
 import { Moon, Sun } from "lucide-react"
 import { ColorMenu } from "@/components/ColorMenu"
@@ -100,6 +103,11 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   const readOnly = mode === "viewer"
   const [state, setState] = useState(initial)
   setAppGames(state.games)
+  // Edits made offline last time: send them now that the app is open again.
+  useEffect(() => {
+    if (mode === "admin" && cloud?.recoverLocal) cloud.push(state)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // A viewer always shows the latest shared copy; it is never written to this browser's own storage.
   useEffect(() => {
     if (readOnly) setState(initial)
@@ -126,7 +134,13 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [tab])
-  const [playerId, setPlayerId] = useState<string | null>(initial.players[0]?.id ?? null)
+  // Opens on you when you have said who you are (see WhoAmI), otherwise on the first player.
+  const who = useWho()
+  const me = myPlayerId(who, state.players)
+  const [playerId, setPlayerId] = useState<string | null>(me ?? initial.players[0]?.id ?? null)
+  useEffect(() => {
+    if (me) setPlayerId(me)
+  }, [me])
   const [toggles, setTogglesState] = useState<Toggles>(loadToggles)
   const setToggles = (t: Toggles) => {
     saveToggles(t)
@@ -183,6 +197,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           Poolean <span className="text-accent">Intel</span>
         </h1>
         <div className="flex items-center gap-2">
+          {cloud && mode === "admin" && <SyncChip cloud={cloud} />}
+          <WhoAmI state={state} />
           {cloud && (
             <AccountMenu
               cloud={cloud}
@@ -197,6 +213,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           <ThemeToggle />
         </div>
       </div>
+      <WhoPrompt state={state} />
       {mode === "admin" && cloud && cloud.sync === "conflict" && (
         <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-neg bg-card p-3 text-sm">
           <span className="min-w-0 flex-1">The cloud has newer changes, maybe from another device. Your latest edit is not saved yet.</span>
@@ -347,7 +364,8 @@ function App() {
     return <AppShell key="viewer" initial={cloud.remote.state} mode="viewer" cloud={cloud} />
   }
   // The editor works on the shared copy (or this device's own data the first time, to publish it).
-  const initial = cloud.remote?.state ?? local
+  // (or this device's copy when it holds edits the cloud never received, which then get sent)
+  const initial = (cloud.recoverLocal && local ? local : cloud.remote?.state) ?? local
   if (!initial) return <ImportScreen onImported={setLocal} />
   return <AppShell key="admin" initial={initial} mode="admin" cloud={cloud} />
 }

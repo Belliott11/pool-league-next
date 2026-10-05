@@ -7,6 +7,30 @@ export type CloudStatus = "loading" | "off" | "ready"
 export type SyncState = "idle" | "saving" | "saved" | "error" | "conflict"
 
 const SAVE_DELAY_MS = 1500
+// A save that fails (no signal at the court) is retried by itself, backing off to a minute, and right away
+// when the phone comes back online. Edits are always kept on the device too, so nothing is lost meanwhile.
+const RETRY_START_MS = 5_000
+const RETRY_MAX_MS = 60_000
+
+const ADMIN_KEY = "pooleanIntelAdmin" // { id, email } of the editor, so the editor view still opens offline
+const VERSION_KEY = "pooleanIntelCloudVersion" // the cloud version this device last saw or saved
+const UNSENT_KEY = "pooleanIntelUnsent" // "1" while this device has edits the cloud has not received
+
+const lsGet = (k: string): string | null => {
+  try {
+    return localStorage.getItem(k)
+  } catch {
+    return null
+  }
+}
+const lsSet = (k: string, v: string | null) => {
+  try {
+    if (v === null) localStorage.removeItem(k)
+    else localStorage.setItem(k, v)
+  } catch {
+    /* private mode: the offline extras just do not persist */
+  }
+}
 const POLL_MS = 60_000
 // While a live game is on, visitors refresh every few seconds so the score and odds follow along.
 const LIVE_POLL_MS = 10_000
@@ -26,6 +50,9 @@ export function useCloud() {
   const version = useRef<string | null>(null)
   const pending = useRef<PooleanState | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const retryMs = useRef(RETRY_START_MS)
+  // True when this device had edits the cloud never received, so the editor view starts from them.
+  const [recoverLocal, setRecoverLocal] = useState(false)
 
   const refresh = useCallback(async () => {
     const c = clientRef.current
@@ -33,6 +60,7 @@ export function useCloud() {
     try {
       const r = await fetchRemote(c)
       version.current = r?.updatedAt ?? null
+      lsSet(VERSION_KEY, version.current)
       setRemote(r)
       setError(null)
       return r
@@ -49,8 +77,32 @@ export function useCloud() {
     if (!c) return
     const { data } = await c.auth.getSession()
     const user = data.session?.user
-    setEmail(user?.email ?? null)
-    setAdmin(user ? await isEditor(c) : false)
+    const known = (() => {
+      try {
+        return JSON.parse(lsGet(ADMIN_KEY) ?? "null") as { id: string; email: string | null } | null
+      } catch {
+        return null
+      }
+    })()
+    if (!user) {
+      // Offline with an expired login the library cannot refresh: stay in the editor view the device already had.
+      if (known && typeof navigator !== "undefined" && !navigator.onLine) {
+        setEmail(known.email)
+        setAdmin(true)
+        return
+      }
+      setEmail(null)
+      setAdmin(false)
+      lsSet(ADMIN_KEY, null)
+      return
+    }
+    setEmail(user.email ?? null)
+    const editor = await isEditor(c)
+    if (editor === null) setAdmin(known?.id === user.id)
+    else {
+      setAdmin(editor)
+      lsSet(ADMIN_KEY, editor ? JSON.stringify({ id: user.id, email: user.email ?? null }) : null)
+    }
   }, [])
 
   useEffect(() => {
@@ -64,8 +116,16 @@ export function useCloud() {
       }
       const c = await connect(cfg)
       clientRef.current = c
+      const cachedVersion = lsGet(VERSION_KEY)
+      const unsent = lsGet(UNSENT_KEY) === "1"
       await evaluateSession()
-      await refresh()
+      const first = await refresh()
+      // Edits made while offline: keep them, and make the next save compare against the version they were
+      // based on, so if the cloud changed meanwhile it shows as a conflict instead of overwriting.
+      if (unsent) {
+        setRecoverLocal(true)
+        if (!first || first.updatedAt !== cachedVersion) version.current = cachedVersion
+      } else if (!first && cachedVersion) version.current = cachedVersion
       if (dead) return
       setStatus("ready")
       sub = c.auth.onAuthStateChange(() => void evaluateSession()).data.subscription
@@ -98,19 +158,40 @@ export function useCloud() {
     const r = await saveRemote(c, next, version.current)
     if (r.ok) {
       version.current = r.updatedAt
+      lsSet(VERSION_KEY, r.updatedAt)
+      retryMs.current = RETRY_START_MS
+      if (!pending.current) lsSet(UNSENT_KEY, "0")
       setSync(pending.current ? "saving" : "saved")
       setSyncMessage("")
     } else {
       pending.current ??= next
       setSync(r.conflict ? "conflict" : "error")
       setSyncMessage(r.message)
+      if (!r.conflict) {
+        clearTimeout(timer.current)
+        timer.current = setTimeout(() => void flush(), retryMs.current)
+        retryMs.current = Math.min(retryMs.current * 2, RETRY_MAX_MS)
+      }
     }
   }, [])
+
+  // Back online: send whatever is waiting straight away.
+  useEffect(() => {
+    const go = () => {
+      if (!pending.current) return
+      clearTimeout(timer.current)
+      retryMs.current = RETRY_START_MS
+      void flush()
+    }
+    window.addEventListener("online", go)
+    return () => window.removeEventListener("online", go)
+  }, [flush])
 
   // Editors call this after every change; the save waits for a pause so a burst is one write.
   const push = useCallback(
     (state: PooleanState) => {
       pending.current = state
+      lsSet(UNSENT_KEY, "1")
       setSync("saving")
       clearTimeout(timer.current)
       timer.current = setTimeout(() => void flush(), SAVE_DELAY_MS)
@@ -135,6 +216,7 @@ export function useCloud() {
   const acceptRemote = useCallback(async () => {
     clearTimeout(timer.current)
     pending.current = null
+    lsSet(UNSENT_KEY, "0")
     const r = await refresh()
     setSync("idle")
     setSyncMessage("")
@@ -149,7 +231,7 @@ export function useCloud() {
       if (err) return err.message
       await evaluateSession()
       const { data } = await c.auth.getSession()
-      if (data.session && !(await isEditor(c))) {
+      if (data.session && (await isEditor(c)) === false) {
         await c.auth.signOut()
         await evaluateSession()
         return "That account is not set up as an editor."
@@ -168,7 +250,7 @@ export function useCloud() {
     await refresh()
   }, [evaluateSession, refresh])
 
-  return { status, admin, email, remote, loaded, error, sync, syncMessage, refresh, push, overwrite, acceptRemote, signIn, signOut }
+  return { status, admin, email, remote, loaded, error, sync, syncMessage, recoverLocal, refresh, push, overwrite, acceptRemote, signIn, signOut }
 }
 
 export type Cloud = ReturnType<typeof useCloud>

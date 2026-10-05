@@ -85,9 +85,11 @@ export async function snapshotCurrent(c: SupabaseClient): Promise<boolean> {
 }
 
 // A signed-in account is an editor only if it has a row in `admins` (each account can see its own row).
-export async function isEditor(c: SupabaseClient): Promise<boolean> {
+// null means the answer could not be fetched (no signal), so the caller can fall back to what it knew.
+export async function isEditor(c: SupabaseClient): Promise<boolean | null> {
   const { data, error } = await c.from("admins").select("user_id").maybeSingle()
-  return !error && !!data
+  if (error) return error.code ? false : null // server answers carry a code; a dropped connection does not
+  return !!data
 }
 
 // Writes only if the row is still the version this device last saw, so two devices cannot silently
