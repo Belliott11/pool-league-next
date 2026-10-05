@@ -229,7 +229,9 @@ function AdvancedFilters({
             ))}
           </select>
           <select className={nativeSelect} value={filters.stat.op} onChange={(e) => setStat({ op: e.target.value as GameFilters["stat"]["op"] })}>
+            <option value="gt">more than</option>
             <option value="gte">at least</option>
+            <option value="lt">fewer than</option>
             <option value="lte">at most</option>
             <option value="eq">exactly</option>
           </select>
@@ -266,7 +268,7 @@ export function GameLog({
       <div className="flex flex-wrap items-center gap-2">
         <Input
           className="min-w-48 flex-1"
-          placeholder="Filter by date, player, or notes..."
+          placeholder="Search players, dates, notes, or try 10+ points"
           value={filters.text}
           onChange={(e) => setFilters({ ...filters, text: e.target.value })}
         />
@@ -276,6 +278,27 @@ export function GameLog({
         <Button variant="ghost" size="sm" onClick={() => setFilters(EMPTY_FILTERS)}>
           Clear Filters
         </Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2" aria-label="Quick filters">
+        {[10, 15, 20].map((n) => {
+          const on = filters.stat.playerId === "" && filters.stat.field === "pts" && filters.stat.op === "gte" && filters.stat.value === String(n)
+          return (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setFilters({ ...filters, stat: on ? EMPTY_FILTERS.stat : { playerId: "", field: "pts", op: "gte", value: String(n) } })}
+              className={`min-h-8 rounded-full border px-3 text-xs font-medium ${on ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+            >
+              Someone scored {n}+
+            </button>
+          )
+        })}
+        {(filters.text || filters.stat.value !== "" || filters.playerIds.length > 0 || filters.dateFrom || filters.dateTo) && (
+          <span className="text-xs text-muted-foreground">
+            {games.length} of {state.games.length} games
+          </span>
+        )}
       </div>
       {showAdvanced && <AdvancedFilters state={state} filters={filters} setFilters={setFilters} />}
       {state.games.length === 0 ? (
