@@ -25,16 +25,16 @@ const GOOFY: Record<InjuryStatus, string[]> = {
   out: [
     "Rolled an ankle reaching for the last slice.",
     "Pulled something opening a pickle jar.",
-    "Back went out. The couch is under investigation.",
-    "Stubbed a toe and is selling it for all it is worth.",
-    "Hurt a hamstring celebrating a basket that did not go in.",
-    "Sprained something doing a layup in a mirror.",
-    "Pulled a muscle explaining why the last call was a foul.",
-    "Slipped on a puddle. The puddle is fine.",
-    "Doctor says no jumping. Doctor has clearly never seen the jump.",
-    "Out with a mystery injury. The mystery is why.",
-    "Rolled an ankle on flat ground. Heroic.",
-    "Doctor's orders: no cardio, no contested layups, no excuses left.",
+    "Bad back. Resting on the couch.",
+    "Stubbed a toe and is making the most of it.",
+    "Pulled a hamstring celebrating a basket that did not go in.",
+    "Sprained something doing a layup in the mirror.",
+    "Pulled a muscle arguing about the last foul call.",
+    "Slipped on a puddle by the pool.",
+    "Doctor says no jumping.",
+    "Out with a mystery injury.",
+    "Rolled an ankle on flat ground.",
+    "Doctor's orders: no cardio and no contested layups.",
   ],
   away: [
     "Out of town, probably on a boat.",
@@ -42,41 +42,41 @@ const GOOFY: Record<InjuryStatus, string[]> = {
     "Working, allegedly.",
     "Visiting family and eating well. Back soon.",
     "Off the grid. Last seen near a lake.",
-    "At a wedding, dancing worse than any pickup game.",
-    "Unreachable. Read receipts are doing a lot of work.",
-    "Said they would be back by Friday. Friday is a state of mind.",
-    "Chasing a sunset in a state with no hoops.",
-    "Helping someone move a couch. Will resurface when the couch is placed.",
+    "At a wedding. Dancing, not shooting.",
+    "Unreachable. Texts on read.",
+    "Said they would be back by Friday.",
+    "On a trip somewhere with no hoops.",
+    "Helping someone move. Back when the couch is placed.",
   ],
   questionable: [
-    "Says it is fine. Limping to the cooler though.",
-    "Warmups consisted entirely of stretching the story.",
+    "Says it is fine, but is limping to the cooler.",
+    "Warmups were mostly stretching.",
     "Listed as questionable by a very biased source.",
-    "Game-time decision, pending snack availability.",
+    "Game-time decision, depending on the snacks.",
     "Swears it is nothing, then asked for a chair.",
-    "Playing through it. The it is a hangnail.",
-    "Will decide when the vibes are right and the opponent is soft.",
-    "Coin flip between playing and complaining about it.",
+    "Playing through it. It is a hangnail.",
+    "Will decide when the opponent looks beatable.",
+    "Might play, might just complain about it.",
   ],
   dayToDay: [
-    "Sore from last week's heroics.",
+    "Sore from last week.",
     "Legs say yes, knees say no.",
     "Taking it easy after a rough landing.",
     "Moving slowly, talking fast.",
-    "Stiff after a long meeting. Truly a sports injury.",
+    "Stiff after a long meeting. A real sports injury.",
     "Tweaked something and will not say what.",
-    "Day-to-day, and today is looking like a no.",
-    "Walking it off, extremely slowly.",
+    "Day-to-day, and today looks like a no.",
+    "Walking it off, slowly.",
   ],
   returning: [
-    "Back in full practice. Looked dangerous in the driveway.",
-    "Cleared to play and feeling it.",
-    "Returns from the shadow realm with fresh legs.",
-    "Ready to go, rust level unknown.",
-    "Back and talking big. Receipts to follow.",
-    "Returns after a long rest and a lot of snacks.",
-    "Medically cleared, spiritually unprepared.",
-    "Back from the IR with something to prove, probably the wrong thing.",
+    "Back in full practice and looking sharp in the driveway.",
+    "Cleared to play and feeling good.",
+    "Fresh legs after the time off.",
+    "Ready to go. Rust level unknown.",
+    "Back and talking big.",
+    "Back after a long rest and a lot of snacks.",
+    "Medically cleared, not sure about the jump shot.",
+    "Back from the injury list with something to prove.",
   ],
 }
 
@@ -119,26 +119,26 @@ export function injuryHeadlines(state: PooleanState, name: (id: string) => strin
   const outNow = board.filter((i) => i.status === "out" && i.timeline !== "longTerm")
   const roster = Math.max(state.players.length, 1)
 
-  if (board.length === 0) return [pickOne(day, "Everyone is healthy. Suspiciously.", "A clean bill of health across the league. Somebody is lying.", "Zero injuries. Nobody is playing hard enough.")]
+  if (board.length === 0) return [pickOne(day, "Everyone is healthy right now.", "No injuries on the report.", "A clean bill of health across the league.")]
 
   if (hurt.length >= Math.max(3, roster / 3)) {
-    out.push(pickOne(day + "many", `${hurt.length} players are hurt or away. This is a hospital with a hoop.`, `${hurt.length} on the report. The driveway needs a trainer and a better warmup.`, `A third of the league is on the IR. Stretching is free, you know.`))
+    out.push(pickOne(day + "many", `${hurt.length} players are hurt or away right now.`, `${hurt.length} players on the report. That is a lot of the league.`, `A third of the league is on the injury report.`))
   } else if (outNow.length === 1) {
-    out.push(pickOne(day + "one", `${name(outNow[0].playerId)} is out. The rim is already lonely.`, `${name(outNow[0].playerId)} is on ice. The cooler has never been so well attended.`))
+    out.push(pickOne(day + "one", `${name(outNow[0].playerId)} is out.`, `${name(outNow[0].playerId)} is out for now.`))
   } else if (outNow.length >= 2) {
-    out.push(pickOne(day + "two", `${outNow.map((i) => name(i.playerId)).join(" and ")} are both out. The injury report is longer than the roster some nights.`, `${outNow.length} players out. Depth is a luxury nobody has.`))
+    out.push(pickOne(day + "two", `${outNow.map((i) => name(i.playerId)).join(" and ")} are both out.`, `${outNow.length} players are out right now.`))
   }
 
   // The longest-running case.
   const oldest = [...hurt].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))[0]
   if (oldest) {
     const days = Math.floor((now.getTime() - new Date(oldest.updatedAt).getTime()) / 86_400_000)
-    if (days >= 14) out.push(pickOne(day + oldest.id, `${name(oldest.playerId)} has been on the report for ${days} days. At this point it is a lifestyle.`, `${days} days on the IR for ${name(oldest.playerId)}. Is this an injury or a vacation with extra steps?`))
+    if (days >= 14) out.push(pickOne(day + oldest.id, `${name(oldest.playerId)} has been on the report for ${days} days.`, `${days} days on the injury report for ${name(oldest.playerId)}.`))
   }
 
   const longTerm = board.filter((i) => i.timeline === "longTerm" && i.status !== "returning")
-  if (longTerm.length) out.push(pickOne(day + "long", `${longTerm.map((i) => name(i.playerId)).join(" and ")} ${longTerm.length === 1 ? "is" : "are"} out long term. Light a candle.`, `Long term for ${longTerm.map((i) => name(i.playerId)).join(" and ")}. The couch has a new best friend.`))
+  if (longTerm.length) out.push(pickOne(day + "long", `${longTerm.map((i) => name(i.playerId)).join(" and ")} ${longTerm.length === 1 ? "is" : "are"} out long term.`, `Long term injury for ${longTerm.map((i) => name(i.playerId)).join(" and ")}.`))
   const back = board.filter((i) => i.status === "returning")
-  if (back.length) out.push(pickOne(day + "back", `${back.map((i) => name(i.playerId)).join(" and ")} ${back.length === 1 ? "is" : "are"} back. Somebody tell the rim.`, `${back.map((i) => name(i.playerId)).join(" and ")} cleared to return. The doctor wants to see the paperwork on that jump shot.`))
+  if (back.length) out.push(pickOne(day + "back", `${back.map((i) => name(i.playerId)).join(" and ")} ${back.length === 1 ? "is" : "are"} back.`, `${back.map((i) => name(i.playerId)).join(" and ")} cleared to return.`))
   return out.slice(0, 2)
 }

@@ -1,6 +1,5 @@
 import { CalendarDays, Radio } from "lucide-react"
 import { getClient } from "@/lib/cloud"
-import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
@@ -22,45 +21,33 @@ export function GamesPage({
   state,
   update,
   onOpenPlayer,
-  liveOpen,
-  setLiveOpen,
+  sub,
+  go,
+  goBack,
   openRequest,
 }: {
   state: PooleanState
   update: Update
   onOpenPlayer: (id: string) => void
-  liveOpen: boolean
-  setLiveOpen: (open: boolean) => void
+  // Which screen is open inside Games ("" is the list), kept in the address bar by App.
+  sub: string
+  go: (sub: string, replace?: boolean) => void
+  goBack: () => void
   openRequest?: { id: string; time: number | null; n: number } | null
 }) {
   const readOnly = useReadOnly()
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [statEntry, setStatEntry] = useState(false)
-  const [recapOpen, setRecapOpen] = useState(false)
-  const [recapDate, setRecapDate] = useState<string | undefined>(undefined)
-  // A finished live game lands on its night's recap.
-  const showRecap = (date?: string) => {
-    setRecapDate(date)
-    setLiveOpen(false)
-    setRecapOpen(true)
-  }
-  // Same deep link the classic site's Share button writes: #game=<id>.
-  useEffect(() => {
-    const m = location.hash.match(/^#game=(.+)$/)
-    if (m) setOpenId(decodeURIComponent(m[1]))
-  }, [])
-  const openGame = state.games.find((g) => g.id === openId) ?? null
-  // The classic panels' Jump and Watch buttons ask the app to open a game at a moment (see App's legacy-open-game).
-  useEffect(() => {
-    if (!openRequest) return
-    setStatEntry(false)
-    setOpenId(openRequest.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openRequest?.n])
-  const open = (g: Game) => (g.liveInProgress ? setLiveOpen(true) : setOpenId(g.id))
+  const [kind, ...rest] = sub.split(":")
+  const arg = rest.join(":")
+  const liveOpen = kind === "live"
+  const recapOpen = kind === "recap"
+  const recapDate = recapOpen && arg ? arg : undefined
+  const openGame = kind === "game" || kind === "stat" ? (state.games.find((g) => g.id === arg) ?? null) : null
+  // A finished live game lands on its night's recap, in place of the live screen.
+  const showRecap = (date?: string) => go(date ? "recap:" + date : "recap", true)
+  const open = (g: Game) => go(g.liveInProgress ? "live" : "game:" + g.id)
 
   if (liveOpen) {
-    return readOnly ? <LiveWatch state={state} onClose={() => setLiveOpen(false)} onRecap={showRecap} /> : <LiveGamePage state={state} update={update} onClose={() => setLiveOpen(false)} onRecap={showRecap} />
+    return readOnly ? <LiveWatch state={state} onClose={goBack} onRecap={showRecap} /> : <LiveGamePage state={state} update={update} onClose={goBack} onRecap={showRecap} />
   }
 
   if (recapOpen) {
@@ -70,21 +57,15 @@ export function GamesPage({
         key={recapDate ?? "latest"}
         initialDate={recapDate}
         state={state}
-        onBack={() => {
-          setRecapOpen(false)
-          setRecapDate(undefined)
-        }}
-        onOpenGame={(id) => {
-          setRecapOpen(false)
-          setOpenId(id)
-        }}
+        onBack={goBack}
+        onOpenGame={(id) => go("game:" + id)}
         onOpenPlayer={onOpenPlayer}
       />
     )
   }
 
-  if (openGame && statEntry && !readOnly) {
-    return <StatEntryPage state={state} update={update} game={openGame} onBack={() => setStatEntry(false)} />
+  if (openGame && kind === "stat" && !readOnly) {
+    return <StatEntryPage state={state} update={update} game={openGame} onBack={goBack} />
   }
 
   if (openGame) {
@@ -93,13 +74,9 @@ export function GamesPage({
         state={state}
         update={update}
         game={openGame}
-        onStatEntry={() => setStatEntry(true)}
+        onStatEntry={() => go("stat:" + openGame.id)}
         autoSeek={openRequest && openRequest.id === openGame.id ? openRequest : null}
-        onBack={() => {
-          setOpenId(null)
-          setStatEntry(false)
-          if (location.hash) history.replaceState(null, "", location.pathname + location.search)
-        }}
+        onBack={goBack}
       />
     )
   }
@@ -107,25 +84,21 @@ export function GamesPage({
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div className="flex min-w-0 flex-col gap-4">
-        {!readOnly && (
-          <Button className="self-start" onClick={() => setLiveOpen(true)}>
-            <Radio />
-            {findLiveGame(state) ? "Resume live game" : "Start a live game"}
-          </Button>
-        )}
-        {readOnly && <LiveBanner state={state} onOpen={() => setLiveOpen(true)} />}
-        {state.games.length > 0 && (
-          <Button className="self-start" variant="outline" onClick={() => showRecap()}>
-            <CalendarDays />
-            Night recap
-          </Button>
-        )}
-        {readOnly && !findLiveGame(state) && getClient() && (
-          <Button className="self-start" variant="outline" onClick={() => setLiveOpen(true)}>
-            <Radio />
-            Start a live game
-          </Button>
-        )}
+        {readOnly && <LiveBanner state={state} onOpen={() => go("live")} />}
+        <div className="flex flex-wrap gap-2">
+          {(!readOnly || (!findLiveGame(state) && getClient())) && (
+            <Button variant={readOnly ? "outline" : "default"} onClick={() => go("live")}>
+              <Radio />
+              {findLiveGame(state) ? "Resume live game" : "Start a live game"}
+            </Button>
+          )}
+          {state.games.length > 0 && (
+            <Button variant="outline" onClick={() => showRecap()}>
+              <CalendarDays />
+              Night recap
+            </Button>
+          )}
+        </div>
         <GoingIn state={state} update={update} />
         <GameLog state={state} update={update} onOpen={open} />
         {!readOnly && (

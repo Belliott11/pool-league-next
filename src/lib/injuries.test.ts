@@ -74,7 +74,7 @@ describe("injury headlines", () => {
       ],
     }
     const text = injuryHeadlines(state, name, now).join(" ")
-    expect(text).toMatch(/hospital|trainer|third of the league/)
+    expect(text).toMatch(/hurt or away|on the report|injury report/)
   })
 
   it("is stable for the same day", () => {

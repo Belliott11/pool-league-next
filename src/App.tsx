@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { setAppGames } from "@/lib/matchup"
 import { AccountMenu } from "@/components/AccountMenu"
 import { StoryPublisher } from "@/components/StoryPublisher"
@@ -9,7 +9,8 @@ import { LabelsContext } from "@/lib/labelsContext"
 import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
-import { Moon, Sun } from "lucide-react"
+import { ArrowLeft, Moon, Sun } from "lucide-react"
+import { DEFAULT_VIEW, hashToView, sameView, viewToHash, type View } from "@/lib/nav"
 import { ColorMenu } from "@/components/ColorMenu"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { Button } from "@/components/ui/button"
@@ -183,13 +184,50 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     saveState(next)
     if (mode === "admin") cloud?.push(next)
   }
-  const [tab, setTab] = useState("games")
-  const [liveOpen, setLiveOpen] = useState(false)
+  // Where we are, mirrored in the address bar. Every screen change is a history entry so the browser's Back
+  // button (and the arrow in the header) steps through the app instead of leaving it.
+  const [view, setView] = useState<View>(() => hashToView(location.hash) ?? DEFAULT_VIEW)
+  const viewRef = useRef(view)
+  const tab = view.tab
+  useEffect(() => {
+    history.scrollRestoration = "manual"
+    history.replaceState({ n: history.state?.n ?? 0, y: 0 }, "", viewToHash(viewRef.current))
+    const onPop = () => {
+      const v = hashToView(location.hash) ?? DEFAULT_VIEW
+      const y = history.state?.y ?? 0
+      viewRef.current = v
+      setView(v)
+      // The page for that entry is drawn on the next frames; put the scroll back where it was.
+      for (const ms of [0, 60, 200]) setTimeout(() => window.scrollTo(0, y), ms)
+    }
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [])
+  const go = useCallback((next: Partial<View>, replace = false) => {
+    const cur = viewRef.current
+    const v = { ...cur, ...next }
+    if (sameView(v, cur)) return
+    const n = history.state?.n ?? 0
+    history.replaceState({ ...history.state, n, y: window.scrollY }, "")
+    if (replace) history.replaceState({ n, y: 0 }, "", viewToHash(v))
+    else history.pushState({ n: n + 1, y: 0 }, "", viewToHash(v))
+    viewRef.current = v
+    setView(v)
+    window.scrollTo(0, 0)
+  }, [])
+  // Back goes to the screen before, or up one level when this page was opened directly from a link.
+  const goBack = useCallback(() => {
+    if ((history.state?.n ?? 0) > 0) history.back()
+    else go({ tab: "games", sub: "", player: null }, true)
+  }, [go])
+  const setTab = (t: string) => go({ tab: t, sub: "", player: t === "player" ? playerIdRef.current : null })
+  const setSub = (sub: string, replace?: boolean) => go({ tab: "games", sub, player: null }, replace)
+  const liveOpen = view.tab === "games" && view.sub === "live"
   // On a phone, swipe sideways to move between tabs (visitors only see three of them).
   useTabSwipe(tab, readOnly ? ["games", "leaderboard", "player"] : ["games", "leaderboard", "player", "players", "export"], setTab)
   useEffect(() => installStackTables(), [])
   useEffect(() => installDataViz(), [])
-  // The header shrinks once the page is scrolled, and a new tab always starts at the top.
+  // The header shrinks once the page is scrolled.
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -197,34 +235,34 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [tab])
   // Opens on you when you have said who you are (see WhoAmI), otherwise on the first player.
   const who = useWho()
   const me = myPlayerId(who, state.players)
-  const [playerId, setPlayerId] = useState<string | null>(me ?? initial.players[0]?.id ?? null)
+  const [playerId, setPlayerIdState] = useState<string | null>(view.player ?? me ?? initial.players[0]?.id ?? null)
+  const playerIdRef = useRef(playerId)
+  playerIdRef.current = playerId
+  const setPlayerId = (id: string | null) => {
+    playerIdRef.current = id
+    setPlayerIdState(id)
+  }
+  const openPlayer = (id: string) => {
+    setPlayerId(id)
+    go({ tab: "player", sub: "", player: id })
+  }
   useEffect(() => {
-    if (me) setPlayerId(me)
-  }, [me])
+    if (view.player) setPlayerId(view.player)
+    else if (me && view.tab !== "player") setPlayerId(me)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view.player, me])
   const [toggles, setTogglesState] = useState<Toggles>(loadToggles)
   const setToggles = (t: Toggles) => {
     saveToggles(t)
     setTogglesState(t)
   }
-  // Same deep link the classic site's Share button writes: #player=<id>.
-  useEffect(() => {
-    const m = location.hash.match(/^#player=(.+)$/)
-    if (m) {
-      setPlayerId(decodeURIComponent(m[1]))
-      setTab("player")
-    }
-  }, [])
   // The classic panels announce "open this player" through a window event.
   useEffect(() => {
     const onPlayer = (e: Event) => {
-      setPlayerId((e as CustomEvent<string>).detail)
-      setTab("player")
+      openPlayer((e as CustomEvent<string>).detail)
     }
     window.addEventListener("legacy-open-player", onPlayer)
     return () => window.removeEventListener("legacy-open-player", onPlayer)
@@ -236,9 +274,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       const d = (e as CustomEvent<string | { id: string; time: number | null }>).detail
       const id = typeof d === "string" ? d : d.id
       const time = typeof d === "string" ? null : d.time
-      setLiveOpen(false)
-      setTab("games")
       setOpenRequest({ id, time, n: Date.now() })
+      setSub("game:" + id)
     }
     window.addEventListener("legacy-open-game", onGame)
     return () => window.removeEventListener("legacy-open-game", onGame)
@@ -275,9 +312,16 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         Skip to content
       </a>
       <div className={`sticky top-0 z-20 -mx-4 flex items-center justify-between gap-3 bg-background/90 px-4 backdrop-blur transition-[padding] sm:-mx-6 sm:px-6 ${scrolled ? "py-1.5" : "py-3"}`}>
-        <h1 className={`font-display font-bold transition-[font-size] ${scrolled ? "text-lg" : "text-2xl"}`}>
-          Poolean <span className="text-accent">Intel</span>
-        </h1>
+        <div className="flex min-w-0 items-center gap-1">
+          {(view.sub !== "" || view.tab !== "games") && (
+            <Button size="icon" variant="ghost" className="-ml-2 size-9 shrink-0" aria-label="Back" onClick={goBack}>
+              <ArrowLeft />
+            </Button>
+          )}
+          <h1 className={`font-display font-bold transition-[font-size] ${scrolled ? "text-lg" : "text-2xl"}`}>
+            Poolean <span className="text-accent">Intel</span>
+          </h1>
+        </div>
         <div className="flex items-center gap-2">
           {cloud && mode === "admin" && <SyncChip cloud={cloud} />}
           <WhoAmI state={state} />
@@ -328,10 +372,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       {!liveOpen && findLiveGame(state) && (
         <LiveMiniBar
           state={state}
-          onOpen={() => {
-            setTab("games")
-            setLiveOpen(true)
-          }}
+          onOpen={() => setSub("live")}
         />
       )}
       <main id="main" tabIndex={-1} className="outline-none">
@@ -347,13 +388,11 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           <GamesPage
             state={state}
             update={update}
-            liveOpen={liveOpen}
-            setLiveOpen={setLiveOpen}
+            sub={view.tab === "games" ? view.sub : ""}
+            go={setSub}
+            goBack={goBack}
             openRequest={openRequest}
-            onOpenPlayer={(id) => {
-              setPlayerId(id)
-              setTab("player")
-            }}
+            onOpenPlayer={openPlayer}
           />
         </TabsContent>
         <TabsContent value="leaderboard">
@@ -362,16 +401,16 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
             state={state}
             toggles={toggles}
             setToggles={setToggles}
-            onOpenPlayer={(id) => {
-              setPlayerId(id)
-              setTab("player")
-            }}
+            onOpenPlayer={openPlayer}
           />
           </Suspense>
         </TabsContent>
         <TabsContent value="player">
           <Suspense fallback={<PageSkeleton label="Loading player" />}>
-            <PlayerDetailPage state={state} toggles={toggles} playerId={playerId} onChangePlayer={(id) => setPlayerId(id)} />
+            <PlayerDetailPage state={state} toggles={toggles} playerId={playerId} onChangePlayer={(id) => {
+              setPlayerId(id)
+              go({ player: id }, true)
+            }} />
           </Suspense>
         </TabsContent>
         {!readOnly && (
@@ -379,10 +418,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
             <PlayersPage
               state={state}
               update={update}
-              onOpenPlayer={(id) => {
-                setPlayerId(id)
-                setTab("player")
-              }}
+              onOpenPlayer={openPlayer}
             />
           </TabsContent>
         )}
