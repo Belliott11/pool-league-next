@@ -35,6 +35,9 @@ export interface ScoringEvent {
   dunk?: boolean
   contestLevel?: "none" | "light" | "medium" | "heavy" | null
   passerId?: string | null
+  // Rebound battles: who was matched up on the rebounder, or reboundNoContest when nobody was.
+  reboundContesterIds?: string[]
+  reboundNoContest?: boolean
 }
 
 export interface TurnoverEvent {

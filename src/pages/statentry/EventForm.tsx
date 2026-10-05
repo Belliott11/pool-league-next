@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -121,6 +121,13 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
   const [assistId, setAssistId] = useState<string | null>(edit?.assistId ?? null)
   const [passerId, setPasserId] = useState<string | null>(edit?.passerId ?? null)
   const [rebounderId, setRebounderId] = useState<string | null>(edit?.rebounderId ?? null)
+  const [contesterIds, setContesterIds] = useState<string[]>(edit?.reboundContesterIds ?? [])
+  const [noContest, setNoContest] = useState(edit?.reboundNoContest === true)
+  // Contesters are the rebounder's opponents, so a different rebounder clears them.
+  useEffect(() => {
+    setContesterIds((c) => (rebounderId ? c.filter((id) => teamsOf(game, rebounderId).opps.includes(id)) : []))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rebounderId])
   const [blockerId, setBlockerId] = useState<string | null>(edit?.blockerId ?? null)
   const [defenderIds, setDefenderIds] = useState<string[]>(edit?.defenderIds ?? [])
   const [contestLevel, setContestLevel] = useState<ScoringEvent["contestLevel"]>(edit?.contestLevel ?? null)
@@ -147,7 +154,7 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
 
   const save = (again?: boolean) => {
     if (!scorerId) return
-    const common = { assistId, passerId, rebounderId, blockerId, defenderIds, contestLevel, shotType, dunk, shotLocation: loc, videoTime: time }
+    const common = { assistId, passerId, rebounderId, reboundContesterIds: contesterIds, reboundNoContest: noContest, blockerId, defenderIds, contestLevel, shotType, dunk, shotLocation: loc, videoTime: time }
     if (edit) onSave((g) => editShot(g, edit.id, common))
     else {
       onSave((g) => addShot(g, { scorerId, points, made, outOfBounds: oob, ...common }))
@@ -238,6 +245,23 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
                   ))}
                   {opps.map((id) => (
                     <Chip key={id} selected={rebounderId === id} onClick={() => one(rebounderId, setRebounderId, id)}>{name(id)} (opp)</Chip>
+                  ))}
+                </Field>
+              )}
+              {!oob && !lockedOob && rebounderId && (
+                <Field label="Contesting the rebound" hint="Who was matched up on the rebounder. Pick nobody contested if the rebound was free.">
+                  <Chip selected={noContest} onClick={() => { setNoContest(!noContest); setContesterIds([]) }}>Nobody contested</Chip>
+                  {teamsOf(game, rebounderId).opps.map((id) => (
+                    <Chip
+                      key={id}
+                      selected={contesterIds.includes(id)}
+                      onClick={() => {
+                        setNoContest(false)
+                        setContesterIds((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]))
+                      }}
+                    >
+                      {name(id)}
+                    </Chip>
                   ))}
                 </Field>
               )}

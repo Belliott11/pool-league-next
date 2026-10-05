@@ -6,23 +6,22 @@ import { Input } from "@/components/ui/input"
 import { parseVideoTimeInput } from "@/lib/legacy-core"
 import { formatVideoTime } from "@/lib/stats"
 import { playerName } from "@/lib/players"
-import { addMatchup, addPlay, deleteMatchup, deletePlay, setDirection, timeToInput } from "@/lib/statEntry"
+import { addPlay, deletePlay, setDirection, timeToInput } from "@/lib/statEntry"
 import type { Game, PooleanState } from "@/lib/types"
 import { Chip, Field } from "./parts"
 import type { Apply } from "./EventForm"
 
-// The rest of what the classic Stat Entry could record: where Team A shoots, defensive matchups, and the
-// highlight / lowlight reel. Shots, turnovers, steals and fouls are the buttons above.
+// The rest of what Stat Entry records: where Team A shoots, and the highlight / lowlight reel. (Defensive
+// matchups are no longer tracked.) Shots, turnovers, steals and fouls are the buttons above.
 export function ExtraEntry({ state, game, apply, now, hasVideo }: { state: PooleanState; game: Game; apply: Apply; now: () => number | null; hasVideo: boolean }) {
   const roster = [...game.teamA, ...game.teamB]
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-display">Court side, matchups and clips</CardTitle>
+        <CardTitle className="font-display">Court side and clips</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <Direction game={game} apply={apply} />
-        <Matchups state={state} game={game} roster={roster} apply={apply} now={now} hasVideo={hasVideo} />
         <Clips state={state} game={game} roster={roster} apply={apply} now={now} hasVideo={hasVideo} />
       </CardContent>
     </Card>
@@ -53,72 +52,6 @@ function TimeField({ label, value, onChange, now, hasVideo }: { label: string; v
         </Button>
       )}
     </Field>
-  )
-}
-
-function Matchups({ state, game, roster, apply, now, hasVideo }: { state: PooleanState; game: Game; roster: string[]; apply: Apply; now: () => number | null; hasVideo: boolean }) {
-  const [defender, setDefender] = useState<string | null>(null)
-  const [offender, setOffender] = useState<string | null>(null)
-  const [note, setNote] = useState("")
-  const [time, setTime] = useState("")
-  const opponents = defender ? (game.teamA.includes(defender) ? game.teamB : game.teamA) : []
-  const t = parseVideoTimeInput(time)
-  const ok = !!defender && !!offender && !(time.trim() !== "" && t === null)
-  const rows = game.matchups ?? []
-
-  return (
-    <div className="flex flex-col gap-3">
-      <h3 className="font-display text-base font-semibold">Defensive matchups</h3>
-      <Field label="Defender">
-        {roster.map((id) => (
-          <Chip key={id} selected={defender === id} onClick={() => { setDefender(defender === id ? null : id); setOffender(null) }}>
-            {playerName(state, id)}
-          </Chip>
-        ))}
-      </Field>
-      {defender && (
-        <Field label="Guarding">
-          {opponents.map((id) => (
-            <Chip key={id} selected={offender === id} onClick={() => setOffender(offender === id ? null : id)}>
-              {playerName(state, id)}
-            </Chip>
-          ))}
-        </Field>
-      )}
-      <Field label="Note (optional)">
-        <Input value={note} onChange={(e) => setNote(e.target.value)} className="h-11" placeholder="Locked him up, switched, ..." aria-label="Matchup note" />
-      </Field>
-      <TimeField label="Time" value={time} onChange={setTime} now={now} hasVideo={hasVideo} />
-      <Button
-        type="button"
-        className="h-11 self-start"
-        disabled={!ok}
-        onClick={() => {
-          apply((g) => addMatchup(g, { defenderId: defender!, offenderId: offender!, note: note.trim(), videoTime: t }))
-          setOffender(null)
-          setNote("")
-          setTime("")
-        }}
-      >
-        Add matchup
-      </Button>
-      {rows.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm">
-          {rows.map((m) => (
-            <li key={m.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
-              <span>
-                {playerName(state, m.defenderId)} guarding {playerName(state, m.offenderId)}
-                {m.note ? `: ${m.note}` : ""}
-                {m.videoTime !== null && m.videoTime !== undefined ? ` (${formatVideoTime(m.videoTime)})` : ""}
-              </span>
-              <Button type="button" variant="ghost" size="icon" aria-label="Delete matchup" onClick={() => apply((g) => deleteMatchup(g, m.id))}>
-                <Trash2 />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   )
 }
 

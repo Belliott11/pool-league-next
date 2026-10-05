@@ -17,6 +17,9 @@ export interface ShotInput {
   // "none" = self-created, null = not set. Makes always derive it from assistId.
   passerId?: string | null
   rebounderId?: string | null
+  // Miss only, and only with a rebounder: who contested the rebound, or nobody did.
+  reboundContesterIds?: string[]
+  reboundNoContest?: boolean
   blockerId?: string | null
   defenderIds?: string[]
   contestLevel?: ScoringEvent["contestLevel"]
@@ -52,6 +55,13 @@ function fixShot(ev: ScoringEvent) {
     ev.assistId = null
     if (ev.turnoverEventId) ev.rebounderId = null
   }
+  // A rebound battle only exists on a live-ball miss with a rebounder; naming contesters means someone contested.
+  if (made || !ev.rebounderId || ev.turnoverEventId) {
+    ev.reboundContesterIds = []
+    ev.reboundNoContest = false
+  } else if ((ev.reboundContesterIds ?? []).length > 0) {
+    ev.reboundNoContest = false
+  }
   if (!fg) {
     ev.shotLocation = null
     ev.dunk = false
@@ -74,6 +84,8 @@ export function addShot(game: Game, input: ShotInput): Game {
     blockerId: input.blockerId ?? null,
     turnoverEventId: null,
     rebounderId: input.outOfBounds ? null : (input.rebounderId ?? null),
+    reboundContesterIds: [...(input.reboundContesterIds ?? [])],
+    reboundNoContest: input.reboundNoContest ?? false,
     shotLocation: input.shotLocation ?? null,
     dunk: input.dunk ?? false,
     shotType: input.shotType ?? null,
@@ -95,7 +107,7 @@ export function addShot(game: Game, input: ShotInput): Game {
 
 // Like the classic Shot Log edit: who is tagged and how, never scorer/points/make-vs-miss/out of
 // bounds (those change which other records exist, so fixing them means delete and re-log).
-export type ShotPatch = Partial<Pick<ShotInput, "assistId" | "passerId" | "rebounderId" | "blockerId" | "defenderIds" | "contestLevel" | "shotType" | "dunk" | "shotLocation" | "videoTime">>
+export type ShotPatch = Partial<Pick<ShotInput, "assistId" | "passerId" | "rebounderId" | "reboundContesterIds" | "reboundNoContest" | "blockerId" | "defenderIds" | "contestLevel" | "shotType" | "dunk" | "shotLocation" | "videoTime">>
 
 export function editShot(game: Game, id: string, patch: ShotPatch): Game {
   const g = structuredClone(game)

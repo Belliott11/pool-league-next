@@ -273,33 +273,6 @@ function OtherEvents({ state, game }: { state: PooleanState; game: Game }) {
   )
 }
 
-function Matchups({ state, game }: { state: PooleanState; game: Game }) {
-  const rows = game.matchups ?? []
-  if (rows.length === 0) return <EmptyState title="No defensive matchups yet" hint="Pick a defender on each shot when you log this game." />
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Defender</TableHead>
-          <TableHead>Guarded</TableHead>
-          <TableHead>Note</TableHead>
-          <TableHead>Time</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((m) => (
-          <TableRow key={m.id}>
-            <TableCell>{playerName(state, m.defenderId)}</TableCell>
-            <TableCell>{playerName(state, m.offenderId)}</TableCell>
-            <TableCell>{m.note || "-"}</TableCell>
-            <TableCell className="tabular-nums"><WatchTime t={m.videoTime} /></TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  )
-}
-
 function Reel({ state, game }: { state: PooleanState; game: Game }) {
   const rows = game.plays ?? []
   if (rows.length === 0) return <EmptyState title="No clips marked yet" hint="Mark a highlight or lowlight while logging this game and it lands here." />
@@ -469,9 +442,6 @@ export function GamePage({ state, update, game, onBack, onStatEntry, autoSeek }:
           </Panel>
           <Panel title="Other Events" hint="Every turnover, steal, and foul, tagged with the opponent involved where noted.">
             <OtherEvents state={state} game={game} />
-          </Panel>
-          <Panel title="Defensive Matchups">
-            <Matchups state={state} game={game} />
           </Panel>
           <Panel title="Highlight / Lowlight Reel">
             {hasVideo && (game.plays ?? []).length > 0 && (
