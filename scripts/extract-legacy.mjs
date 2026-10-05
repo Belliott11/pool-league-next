@@ -420,6 +420,57 @@ function cloudVideoUrl(game) {
   const m = game.masterVideoId ? (state.masterVideos || []).find((x) => x.id === game.masterVideoId) : null;
   return game.videoUrl || (m && m.url) || null;
 }
+// Plays a clip inside the panel it was asked from (the page stays where it is). It starts at the clip's start
+// and pauses at its end; onDone runs then, so a list of clips can chain.
+const inlineClipRuns = new WeakMap();
+async function playClipInline(wrap, gameId, start, end, label, onDone) {
+  const game = state.games.find((g) => g.id === gameId);
+  const player = ensureInlineVideoPlayer(wrap);
+  const video = player.querySelector("video");
+  const labelEl = player.querySelector(".inline-video-label");
+  const prev = inlineClipRuns.get(video);
+  if (prev) { video.removeEventListener("timeupdate", prev); inlineClipRuns.delete(video); }
+  if (!game) { labelEl.textContent = "Game not found."; return false; }
+  labelEl.textContent = "Loading " + formatDateDisplay(game.date) + "…";
+  const ok = await loadInlineVideo(game, video, start);
+  if (!ok) {
+    labelEl.textContent = "No playable video for " + formatDateDisplay(game.date) + ". A YouTube link can only be watched from the game page.";
+    return false;
+  }
+  labelEl.textContent = label || (formatDateDisplay(game.date) + " · " + formatVideoTime(start));
+  if (end !== null && end !== undefined) {
+    const onTime = () => {
+      if (video.currentTime >= end) {
+        video.pause();
+        video.removeEventListener("timeupdate", onTime);
+        inlineClipRuns.delete(video);
+        if (onDone) onDone();
+      }
+    };
+    inlineClipRuns.set(video, onTime);
+    video.addEventListener("timeupdate", onTime);
+  }
+  player.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  return true;
+}
+// Every clip in a list of {game, clips}, one after another, in the same panel.
+function playClipSequence(wrap, grouped, title) {
+  const items = [];
+  grouped.forEach(({ game, clips }) => clips.forEach((clip) => items.push({ game, clip })));
+  let i = 0;
+  const step = async () => {
+    if (i >= items.length) {
+      ensureInlineVideoPlayer(wrap).querySelector(".inline-video-label").textContent = title + ": that was the last clip.";
+      return;
+    }
+    const { game, clip } = items[i];
+    const label = title + " · clip " + (i + 1) + " of " + items.length + " · " + formatDateDisplay(game.date);
+    i++;
+    const ok = await playClipInline(wrap, game.id, clip.start, clip.end, label, step);
+    if (!ok) step();
+  };
+  step();
+}
 function showTab() {}
 function startLiveGame() {}
 function openLiveGameOverlay() {}
@@ -540,6 +591,14 @@ const videoHooks = (code) => {
     '<video id=\\"leagueExportVideo\\" class=\\"league-export-preview\\" muted playsinline></video>',
     '<video id=\\"leagueExportVideo\\" class=\\"league-export-preview\\" crossorigin=\\"anonymous\\" muted playsinline></video>',
   )
+  // A player's own reel and "Watch these clips" play right in the profile instead of leaving it.
+  swap(
+    'goBtn.addEventListener("click", () => openGameAndSeek(clip.gameId, clip.start));',
+    'goBtn.addEventListener("click", () => playClipInline(body.closest("table").parentElement, clip.gameId, clip.start, clip.end, formatDateDisplay(clip.gameDate) + " · " + formatTime(clip.start) + "-" + formatTime(clip.end) + (clip.note ? " · " + clip.note : "")));',
+  )
+  const area = /function startAreaClipExport\(playerId, categoryKey, categoryLabel\) \{[\s\S]*?\n\}\n/
+  if (!area.test(code)) throw new Error("startAreaClipExport not found")
+  code = code.replace(area, () => 'function startAreaClipExport(playerId, categoryKey, categoryLabel) {\n  const grouped = computeCategoryClipGroups(playerId, categoryKey);\n  if (grouped.length === 0) return;\n  const btn = document.querySelector(`[data-player-id="${playerId}"][data-category-key="${categoryKey}"]`);\n  playClipSequence((btn && btn.parentElement) || document.body, grouped, categoryLabel);\n}\n')
   const open = /function openGameAndSeek\(gameId, videoTime\) \{[\s\S]*?\n\}\n/
   if (!open.test(code)) throw new Error("openGameAndSeek not found")
   code = code.replace(open, () => 'function openGameAndSeek(gameId, videoTime) {\n  window.dispatchEvent(new CustomEvent("legacy-open-game", { detail: { id: gameId, time: videoTime === undefined ? null : videoTime } }));\n}\n')
