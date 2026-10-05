@@ -36,6 +36,13 @@ export function GamesPage({
   const [openId, setOpenId] = useState<string | null>(null)
   const [statEntry, setStatEntry] = useState(false)
   const [recapOpen, setRecapOpen] = useState(false)
+  const [recapDate, setRecapDate] = useState<string | undefined>(undefined)
+  // A finished live game lands on its night's recap.
+  const showRecap = (date?: string) => {
+    setRecapDate(date)
+    setLiveOpen(false)
+    setRecapOpen(true)
+  }
   // Same deep link the classic site's Share button writes: #game=<id>.
   useEffect(() => {
     const m = location.hash.match(/^#game=(.+)$/)
@@ -52,14 +59,19 @@ export function GamesPage({
   const open = (g: Game) => (g.liveInProgress ? setLiveOpen(true) : setOpenId(g.id))
 
   if (liveOpen) {
-    return readOnly ? <LiveWatch state={state} onClose={() => setLiveOpen(false)} /> : <LiveGamePage state={state} update={update} onClose={() => setLiveOpen(false)} />
+    return readOnly ? <LiveWatch state={state} onClose={() => setLiveOpen(false)} onRecap={showRecap} /> : <LiveGamePage state={state} update={update} onClose={() => setLiveOpen(false)} onRecap={showRecap} />
   }
 
   if (recapOpen) {
     return (
       <NightRecap
+        key={recapDate ?? "latest"}
+        initialDate={recapDate}
         state={state}
-        onBack={() => setRecapOpen(false)}
+        onBack={() => {
+          setRecapOpen(false)
+          setRecapDate(undefined)
+        }}
         onOpenGame={(id) => {
           setRecapOpen(false)
           setOpenId(id)
@@ -101,7 +113,7 @@ export function GamesPage({
         )}
         {readOnly && <LiveBanner state={state} onOpen={() => setLiveOpen(true)} />}
         {state.games.length > 0 && (
-          <Button className="self-start" variant="outline" onClick={() => setRecapOpen(true)}>
+          <Button className="self-start" variant="outline" onClick={() => showRecap()}>
             <CalendarDays />
             Night recap
           </Button>

@@ -236,7 +236,7 @@ export function TeamColumn({ side, ids, total, other, game, state, sel, setSel, 
   )
 }
 
-function Board({ game, state, update, onClose }: { game: Game; state: PooleanState; update: Update; onClose: () => void }) {
+function Board({ game, state, update, onClose, onRecap }: { game: Game; state: PooleanState; update: Update; onClose: () => void; onRecap?: (date: string) => void }) {
   const [sel, setSel] = useState<string | null>(null)
   const [confirm, setConfirm] = useState(false)
   const [a, b] = liveTotals(game)
@@ -339,7 +339,9 @@ function Board({ game, state, update, onClose }: { game: Game; state: PooleanSta
           onClick={() => {
             haptic("success")
             update((s) => finishLive(s, game.id))
-            onClose()
+            // Straight to the night's recap when the app can show it.
+            if (onRecap) onRecap(game.date)
+            else onClose()
           }}
         >
           <Flag /> Finish game
@@ -375,11 +377,11 @@ function Board({ game, state, update, onClose }: { game: Game; state: PooleanSta
   )
 }
 
-export function LiveGamePage({ state, update, onClose }: { state: PooleanState; update: Update; onClose: () => void }) {
+export function LiveGamePage({ state, update, onClose, onRecap }: { state: PooleanState; update: Update; onClose: () => void; onRecap?: (date: string) => void }) {
   const game = findLiveGame(state)
   return (
     <div data-no-swipe className="mx-auto w-full max-w-md">
-      {game ? <Board game={game} state={state} update={update} onClose={onClose} /> : <Setup state={state} update={update} onClose={onClose} />}
+      {game ? <Board game={game} state={state} update={update} onClose={onClose} onRecap={onRecap} /> : <Setup state={state} update={update} onClose={onClose} />}
     </div>
   )
 }

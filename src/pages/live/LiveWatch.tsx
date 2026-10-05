@@ -1,4 +1,4 @@
-import { Radio } from "lucide-react"
+import { CalendarDays, Radio } from "lucide-react"
 import { useEffect, useRef } from "react"
 import { EmptyState } from "@/components/EmptyState"
 import { Button } from "@/components/ui/button"
@@ -72,7 +72,7 @@ function Side({ side, ids, total, other, game, state, pops }: { side: "A" | "B";
 
 // The live scoreboard for anyone who is not the editor: the same score, odds and effects, with no buttons.
 // It follows whatever the editor is scoring; the data refreshes every few seconds.
-export function LiveWatch({ state, onClose }: { state: PooleanState; onClose: () => void }) {
+export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; onClose: () => void; onRecap?: (date: string) => void }) {
   const live = findLiveGame(state)
   // Remember the game so that when it ends the final score stays on screen instead of vanishing.
   const lastId = useRef<string | undefined>(live?.id)
@@ -151,6 +151,11 @@ export function LiveWatch({ state, onClose }: { state: PooleanState; onClose: ()
         </p>
       )}
       {isLive && <LiveOdds game={game} />}
+      {!isLive && onRecap && (
+        <Button onClick={() => onRecap(game.date)}>
+          <CalendarDays aria-hidden /> See tonight&apos;s recap
+        </Button>
+      )}
       <Button variant="ghost" onClick={onClose}>
         Back to games
       </Button>

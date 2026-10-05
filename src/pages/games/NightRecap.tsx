@@ -16,9 +16,9 @@ import { cn } from "@/lib/utils"
 
 // A day's games in one place: results, who led the night, and a picture or text to send around. Games scored
 // live count with their points; games with a box score add rebounds, assists, steals and blocks.
-export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer }: { state: PooleanState; onBack: () => void; onOpenGame: (id: string) => void; onOpenPlayer: (id: string) => void }) {
+export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDate }: { state: PooleanState; onBack: () => void; onOpenGame: (id: string) => void; onOpenPlayer: (id: string) => void; initialDate?: string }) {
   const days = useMemo(() => gameDays(state), [state])
-  const [date, setDate] = useState(days[0] ?? "")
+  const [date, setDate] = useState(initialDate && days.includes(initialDate) ? initialDate : (days[0] ?? ""))
   const [copied, setCopied] = useState(false)
   const s = useMemo(() => summarizeNight(state, date), [state, date])
   const label = formatDateDisplay(date)
