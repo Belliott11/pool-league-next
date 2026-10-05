@@ -1,4 +1,4 @@
-import { Copy, Share2, Trophy } from "lucide-react"
+import { ChevronDown, ChevronUp, Copy, Share2, Trophy } from "lucide-react"
 import { useMemo, useState } from "react"
 import { EmptyState } from "@/components/EmptyState"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatDateDisplay } from "@/lib/format"
-import { LEADER_LABEL, gameDays, recapText, summarizeNight, type LeaderKey } from "@/lib/nightRecap"
+import { LEADER_LABEL, gameDays, recapText, summarizeNight, type LeaderKey, type NightPlayer } from "@/lib/nightRecap"
 import { predictRealMatchup } from "@/lib/matchup"
 import { RECORD_KEYS, RECORD_LABEL, nightCallouts, recordBook } from "@/lib/records"
 import { nightStories } from "@/lib/storylines"
@@ -17,12 +17,31 @@ import { TEAM } from "@/lib/teamColors"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
+type SortKey = "player" | "wl" | "pts" | "best" | "reb" | "ast" | "stl" | "blk" | "twoWay"
+
+// What each column sorts by. Stats that need a box score sink to the bottom for players without one.
+function sortValue(p: NightPlayer, key: SortKey, name: (id: string) => string): number | string {
+  switch (key) {
+    case "player":
+      return name(p.id).toLowerCase()
+    case "wl":
+      return (p.wins - p.losses) * 1000 + p.wins
+    case "pts":
+      return p.pts
+    case "best":
+      return p.best
+    default:
+      return p.boxGames ? p[key] : Number.NEGATIVE_INFINITY
+  }
+}
+
 // A day's games in one place: results, who led the night, and a picture or text to send around. Games scored
 // live count with their points; games with a box score add rebounds, assists, steals and blocks.
 export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDate }: { state: PooleanState; onBack: () => void; onOpenGame: (id: string) => void; onOpenPlayer: (id: string) => void; initialDate?: string }) {
   const days = useMemo(() => gameDays(state), [state])
   const [date, setDate] = useState(initialDate && days.includes(initialDate) ? initialDate : (days[0] ?? ""))
   const [copied, setCopied] = useState(false)
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "pts", dir: "desc" })
   const full = useMemo(() => summarizeNight(state, date), [state, date])
   // Two versions. Right after live scoring there are only points, so the quick recap sticks to results, points and
   // wins. Once the shots are entered from film the full recap adds MVP, leaders, lineups and records.
@@ -38,6 +57,29 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
   const name = (id: string) => playerName(state, id)
   const names = (ids: string[]) => ids.map(name).join(", ")
   const anyBox = !quick && hasBox
+  const rows = useMemo(() => {
+    const sign = sort.dir === "asc" ? 1 : -1
+    return [...s.players].sort((a, b) => {
+      const x = sortValue(a, sort.key, name)
+      const y = sortValue(b, sort.key, name)
+      const c = typeof x === "string" ? x.localeCompare(y as string) : (x as number) - (y as number)
+      // Ties keep the usual order: points, then wins.
+      return c * sign || b.pts - a.pts || b.wins - a.wins
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.players, sort, state])
+  const head = (key: SortKey, label: string) => (
+    <TableHead aria-sort={sort.key === key ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button
+        type="button"
+        className="inline-flex items-center gap-0.5 font-medium hover:text-foreground"
+        onClick={() => setSort((cur) => (cur.key === key ? { key, dir: cur.dir === "desc" ? "asc" : "desc" } : { key, dir: key === "player" ? "asc" : "desc" }))}
+      >
+        {label}
+        {sort.key === key && (sort.dir === "desc" ? <ChevronDown aria-hidden className="size-3.5" /> : <ChevronUp aria-hidden className="size-3.5" />)}
+      </button>
+    </TableHead>
+  )
 
   if (days.length === 0) {
     return (
@@ -275,23 +317,23 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead>W-L</TableHead>
-                <TableHead>PTS</TableHead>
-                <TableHead>Best</TableHead>
+                {head("player", "Player")}
+                {head("wl", "W-L")}
+                {head("pts", "PTS")}
+                {head("best", "Best")}
                 {anyBox && (
                   <>
-                    <TableHead>REB</TableHead>
-                    <TableHead>AST</TableHead>
-                    <TableHead>STL</TableHead>
-                    <TableHead>BLK</TableHead>
-                    <TableHead>2-WAY</TableHead>
+                    {head("reb", "REB")}
+                    {head("ast", "AST")}
+                    {head("stl", "STL")}
+                    {head("blk", "BLK")}
+                    {head("twoWay", "2-WAY")}
                   </>
                 )}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {s.players.map((p) => (
+              {rows.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
                     <button type="button" className="flex items-center gap-2 font-bold text-accent hover:underline" onClick={() => onOpenPlayer(p.id)}>

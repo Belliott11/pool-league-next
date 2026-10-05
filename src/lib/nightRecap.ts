@@ -25,6 +25,9 @@ export interface PlayerLine {
   tov: number
   tpm: number
   ftm: number
+  fgm: number
+  fga: number
+  pf: number
   twoWay: number | null
   box: boolean
 }
@@ -32,12 +35,12 @@ export interface PlayerLine {
 export function playerLine(g: Game, id: string): PlayerLine {
   if (g.scoringEvents.length === 0) {
     const pts = (g.liveScores?.length ?? 0) + (g.scorekeeperScores?.length ?? 0) > 0 ? liveScoreOf(g, [id]) : getGameStats(g, id).pts
-    return { pts, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, tpm: 0, ftm: 0, twoWay: null, box: false }
+    return { pts, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, tpm: 0, ftm: 0, fgm: 0, fga: 0, pf: 0, twoWay: null, box: false }
   }
   const s = getGameStats(g, id)
   const sh = shootingStats(g, id)
   const def = gameDefenseStats(g, id)
-  return { pts: s.pts, reb: s.oreb + s.dreb, ast: s.ast, stl: s.stl, blk: s.blk, tov: s.tov, tpm: sh.tpm, ftm: sh.ftm, twoWay: twoWayScore(s, sh, def), box: true }
+  return { pts: s.pts, reb: s.oreb + s.dreb, ast: s.ast, stl: s.stl, blk: s.blk, tov: s.tov, tpm: sh.tpm, ftm: sh.ftm, fgm: sh.fgm, fga: sh.fga, pf: s.pf, twoWay: twoWayScore(s, sh, def), box: true }
 }
 
 export interface NightPlayer {
@@ -53,6 +56,9 @@ export interface NightPlayer {
   tov: number
   tpm: number
   ftm: number
+  fgm: number
+  fga: number
+  pf: number
   twoWay: number // summed over games with a box score
   boxGames: number // games with a box score behind the extras
   best: number // most points in one game
@@ -134,7 +140,7 @@ export function summarizeNight(state: PooleanState, date: string): NightSummary 
   const players = new Map<string, NightPlayer>()
   const row = (id: string): NightPlayer => {
     let p = players.get(id)
-    if (!p) players.set(id, (p = { id, games: 0, wins: 0, losses: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, tpm: 0, ftm: 0, twoWay: 0, boxGames: 0, best: 0 }))
+    if (!p) players.set(id, (p = { id, games: 0, wins: 0, losses: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, tpm: 0, ftm: 0, fgm: 0, fga: 0, pf: 0, twoWay: 0, boxGames: 0, best: 0 }))
     return p
   }
 
@@ -164,6 +170,9 @@ export function summarizeNight(state: PooleanState, date: string): NightSummary 
           p.tov += line.tov
           p.tpm += line.tpm
           p.ftm += line.ftm
+          p.fgm += line.fgm
+          p.fga += line.fga
+          p.pf += line.pf
           p.twoWay += line.twoWay ?? 0
         }
       }
