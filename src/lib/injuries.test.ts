@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { goofyNote, injuryBoard, unavailable } from "@/lib/injuries"
+import { goofyNote, injuryBoard, injuryHeadlines, unavailable } from "@/lib/injuries"
 import { seasonStories } from "@/lib/storylines"
 import type { Game, Injury, PooleanState } from "@/lib/types"
 
@@ -49,5 +49,36 @@ describe("seasonStories", () => {
     const out = seasonStories({ players, games }, (x) => x.toUpperCase()).join(" ")
     expect(out).toContain("A sets the pace at 6-0")
     expect(out).toContain("6-game win streak")
+  })
+})
+
+describe("injury headlines", () => {
+  const name = (id: string) => id.toUpperCase()
+  const now = new Date("2026-10-06T12:00:00Z")
+  const roster = Array.from({ length: 9 }, (_, i) => ({ id: "p" + i, name: "P" + i }))
+
+  it("says something snarky even when everyone is healthy", () => {
+    const h = injuryHeadlines({ players: roster, games: [] }, name, now)
+    expect(h).toHaveLength(1)
+    expect(h[0].length).toBeGreaterThan(10)
+  })
+
+  it("calls out a long-running injury and a pile-up", () => {
+    const state: PooleanState = {
+      players: roster,
+      games: [],
+      injuries: [
+        { id: "1", playerId: "p0", status: "out", note: "", updatedAt: "2026-09-01T00:00:00Z" },
+        { id: "2", playerId: "p1", status: "away", note: "", updatedAt: "2026-10-04T00:00:00Z" },
+        { id: "3", playerId: "p2", status: "questionable", note: "", updatedAt: "2026-10-05T00:00:00Z" },
+      ],
+    }
+    const text = injuryHeadlines(state, name, now).join(" ")
+    expect(text).toMatch(/hospital|trainer|third of the league/)
+  })
+
+  it("is stable for the same day", () => {
+    const state: PooleanState = { players: roster, games: [], injuries: [{ id: "1", playerId: "p0", status: "out", note: "", updatedAt: "2026-10-05T00:00:00Z" }] }
+    expect(injuryHeadlines(state, name, now)).toEqual(injuryHeadlines(state, name, now))
   })
 })

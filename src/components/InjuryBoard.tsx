@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { formatDateDisplay, uid } from "@/lib/format"
-import { INJURY_STATUSES, goofyNote, injuryBoard, statusInfo } from "@/lib/injuries"
+import { INJURY_STATUSES, goofyNote, injuryBoard, injuryHeadlines, statusInfo } from "@/lib/injuries"
 import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
 import type { Injury, InjuryStatus, PooleanState } from "@/lib/types"
@@ -22,6 +22,7 @@ const TONE = {
 export function InjuryBoard({ state, update, onOpenPlayer }: { state: PooleanState; update: Update; onOpenPlayer: (id: string) => void }) {
   const readOnly = useReadOnly()
   const board = injuryBoard(state)
+  const headlines = injuryHeadlines(state, (id) => state.players.find((p) => p.id === id)?.name ?? "Someone")
   const [editing, setEditing] = useState<Injury | "new" | null>(null)
 
   const save = (inj: Injury) => {
@@ -47,7 +48,15 @@ export function InjuryBoard({ state, update, onOpenPlayer }: { state: PooleanSta
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {!readOnly && editing !== null && <Form state={state} initial={editing === "new" ? null : editing} onSave={save} onCancel={() => setEditing(null)} />}
-        {board.length === 0 && editing === null && <p className="text-sm text-muted-foreground">Everyone is healthy. Suspiciously.</p>}
+        {headlines.length > 0 && editing === null && (
+          <div className="flex flex-col gap-1">
+            {headlines.map((h) => (
+              <p key={h} className="text-sm font-medium italic">
+                {h}
+              </p>
+            ))}
+          </div>
+        )}
         <ul className="flex flex-col gap-3">
           {board.map((i) => {
             const name = state.players.find((p) => p.id === i.playerId)?.name ?? "Someone"

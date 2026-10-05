@@ -280,7 +280,7 @@ export function GameLog({
         </Button>
       </div>
       <div className="flex flex-wrap items-center gap-2" aria-label="Quick filters">
-        {[10, 15, 20].map((n) => {
+        {[8, 10, 12].map((n) => {
           const on = filters.stat.playerId === "" && filters.stat.field === "pts" && filters.stat.op === "gte" && filters.stat.value === String(n)
           return (
             <button
