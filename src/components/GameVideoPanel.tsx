@@ -1,4 +1,5 @@
-import { useRef, useState } from "react"
+import { useRef, useState, type MutableRefObject } from "react"
+import type { PlayerControl } from "@/components/YouTubePlayer"
 import { Link2, Trash2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,7 +13,7 @@ import { deleteGameVideo, gameVideoUrl, masterOf, uploadGameVideo, videoPathFrom
 
 // Several games can point at one recording (a whole night on one video). Each game then keeps its own
 // "starts at" time, and the file is only deleted when no other game still uses it.
-export function GameVideoPanel({ state, game, update, readOnly }: { state: PooleanState; game: Game; update: Update; readOnly: boolean }) {
+export function GameVideoPanel({ state, game, update, readOnly, control }: { state: PooleanState; game: Game; update: Update; readOnly: boolean; control?: MutableRefObject<PlayerControl | null> }) {
   const games = state.games
   const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState("")
@@ -26,7 +27,7 @@ export function GameVideoPanel({ state, game, update, readOnly }: { state: Poole
   const useMaster = !!master && !game.videoUrl
   const groupSize = master ? games.filter((g) => g.masterVideoId === master.id).length : 0
 
-  if (readOnly) return url ? <GameVideo url={url} start={game.videoStart} /> : null
+  if (readOnly) return url ? <GameVideo url={url} start={game.videoStart} control={control} /> : null
 
   const busy = progress !== null
   const cloudOn = !!getClient()
@@ -110,7 +111,7 @@ export function GameVideoPanel({ state, game, update, readOnly }: { state: Poole
           Part of the recording <span className="font-medium text-foreground">{master.name}</span>, shared by {groupSize} game{groupSize === 1 ? "" : "s"}. {url ? "Set where this game starts below." : "Add the video once and every game in it gets it."}
         </p>
       )}
-      <GameVideo key={`${url}|${startSeconds}`} url={url} start={startSeconds} />
+      <GameVideo key={`${url}|${startSeconds}`} url={url} start={startSeconds} control={control} />
       <div className="flex flex-wrap items-center gap-2">
         <input ref={fileRef} type="file" accept="video/*" className="sr-only" aria-label="Choose a video file to upload" disabled={!cloudOn || busy} onChange={(e) => void onFile(e.target.files?.[0])} />
         <Button type="button" variant="outline" disabled={!cloudOn || busy} onClick={() => fileRef.current?.click()}>

@@ -1,13 +1,17 @@
 import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/EmptyState"
-import type { ReactNode } from "react"
+import { useRef, type ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ClipboardPenLine } from "lucide-react"
 import { GameVideoPanel } from "@/components/GameVideoPanel"
+import { WatchContext, WatchTime } from "@/components/WatchTime"
+import type { PlayerControl } from "@/components/YouTubePlayer"
+import { JUMP_LEAD_SECONDS } from "@/lib/legacy-core"
+import { gameVideoUrl } from "@/lib/video"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
@@ -189,7 +193,7 @@ function ShotRow({ state, game, ev }: { state: PooleanState; game: Game; ev: Sco
       <TableCell>{ev.assistId ? playerName(state, ev.assistId) : "-"}</TableCell>
       <TableCell>{ev.passerId && ev.passerId !== "none" ? playerName(state, ev.passerId) : "-"}</TableCell>
       <TableCell>{names(state, ev.defenderIds ?? [], "No defender")}</TableCell>
-      <TableCell className="tabular-nums">{formatVideoTime(ev.videoTime)}</TableCell>
+      <TableCell className="tabular-nums"><WatchTime t={ev.videoTime} /></TableCell>
     </TableRow>
   )
 }
@@ -260,7 +264,7 @@ function OtherEvents({ state, game }: { state: PooleanState; game: Game }) {
             <TableCell>{playerName(state, r.playerId)}</TableCell>
             <TableCell>{r.opponentId ? playerName(state, r.opponentId) : "-"}</TableCell>
             <TableCell>{r.note || "-"}</TableCell>
-            <TableCell className="tabular-nums">{formatVideoTime(r.videoTime)}</TableCell>
+            <TableCell className="tabular-nums"><WatchTime t={r.videoTime} /></TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -287,7 +291,7 @@ function Matchups({ state, game }: { state: PooleanState; game: Game }) {
             <TableCell>{playerName(state, m.defenderId)}</TableCell>
             <TableCell>{playerName(state, m.offenderId)}</TableCell>
             <TableCell>{m.note || "-"}</TableCell>
-            <TableCell className="tabular-nums">{formatVideoTime(m.videoTime)}</TableCell>
+            <TableCell className="tabular-nums"><WatchTime t={m.videoTime} /></TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -317,7 +321,7 @@ function Reel({ state, game }: { state: PooleanState; game: Game }) {
                 {p.type === "highlight" ? "Highlight" : "Lowlight"}
               </Badge>
             </TableCell>
-            <TableCell className="tabular-nums">{formatVideoTime(p.start)}</TableCell>
+            <TableCell className="tabular-nums"><WatchTime t={p.start} /></TableCell>
             <TableCell className="tabular-nums">{formatVideoTime(p.end)}</TableCell>
             <TableCell>{p.playerId ? playerName(state, p.playerId) : "-"}</TableCell>
             <TableCell>{p.note || "-"}</TableCell>
@@ -355,8 +359,19 @@ export function GamePage({ state, update, game, onBack, onStatEntry }: { state: 
   const scoreA = liveOnly ? liveScoreOf(game, game.teamA) : teamScore(game, game.teamA)
   const scoreB = liveOnly ? liveScoreOf(game, game.teamB) : teamScore(game, game.teamB)
   const reviewed = game.scoringEvents.length > 0
+  const control = useRef<PlayerControl | null>(null)
+  const videoBox = useRef<HTMLDivElement>(null)
+  const hasVideo = !!gameVideoUrl(state, game)
+  // Event times are positions in the recording, so this plays from just before the moment.
+  const watch = hasVideo
+    ? (t: number) => {
+        videoBox.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+        control.current?.seek(Math.max(0, t - JUMP_LEAD_SECONDS))
+      }
+    : null
 
   return (
+    <WatchContext.Provider value={watch}>
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" size="sm" onClick={onBack}>
@@ -386,7 +401,9 @@ export function GamePage({ state, update, game, onBack, onStatEntry }: { state: 
         </CardContent>
       </Card>
 
-      <GameVideoPanel state={state} game={game} update={update} readOnly={readOnly} />
+      <div ref={videoBox}>
+        <GameVideoPanel state={state} game={game} update={update} readOnly={readOnly} control={control} />
+      </div>
 
       {!reviewed ? (
         <Card>
@@ -417,5 +434,6 @@ export function GamePage({ state, update, game, onBack, onStatEntry }: { state: 
         </>
       )}
     </div>
+    </WatchContext.Provider>
   )
 }
