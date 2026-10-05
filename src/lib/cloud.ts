@@ -51,6 +51,39 @@ export async function fetchRemote(c: SupabaseClient): Promise<Remote | null> {
   return data ? { state: data.data as PooleanState, updatedAt: data.updated_at as string } : null
 }
 
+export interface VersionInfo {
+  id: number
+  versionAt: string
+  games: number
+  players: number
+}
+
+// Past versions of the shared data (see supabase/history.sql). Editors only; returns [] when the
+// history table has not been created yet.
+export async function listVersions(c: SupabaseClient): Promise<VersionInfo[]> {
+  const { data, error } = await c.from("league_state_history").select("id,version_at,game_count,player_count").order("id", { ascending: false }).limit(100)
+  if (error) return []
+  return (data ?? []).map((r) => ({ id: r.id as number, versionAt: r.version_at as string, games: r.game_count as number, players: r.player_count as number }))
+}
+
+export async function fetchVersion(c: SupabaseClient, id: number): Promise<PooleanState | null> {
+  const { data, error } = await c.from("league_state_history").select("data").eq("id", id).maybeSingle()
+  return error || !data ? null : (data.data as PooleanState)
+}
+
+// Keeps the data as it is right now in the history, so a restore can itself be undone.
+export async function snapshotCurrent(c: SupabaseClient): Promise<boolean> {
+  const remote = await fetchRemote(c)
+  if (!remote) return true
+  const { error } = await c.from("league_state_history").insert({
+    data: remote.state,
+    version_at: remote.updatedAt,
+    game_count: remote.state.games.length,
+    player_count: remote.state.players.length,
+  })
+  return !error
+}
+
 // A signed-in account is an editor only if it has a row in `admins` (each account can see its own row).
 export async function isEditor(c: SupabaseClient): Promise<boolean> {
   const { data, error } = await c.from("admins").select("user_id").maybeSingle()

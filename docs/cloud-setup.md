@@ -105,3 +105,13 @@ Phone videos are usually far over 50 MB. With R2 set up, **Upload video** sends 
    | `R2_PUBLIC_URL` | the `https://pub-....r2.dev` address from step 3 |
 
 Then sign in as an editor, open a game, and upload. The secret key stays inside Supabase; the page only ever sees a link that works for one hour and one file. Only accounts in the `admins` table can get one.
+
+## Version history and backups
+
+Every save replaces the one shared copy, so history is the safety net for a bad publish or an accidental delete.
+
+1. In the Supabase dashboard open **SQL Editor**, paste the contents of `supabase/history.sql`, and run it. It is safe to run again.
+2. As an editor, open the account menu and choose **Past versions**. Each row is the data as it was before a save. A snapshot is taken at most every 30 minutes, and always when a save would leave fewer games than before (a delete). The newest 100 are kept.
+3. **Restore** brings a version back. The data as it is now is kept in the list first, so a restore can be undone.
+
+**Download a backup** in the same menu saves the current data as a file on your device, which is worth doing now and then.

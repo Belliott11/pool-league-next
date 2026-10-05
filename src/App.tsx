@@ -183,7 +183,16 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           Poolean <span className="text-accent">Intel</span>
         </h1>
         <div className="flex items-center gap-2">
-          {cloud && <AccountMenu cloud={cloud} state={state} />}
+          {cloud && (
+            <AccountMenu
+              cloud={cloud}
+              state={state}
+              onRestore={(next) => {
+                persist(next)
+                setState(next)
+              }}
+            />
+          )}
           <ColorMenu />
           <ThemeToggle />
         </div>
