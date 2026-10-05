@@ -193,6 +193,29 @@
 :root.dark[data-accent="magenta"] { --primary: #e08cf0; --accent: #e08cf0; --ring: #e08cf0; --chart-1: #e08cf0; --primary-foreground: #05090b; --accent-foreground: #05090b; }
 :root.dark[data-accent="ink"] { --primary: #e8f0f2; --accent: #e8f0f2; --ring: #e8f0f2; --chart-1: #e8f0f2; --primary-foreground: #05090b; --accent-foreground: #05090b; }
 
+/* The supporting colors follow the accent. Team B is the accent itself, Team A is its complement (the opposite
+   hue), and the five chart series are spread around the wheel from the accent, so changing the accent
+   re-tunes every chart and both teams at once. Lightness and chroma are fixed per theme so they stay
+   readable. Pos, neg and gold keep their meaning. "Ink" is a neutral with no hue, so it keeps the fixed set.
+   Browsers without relative colors keep the fixed defaults above. */
+@supports (color: oklch(from red l c h)) {
+  :root:not([data-accent="ink"]) {
+    --team-a: oklch(from var(--accent) 0.52 0.15 calc(h + 180));
+    --team-b: var(--accent);
+    --chart-2: oklch(from var(--accent) 0.56 0.12 calc(h + 150));
+    --chart-3: oklch(from var(--accent) 0.6 0.12 calc(h + 210));
+    --chart-4: oklch(from var(--accent) 0.5 0.14 calc(h + 90));
+    --chart-5: oklch(from var(--accent) 0.52 0.14 calc(h - 90));
+  }
+  :root.dark:not([data-accent="ink"]) {
+    --team-a: oklch(from var(--accent) 0.78 0.13 calc(h + 180));
+    --chart-2: oklch(from var(--accent) 0.8 0.11 calc(h + 150));
+    --chart-3: oklch(from var(--accent) 0.82 0.11 calc(h + 210));
+    --chart-4: oklch(from var(--accent) 0.78 0.12 calc(h + 90));
+    --chart-5: oklch(from var(--accent) 0.8 0.12 calc(h - 90));
+  }
+}
+
 /* Two-Way Ranking reveal (LaneBars.tsx): played once, bars grow out of the zero line and the
    photos travel with them. Resting state is the normal layout; backwards fill only holds the
    start pose during each lane's stagger delay. Skipped entirely under reduced motion. */

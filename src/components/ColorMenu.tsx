@@ -10,13 +10,14 @@ const ACCENTS = [
   { key: "ink", label: "Mono", swatch: "#41545b" },
 ]
 
-// What each color means. The accent is the only one a person can change.
+// What each color means. The accent is the one a person picks; Team A, Team B and the chart colors follow it.
 const KEY = [
   { cls: "bg-primary", name: "Accent", means: "The leader, what is selected, links and buttons" },
   { cls: "bg-pos", name: "Aqua", means: "Better than average, a good result" },
   { cls: "bg-neg", name: "Crimson", means: "Worse than average, a bad result" },
   { cls: "bg-gold", name: "Gold", means: "First place and awards" },
-  { cls: "bg-chart-4", name: "Purple and blue", means: "Only to tell lines or players apart" },
+  { cls: "bg-team-a", name: "Team A", means: "Opposite the accent on the color wheel, so it always stands apart" },
+  { cls: "bg-chart-4", name: "Chart colors", means: "Only to tell lines or players apart; they shift with the accent" },
 ]
 
 const HINT_KEY = "pooleanIntelColorHint"
