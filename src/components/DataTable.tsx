@@ -61,6 +61,23 @@ function barTone(v: number, r: Range, mode: "plain" | "sorted" | "strong") {
 const PHONE_STATS = 6
 const PHONE_CARDS = 4
 
+const NAMED: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" }
+export function decodeEntities(text: string): string {
+  // Some text is escaped twice on its way here (&amp;#39;), so keep going until nothing is left to turn back.
+  const once = (t: string) => t.replace(/&(#x[0-9a-f]+|#[0-9]+|amp|lt|gt|quot|apos);/gi, (m, e: string) => {
+    if (e[0] !== "#") return NAMED[e.toLowerCase()] ?? m
+    const code = e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)
+    return Number.isFinite(code) ? String.fromCodePoint(code) : m
+  })
+  let out = text
+  for (let n = 0; n < 3; n++) {
+    const next = once(out)
+    if (next === out) break
+    out = next
+  }
+  return out
+}
+
 function cellText<R>(col: Column<R>, r: R): string {
   if (col.display) return col.display(r)
   const v = col.accessor(r)
@@ -71,7 +88,9 @@ function cellText<R>(col: Column<R>, r: R): string {
 // span). They are built from our own numbers and escaped names, so they are rendered as markup.
 function Cell<R>({ col, r }: { col: Column<R>; r: R }) {
   const text = cellText(col, r)
-  return text.includes("<") ? <span dangerouslySetInnerHTML={{ __html: text }} /> : <>{text}</>
+  // The classic formatters escape their text for innerHTML (an apostrophe becomes &#39;). With no markup in it
+  // the text is shown as plain text here, so turn those escapes back into characters.
+  return text.includes("<") ? <span dangerouslySetInnerHTML={{ __html: text }} /> : <>{decodeEntities(text)}</>
 }
 
 export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, heroKey, highlight, empty, emptyHint }: Props<R>) {
