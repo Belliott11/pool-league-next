@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import { setAppGames } from "@/lib/matchup"
 import { AccountMenu } from "@/components/AccountMenu"
+import { StoryPublisher } from "@/components/StoryPublisher"
 import { SyncChip } from "@/components/SyncChip"
 import { getClient } from "@/lib/cloud"
 import { loadLabels, saveLabels, type LabelBook } from "@/lib/labelStore"
@@ -265,6 +266,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   return (
     <ReadOnlyContext.Provider value={readOnly}>
     <LabelsContext.Provider value={{ labels, setPlayerLabels }}>
+    {!readOnly && <StoryPublisher state={state} update={update} />}
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 pb-24 sm:p-6 sm:pb-6">
       <a
         href="#main"

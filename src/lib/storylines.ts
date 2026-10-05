@@ -332,7 +332,7 @@ function extraNightStories(state: PooleanState, s: NightSummary, name: Name): { 
   const sloppy = [...boxed].sort((x, y) => y.tov - x.tov)[0]
   if (sloppy && sloppy.tov >= 4) bad.push(labelLine(state, sloppy.id, "tov", { n: name(sloppy.id), k: sloppy.tov }, s.date) ?? say(s.date + sloppy.id + "tov", `${name(sloppy.id)} gave it away ${sloppy.tov} times. Charity night, evidently.`, `${sloppy.tov} turnovers for ${name(sloppy.id)}. The ball wanted a different owner.`))
   const fouls = [...boxed].sort((x, y) => y.pf - x.pf)[0]
-  if (fouls && fouls.pf >= 4) bad.push(say(s.date + fouls.id + "pf", `${name(fouls.id)} collected ${fouls.pf} fouls and a reputation.`, `${fouls.pf} fouls for ${name(fouls.id)}. Ask how many were on purpose.`))
+  if (fouls && fouls.pf >= 4) bad.push(labelLine(state, fouls.id, "foul", { n: name(fouls.id), k: fouls.pf }, s.date) ?? say(s.date + fouls.id + "pf", `${name(fouls.id)} collected ${fouls.pf} fouls and a reputation.`, `${fouls.pf} fouls for ${name(fouls.id)}. Ask how many were on purpose.`))
 
   // Scoring droughts.
   const scoreless = s.players.filter((p) => p.games >= 2 && p.pts === 0)

@@ -2,7 +2,7 @@ import type { PooleanState } from "@/lib/types"
 
 // Labels for personalizing the headlines: assign a few to each player on the Players tab and the recap and injury
 // report write lines about them. {n} is the name; the other {x} slots are filled from the story (fg, k, w, l, g, pts).
-export type LabelEvent = "hot" | "cold" | "tov" | "zero" | "noshow" | "mvp" | "sweep" | "winless" | "streakW" | "streakL"
+export type LabelEvent = "hot" | "cold" | "tov" | "zero" | "noshow" | "mvp" | "sweep" | "winless" | "streakW" | "streakL" | "foul"
 
 export interface LabelDef {
   key: string
@@ -184,6 +184,115 @@ export const LABELS: LabelDef[] = [
   },
 ]
 
+// A few labels that are all roast: for the players who have earned it.
+LABELS.push(
+  {
+    key: "excuseMaker",
+    name: "Excuse Maker",
+    blurb: "It was never the shot, it was the sun",
+    lines: {
+      cold: ["{n} went {fg}. The sun was in the way, obviously.", "{fg} for {n}, and a full list of reasons ready."],
+      winless: ["{n} went 0-{l}, and every loss has a different excuse.", "0-{l} for {n}. The ball was too slippery, the court too flat."],
+      streakL: ["{n} has lost {k} in a row and the excuses are getting creative."],
+      noshow: ["{n} skipped the night with a very detailed reason. Nobody asked."],
+      tov: ["{n} gave it away {k} times. Somebody bumped the ball."],
+    },
+    injury: ["Injured by the wind, the sun, and everyone else."],
+    away: ["Away. The reason is long and nobody asked."],
+  },
+  {
+    key: "matador",
+    name: "Matador",
+    blurb: "Defense is a polite wave as people go by",
+    lines: {
+      cold: ["{n} went {fg}, and the defense was just as missing."],
+      winless: ["{n} went 0-{l}. Defense was a suggestion, nobody took it."],
+      streakL: ["{n} has lost {k} in a row. The defense is a revolving door."],
+      sweep: ["{n} went {w}-0, which means the defense finally showed up."],
+    },
+    injury: ["Pulled a muscle waving at someone driving past."],
+  },
+  {
+    key: "butterfingers",
+    name: "Butterfingers",
+    blurb: "The ball slides right out",
+    lines: {
+      tov: ["{n} had {k} turnovers. The ball is basically a bar of soap.", "{k} giveaways for {n}. Try grip tape."],
+      cold: ["{n} went {fg}. The ball kept leaving early."],
+      zero: ["{n} scored zero in {g} games and fumbled most of the touches."],
+    },
+    injury: ["Hurt a hand dropping something simple."],
+  },
+  {
+    key: "foulMagnet",
+    name: "Foul Magnet",
+    blurb: "Every possession ends in a whistle",
+    lines: {
+      foul: ["{n} collected {k} fouls. Somebody get this person a tab.", "{k} fouls for {n}. The whistle knows the name by now."],
+      tov: ["{n} gave it away {k} times and fouled getting it back."],
+    },
+    injury: ["Bruised from the other players apologizing."],
+  },
+  {
+    key: "soreLoser",
+    name: "Sore Loser",
+    blurb: "Does not take a loss lightly or quietly",
+    lines: {
+      winless: ["{n} went 0-{l} and has asked for a rematch in all caps.", "0-{l} for {n}. Expect a long text about it."],
+      streakL: ["{n} has lost {k} straight and is writing a formal appeal."],
+      cold: ["{n} went {fg} and blamed the rim."],
+      noshow: ["{n} skipped the night after the last loss. Healing, allegedly."],
+    },
+    injury: ["Strained something throwing a ball after the buzzer."],
+  },
+  {
+    key: "fader",
+    name: "Late Fader",
+    blurb: "Great early, gone when it matters",
+    lines: {
+      cold: ["{n} went {fg}. Looked great for the first five minutes."],
+      streakL: ["{n} has lost {k} in a row, mostly late."],
+      winless: ["{n} went 0-{l} with a lead in at least two of them."],
+      mvp: ["{n} lasted all night and won MVP. Calendar, mark this."],
+    },
+    injury: ["Ran out of gas with a lead."],
+  },
+  {
+    key: "warmupLegend",
+    name: "Warmup Legend",
+    blurb: "Unbeatable until the game starts",
+    lines: {
+      cold: ["{n} went {fg}. The layup line was better.", "{fg} for {n}, who looked unstoppable in warmups."],
+      zero: ["{n} scored zero in {g} games after a perfect warmup."],
+      winless: ["{n} went 0-{l}. Won the warmup, though."],
+      hot: ["{n} shot {fg} and the warmup finally counted."],
+    },
+    injury: ["Peaked in warmups and pulled something."],
+  },
+  {
+    key: "flopper",
+    name: "Flopper",
+    blurb: "Falls down a lot, never at fault",
+    lines: {
+      foul: ["{n} got called for {k} fouls and acted like it was a drama."],
+      tov: ["{n} gave it away {k} times and fell over for sympathy."],
+      cold: ["{n} went {fg} and demanded a call on every miss."],
+    },
+    injury: ["Injured by a gentle breeze. Disputed."],
+  },
+  {
+    key: "tourist",
+    name: "Tourist",
+    blurb: "Just here for the pictures",
+    lines: {
+      noshow: ["{n} was a no-show. The tourist season is over.", "{n} skipped the night. Apparently the sightseeing was elsewhere."],
+      zero: ["{n} scored zero in {g} games. Mostly there for the view."],
+      winless: ["{n} went 0-{l}. Great photos, though."],
+    },
+    away: ["Out sightseeing."],
+  },
+)
+
 export const labelDef = (key: string) => LABELS.find((l) => l.key === key)
 // What the label is called: a library name, or the custom text as typed.
 export const labelName = (key: string) => labelDef(key)?.name ?? key
@@ -200,6 +309,7 @@ const GENERIC: Record<LabelEvent, string[]> = {
   winless: ["{n} the {label} went 0-{l}."],
   streakW: ["{n} the {label} has won {k} straight."],
   streakL: ["{n} the {label} has lost {k} in a row."],
+  foul: ["{n} the {label} picked up {k} fouls."],
 }
 
 export function labelsOf(state: PooleanState, playerId: string): string[] {
