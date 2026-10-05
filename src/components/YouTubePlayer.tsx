@@ -6,6 +6,7 @@ export interface PlayerControl {
   time: () => number
   seek: (t: number) => void
   pause: () => void
+  play: () => void
 }
 
 interface YTPlayer {
@@ -68,6 +69,7 @@ export function YouTubePlayer({ id, control, className, start = 0 }: { id: strin
                   player?.playVideo()
                 },
                 pause: () => player?.pauseVideo(),
+                play: () => player?.playVideo(),
               }
             },
           },

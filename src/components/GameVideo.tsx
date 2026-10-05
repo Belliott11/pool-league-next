@@ -42,6 +42,7 @@ function FileVideo({ url, videoRef, className, onTimeUpdate, start, control }: {
         else v.addEventListener("loadedmetadata", go, { once: true })
       },
       pause: () => own.current?.pause(),
+      play: () => void own.current?.play().catch(() => {}),
     }
     return () => {
       control.current = null

@@ -29,6 +29,22 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
   const videoRef = useRef<HTMLVideoElement>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [addCount, setAddCount] = useState(0)
+  // Pause the film while a new event is being entered, and carry on when it is saved or cancelled.
+  const [pauseOnAdd, setPauseOnAdd] = useState(() => {
+    try {
+      return localStorage.getItem("pooleanIntelPauseOnAdd") !== "off"
+    } catch {
+      return true
+    }
+  })
+  const setPause = (on: boolean) => {
+    setPauseOnAdd(on)
+    try {
+      localStorage.setItem("pooleanIntelPauseOnAdd", on ? "on" : "off")
+    } catch {
+      /* it just will not be remembered */
+    }
+  }
   const [error, setError] = useState<string | null>(null)
   const videoUrl = gameVideoUrl(state, game)
   const direct = isDirectVideoUrl(videoUrl)
@@ -47,6 +63,16 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
     }
   }
 
+  const filmPause = () => {
+    if (!pauseOnAdd) return
+    if (yt) ytControl.current?.pause()
+    else videoRef.current?.pause()
+  }
+  const filmPlay = () => {
+    if (!pauseOnAdd) return
+    if (yt) ytControl.current?.play()
+    else void videoRef.current?.play().catch(() => {})
+  }
   const captureTime = () => {
     if (yt) return ytControl.current ? Math.max(0, ytControl.current.time() - TIMESTAMP_LEAD_SECONDS) : null
     return direct && videoRef.current ? Math.max(0, videoRef.current.currentTime - TIMESTAMP_LEAD_SECONDS) : null
@@ -128,9 +154,18 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
         />
       )}
 
+      {(direct || yt) && (
+        <label className="flex min-h-9 items-center gap-2 text-sm">
+          <Switch checked={pauseOnAdd} onCheckedChange={setPause} aria-label="Pause the film while adding" />
+          Pause the film while adding an event
+        </label>
+      )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {ADD.map((a) => (
-          <Button key={a.kind} type="button" variant={draft?.kind === a.kind && !draft.edit ? "default" : "outline"} className="h-12 text-base" onClick={() => setDraft({ kind: a.kind })}>
+          <Button key={a.kind} type="button" variant={draft?.kind === a.kind && !draft.edit ? "default" : "outline"} className="h-12 text-base" onClick={() => {
+              filmPause()
+              setDraft({ kind: a.kind })
+            }}>
             {a.label}
           </Button>
         ))}
@@ -154,6 +189,7 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
           hasVideo={direct || !!yt}
           onSave={apply}
           onClose={(again) => {
+            filmPlay()
             if (again && !draft.edit) setAddCount((c) => c + 1)
             else setDraft(null)
           }}

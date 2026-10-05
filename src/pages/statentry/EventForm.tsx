@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -104,7 +104,7 @@ function Actions({ canSave, label, onSave, onClose, again }: { canSave: boolean;
 
 // Remembers the last shot logged in each game, so a run of shots by the same player starts with their
 // name, value and result already chosen.
-const lastShot: Record<string, { scorerId: string; points: 1 | 2 | 3; made: boolean }> = {}
+const lastShot: Record<string, { scorerId: string; points: 1 | 2 | 3; made: boolean; defenderIds: string[] }> = {}
 
 function teamsOf(game: Game, id: string | null) {
   const onA = id ? game.teamA.includes(id) : false
@@ -129,7 +129,10 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rebounderId])
   const [blockerId, setBlockerId] = useState<string | null>(edit?.blockerId ?? null)
-  const [defenderIds, setDefenderIds] = useState<string[]>(edit?.defenderIds ?? [])
+  // The same defender usually stays on a run of shots, so the last shot's defenders carry over whenever the
+  // shooter is on the same team as the last shooter.
+  const carry = (shooter: string | null) => (last && shooter ? last.defenderIds.filter((d) => teamsOf(game, shooter).opps.includes(d)) : [])
+  const [defenderIds, setDefenderIds] = useState<string[]>(edit?.defenderIds ?? carry(scorerId))
   const [contestLevel, setContestLevel] = useState<ScoringEvent["contestLevel"]>(edit?.contestLevel ?? null)
   const [shotType, setShotType] = useState<string | null>(edit?.shotType ?? null)
   const [dunk, setDunk] = useState(edit?.dunk === true)
@@ -146,7 +149,7 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
     setPasserId(null)
     setRebounderId(null)
     setBlockerId(null)
-    setDefenderIds([])
+    setDefenderIds(carry(id))
     setContestLevel(null)
   }
   const toggleDef = (id: string) => setDefenderIds((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))
@@ -158,10 +161,28 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
     if (edit) onSave((g) => editShot(g, edit.id, common))
     else {
       onSave((g) => addShot(g, { scorerId, points, made, outOfBounds: oob, ...common }))
-      lastShot[game.id] = { scorerId, points, made }
+      lastShot[game.id] = { scorerId, points, made, defenderIds }
     }
     onClose(again)
   }
+
+  // Keyboard, for a full pass from film: M make, X miss, 1 2 3 for the value, Enter to save and log the next.
+  const live = useRef({ save, scorerId })
+  live.current = { save, scorerId }
+  useEffect(() => {
+    if (edit) return
+    const on = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement
+      if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return
+      const k = e.key.toLowerCase()
+      if (k === "m") setMade(true)
+      else if (k === "x") setMade(false)
+      else if (k === "1" || k === "2" || k === "3") setPoints(Number(k) as 1 | 2 | 3)
+      else if (k === "enter" && el.tagName !== "BUTTON" && live.current.scorerId) live.current.save(true)
+    }
+    window.addEventListener("keydown", on)
+    return () => window.removeEventListener("keydown", on)
+  }, [edit])
 
   return (
     <>
