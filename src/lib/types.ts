@@ -114,7 +114,10 @@ export interface PooleanState {
   masterVideos?: MasterVideo[]
   injuries?: Injury[]
   // Labels assigned to players on the Players tab (a library key or custom text), used to personalize headlines.
+  // Used only while writing headlines, laid over the state in memory. Labels are private and never saved here.
   playerLabels?: Record<string, string[]>
+  // Finished headlines the editor has saved, so visitors see the jokes without ever seeing the labels behind them.
+  publishedStories?: { nights?: Record<string, { quick: string[]; full: string[] }>; going?: string[]; season?: string[] }
   currentSeasonStartedAt?: string | null
   [key: string]: unknown
 }

@@ -1,13 +1,18 @@
 import { Newspaper } from "lucide-react"
 import { useMemo } from "react"
 import { playerName } from "@/lib/players"
+import { useLabeledState } from "@/lib/labelsContext"
+import { usePublishedStories } from "@/lib/published"
 import { previewStories } from "@/lib/storylines"
+import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 
 // A few storylines going into the next night: streaks, who is hot, records within reach, rivalries.
 // Written from the stats, so it needs a few weeks of games before it has anything to say.
-export function GoingIn({ state }: { state: PooleanState }) {
-  const stories = useMemo(() => previewStories(state, (id) => playerName(state, id)), [state])
+export function GoingIn({ state, update }: { state: PooleanState; update?: Update }) {
+  const labeled = useLabeledState(state)
+  const written = useMemo(() => previewStories(labeled, (id) => playerName(state, id)), [labeled, state])
+  const stories = usePublishedStories(state, update, "going", written)
   if (stories.length === 0) return null
   return (
     <section className="flex flex-col gap-2 rounded-xl border bg-card p-4" aria-label="Going into the next night">

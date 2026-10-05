@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import { RECORD_KEYS, RECORD_LABEL, recordBook } from "@/lib/records"
+import { useLabeledState } from "@/lib/labelsContext"
+import { usePublishedStories } from "@/lib/published"
 import { seasonStories } from "@/lib/storylines"
+import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 
 // The league's single-game records, with who holds each and when.
@@ -43,8 +46,10 @@ export function RecordsCard({ state, onOpenPlayer }: { state: PooleanState; onOp
 }
 
 // Storylines for the season so far: who leads, the longest streak, the closest race.
-export function SeasonStoriesCard({ state }: { state: PooleanState }) {
-  const stories = useMemo(() => seasonStories(state, (id) => playerName(state, id)), [state])
+export function SeasonStoriesCard({ state, update }: { state: PooleanState; update?: Update }) {
+  const labeled = useLabeledState(state)
+  const written = useMemo(() => seasonStories(labeled, (id) => playerName(state, id)), [labeled, state])
+  const stories = usePublishedStories(state, update, "season", written)
   if (stories.length === 0) return null
   return (
     <Card>

@@ -115,7 +115,8 @@ export function injuryHeadlines(state: PooleanState, name: (id: string) => strin
   const day = now.toISOString().slice(0, 10)
   const out: string[] = []
   const hurt = board.filter((i) => i.status !== "returning")
-  const outNow = board.filter((i) => i.status === "out")
+  // A long-term case gets its own line below, so it is left out of the plain "is out" headline.
+  const outNow = board.filter((i) => i.status === "out" && i.timeline !== "longTerm")
   const roster = Math.max(state.players.length, 1)
 
   if (board.length === 0) return [pickOne(day, "Everyone is healthy. Suspiciously.", "A clean bill of health across the league. Somebody is lying.", "Zero injuries. Nobody is playing hard enough.")]

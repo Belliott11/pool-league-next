@@ -129,3 +129,7 @@ Anyone who opens the site can run a live game, with no account and no code. They
 How it works on the night: you (the editor) start the live game as usual. A friend opens the site and taps **Start a live game** (or the live banner if one is running), then **Keep score**, and taps baskets for players. They can finish the game when it is over. Everyone watching sees them within a few seconds. Your app picks up their baskets by itself while a game is live, and your own baskets are never overwritten. When you finish the game, their baskets are counted in the final score.
 
 Because there is no code, anyone with the link could add a basket during a live game. If that ever becomes a problem, you can finish or discard the game, or remove the `live-score` function to turn it off.
+
+## Private player labels
+
+The labels you give players on the Players tab are private. Run `supabase/labels.sql` once in the SQL Editor to keep them in a table only editors can read. Without it they are kept only in the browser you assigned them in. Either way they are never part of the data visitors can read: friends see the finished headlines saved with each night, not the labels behind them.

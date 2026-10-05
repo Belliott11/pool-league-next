@@ -82,3 +82,13 @@ describe("injury headlines", () => {
     expect(injuryHeadlines(state, name, now)).toEqual(injuryHeadlines(state, name, now))
   })
 })
+
+describe("injury headlines do not repeat themselves", () => {
+  it("a long-term injury gets one line, not two", () => {
+    const players = [{ id: "r", name: "Reilly" }, { id: "b", name: "Ben" }, { id: "c", name: "C" }]
+    const state: PooleanState = { players, games: [], injuries: [{ id: "1", playerId: "r", status: "out", timeline: "longTerm", note: "", updatedAt: "2026-10-04T00:00:00Z" }] }
+    const lines = injuryHeadlines(state, (id) => players.find((p) => p.id === id)!.name, new Date("2026-10-06T12:00:00Z"))
+    expect(lines.filter((l) => l.includes("Reilly"))).toHaveLength(1)
+    expect(lines.join(" ")).toMatch(/long term|Long term/)
+  })
+})

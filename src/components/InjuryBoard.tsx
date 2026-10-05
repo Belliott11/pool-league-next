@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { formatDateDisplay, uid } from "@/lib/format"
 import { INJURY_STATUSES, TIMELINES, goofyNote, injuryBoard, injuryHeadlines, statusInfo, timelineLabel } from "@/lib/injuries"
+import { useLabeledState } from "@/lib/labelsContext"
 import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
 import type { Injury, InjuryStatus, PooleanState } from "@/lib/types"
@@ -96,6 +97,7 @@ export function InjuryBoard({ state, update, onOpenPlayer }: { state: PooleanSta
 }
 
 function Form({ state, initial, onSave, onCancel }: { state: PooleanState; initial: Injury | null; onSave: (i: Injury) => void; onCancel: () => void }) {
+  const labeled = useLabeledState(state)
   const onBoard = new Set((state.injuries ?? []).map((i) => i.playerId))
   const choices = [...state.players].filter((p) => p.id === initial?.playerId || !onBoard.has(p.id)).sort((a, b) => a.name.localeCompare(b.name))
   const [playerId, setPlayerId] = useState(initial?.playerId ?? "")
@@ -135,7 +137,7 @@ function Form({ state, initial, onSave, onCancel }: { state: PooleanState; initi
       </div>
       <div className="flex gap-2">
         <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="The details, as silly as you like" aria-label="Note" />
-        <Button type="button" variant="outline" size="icon" aria-label="Surprise me with a note" title="Surprise me" onClick={() => setNote(goofyNote(status, note, state, playerId))}>
+        <Button type="button" variant="outline" size="icon" aria-label="Surprise me with a note" title="Surprise me" onClick={() => setNote(goofyNote(status, note, labeled, playerId))}>
           <Dices />
         </Button>
       </div>

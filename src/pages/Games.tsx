@@ -66,6 +66,7 @@ export function GamesPage({
   if (recapOpen) {
     return (
       <NightRecap
+        update={update}
         key={recapDate ?? "latest"}
         initialDate={recapDate}
         state={state}
@@ -125,7 +126,7 @@ export function GamesPage({
             Start a live game
           </Button>
         )}
-        <GoingIn state={state} />
+        <GoingIn state={state} update={update} />
         <GameLog state={state} update={update} onOpen={open} />
         {!readOnly && (
           <>

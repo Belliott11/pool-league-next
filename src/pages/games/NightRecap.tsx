@@ -11,6 +11,9 @@ import { LEADER_LABEL, gameDays, recapText, summarizeNight, type LeaderKey, type
 import { predictRealMatchup } from "@/lib/matchup"
 import { RECORD_KEYS, RECORD_LABEL, nightCallouts, recordBook } from "@/lib/records"
 import { nightStories } from "@/lib/storylines"
+import { useLabeledState } from "@/lib/labelsContext"
+import { usePublishedNight } from "@/lib/published"
+import type { Update } from "@/lib/store"
 import { playerName } from "@/lib/players"
 import { shareNightCard } from "@/lib/shareCard"
 import { TEAM } from "@/lib/teamColors"
@@ -37,7 +40,8 @@ function sortValue(p: NightPlayer, key: SortKey, name: (id: string) => string): 
 
 // A day's games in one place: results, who led the night, and a picture or text to send around. Games scored
 // live count with their points; games with a box score add rebounds, assists, steals and blocks.
-export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDate }: { state: PooleanState; onBack: () => void; onOpenGame: (id: string) => void; onOpenPlayer: (id: string) => void; initialDate?: string }) {
+export function NightRecap({ state, update, onBack, onOpenGame, onOpenPlayer, initialDate }: { state: PooleanState; update?: Update; onBack: () => void; onOpenGame: (id: string) => void; onOpenPlayer: (id: string) => void; initialDate?: string }) {
+  const labeled = useLabeledState(state)
   const days = useMemo(() => gameDays(state), [state])
   const [date, setDate] = useState(initialDate && days.includes(initialDate) ? initialDate : (days[0] ?? ""))
   const [copied, setCopied] = useState(false)
@@ -52,7 +56,18 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
   const allCallouts = useMemo(() => nightCallouts(state, date), [state, date])
   const callouts = useMemo(() => (quick ? allCallouts.filter((c) => c.key === "pts") : allCallouts), [allCallouts, quick])
   const book = useMemo(() => recordBook(state), [state])
-  const stories = useMemo(() => nightStories(state, s, callouts, (id) => playerName(state, id), (a, b) => predictRealMatchup(a, b)), [state, s, callouts])
+  // Both versions are written here with the editor's private labels, and saved with the night so visitors read the
+  // finished lines instead of writing their own (they have no labels).
+  const written = useMemo(() => {
+    const nm = (id: string) => playerName(state, id)
+    const predict = (a: string[], b: string[]) => predictRealMatchup(a, b)
+    return {
+      quick: nightStories(labeled, { ...full, mvp: null }, allCallouts.filter((c) => c.key === "pts"), nm, predict),
+      full: nightStories(labeled, full, allCallouts, nm, predict),
+    }
+  }, [labeled, state, full, allCallouts])
+  const published = usePublishedNight(state, update, date, written)
+  const stories = quick ? published.quick : published.full
   const label = formatDateDisplay(date)
   const name = (id: string) => playerName(state, id)
   const names = (ids: string[]) => ids.map(name).join(", ")

@@ -28,7 +28,7 @@ export function Sidebar({
   return (
     <div className="flex flex-col gap-4">
       <InjuryBoard state={state} update={update} onOpenPlayer={onOpenPlayer} />
-      <SeasonStoriesCard state={state} />
+      <SeasonStoriesCard state={state} update={update} />
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Standings</CardTitle>

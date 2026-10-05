@@ -1,7 +1,8 @@
 import { EmptyState } from "@/components/EmptyState"
 import { useState } from "react"
 import { PlayerLabels } from "@/components/PlayerLabels"
-import { labelName, labelsOf } from "@/lib/labels"
+import { labelName } from "@/lib/labels"
+import { useLabels } from "@/lib/labelsContext"
 import { useReadOnly } from "@/lib/mode"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -112,6 +113,7 @@ export function PlayersPage({
   const [roleFilter, setRoleFilter] = useState<string[]>([])
   const [editing, setEditing] = useState<string | null>(null)
   const [labelFor, setLabelFor] = useState<string | null>(null)
+  const { labels } = useLabels()
 
   const sorted = [...state.players].sort((a, b) => a.name.localeCompare(b.name))
   const visible =
@@ -199,9 +201,9 @@ export function PlayersPage({
                           ))}
                         </div>
                       )}
-                      {labelsOf(state, p.id).length > 0 && (
+                      {(labels[p.id] ?? []).length > 0 && (
                         <div className="flex flex-wrap gap-1.5" aria-label="Labels">
-                          {labelsOf(state, p.id).map((k) => (
+                          {(labels[p.id] ?? []).map((k) => (
                             <Badge key={k} className="bg-accent/15 text-accent">
                               {labelName(k)}
                             </Badge>
@@ -231,7 +233,7 @@ export function PlayersPage({
                       </div>
                       )}
                     </div>
-                    {labelFor === p.id && !readOnly && <PlayerLabels state={state} playerId={p.id} update={update} onClose={() => setLabelFor(null)} />}
+                    {labelFor === p.id && !readOnly && <PlayerLabels playerId={p.id} onClose={() => setLabelFor(null)} />}
                     {editing === p.id && (
                       <ProfileEditor
                         key={p.id}

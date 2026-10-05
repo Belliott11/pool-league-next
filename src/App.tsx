@@ -2,6 +2,9 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import { setAppGames } from "@/lib/matchup"
 import { AccountMenu } from "@/components/AccountMenu"
 import { SyncChip } from "@/components/SyncChip"
+import { getClient } from "@/lib/cloud"
+import { loadLabels, saveLabels, type LabelBook } from "@/lib/labelStore"
+import { LabelsContext } from "@/lib/labelsContext"
 import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
@@ -103,6 +106,42 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   const readOnly = mode === "viewer"
   const [state, setState] = useState(initial)
   setAppGames(state.games)
+  // Private player labels: editor only, and never part of the shared league data.
+  const [labels, setLabelsState] = useState<LabelBook>({})
+  const labelsRef = useRef(labels)
+  labelsRef.current = labels
+  useEffect(() => {
+    if (readOnly) return
+    let dead = false
+    void loadLabels(getClient()).then((stored) => {
+      if (dead) return
+      // Labels an earlier version saved in the shared data are moved here and removed from it.
+      const legacy = (state.playerLabels ?? {}) as LabelBook
+      const merged = { ...legacy, ...stored }
+      setLabelsState(merged)
+      if (Object.keys(legacy).length) {
+        void saveLabels(getClient(), merged)
+        update((s) => {
+          const rest = { ...s }
+          delete rest.playerLabels
+          return rest
+        })
+      }
+    })
+    return () => {
+      dead = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readOnly])
+  const setPlayerLabels = (id: string, fn: (cur: string[]) => string[]) => {
+    const book = { ...labelsRef.current }
+    const next = fn(book[id] ?? [])
+    if (next.length) book[id] = next
+    else delete book[id]
+    labelsRef.current = book
+    setLabelsState(book)
+    void saveLabels(getClient(), book)
+  }
   // The editor's app watches for friends' baskets while a game is live and takes only those baskets in.
   const hasLive = !!findLiveGame(state)
   useEffect(() => {
@@ -225,6 +264,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
 
   return (
     <ReadOnlyContext.Provider value={readOnly}>
+    <LabelsContext.Provider value={{ labels, setPlayerLabels }}>
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 pb-24 sm:p-6 sm:pb-6">
       <a
         href="#main"
@@ -358,6 +398,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         {readOnly ? "You are viewing the shared stats. Only the league editor can make changes." : "A subset of the full site, with more stats on the classic site."}
       </p>
     </div>
+    </LabelsContext.Provider>
     </ReadOnlyContext.Provider>
   )
 }
