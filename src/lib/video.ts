@@ -78,7 +78,7 @@ async function callSign<T>(body: Record<string, string>): Promise<T | null> {
   throw new Error(msg || "Could not start the upload.")
 }
 
-function putWithProgress(url: string, file: File, mime: string, onProgress?: (fraction: number) => void): Promise<void> {
+function putWithProgress(url: string, file: Blob, mime: string, onProgress?: (fraction: number) => void): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open("PUT", url)
@@ -104,6 +104,49 @@ function putWithProgress(url: string, file: File, mime: string, onProgress?: (fr
   })
 }
 
+const PART_BYTES = 16 * 1024 * 1024 // R2 wants equal parts of at least 5 MB (the last may be smaller)
+const MULTIPART_OVER = 64 * 1024 * 1024
+const PART_TRIES = 4
+
+// Sends one part, retrying a few times with a short pause so a flaky signal costs seconds, not the whole video.
+async function putPart(key: string, uploadId: string, n: number, blob: Blob, mime: string, onBytes: (loaded: number) => void): Promise<void> {
+  let last: Error | null = null
+  for (let attempt = 1; attempt <= PART_TRIES; attempt++) {
+    try {
+      const signed = await callSign<{ uploadUrl: string }>({ action: "mp-sign", key, uploadId, partNumber: String(n) })
+      if (!signed) throw new Error("Could not start the upload.")
+      await putWithProgress(signed.uploadUrl, blob, mime, (f) => onBytes(f * blob.size))
+      return
+    } catch (e) {
+      last = e instanceof Error ? e : new Error("The upload failed.")
+      onBytes(0)
+      if (attempt < PART_TRIES) await new Promise((r) => setTimeout(r, 1500 * attempt))
+    }
+  }
+  throw last ?? new Error("The upload failed.")
+}
+
+async function uploadMultipart(file: File, gameId: string, mime: string, onProgress?: (fraction: number) => void): Promise<{ url: string; path: string } | null> {
+  const started = await callSign<{ key: string; uploadId: string; publicUrl: string }>({ action: "mp-create", gameId, name: file.name, contentType: mime })
+  if (!started) return null
+  const { key, uploadId } = started
+  const count = Math.ceil(file.size / PART_BYTES)
+  let done = 0
+  try {
+    for (let i = 0; i < count; i++) {
+      const blob = file.slice(i * PART_BYTES, Math.min(file.size, (i + 1) * PART_BYTES))
+      await putPart(key, uploadId, i + 1, blob, mime, (loaded) => onProgress?.((done + loaded) / file.size))
+      done += blob.size
+      onProgress?.(done / file.size)
+    }
+    await callSign({ action: "mp-complete", key, uploadId, partCount: String(count) })
+  } catch (e) {
+    void callSign({ action: "mp-abort", key, uploadId }).catch(() => {})
+    throw e
+  }
+  return { url: started.publicUrl, path: R2_PREFIX + key }
+}
+
 export async function uploadGameVideo(
   file: File,
   gameId: string,
@@ -118,6 +161,13 @@ export async function uploadGameVideo(
   const token = data.session?.access_token
   if (!token) throw new Error("Sign in as an editor to upload videos.")
 
+  if (file.size > MULTIPART_OVER) {
+    const big = await uploadMultipart(file, gameId, videoMime(file)!, onProgress)
+    if (big) {
+      onProgress?.(1)
+      return big
+    }
+  }
   const signed = await callSign<{ uploadUrl: string; key: string; publicUrl: string }>({ action: "put", gameId, name: file.name })
   if (signed) {
     await putWithProgress(signed.uploadUrl, file, videoMime(file)!, onProgress)

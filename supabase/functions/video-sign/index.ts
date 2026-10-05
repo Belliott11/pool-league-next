@@ -23,7 +23,7 @@ async function hmac(key: ArrayBuffer | Uint8Array, data: string): Promise<ArrayB
 const uriEncode = (s: string) => encodeURIComponent(s).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase())
 
 // AWS Signature Version 4, query-string style, which R2 accepts as a presigned URL.
-async function presign(method: "PUT" | "DELETE" | "HEAD", key: string, expires: number): Promise<string> {
+async function presign(method: "PUT" | "DELETE" | "HEAD" | "GET" | "POST", key: string, expires: number, extra: Record<string, string> = {}): Promise<string> {
   const account = Deno.env.get("R2_ACCOUNT_ID")!
   const accessKey = Deno.env.get("R2_ACCESS_KEY_ID")!
   const secret = Deno.env.get("R2_SECRET_ACCESS_KEY")!
@@ -40,6 +40,7 @@ async function presign(method: "PUT" | "DELETE" | "HEAD", key: string, expires: 
     "X-Amz-Date": amzDate,
     "X-Amz-Expires": String(expires),
     "X-Amz-SignedHeaders": "host",
+    ...extra,
   }
   const canonicalQuery = Object.keys(query).sort().map((k) => `${uriEncode(k)}=${uriEncode(query[k])}`).join("&")
   const canonical = [method, path, canonicalQuery, `host:${host}\n`, "host", "UNSIGNED-PAYLOAD"].join("\n")
@@ -79,7 +80,7 @@ Deno.serve(async (req) => {
     return json({ error: "Could not reach Cloudflare R2. Check R2_ACCOUNT_ID." }, 500)
   }
 
-  let body: { action?: string; gameId?: string; name?: string; key?: string }
+  let body: { action?: string; gameId?: string; name?: string; key?: string; uploadId?: string; partNumber?: number; partCount?: number; contentType?: string }
   try {
     body = await req.json()
   } catch {
@@ -93,6 +94,61 @@ Deno.serve(async (req) => {
     const key = `videos/${gameId}/${Date.now()}-${name}`
     const base = Deno.env.get("R2_PUBLIC_URL")!.replace(/\/+$/, "")
     return json({ uploadUrl: await presign("PUT", key, 3600), key, publicUrl: `${base}/${key.split("/").map(encodeURIComponent).join("/")}` })
+  }
+
+  // Big files go up in parts so a dropped connection only repeats one part, not the whole video.
+  // create -> sign each part -> complete (the server reads the part list itself, so the browser never
+  // needs to see Cloudflare's ETag headers).
+  if (body.action === "mp-create") {
+    const gameId = String(body.gameId ?? "").replace(/[^a-zA-Z0-9_-]/g, "")
+    const name = String(body.name ?? "video").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(-80) || "video"
+    if (!gameId) return json({ error: "Missing game." }, 400)
+    const key = `videos/${gameId}/${Date.now()}-${name}`
+    const res = await fetch(await presign("POST", key, 120, { uploads: "" }), { method: "POST", headers: { "Content-Type": String(body.contentType ?? "video/mp4") } })
+    const xml = await res.text()
+    const uploadId = xml.match(/<UploadId>([^<]+)<\/UploadId>/)?.[1]
+    if (!res.ok || !uploadId) return json({ error: `Could not start the upload (${res.status}).` }, 502)
+    const base = Deno.env.get("R2_PUBLIC_URL")!.replace(/\/+$/, "")
+    return json({ key, uploadId, publicUrl: `${base}/${key.split("/").map(encodeURIComponent).join("/")}` })
+  }
+
+  if (body.action === "mp-sign" || body.action === "mp-complete" || body.action === "mp-abort") {
+    const key = String(body.key ?? "")
+    const uploadId = String(body.uploadId ?? "")
+    if (!key.startsWith("videos/") || key.includes("..") || !uploadId) return json({ error: "Bad upload." }, 400)
+    if (body.action === "mp-sign") {
+      const n = Number(body.partNumber)
+      if (!Number.isInteger(n) || n < 1 || n > 10000) return json({ error: "Bad part." }, 400)
+      return json({ uploadUrl: await presign("PUT", key, 3600, { partNumber: String(n), uploadId }) })
+    }
+    if (body.action === "mp-abort") {
+      await fetch(await presign("DELETE", key, 60, { uploadId }), { method: "DELETE" })
+      return json({ ok: true })
+    }
+    // complete: list what arrived, then stitch the parts together in order
+    const parts: { n: number; etag: string }[] = []
+    let marker = "0"
+    for (let page = 0; page < 20; page++) {
+      const res = await fetch(await presign("GET", key, 60, { uploadId, "part-number-marker": marker }))
+      const xml = await res.text()
+      if (!res.ok) return json({ error: `Could not read the uploaded parts (${res.status}).` }, 502)
+      for (const m of xml.matchAll(/<Part>([\s\S]*?)<\/Part>/g)) {
+        const n = Number(m[1].match(/<PartNumber>(\d+)<\/PartNumber>/)?.[1])
+        const etag = m[1].match(/<ETag>([^<]+)<\/ETag>/)?.[1]
+        if (n && etag) parts.push({ n, etag })
+      }
+      if (!/<IsTruncated>true<\/IsTruncated>/.test(xml)) break
+      marker = xml.match(/<NextPartNumberMarker>(\d+)<\/NextPartNumberMarker>/)?.[1] ?? marker
+    }
+    parts.sort((a, b) => a.n - b.n)
+    const expected = Number(body.partCount)
+    if (parts.length === 0 || (expected && parts.length !== expected)) return json({ error: `Only ${parts.length} of ${expected} parts arrived. Try the upload again.` }, 409)
+    const xmlBody = `<CompleteMultipartUpload>${parts.map((p) => `<Part><PartNumber>${p.n}</PartNumber><ETag>${p.etag}</ETag></Part>`).join("")}</CompleteMultipartUpload>`
+    const done = await fetch(await presign("POST", key, 120, { uploadId }), { method: "POST", headers: { "Content-Type": "application/xml" }, body: xmlBody })
+    const text = await done.text()
+    // R2 can answer 200 with an error body, so check the body too.
+    if (!done.ok || /<Error>/.test(text)) return json({ error: `Could not finish the upload (${done.status}).` }, 502)
+    return json({ ok: true })
   }
 
   if (body.action === "delete") {

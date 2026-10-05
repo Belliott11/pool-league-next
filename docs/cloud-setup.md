@@ -115,3 +115,5 @@ Every save replaces the one shared copy, so history is the safety net for a bad 
 3. **Restore** brings a version back. The data as it is now is kept in the list first, so a restore can be undone.
 
 **Download a backup** in the same menu saves the current data as a file on your device, which is worth doing now and then.
+
+Videos over 64 MB upload to R2 in 16 MB parts, so a dropped connection repeats one part instead of the whole video. This needs the current `supabase/functions/video-sign/index.ts`; after updating the repo, paste it into the function again and redeploy it. Smaller files, and any case where the function is out of date, use the single-request upload.
