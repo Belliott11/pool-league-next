@@ -1,3 +1,4 @@
+import type { NightSummary } from "@/lib/nightRecap"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import { getGameStats, isLiveScoreOnly, liveScoreOf, teamScore } from "@/lib/stats"
@@ -135,6 +136,110 @@ export async function shareGameCard(state: PooleanState, game: Game): Promise<vo
   if (nav.canShare?.({ files: [file] })) {
     try {
       await nav.share({ files: [file], title: "Poolean Intel" })
+      return
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return
+    }
+  }
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(file)
+  a.download = file.name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
+// ---- the night recap picture: every game's result and the night's top scorers.
+export async function drawNightCard(state: PooleanState, s: NightSummary, dateLabel: string): Promise<HTMLCanvasElement> {
+  try {
+    await Promise.all([document.fonts.load("800 120px Anybody"), document.fonts.load("600 40px 'Hanken Grotesk'")])
+  } catch {
+    /* the system font is used instead */
+  }
+  const display = "Anybody, 'Arial Black', sans-serif"
+  const body = "'Hanken Grotesk', system-ui, sans-serif"
+  const fg = "#eaf2f4"
+  const muted = "#8aa0a6"
+  const teamA = cssColor("team-a", "#7fb4f2")
+  const teamB = cssColor("team-b", "#ffa94d")
+  const canvas = document.createElement("canvas")
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext("2d")!
+  ctx.fillStyle = "#071014"
+  ctx.fillRect(0, 0, W, H)
+  ctx.textBaseline = "alphabetic"
+  ctx.fillStyle = fg
+  ctx.font = `800 64px ${display}`
+  ctx.fillText("Poolean Intel", 72, 130)
+  ctx.fillStyle = muted
+  ctx.font = `600 38px ${body}`
+  ctx.fillText(`${dateLabel}  ·  ${s.games.length} game${s.games.length === 1 ? "" : "s"}  ·  ${s.totalPoints} points`, 72, 190)
+
+  // results, up to 7 rows
+  const games = s.games.slice(0, 7)
+  games.forEach((g, i) => {
+    const y = 290 + i * 92
+    const names = (ids: string[]) => ids.map((id) => playerName(state, id)).join(", ")
+    ctx.textAlign = "left"
+    ctx.font = `600 32px ${body}`
+    ctx.fillStyle = g.winner === "A" ? fg : muted
+    ctx.fillText(fit(ctx, names(g.teamA), 330), 72, y)
+    ctx.fillStyle = g.winner === "B" ? fg : muted
+    ctx.fillText(fit(ctx, names(g.teamB), 330), 678, y)
+    ctx.textAlign = "center"
+    ctx.font = `800 54px ${display}`
+    ctx.fillStyle = teamA
+    ctx.fillText(String(g.scoreA), 470, y + 4)
+    ctx.fillStyle = muted
+    ctx.fillText("-", 540, y + 4)
+    ctx.fillStyle = teamB
+    ctx.fillText(String(g.scoreB), 610, y + 4)
+  })
+  if (s.games.length > games.length) {
+    ctx.textAlign = "left"
+    ctx.fillStyle = muted
+    ctx.font = `500 28px ${body}`
+    ctx.fillText(`and ${s.games.length - games.length} more`, 72, 290 + games.length * 92 - 20)
+  }
+
+  // night leaders
+  ctx.textAlign = "left"
+  const leaders = s.players.filter((p) => p.pts > 0).slice(0, 3)
+  if (leaders.length) {
+    ctx.fillStyle = fg
+    ctx.font = `700 44px ${body}`
+    ctx.fillText("Night leaders", 72, 1010)
+    leaders.forEach((p, i) => {
+      const y = 1080 + i * 64
+      ctx.fillStyle = fg
+      ctx.font = `600 42px ${body}`
+      ctx.fillText(fit(ctx, playerName(state, p.id), 560), 72, y)
+      ctx.fillStyle = muted
+      ctx.font = `500 32px ${body}`
+      ctx.fillText(`${p.wins}-${p.losses}`, 640, y)
+      ctx.textAlign = "right"
+      ctx.fillStyle = fg
+      ctx.font = `800 50px ${display}`
+      ctx.fillText(`${p.pts} pts`, W - 72, y + 4)
+      ctx.textAlign = "left"
+    })
+  }
+  ctx.fillStyle = muted
+  ctx.font = `500 30px ${body}`
+  const bits = [s.biggestWin && `Biggest win ${s.biggestWin.scoreA}-${s.biggestWin.scoreB}`, s.closest && `Closest ${s.closest.scoreA}-${s.closest.scoreB}`].filter(Boolean)
+  ctx.fillText(bits.length ? bits.join("   ·   ") : "Backyard pool basketball", 72, H - 44)
+  return canvas
+}
+
+export async function shareNightCard(state: PooleanState, s: NightSummary, dateLabel: string): Promise<void> {
+  const canvas = await drawNightCard(state, s, dateLabel)
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"))
+  if (!blob) throw new Error("Could not make the picture.")
+  const file = new File([blob], `poolean-recap-${s.date || "night"}.png`, { type: "image/png" })
+  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
+  if (nav.canShare?.({ files: [file] })) {
+    try {
+      await nav.share({ files: [file], title: "Poolean Intel recap" })
       return
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return

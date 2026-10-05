@@ -1,4 +1,4 @@
-import { Radio } from "lucide-react"
+import { CalendarDays, Radio } from "lucide-react"
 import { getClient } from "@/lib/cloud"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { SetUpTonight } from "./games/SetUpTonight"
 import { Sidebar } from "./games/Sidebar"
 import { LiveGamePage } from "./live/LiveGamePage"
 import { LiveBanner, LiveWatch } from "./live/LiveWatch"
+import { NightRecap } from "./games/NightRecap"
 import { StatEntryPage } from "./statentry/StatEntryPage"
 import { findLiveGame } from "@/lib/live"
 
@@ -34,6 +35,7 @@ export function GamesPage({
   const readOnly = useReadOnly()
   const [openId, setOpenId] = useState<string | null>(null)
   const [statEntry, setStatEntry] = useState(false)
+  const [recapOpen, setRecapOpen] = useState(false)
   // Same deep link the classic site's Share button writes: #game=<id>.
   useEffect(() => {
     const m = location.hash.match(/^#game=(.+)$/)
@@ -51,6 +53,20 @@ export function GamesPage({
 
   if (liveOpen) {
     return readOnly ? <LiveWatch state={state} onClose={() => setLiveOpen(false)} /> : <LiveGamePage state={state} update={update} onClose={() => setLiveOpen(false)} />
+  }
+
+  if (recapOpen) {
+    return (
+      <NightRecap
+        state={state}
+        onBack={() => setRecapOpen(false)}
+        onOpenGame={(id) => {
+          setRecapOpen(false)
+          setOpenId(id)
+        }}
+        onOpenPlayer={onOpenPlayer}
+      />
+    )
   }
 
   if (openGame && statEntry && !readOnly) {
@@ -84,6 +100,12 @@ export function GamesPage({
           </Button>
         )}
         {readOnly && <LiveBanner state={state} onOpen={() => setLiveOpen(true)} />}
+        {state.games.length > 0 && (
+          <Button className="self-start" variant="outline" onClick={() => setRecapOpen(true)}>
+            <CalendarDays />
+            Night recap
+          </Button>
+        )}
         {readOnly && !findLiveGame(state) && getClient() && (
           <Button className="self-start" variant="outline" onClick={() => setLiveOpen(true)}>
             <Radio />
