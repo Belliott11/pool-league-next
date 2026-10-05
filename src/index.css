@@ -82,7 +82,7 @@
     --chart-5: #2a6db5;
     /* Team A and Team B, fixed so a side is the same colour everywhere it appears. */
     --team-a: #2a6db5;
-    --team-b: #d9780f;
+    --team-b: #b3600b;
     /* Meaning, not decoration. Accent = identity and "this is selected / this is the leader".
        Pos = better than average or a good outcome. Neg = worse or a bad outcome. Gold = first
        place and awards only. Series colors (chart-2..5) only tell lines apart and never mean good/bad. */
@@ -202,7 +202,7 @@
   :root:not([data-accent="ink"]) {
     --team-a: oklch(from var(--accent) 0.52 0.15 calc(h + 180));
     --team-b: var(--accent);
-    --chart-2: oklch(from var(--accent) 0.56 0.12 calc(h + 150));
+    --chart-2: oklch(from var(--accent) 0.52 0.12 calc(h + 150));
     --chart-3: oklch(from var(--accent) 0.6 0.12 calc(h + 210));
     --chart-4: oklch(from var(--accent) 0.5 0.14 calc(h + 90));
     --chart-5: oklch(from var(--accent) 0.52 0.14 calc(h - 90));
