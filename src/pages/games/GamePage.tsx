@@ -1,12 +1,12 @@
 import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/EmptyState"
-import { useRef, type ReactNode } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ClipboardPenLine, Share2 } from "lucide-react"
+import { ClipboardPenLine, Play, Share2 } from "lucide-react"
 import { shareGameCard } from "@/lib/shareCard"
 import { GameVideoPanel } from "@/components/GameVideoPanel"
 import { WatchContext, WatchTime } from "@/components/WatchTime"
@@ -322,7 +322,7 @@ function Reel({ state, game }: { state: PooleanState; game: Game }) {
                 {p.type === "highlight" ? "Highlight" : "Lowlight"}
               </Badge>
             </TableCell>
-            <TableCell className="tabular-nums"><WatchTime t={p.start} /></TableCell>
+            <TableCell className="tabular-nums"><WatchTime t={p.start} end={p.end} /></TableCell>
             <TableCell className="tabular-nums">{formatVideoTime(p.end)}</TableCell>
             <TableCell>{p.playerId ? playerName(state, p.playerId) : "-"}</TableCell>
             <TableCell>{p.note || "-"}</TableCell>
@@ -354,7 +354,7 @@ function TeamScore({ state, game, ids, label, score }: { state: PooleanState; ga
 // Read-only version of the classic site's Stat Entry page for one game: scoreboard, everyone's
 // line, the full shot log, turnovers/steals/fouls, defensive matchups, and the highlight reel.
 // Editing (logging shots, assigning rosters) and the video player are not part of this app yet.
-export function GamePage({ state, update, game, onBack, onStatEntry }: { state: PooleanState; update: Update; game: Game; onBack: () => void; onStatEntry?: () => void }) {
+export function GamePage({ state, update, game, onBack, onStatEntry, autoSeek }: { state: PooleanState; update: Update; game: Game; onBack: () => void; onStatEntry?: () => void; autoSeek?: { time: number | null; n: number } | null }) {
   const readOnly = useReadOnly()
   const liveOnly = isLiveScoreOnly(game)
   const scoreA = liveOnly ? liveScoreOf(game, game.teamA) : teamScore(game, game.teamA)
@@ -364,12 +364,51 @@ export function GamePage({ state, update, game, onBack, onStatEntry }: { state: 
   const videoBox = useRef<HTMLDivElement>(null)
   const hasVideo = !!gameVideoUrl(state, game)
   // Event times are positions in the recording, so this plays from just before the moment.
-  const watch = hasVideo
-    ? (t: number) => {
-        videoBox.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-        control.current?.seek(Math.max(0, t - JUMP_LEAD_SECONDS))
+  const clipTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
+  useEffect(() => () => clearInterval(clipTimer.current), [])
+  // Plays one moment; with an end time it pauses there, and `then` runs when it does (to chain clips).
+  const play = (t: number, end?: number, then?: () => void) => {
+    clearInterval(clipTimer.current)
+    videoBox.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    // A tagged clip has its own start, so it begins exactly there; a single event starts a few seconds early.
+    const lead = end === undefined ? JUMP_LEAD_SECONDS : 0
+    control.current?.seek(Math.max(0, t - lead))
+    if (end === undefined) return
+    // Give the seek a moment to land, then watch the clock until the clip's end.
+    const started = Date.now()
+    clipTimer.current = setInterval(() => {
+      const now = control.current?.time()
+      if (now === undefined) return
+      if ((now >= end && Date.now() - started > 800) || Date.now() - started > (end - t + 20) * 1000) {
+        clearInterval(clipTimer.current)
+        if (then) then()
+        else control.current?.pause()
       }
-    : null
+    }, 250)
+  }
+  const watch = hasVideo ? (t: number, end?: number) => play(t, end) : null
+  // Every tagged clip of this game, one after another.
+  const playReel = () => {
+    const clips = [...(game.plays ?? [])].sort((a, b) => a.start - b.start)
+    const step = (i: number) => {
+      if (i >= clips.length) return control.current?.pause()
+      play(clips[i].start, clips[i].end, () => step(i + 1))
+    }
+    step(0)
+  }
+  // Opened from a "Jump" button elsewhere (a player's clips, play search): go to that moment once the video is ready.
+  useEffect(() => {
+    if (!autoSeek || autoSeek.time === null || !hasVideo) return
+    let tries = 0
+    const id = setInterval(() => {
+      if (control.current || ++tries > 40) {
+        clearInterval(id)
+        if (control.current) play(autoSeek.time as number)
+      }
+    }, 250)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSeek?.n, hasVideo])
 
   return (
     <WatchContext.Provider value={watch}>
@@ -434,6 +473,11 @@ export function GamePage({ state, update, game, onBack, onStatEntry }: { state: 
             <Matchups state={state} game={game} />
           </Panel>
           <Panel title="Highlight / Lowlight Reel">
+            {hasVideo && (game.plays ?? []).length > 0 && (
+              <Button size="sm" variant="outline" className="self-start" onClick={playReel}>
+                <Play aria-hidden /> Play all clips
+              </Button>
+            )}
             <Reel state={state} game={game} />
           </Panel>
         </>

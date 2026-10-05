@@ -25,6 +25,10 @@ export function normalizeLegacyState(s) {
 
 function openPlayerDetail(id) { window.dispatchEvent(new CustomEvent("legacy-open-player", { detail: id })); }
 function openGame(id) { window.dispatchEvent(new CustomEvent("legacy-open-game", { detail: id })); }
+function cloudVideoUrl(game) {
+  const m = game.masterVideoId ? (state.masterVideos || []).find((x) => x.id === game.masterVideoId) : null;
+  return game.videoUrl || (m && m.url) || null;
+}
 function showTab() {}
 function startLiveGame() {}
 function openLiveGameOverlay() {}
@@ -1496,19 +1500,7 @@ function playerGameResult(game, playerId) {
 }
 
 function openGameAndSeek(gameId, videoTime) {
-  openGame(gameId);
-  if (videoTime === null || videoTime === undefined) return;
-  const tryJump = attemptsLeft => {
-    if (currentGameId !== gameId) return; // navigated elsewhere before the video was ready
-    if (currentVideoEl) {
-      currentVideoEl.currentTime = videoTime;
-      currentVideoEl.play();
-      currentVideoEl.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-    if (attemptsLeft > 0) setTimeout(() => tryJump(attemptsLeft - 1), 200);
-  };
-  tryJump(25);
+  window.dispatchEvent(new CustomEvent("legacy-open-game", { detail: { id: gameId, time: videoTime === undefined ? null : videoTime } }));
 }
 
 async function loadInlineVideo(game, videoEl, videoTime) {
@@ -1518,15 +1510,16 @@ async function loadInlineVideo(game, videoEl, videoTime) {
       const file = await getVideoFile(game.masterVideoId);
       if (file) masterVideoBlobUrls[game.masterVideoId] = URL.createObjectURL(file);
     }
-    url = masterVideoBlobUrls[game.masterVideoId] || null;
+    url = masterVideoBlobUrls[game.masterVideoId] || cloudVideoUrl(game);
   } else {
     if (!localVideoBlobUrls[game.id]) {
       const file = await getVideoFile(game.id);
       if (file) localVideoBlobUrls[game.id] = URL.createObjectURL(file);
     }
-    url = localVideoBlobUrls[game.id] || game.videoUrl || null;
+    url = localVideoBlobUrls[game.id] || cloudVideoUrl(game);
   }
-  if (!url) return false;
+  // A YouTube or Vimeo link cannot play in a bare video tag; those open from the game page instead.
+  if (!url || /youtu\.?be|vimeo/i.test(url)) return false;
   if (videoEl.dataset.loadedUrl !== url) {
     videoEl.src = url;
     videoEl.dataset.loadedUrl = url;
@@ -8793,10 +8786,11 @@ async function getGameVideoSrcForExport(game) {
   const file = await getVideoFile(cacheKey);
   if (file) {
     src = URL.createObjectURL(file);
-  } else if (game.videoUrl) {
-    const isYouTube = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))/.test(game.videoUrl);
-    const isDirectVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(game.videoUrl);
-    if (!isYouTube && isDirectVideo) src = game.videoUrl;
+  } else if (cloudVideoUrl(game)) {
+    const link = cloudVideoUrl(game);
+    const isYouTube = /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))/.test(link);
+    const isDirectVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(link);
+    if (!isYouTube && isDirectVideo) src = link;
   }
   leagueExportVideoSrcCache[cacheKey] = src;
   return src;
@@ -11714,7 +11708,7 @@ export const MOUNT_PANELS = [
   { title: "Party Recap", section: "media", order: 63, html: "\r\n      <div class=\"balance-controls\" style=\"margin-bottom:10px\">\r\n        <select id=\"partyRecapSelect\" aria-label=\"Party night\"></select>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"downloadPartyRecapBtn\">Download Image</button>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"copyPartyRecapBtn\">Copy Recap Text</button>\r\n        <span class=\"hint\" id=\"partyRecapCopyStatus\" style=\"margin:0\" aria-live=\"polite\"></span>\r\n      </div>\r\n      <div id=\"partyRecap\"></div>\r\n    ", render: () => { renderPartyRecap(); }, wires: [] },
   { title: "Best & Worst Individual Games", section: "media", order: 64, html: "\r\n      <div id=\"individualGamePerformances\"></div>\r\n    ", render: () => { renderIndividualGamePerformances(); }, wires: [] },
   { title: "Play Search", section: "media", order: 65, html: "\r\n      <div class=\"balance-controls\" style=\"margin-bottom:10px\">\r\n        <select id=\"playSearchPlayerSelect\" aria-label=\"Player\"></select>\r\n        <select id=\"playSearchTypeSelect\" aria-label=\"Play type\"></select>\r\n        <select id=\"playSearchShotTypeSelect\" aria-label=\"Shot type\"></select>\r\n        <select id=\"playSearchDefenderSelect\" aria-label=\"Defender\"></select>\r\n      </div>\r\n      <p class=\"hint\" id=\"playSearchSummary\" style=\"margin:0 0 10px\"></p>\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\">\r\n          <thead><tr><th class=\"sticky-col\">Player</th><th>Date</th><th>Play</th><th>Detail</th><th></th></tr></thead>\r\n          <tbody id=\"playSearchBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderPlaySearch(); }, wires: [] },
-  { title: "Highlights & Lowlights (League)", section: "media", order: 66, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"leagueHighlightsTable\">\r\n          <thead><tr><th>Date</th><th>Player</th><th>Type</th><th>Time</th><th>Note</th><th></th></tr></thead>\r\n          <tbody id=\"leagueHighlightsBody\"></tbody>\r\n        </table>\r\n      </div>\r\n      <div class=\"reel-export-row\">\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"exportLeagueVideoBtn\" disabled><svg class=\"icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18m0-13.5h4m-4 9h4\"/></g></svg> Combine All Clips Into One Video</button>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"cancelLeagueExportBtn\" hidden>Cancel</button>\r\n        <p class=\"hint\" id=\"leagueExportStatus\" style=\"margin:0\"></p>\r\n      </div>\r\n      <p class=\"hint\" style=\"margin:6px 0 0\">Records every clip into one video, oldest game first. Games with YouTube links are skipped. It can take a while, so keep this tab open and in front.</p>\r\n      <div id=\"leagueExportPreviewWrap\" hidden>\r\n        <video id=\"leagueExportVideo\" class=\"league-export-preview\" muted playsinline></video>\r\n      </div>\r\n    ", render: () => { renderLeagueHighlights(); }, wires: [{ id: "exportLeagueVideoBtn", evt: "click", handler: () => {
+  { title: "Highlights & Lowlights (League)", section: "media", order: 66, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"leagueHighlightsTable\">\r\n          <thead><tr><th>Date</th><th>Player</th><th>Type</th><th>Time</th><th>Note</th><th></th></tr></thead>\r\n          <tbody id=\"leagueHighlightsBody\"></tbody>\r\n        </table>\r\n      </div>\r\n      <div class=\"reel-export-row\">\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"exportLeagueVideoBtn\" disabled><svg class=\"icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18m0-13.5h4m-4 9h4\"/></g></svg> Combine All Clips Into One Video</button>\r\n        <button type=\"button\" class=\"secondary-btn\" id=\"cancelLeagueExportBtn\" hidden>Cancel</button>\r\n        <p class=\"hint\" id=\"leagueExportStatus\" style=\"margin:0\"></p>\r\n      </div>\r\n      <p class=\"hint\" style=\"margin:6px 0 0\">Records every clip into one video, oldest game first. Games with YouTube links are skipped. It can take a while, so keep this tab open and in front.</p>\r\n      <div id=\"leagueExportPreviewWrap\" hidden>\r\n        <video id=\"leagueExportVideo\" class=\"league-export-preview\" crossorigin=\"anonymous\" muted playsinline></video>\r\n      </div>\r\n    ", render: () => { renderLeagueHighlights(); }, wires: [{ id: "exportLeagueVideoBtn", evt: "click", handler: () => {
   exportLeagueVideo();
 } }, { id: "cancelLeagueExportBtn", evt: "click", handler: () => {
   if (leagueExportState) {

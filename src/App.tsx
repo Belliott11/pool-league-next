@@ -189,6 +189,20 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     window.addEventListener("legacy-open-player", onPlayer)
     return () => window.removeEventListener("legacy-open-player", onPlayer)
   }, [])
+  // The classic panels' Watch and Jump buttons: open that game on the Games tab, at that moment if given.
+  const [openRequest, setOpenRequest] = useState<{ id: string; time: number | null; n: number } | null>(null)
+  useEffect(() => {
+    const onGame = (e: Event) => {
+      const d = (e as CustomEvent<string | { id: string; time: number | null }>).detail
+      const id = typeof d === "string" ? d : d.id
+      const time = typeof d === "string" ? null : d.time
+      setLiveOpen(false)
+      setTab("games")
+      setOpenRequest({ id, time, n: Date.now() })
+    }
+    window.addEventListener("legacy-open-game", onGame)
+    return () => window.removeEventListener("legacy-open-game", onGame)
+  }, [])
   // The classic review/import tools edit their own copy of the data and announce it with an event;
   // pull that copy back into React state (and save it) so the whole app sees the change.
   useEffect(() => {
@@ -293,6 +307,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
             update={update}
             liveOpen={liveOpen}
             setLiveOpen={setLiveOpen}
+            openRequest={openRequest}
             onOpenPlayer={(id) => {
               setPlayerId(id)
               setTab("player")

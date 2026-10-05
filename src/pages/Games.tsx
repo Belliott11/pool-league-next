@@ -22,12 +22,14 @@ export function GamesPage({
   onOpenPlayer,
   liveOpen,
   setLiveOpen,
+  openRequest,
 }: {
   state: PooleanState
   update: Update
   onOpenPlayer: (id: string) => void
   liveOpen: boolean
   setLiveOpen: (open: boolean) => void
+  openRequest?: { id: string; time: number | null; n: number } | null
 }) {
   const readOnly = useReadOnly()
   const [openId, setOpenId] = useState<string | null>(null)
@@ -38,6 +40,13 @@ export function GamesPage({
     if (m) setOpenId(decodeURIComponent(m[1]))
   }, [])
   const openGame = state.games.find((g) => g.id === openId) ?? null
+  // The classic panels' Jump and Watch buttons ask the app to open a game at a moment (see App's legacy-open-game).
+  useEffect(() => {
+    if (!openRequest) return
+    setStatEntry(false)
+    setOpenId(openRequest.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequest?.n])
   const open = (g: Game) => (g.liveInProgress ? setLiveOpen(true) : setOpenId(g.id))
 
   if (liveOpen) {
@@ -55,6 +64,7 @@ export function GamesPage({
         update={update}
         game={openGame}
         onStatEntry={() => setStatEntry(true)}
+        autoSeek={openRequest && openRequest.id === openGame.id ? openRequest : null}
         onBack={() => {
           setOpenId(null)
           setStatEntry(false)

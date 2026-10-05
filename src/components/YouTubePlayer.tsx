@@ -5,12 +5,14 @@ import { cn } from "@/lib/utils"
 export interface PlayerControl {
   time: () => number
   seek: (t: number) => void
+  pause: () => void
 }
 
 interface YTPlayer {
   getCurrentTime: () => number
   seekTo: (t: number, allowSeekAhead: boolean) => void
   playVideo: () => void
+  pauseVideo: () => void
   destroy: () => void
 }
 type YTApi = { Player: new (el: HTMLElement, opts: { videoId: string; playerVars: Record<string, number>; events: { onReady: () => void } }) => YTPlayer }
@@ -65,6 +67,7 @@ export function YouTubePlayer({ id, control, className, start = 0 }: { id: strin
                   player?.seekTo(t, true)
                   player?.playVideo()
                 },
+                pause: () => player?.pauseVideo(),
               }
             },
           },

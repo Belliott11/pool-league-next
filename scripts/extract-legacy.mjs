@@ -416,6 +416,10 @@ export const MOUNT_NO_RENDER = ${JSON.stringify(mountSpecs.filter((m) => m.noRen
 const stubBlock = `
 function openPlayerDetail(id) { window.dispatchEvent(new CustomEvent("legacy-open-player", { detail: id })); }
 function openGame(id) { window.dispatchEvent(new CustomEvent("legacy-open-game", { detail: id })); }
+function cloudVideoUrl(game) {
+  const m = game.masterVideoId ? (state.masterVideos || []).find((x) => x.id === game.masterVideoId) : null;
+  return game.videoUrl || (m && m.url) || null;
+}
 function showTab() {}
 function startLiveGame() {}
 function openLiveGameOverlay() {}
@@ -512,8 +516,37 @@ const iconify = (code) => {
   code = code.replace("disabled>🎬 Combine", () => `disabled>${filmSvg} Combine`)
   return code
 }
+// The classic film buttons (Watch film, clip Jump, play search) read videos from this browser's own
+// storage. Here a game's video is a link (its own, or its master recording's), so point them at that, and
+// make "open this game and jump to a time" hand off to the React app instead of the classic screen.
+const videoHooks = (code) => {
+  code = code.split(String.fromCharCode(13, 10)).join(String.fromCharCode(10))
+  const swap = (from, to) => {
+    if (!code.includes(from)) throw new Error("video hook pattern not found: " + from.slice(0, 60))
+    code = code.replace(from, () => to)
+  }
+  swap("url = masterVideoBlobUrls[game.masterVideoId] || null;", "url = masterVideoBlobUrls[game.masterVideoId] || cloudVideoUrl(game);")
+  swap(
+    "url = localVideoBlobUrls[game.id] || game.videoUrl || null;\n  }\n  if (!url) return false;",
+    "url = localVideoBlobUrls[game.id] || cloudVideoUrl(game);\n  }\n  // A YouTube or Vimeo link cannot play in a bare video tag; those open from the game page instead.\n  if (!url || /youtu\\.?be|vimeo/i.test(url)) return false;",
+  )
+  swap(
+    "  } else if (game.videoUrl) {\n    const isYouTube = /(?:youtu\\.be\\/|youtube\\.com\\/(?:watch\\?v=|embed\\/|shorts\\/))/.test(game.videoUrl);\n    const isDirectVideo = /\\.(mp4|webm|ogg|mov)(\\?.*)?$/i.test(game.videoUrl);\n    if (!isYouTube && isDirectVideo) src = game.videoUrl;",
+    "  } else if (cloudVideoUrl(game)) {\n    const link = cloudVideoUrl(game);\n    const isYouTube = /(?:youtu\\.be\\/|youtube\\.com\\/(?:watch\\?v=|embed\\/|shorts\\/))/.test(link);\n    const isDirectVideo = /\\.(mp4|webm|ogg|mov)(\\?.*)?$/i.test(link);\n    if (!isYouTube && isDirectVideo) src = link;",
+  )
+  // Combining clips records the preview video onto a canvas, which a cross-origin video only allows when it
+  // was requested with CORS. Both Supabase Storage and the R2 bucket send the header.
+  swap(
+    '<video id=\\"leagueExportVideo\\" class=\\"league-export-preview\\" muted playsinline></video>',
+    '<video id=\\"leagueExportVideo\\" class=\\"league-export-preview\\" crossorigin=\\"anonymous\\" muted playsinline></video>',
+  )
+  const open = /function openGameAndSeek\(gameId, videoTime\) \{[\s\S]*?\n\}\n/
+  if (!open.test(code)) throw new Error("openGameAndSeek not found")
+  code = code.replace(open, () => 'function openGameAndSeek(gameId, videoTime) {\n  window.dispatchEvent(new CustomEvent("legacy-open-game", { detail: { id: gameId, time: videoTime === undefined ? null : videoTime } }));\n}\n')
+  return code
+}
 const heatTokens = (code) =>
-  iconify(colorWords(code)).replace(
+  videoHooks(iconify(colorWords(code))).replace(
     /hsla\(\$\{hue\}, \d+%, \d+%, \$\{opacity\}\)/g,
     "color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)",
   )

@@ -33,6 +33,7 @@ function FileVideo({ url, videoRef, className, onTimeUpdate, start, control }: {
         v.currentTime = Math.max(0, t)
         void v.play().catch(() => {})
       },
+      pause: () => own.current?.pause(),
     }
     return () => {
       control.current = null
