@@ -23,14 +23,21 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
   const days = useMemo(() => gameDays(state), [state])
   const [date, setDate] = useState(initialDate && days.includes(initialDate) ? initialDate : (days[0] ?? ""))
   const [copied, setCopied] = useState(false)
-  const s = useMemo(() => summarizeNight(state, date), [state, date])
-  const callouts = useMemo(() => nightCallouts(state, date), [state, date])
+  const full = useMemo(() => summarizeNight(state, date), [state, date])
+  // Two versions. Right after live scoring there are only points, so the quick recap sticks to results, points and
+  // wins. Once the shots are entered from film the full recap adds MVP, leaders, lineups and records.
+  const hasBox = full.players.some((p) => p.boxGames > 0)
+  const [pick, setPick] = useState<"quick" | "full" | null>(null)
+  const quick = (pick ?? (hasBox ? "full" : "quick")) === "quick"
+  const s = useMemo(() => (quick ? { ...full, mvp: null } : full), [full, quick])
+  const allCallouts = useMemo(() => nightCallouts(state, date), [state, date])
+  const callouts = useMemo(() => (quick ? allCallouts.filter((c) => c.key === "pts") : allCallouts), [allCallouts, quick])
   const book = useMemo(() => recordBook(state), [state])
   const stories = useMemo(() => nightStories(state, s, callouts, (id) => playerName(state, id), (a, b) => predictRealMatchup(a, b)), [state, s, callouts])
   const label = formatDateDisplay(date)
   const name = (id: string) => playerName(state, id)
   const names = (ids: string[]) => ids.map(name).join(", ")
-  const anyBox = s.players.some((p) => p.boxGames > 0)
+  const anyBox = !quick && hasBox
 
   if (days.length === 0) {
     return (
@@ -50,13 +57,30 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
           &larr; Back to Games
         </Button>
         <h2 className="font-display text-xl font-bold">Night recap</h2>
-        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Which night">
+        <select className="h-9 rounded-md border bg-background px-2 text-sm" value={date} onChange={(e) => {
+            setDate(e.target.value)
+            setPick(null)
+          }} aria-label="Which night">
           {days.map((d) => (
             <option key={d} value={d}>
               {formatDateDisplay(d)}
             </option>
           ))}
         </select>
+        <div className="flex rounded-md border p-0.5 text-sm" role="group" aria-label="Which recap">
+          {(["quick", "full"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              disabled={v === "full" && !hasBox}
+              aria-pressed={(v === "quick") === quick}
+              onClick={() => setPick(v)}
+              className={cn("rounded px-3 py-1 font-medium disabled:opacity-40", (v === "quick") === quick ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+            >
+              {v === "quick" ? "Quick" : "Full"}
+            </button>
+          ))}
+        </div>
         <div className="ml-auto flex gap-2">
           <Button size="sm" variant="outline" onClick={() => void shareNightCard(state, s, label).catch(() => {})}>
             <Share2 aria-hidden /> Share picture
@@ -76,6 +100,14 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
         </div>
       </div>
 
+      {!hasBox && (
+        <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+          Quick recap: points from live scoring. Enter the stats from the game videos and the full recap adds MVP, leaders, lineups and records.
+        </p>
+      )}
+      {hasBox && quick && (
+        <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">Quick recap: results and points only. Switch to Full for MVP, leaders, lineups and records.</p>
+      )}
       <div className="grid grid-cols-3 gap-3 text-center">
         {[
           ["Games", s.games.length],
@@ -149,7 +181,7 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
         </section>
       )}
 
-      {s.mvp && (
+      {!quick && s.mvp && (
         <section className="rounded-xl border-2 border-accent bg-accent/10 p-4" aria-label="Night MVP">
           <p className="text-xs font-semibold uppercase tracking-wide text-accent">Night MVP</p>
           <button type="button" className="mt-1 flex items-center gap-3 text-left" onClick={() => onOpenPlayer(s.mvp!.id)}>
@@ -164,7 +196,7 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
         </section>
       )}
 
-      {Object.values(s.leaders).some((l) => l.length > 0) && (
+      {!quick && Object.values(s.leaders).some((l) => l.length > 0) && (
         <section className="flex flex-col gap-2" aria-label="Leaders">
           <h3 className="font-display text-lg font-bold">Leaders</h3>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -187,7 +219,7 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
         </section>
       )}
 
-      {(s.duos.length > 0 || s.trios.length > 0) && (
+      {!quick && (s.duos.length > 0 || s.trios.length > 0) && (
         <section className="flex flex-col gap-2" aria-label="Lineups">
           <h3 className="font-display text-lg font-bold">Best lineups</h3>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -212,7 +244,7 @@ export function NightRecap({ state, onBack, onOpenGame, onOpenPlayer, initialDat
         </section>
       )}
 
-      {Object.keys(book).length > 0 && (
+      {!quick && Object.keys(book).length > 0 && (
         <section className="flex flex-col gap-2" aria-label="Record book">
           <h3 className="font-display text-lg font-bold">League records</h3>
           <div className="overflow-x-auto rounded-xl border bg-card">
