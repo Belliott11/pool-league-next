@@ -5,6 +5,7 @@ import { nightCallouts } from "@/lib/records"
 import { nightStories, previewStories, seasonStories } from "@/lib/storylines"
 import { useLabeledState } from "@/lib/labelsContext"
 import { playerName } from "@/lib/players"
+import { previewStoriesFor, upcomingRsvp } from "@/lib/nightPreview"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 
@@ -27,15 +28,16 @@ export function StoryPublisher({ state, update }: { state: PooleanState; update:
         full: nightStories(labeled, full, callouts, nm, predict),
       }
     }
-    return { nights, going: previewStories(labeled, nm), season: seasonStories(labeled, nm) }
+    const rsvp = upcomingRsvp(state)
+    return { nights, going: previewStories(labeled, nm), season: seasonStories(labeled, nm), preview: rsvp ? previewStoriesFor(labeled, rsvp.playerIds, nm) : [] }
   }, [labeled, state])
 
   useEffect(() => {
     const saved = state.publishedStories
-    const merged = { ...saved, nights: { ...saved?.nights, ...written.nights }, going: written.going, season: written.season }
+    const merged = { ...saved, nights: { ...saved?.nights, ...written.nights }, going: written.going, season: written.season, preview: written.preview }
     if (JSON.stringify(saved ?? null) === JSON.stringify(merged)) return
     // Wait for a quiet moment so a night of live scoring is one save, not one per basket.
-    const t = setTimeout(() => update((s) => ({ ...s, publishedStories: { ...s.publishedStories, nights: { ...s.publishedStories?.nights, ...written.nights }, going: written.going, season: written.season } })), 1500)
+    const t = setTimeout(() => update((s) => ({ ...s, publishedStories: { ...s.publishedStories, nights: { ...s.publishedStories?.nights, ...written.nights }, going: written.going, season: written.season, preview: written.preview } })), 1500)
     return () => clearTimeout(t)
   }, [written, state.publishedStories, update])
 

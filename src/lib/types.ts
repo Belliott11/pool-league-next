@@ -117,7 +117,7 @@ export interface PooleanState {
   // Used only while writing headlines, laid over the state in memory. Labels are private and never saved here.
   playerLabels?: Record<string, string[]>
   // Finished headlines the editor has saved, so visitors see the jokes without ever seeing the labels behind them.
-  publishedStories?: { nights?: Record<string, { quick: string[]; full: string[] }>; going?: string[]; season?: string[] }
+  publishedStories?: { nights?: Record<string, { quick: string[]; full: string[] }>; going?: string[]; season?: string[]; preview?: string[] }
   currentSeasonStartedAt?: string | null
   [key: string]: unknown
 }

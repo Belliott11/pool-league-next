@@ -4,6 +4,7 @@ import { predictRealMatchup } from "@/lib/matchup"
 import { gameDays, summarizeNight } from "@/lib/nightRecap"
 import { playerName } from "@/lib/players"
 import { nightCallouts } from "@/lib/records"
+import { previewStoriesFor } from "@/lib/nightPreview"
 import { nightStories, previewStories, seasonStories } from "@/lib/storylines"
 import type { PooleanState } from "@/lib/types"
 
@@ -50,6 +51,8 @@ export function buildCatalog(state: PooleanState): CatalogLine[] {
     seasonStories(state, nm)
     source = "Injury report"
     injuryHeadlines(state, nm)
+    source = "Night preview"
+    for (const r of state.rsvps ?? []) previewStoriesFor(state, r.playerIds, nm)
   } finally {
     lineSink.current = null
   }

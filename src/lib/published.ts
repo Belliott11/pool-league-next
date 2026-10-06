@@ -6,7 +6,7 @@ import type { PooleanState } from "@/lib/types"
 // Headlines can use private player labels, but visitors never get the labels. So when the editor looks at a story
 // list, the finished lines are saved with the league data, and visitors read those saved lines instead of writing
 // their own. If nothing has been saved yet, visitors fall back to the generic lines they can write themselves.
-export type StoryKey = "going" | "season"
+export type StoryKey = "going" | "season" | "preview"
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 

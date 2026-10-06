@@ -49,7 +49,7 @@ export function streaks(state: PooleanState, upTo?: string): { id: string; kind:
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 const pct = (p: number) => Math.round(p * 100)
-const say = (seed: string, ...options: string[]): string => {
+export const say = (seed: string, ...options: string[]): string => {
   // A wording the editor thumbed down is skipped when another one is available.
   lineSink.current?.(options)
   const live = options.filter((o) => !isHidden(o))
@@ -58,8 +58,8 @@ const say = (seed: string, ...options: string[]): string => {
 
 // Candidate headlines come with a weight for how unusual they are; the most unusual go first, no player gets more
 // than two (three on the season card), and anything the editor removed is dropped.
-type Item = { w: number; pid: string | null; text: string }
-function rank(items: Item[], limit: number, perPlayerMax = 2): string[] {
+export type Item = { w: number; pid: string | null; text: string }
+export function rank(items: Item[], limit: number, perPlayerMax = 2): string[] {
   const perPlayer = new Map<string, number>()
   return items
     .sort((x, y) => y.w - x.w)
