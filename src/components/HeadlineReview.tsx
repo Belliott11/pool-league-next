@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 type View = "new" | "ok" | "no"
 
 // Go through every wording the headline writers can use: approve it, or remove it. Approved wordings come up more
-// often and removed ones never do. New wordings can be written from the removed ones: copy them and send them over.
+// often and removed ones never do. New wordings are written from the removed ones, using the approved ones as the standard: copy them and send them over.
 export function HeadlineReview({ state }: { state: PooleanState }) {
   const { labels, reviewLine } = useLabels()
   const [open, setOpen] = useState(false)
@@ -27,10 +27,12 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
   const count = (v: View) => catalog.filter((c) => verdict(c.key) === v).length
   const rejected = catalog.filter((c) => verdict(c.key) === "no")
 
+  // What goes to Claude to write more: the removed lines to replace, and the approved ones as the standard to match.
   const copyRejected = () => {
-    const text =
-      "These headlines for my pool league app were rejected. For each one, write 4 new versions with more personality and more fun at people's expense, in different shapes (not always a stat then a quip), keeping the same facts and blanks. No em dashes.\n\n" +
-      rejected.map((r) => `- [${r.source}] ${r.text}`).join("\n")
+    const liked = catalog.filter((c) => verdict(c.key) === "ok")
+    const intro = "These headlines for my pool league app were rejected. For each one, write 2 new versions with more personality and more fun at people's expense, in different shapes (not always a stat then a quip), keeping the same facts and blanks. No em dashes."
+    const likedBlock = liked.length ? ["", "Here are lines I approved. Match what they do well: specific, everyday and relatable, deadpan, about how people behave.", ...liked.slice(0, 40).map((r) => `+ [${r.source}] ${r.text}`)] : []
+    const text = [intro, ...likedBlock, "", "Rejected:", ...rejected.map((r) => `- [${r.source}] ${r.text}`)].join("\n")
     void navigator.clipboard?.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
@@ -73,7 +75,7 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
           </div>
           {view === "no" && rejected.length > 0 && (
             <Button size="sm" variant="outline" className="self-start" onClick={copyRejected}>
-              <ClipboardCopy aria-hidden /> {copied ? "Copied" : "Copy removed lines to get new ones"}
+              <ClipboardCopy aria-hidden /> {copied ? "Copied" : "Copy removed and approved lines to get new ones"}
             </Button>
           )}
           <ul className="flex flex-col gap-2">
