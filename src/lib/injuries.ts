@@ -119,26 +119,26 @@ export function injuryHeadlines(state: PooleanState, name: (id: string) => strin
   const outNow = board.filter((i) => i.status === "out" && i.timeline !== "longTerm")
   const roster = Math.max(state.players.length, 1)
 
-  if (board.length === 0) return [pickOne(day, "Everyone is healthy right now.", "No injuries on the report.", "A clean bill of health across the league.")]
+  if (board.length === 0) return [pickOne(day, "Everyone is healthy right now. Suspicious, honestly.", "No injuries on the report. Somebody is not playing hard enough.", "A clean bill of health across the league. Nobody is trying anything new.")]
 
   if (hurt.length >= Math.max(3, roster / 3)) {
-    out.push(pickOne(day + "many", `${hurt.length} players are hurt or away right now.`, `${hurt.length} players on the report. That is a lot of the league.`, `A third of the league is on the injury report.`))
+    out.push(pickOne(day + "many", `${hurt.length} players are hurt or away. The report is longer than the bench.`, `${hurt.length} players on the report. Maybe stretch before games.`, `A third of the league is on the report. That is not a warmup problem, that is a pattern.`))
   } else if (outNow.length === 1) {
-    out.push(pickOne(day + "one", `${name(outNow[0].playerId)} is out.`, `${name(outNow[0].playerId)} is out for now.`))
+    out.push(pickOne(day + "one", `${name(outNow[0].playerId)} is out. Their team gets a new excuse for losing.`, `${name(outNow[0].playerId)} is out. Get well soon, or at least before the next game.`))
   } else if (outNow.length >= 2) {
-    out.push(pickOne(day + "two", `${outNow.map((i) => name(i.playerId)).join(" and ")} are both out.`, `${outNow.length} players are out right now.`))
+    out.push(pickOne(day + "two", `${outNow.map((i) => name(i.playerId)).join(" and ")} are both out. Games will be short on talent and long on excuses.`, `${outNow.length} players are out. Teams get thinner and the excuses get better.`))
   }
 
   // The longest-running case.
   const oldest = [...hurt].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))[0]
   if (oldest) {
     const days = Math.floor((now.getTime() - new Date(oldest.updatedAt).getTime()) / 86_400_000)
-    if (days >= 14) out.push(pickOne(day + oldest.id, `${name(oldest.playerId)} has been on the report for ${days} days.`, `${days} days on the injury report for ${name(oldest.playerId)}.`))
+    if (days >= 14) out.push(pickOne(day + oldest.id, `${name(oldest.playerId)} has been on the report for ${days} days. At this point it is a vacation.`, `${days} days on the injury report for ${name(oldest.playerId)}. Doctors have not been consulted, and the couch is winning.`))
   }
 
   const longTerm = board.filter((i) => i.timeline === "longTerm" && i.status !== "returning")
-  if (longTerm.length) out.push(pickOne(day + "long", `${longTerm.map((i) => name(i.playerId)).join(" and ")} ${longTerm.length === 1 ? "is" : "are"} out long term.`, `Long term injury for ${longTerm.map((i) => name(i.playerId)).join(" and ")}.`))
+  if (longTerm.length) out.push(pickOne(day + "long", `${longTerm.map((i) => name(i.playerId)).join(" and ")} ${longTerm.length === 1 ? "is" : "are"} out long term. Do not expect a return soon, or a text back.`, `Long term injury for ${longTerm.map((i) => name(i.playerId)).join(" and ")}. Nobody is sure when they are back.`))
   const back = board.filter((i) => i.status === "returning")
-  if (back.length) out.push(pickOne(day + "back", `${back.map((i) => name(i.playerId)).join(" and ")} ${back.length === 1 ? "is" : "are"} back.`, `${back.map((i) => name(i.playerId)).join(" and ")} cleared to return.`))
+  if (back.length) out.push(pickOne(day + "back", `${back.map((i) => name(i.playerId)).join(" and ")} ${back.length === 1 ? "is" : "are"} back. Expect rust and a lot of talking.`, `${back.map((i) => name(i.playerId)).join(" and ")} cleared to return. Whether they are in shape is a separate question.`))
   return out.slice(0, 2)
 }
