@@ -56,6 +56,31 @@ const say = (seed: string, ...options: string[]): string => {
   return pick(seed, pool)
 }
 
+// Candidate headlines come with a weight for how unusual they are; the most unusual go first, no player gets more
+// than two (three on the season card), and anything the editor removed is dropped.
+type Item = { w: number; pid: string | null; text: string }
+function rank(items: Item[], limit: number, perPlayerMax = 2): string[] {
+  const perPlayer = new Map<string, number>()
+  return items
+    .sort((x, y) => y.w - x.w)
+    .filter((it) => {
+      if (!it.pid) return true
+      const n = (perPlayer.get(it.pid) ?? 0) + 1
+      perPlayer.set(it.pid, n)
+      return n <= perPlayerMax
+    })
+    .map((it) => it.text)
+    .filter((x) => !isHidden(x))
+    .slice(0, limit)
+}
+// How far a value sits from the others, in standard deviations.
+function zAmong(xs: number[], v: number): number {
+  if (xs.length < 3) return 1
+  const m = xs.reduce((a, b) => a + b, 0) / xs.length
+  const sd = Math.sqrt(xs.reduce((a, b) => a + (b - m) ** 2, 0) / xs.length)
+  return Math.min(6, Math.abs(v - m) / Math.max(sd, 0.1 * Math.max(Math.abs(m), 1)))
+}
+
 // ---- coming out of a night ------------------------------------------------------------------------------
 export function nightStories(
   state: PooleanState,
@@ -67,7 +92,7 @@ export function nightStories(
   // Every candidate headline carries a weight for how unusual it is, so the recap leads with the most abnormal things
   // of the night rather than a fixed order. For stat lines the weight is how many standard deviations tonight sat
   // from that player's own history (or the league's, for someone with too few games).
-  const items: { w: number; pid: string | null; text: string }[] = []
+  const items: Item[] = []
   const add = (w: number, pid: string | null, text: string) => items.push({ w, pid, text })
   const abn = abnormality(state, s.date)
   const done = s.games.filter((g) => !g.live && g.winner)
@@ -123,30 +148,23 @@ export function nightStories(
 
   extraNightStories(state, s, name, add, abn)
   // Most unusual first, and no player gets more than two headlines so one big night does not take over the list.
-  const perPlayer = new Map<string, number>()
-  const all = items
-    .sort((x, y) => y.w - x.w)
-    .filter((it) => {
-      if (!it.pid) return true
-      const n = (perPlayer.get(it.pid) ?? 0) + 1
-      perPlayer.set(it.pid, n)
-      return n <= 2
-    })
-    .map((it) => it.text)
+  const all = rank(items, 12)
   if (all.length === 0 && s.topScorer) all.push(`${name(s.topScorer.id)} led the night with ${s.topScorer.pts} points.`)
-  return all.filter((x) => !isHidden(x)).slice(0, 12)
+  return all
 }
 
 // ---- going into a night ---------------------------------------------------------------------------------
 export function previewStories(state: PooleanState, name: Name): string[] {
-  const out: string[] = []
+  const items: Item[] = []
+  const add = (w: number, pid: string | null, text: string) => items.push({ w, pid, text })
+  const abn = abnormality(state, "9999-12-31")
   // The injury board comes first: it changes who plays.
   const hurt = injuryBoard(state).filter((i) => i.status !== "returning")
-  if (hurt.length) out.push(`On the injury report: ${hurt.map((i) => `${name(i.playerId)} (${statusInfo(i.status).label.toLowerCase()})`).join(", ")}.`)
+  if (hurt.length) add(99, null, `On the injury report: ${hurt.map((i) => `${name(i.playerId)} (${statusInfo(i.status).label.toLowerCase()})`).join(", ")}.`)
   const back = injuryBoard(state).filter((i) => i.status === "returning")
-  if (back.length) out.push(`Back in the mix: ${back.map((i) => name(i.playerId)).join(", ")}.`)
+  if (back.length) add(98, null, `Back in the mix: ${back.map((i) => name(i.playerId)).join(", ")}.`)
   const rs = results(state)
-  if (rs.length < 4) return out
+  if (rs.length < 4) return rank(items, 8)
 
   // Last time out.
   const lastDate = rs[rs.length - 1].date
@@ -154,13 +172,13 @@ export function previewStories(state: PooleanState, name: Name): string[] {
   const wins = new Map<string, number>()
   last.forEach((r) => r.winners.forEach((id) => wins.set(id, (wins.get(id) ?? 0) + 1)))
   const bestWin = [...wins.entries()].sort((x, y) => y[1] - x[1])[0]
-  if (bestWin && bestWin[1] >= 2) out.push(say(lastDate + "last", `Last time out, ${name(bestWin[0])} won ${bestWin[1]} of ${plural(last.length, "game")} and has been talking about it since.`, `${name(bestWin[0])} took ${bestWin[1]} of ${plural(last.length, "game")} last time. Everyone else wants a rematch.`))
+  if (bestWin && bestWin[1] >= 2) add(1.5 + bestWin[1] * 0.5, bestWin[0], say(lastDate + "last", `Last time out, ${name(bestWin[0])} won ${bestWin[1]} of ${plural(last.length, "game")} and has been talking about it since.`, `${name(bestWin[0])} took ${bestWin[1]} of ${plural(last.length, "game")} last time. Everyone else wants a rematch.`))
 
   const run = streaks(state)
   const hot = run.filter((x) => x.kind === "W" && x.n >= 3).sort((x, y) => y.n - x.n)[0]
-  if (hot) out.push(labelLine(state, hot.id, "streakW", { n: name(hot.id), k: hot.n }, lastDate) ?? say(lastDate + hot.id + "hot", `${name(hot.id)} comes in on a ${hot.n}-game win streak. Somebody has to guard them eventually.`, `${name(hot.id)} has won ${hot.n} straight, so tonight everyone gets to try to beat them.`))
+  if (hot) add(hot.n * 0.6, hot.id, labelLine(state, hot.id, "streakW", { n: name(hot.id), k: hot.n }, lastDate) ?? say(lastDate + hot.id + "hot", `${name(hot.id)} comes in on a ${hot.n}-game win streak. Somebody has to guard them eventually.`, `${name(hot.id)} has won ${hot.n} straight, so tonight everyone gets to try to beat them.`))
   const cold = run.filter((x) => x.kind === "L" && x.n >= 3).sort((x, y) => y.n - x.n)[0]
-  if (cold) out.push(labelLine(state, cold.id, "streakL", { n: name(cold.id), k: cold.n }, lastDate) ?? say(lastDate + cold.id + "cold", `${name(cold.id)} comes in on a ${cold.n}-game losing streak. Their teammates are hoping for a different result.`, `${name(cold.id)} has lost ${cold.n} in a row and needs a win. So does whoever gets them on their team.`))
+  if (cold) add(cold.n * 0.6, cold.id, labelLine(state, cold.id, "streakL", { n: name(cold.id), k: cold.n }, lastDate) ?? say(lastDate + cold.id + "cold", `${name(cold.id)} comes in on a ${cold.n}-game losing streak. Their teammates are hoping for a different result.`, `${name(cold.id)} has lost ${cold.n} in a row and needs a win. So does whoever gets them on their team.`))
 
   // Season-long two-way leader and hot hands, from games with a box score.
   const per = new Map<string, { tw: number[]; pts: number[] }>()
@@ -175,7 +193,7 @@ export function previewStories(state: PooleanState, name: Name): string[] {
   }
   const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / (xs.length || 1)
   const leader = [...per.entries()].filter(([, v]) => v.tw.length >= 3).sort((x, y) => avg(y[1].tw) - avg(x[1].tw))[0]
-  if (leader) out.push(say(lastDate + "lead", `${name(leader[0])} leads the league in two-way score at ${avg(leader[1].tw).toFixed(1)} a game. They will not let you forget it.`, `${avg(leader[1].tw).toFixed(1)} two-way a game makes ${name(leader[0])} the best all-around player so far, and they know it.`))
+  if (leader) add(2 + zAmong([...per.values()].filter((v) => v.tw.length >= 3).map((v) => avg(v.tw)), avg(leader[1].tw)), leader[0], say(lastDate + "lead", `${name(leader[0])} leads the league in two-way score at ${avg(leader[1].tw).toFixed(1)} a game. They will not let you forget it.`, `${avg(leader[1].tw).toFixed(1)} two-way a game makes ${name(leader[0])} the best all-around player so far, and they know it.`))
   const seasonWins = new Map<string, number>()
   rs.forEach((r) => r.winners.forEach((id) => seasonWins.set(id, (seasonWins.get(id) ?? 0) + 1)))
   const heating = [...per.entries()]
@@ -183,7 +201,7 @@ export function previewStories(state: PooleanState, name: Name): string[] {
     .map(([id, v]) => ({ id, recent: avg(v.pts.slice(-3)), season: avg(v.pts) }))
     .filter((x) => x.recent - x.season >= 2)
     .sort((x, y) => y.recent - y.season - (x.recent - x.season))[0]
-  if (heating) out.push(say(lastDate + heating.id + "heat", `${name(heating.id)} is heating up: ${heating.recent.toFixed(1)} points a game over the last 3, up from ${heating.season.toFixed(1)}. Someone should guard them tonight.`, `${name(heating.id)} has scored ${heating.recent.toFixed(1)} a game lately, up from ${heating.season.toFixed(1)}. Whoever draws them should be nervous.`))
+  if (heating) add(abn(heating.id, ptsPick, heating.recent), heating.id, say(lastDate + heating.id + "heat", `${name(heating.id)} is heating up: ${heating.recent.toFixed(1)} points a game over the last 3, up from ${heating.season.toFixed(1)}. Someone should guard them tonight.`, `${name(heating.id)} has scored ${heating.recent.toFixed(1)} a game lately, up from ${heating.season.toFixed(1)}. Whoever draws them should be nervous.`))
 
   // Chasing a record.
   const book = recordBook(state)
@@ -193,7 +211,7 @@ export function previewStories(state: PooleanState, name: Name): string[] {
       .map(([id, v]) => ({ id, best: Math.max(0, ...v.pts) }))
       .filter((x) => x.best < pts.value && pts.value - x.best <= 2 && x.id !== pts.playerId)
       .sort((x, y) => y.best - x.best)[0]
-    if (near) out.push(`${name(near.id)}'s best game, ${near.best}, is ${pts.value - near.best} shy of ${name(pts.playerId)}'s league record of ${pts.value} points. One good night and ${name(pts.playerId)} has to hear about it.`)
+    if (near) add(2.5, near.id, `${name(near.id)}'s best game, ${near.best}, is ${pts.value - near.best} shy of ${name(pts.playerId)}'s league record of ${pts.value} points. One good night and ${name(pts.playerId)} has to hear about it.`)
   }
 
   // The most lopsided rivalry among players who have met often.
@@ -213,7 +231,7 @@ export function previewStories(state: PooleanState, name: Name): string[] {
   const rival = [...h2h.values()].filter((x) => x.aw + x.bw >= 5).sort((x, y) => Math.abs(y.aw - y.bw) - Math.abs(x.aw - x.bw))[0]
   if (rival && Math.abs(rival.aw - rival.bw) >= 3) {
     const [top, bottom, tw, bw] = rival.aw > rival.bw ? [rival.a, rival.b, rival.aw, rival.bw] : [rival.b, rival.a, rival.bw, rival.aw]
-    out.push(say(lastDate + top + "rival", `${name(top)} is ${tw}-${bw} against ${name(bottom)}. ${name(bottom)} keeps asking for another game, which is not helping.`, `${name(bottom)} is ${bw}-${tw} against ${name(top)}. At this point it is less a rivalry and more a habit.`))
+    add(1 + Math.abs(rival.aw - rival.bw) * 0.4, top, say(lastDate + top + "rival", `${name(top)} is ${tw}-${bw} against ${name(bottom)}. ${name(bottom)} keeps asking for another game, which is not helping.`, `${name(bottom)} is ${bw}-${tw} against ${name(top)}. At this point it is less a rivalry and more a habit.`))
   }
 
   // A milestone within reach.
@@ -221,7 +239,7 @@ export function previewStories(state: PooleanState, name: Name): string[] {
     const gp = v.pts.length
     const next = [25, 50, 75, 100, 150, 200].find((m) => m > gp)
     if (next && next - gp <= 1 && gp >= 10) {
-      out.push(`${name(id)} is ${next - gp === 1 ? "one game" : `${next - gp} games`} from ${next} played.`)
+      add(1.2, id, `${name(id)} is ${next - gp === 1 ? "one game" : `${next - gp} games`} from ${next} played.`)
       break
     }
   }
@@ -229,34 +247,35 @@ export function previewStories(state: PooleanState, name: Name): string[] {
     const total = v.pts.reduce((a, b) => a + b, 0)
     const next = Math.ceil((total + 1) / 100) * 100
     if (next - total <= 15 && total >= 100) {
-      out.push(`${name(id)} is ${next - total} points from ${next} career points.`)
+      add(1.2, id, `${name(id)} is ${next - total} points from ${next} career points.`)
       break
     }
   }
   // The other side of the ledger.
   const winless = [...per.entries()].map(([id, v]) => ({ id, w: seasonWins.get(id) ?? 0, gp: v.pts.length })).filter((x) => x.w === 0 && x.gp >= 3)[0]
-  if (winless) out.push(say(lastDate + winless.id + "wl", `${name(winless.id)} is still looking for a first win. Their teams are looking for a new teammate.`, `${name(winless.id)} has not won a game yet, so the first one is going to get a lot of attention.`))
+  if (winless) add(1.5 + winless.gp * 0.3, winless.id, say(lastDate + winless.id + "wl", `${name(winless.id)} is still looking for a first win. Their teams are looking for a new teammate.`, `${name(winless.id)} has not won a game yet, so the first one is going to get a lot of attention.`))
   const coldHand = [...per.entries()]
     .filter(([, v]) => v.pts.length >= 6)
     .map(([id, v]) => ({ id, recent: avg(v.pts.slice(-3)), season: avg(v.pts) }))
     .filter((x) => x.season - x.recent >= 2)
     .sort((x, y) => y.season - y.recent - (x.season - x.recent))[0]
-  if (coldHand) out.push(say(lastDate + coldHand.id + "ch", `${name(coldHand.id)} has cooled off: ${coldHand.recent.toFixed(1)} points a game over the last 3, down from ${coldHand.season.toFixed(1)}. Something changed and it was not for the better.`, `${name(coldHand.id)} has scored ${coldHand.recent.toFixed(1)} a game lately, down from ${coldHand.season.toFixed(1)}. They are guarding better than they are shooting.`))
+  if (coldHand) add(abn(coldHand.id, ptsPick, coldHand.recent), coldHand.id, say(lastDate + coldHand.id + "ch", `${name(coldHand.id)} has cooled off: ${coldHand.recent.toFixed(1)} points a game over the last 3, down from ${coldHand.season.toFixed(1)}. Something changed and it was not for the better.`, `${name(coldHand.id)} has scored ${coldHand.recent.toFixed(1)} a game lately, down from ${coldHand.season.toFixed(1)}. They are guarding better than they are shooting.`))
   const lastTw = [...per.entries()].filter(([, v]) => v.tw.length >= 3).sort((x, y) => avg(x[1].tw) - avg(y[1].tw))[0]
-  if (lastTw && avg(lastTw[1].tw) < 0 && lastTw[0] !== leader?.[0]) out.push(say(lastDate + "rear", `${name(lastTw[0])} is last in two-way score at ${avg(lastTw[1].tw).toFixed(1)} a game. That means their team is better off when they sit.`, `${avg(lastTw[1].tw).toFixed(1)} two-way a game puts ${name(lastTw[0])} at the bottom of the league. The math is not kind.`))
-  return out.filter((x) => !isHidden(x)).slice(0, 8)
+  if (lastTw && avg(lastTw[1].tw) < 0 && lastTw[0] !== leader?.[0]) add(1.5 + zAmong([...per.values()].filter((v) => v.tw.length >= 3).map((v) => avg(v.tw)), avg(lastTw[1].tw)), lastTw[0], say(lastDate + "rear", `${name(lastTw[0])} is last in two-way score at ${avg(lastTw[1].tw).toFixed(1)} a game. That means their team is better off when they sit.`, `${avg(lastTw[1].tw).toFixed(1)} two-way a game puts ${name(lastTw[0])} at the bottom of the league. The math is not kind.`))
+  return rank(items, 8)
 }
 
 // ---- the season so far ----------------------------------------------------------------------------------
 export function seasonStories(state: PooleanState, name: Name): string[] {
   const since = state.currentSeasonStartedAt || ""
   const rs = results(state).filter((r) => !since || r.date >= since)
-  const out: string[] = []
-  if (rs.length < 3) return out
+  const items: Item[] = []
+  const add = (w: number, pid: string | null, text: string) => items.push({ w, pid, text })
+  if (rs.length < 3) return []
 
   const dates = new Set(rs.map((r) => r.date))
   const totalPts = rs.reduce((n, r) => n + r.a + r.b, 0)
-  out.push(`${plural(rs.length, "game")} over ${plural(dates.size, "night")} so far, ${totalPts} points scored.`)
+  add(0.5, null, `${plural(rs.length, "game")} over ${plural(dates.size, "night")} so far, ${totalPts} points scored.`)
 
   const rec = new Map<string, { w: number; l: number; pts: number; gp: number; tw: number[] }>()
   for (const r of rs) {
@@ -276,13 +295,13 @@ export function seasonStories(state: PooleanState, name: Name): string[] {
   const all = [...rec.entries()]
   const winPct = (v: { w: number; l: number }) => v.w / (v.w + v.l)
   const ranked = all.filter(([, v]) => v.gp >= 5).sort((x, y) => winPct(y[1]) - winPct(x[1]) || y[1].w - x[1].w)
-  if (ranked[0]) out.push(say("pace" + ranked[0][0], `${name(ranked[0][0])} sets the pace at ${ranked[0][1].w}-${ranked[0][1].l} (${pct(winPct(ranked[0][1]))}%). Everyone else is playing for second.`, `${name(ranked[0][0])} leads the league at ${ranked[0][1].w}-${ranked[0][1].l} and will not stop bringing it up.`))
-  if (ranked[1] && winPct(ranked[0][1]) - winPct(ranked[1][1]) <= 0.05) out.push(`${name(ranked[0][0])} and ${name(ranked[1][0])} are neck and neck for the top spot. Whoever loses next will hear about it.`)
+  if (ranked[0]) add(4, ranked[0][0], say("pace" + ranked[0][0], `${name(ranked[0][0])} sets the pace at ${ranked[0][1].w}-${ranked[0][1].l} (${pct(winPct(ranked[0][1]))}%). Everyone else is playing for second.`, `${name(ranked[0][0])} leads the league at ${ranked[0][1].w}-${ranked[0][1].l} and will not stop bringing it up.`))
+  if (ranked[1] && winPct(ranked[0][1]) - winPct(ranked[1][1]) <= 0.05) add(2.2, ranked[0][0], `${name(ranked[0][0])} and ${name(ranked[1][0])} are neck and neck for the top spot. Whoever loses next will hear about it.`)
 
   const scorer = [...all].sort((x, y) => y[1].pts - x[1].pts)[0]
-  if (scorer && scorer[1].pts > 0) out.push(say("scorer" + scorer[0], `${name(scorer[0])} is the top scorer with ${scorer[1].pts} points, ${(scorer[1].pts / scorer[1].gp).toFixed(1)} a game. That is a lot of shots.`, `${scorer[1].pts} points for ${name(scorer[0])}, the league's top scorer. Whether that is good or just a lot of shots is up for debate.`))
+  if (scorer && scorer[1].pts > 0) add(2 + zAmong(all.map(([, v]) => v.pts), scorer[1].pts), scorer[0], say("scorer" + scorer[0], `${name(scorer[0])} is the top scorer with ${scorer[1].pts} points, ${(scorer[1].pts / scorer[1].gp).toFixed(1)} a game. That is a lot of shots.`, `${scorer[1].pts} points for ${name(scorer[0])}, the league's top scorer. Whether that is good or just a lot of shots is up for debate.`))
   const tw = all.filter(([, v]) => v.tw.length >= 3).sort((x, y) => y[1].tw.reduce((a, b) => a + b, 0) / y[1].tw.length - x[1].tw.reduce((a, b) => a + b, 0) / x[1].tw.length)[0]
-  if (tw) out.push(`${name(tw[0])} leads in two-way score at ${(tw[1].tw.reduce((a, b) => a + b, 0) / tw[1].tw.length).toFixed(1)} a game, which means they score and defend. Annoying.`)
+  if (tw) add(2, tw[0], `${name(tw[0])} leads in two-way score at ${(tw[1].tw.reduce((a, b) => a + b, 0) / tw[1].tw.length).toFixed(1)} a game, which means they score and defend. Annoying.`)
 
   // Longest win streak of the season.
   const run = new Map<string, number>()
@@ -296,16 +315,16 @@ export function seasonStories(state: PooleanState, name: Name): string[] {
     for (const id of r.losers) run.set(id, 0)
   }
   const b = best as { id: string; n: number } | null
-  if (b && b.n >= 4) out.push(say("streak" + b.id, `${name(b.id)}'s ${b.n}-game win streak is the longest of the season. Somebody should have stopped them sooner.`, `${name(b.id)}'s ${b.n}-game win streak is the longest run of the season. Everyone else had the same chance to stop it.`))
+  if (b && b.n >= 4) add(b.n * 0.6, b.id, say("streak" + b.id, `${name(b.id)}'s ${b.n}-game win streak is the longest of the season. Somebody should have stopped them sooner.`, `${name(b.id)}'s ${b.n}-game win streak is the longest run of the season. Everyone else had the same chance to stop it.`))
 
   const iron = [...all].sort((x, y) => y[1].gp - x[1].gp)[0]
-  if (iron && iron[1].gp >= 5) out.push(say("iron" + iron[0], `${name(iron[0])} has played in ${iron[1].gp} of ${rs.length} games, more than anyone. Either dedicated or has nothing else going on.`, `${name(iron[0])} has been to ${iron[1].gp} of ${rs.length} games. Nobody has more attendance, or fewer excuses.`))
+  if (iron && iron[1].gp >= 5) add(1, iron[0], say("iron" + iron[0], `${name(iron[0])} has played in ${iron[1].gp} of ${rs.length} games, more than anyone. Either dedicated or has nothing else going on.`, `${name(iron[0])} has been to ${iron[1].gp} of ${rs.length} games. Nobody has more attendance, or fewer excuses.`))
 
   // Bad news for the season.
   const last = ranked[ranked.length - 1]
-  if (last && ranked.length >= 3) out.push(say("last" + last[0], `${name(last[0])} is last in the standings at ${last[1].w}-${last[1].l}. Someone has to be.`, `${last[1].w}-${last[1].l} for ${name(last[0])}, the lowest win rate in the league. Pick them last until they prove otherwise.`, `${name(last[0])} is anchoring the standings at ${last[1].w}-${last[1].l}.`))
+  if (last && ranked.length >= 3) add(2, last[0], say("last" + last[0], `${name(last[0])} is last in the standings at ${last[1].w}-${last[1].l}. Someone has to be.`, `${last[1].w}-${last[1].l} for ${name(last[0])}, the lowest win rate in the league. Pick them last until they prove otherwise.`, `${name(last[0])} is anchoring the standings at ${last[1].w}-${last[1].l}.`))
   const toughest = rs.reduce((m, r) => (Math.abs(r.a - r.b) > Math.abs(m.a - m.b) ? r : m), rs[0])
-  if (Math.abs(toughest.a - toughest.b) >= 10) out.push(say("blowout" + toughest.a, `The biggest blowout of the season was ${Math.max(toughest.a, toughest.b)}-${Math.min(toughest.a, toughest.b)}, with ${toughest.losers.map(name).join(", ")} on the losing end. They have not brought it up since.`, `${toughest.losers.map(name).join(", ")} lost ${Math.max(toughest.a, toughest.b)}-${Math.min(toughest.a, toughest.b)}, the worst loss of the season. Nobody has asked for the replay.`))
+  if (Math.abs(toughest.a - toughest.b) >= 10) add(Math.abs(toughest.a - toughest.b) / 5, null, say("blowout" + toughest.a, `The biggest blowout of the season was ${Math.max(toughest.a, toughest.b)}-${Math.min(toughest.a, toughest.b)}, with ${toughest.losers.map(name).join(", ")} on the losing end. They have not brought it up since.`, `${toughest.losers.map(name).join(", ")} lost ${Math.max(toughest.a, toughest.b)}-${Math.min(toughest.a, toughest.b)}, the worst loss of the season. Nobody has asked for the replay.`))
   const turn = [...rec.keys()]
     .map((id) => {
       const lines = rs.filter((r) => [...r.game.teamA, ...r.game.teamB].includes(id)).map((r) => playerLine(r.game, id)).filter((l) => l.box)
@@ -313,8 +332,8 @@ export function seasonStories(state: PooleanState, name: Name): string[] {
     })
     .filter((x) => x.n >= 3)
     .sort((x, y) => y.tov / y.n - x.tov / x.n)[0]
-  if (turn && turn.tov / turn.n >= 1.5) out.push(say("tov" + turn.id, `${name(turn.id)} leads the league in turnovers at ${(turn.tov / turn.n).toFixed(1)} a game. The other team loves having them around.`, `${(turn.tov / turn.n).toFixed(1)} turnovers a game makes ${name(turn.id)} the league leader in giveaways. The other team thanks them.`))
-  return out.filter((x) => !isHidden(x)).slice(0, 8)
+  if (turn && turn.tov / turn.n >= 1.5) add(1.5, turn.id, say("tov" + turn.id, `${name(turn.id)} leads the league in turnovers at ${(turn.tov / turn.n).toFixed(1)} a game. The other team loves having them around.`, `${(turn.tov / turn.n).toFixed(1)} turnovers a game makes ${name(turn.id)} the league leader in giveaways. The other team thanks them.`))
+  return rank(items, 8, 3)
 }
 
 // ---- more headlines, good and bad -----------------------------------------------------------------------
