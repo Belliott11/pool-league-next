@@ -429,9 +429,22 @@ const GENERIC: Record<LabelEvent, string[]> = {
   owned: ["{n} the {label} lost to {o} again, {r} all time."],
 }
 
-export function labelsOf(state: PooleanState, playerId: string): string[] {
-  return ((state.playerLabels ?? {}) as Record<string, string[]>)[playerId] ?? []
+// Everything stored for a player: label keys, plus their own lines written as "@event|text".
+const rawOf = (state: PooleanState, playerId: string): string[] => ((state.playerLabels ?? {}) as Record<string, string[]>)[playerId] ?? []
+export const isOwnLine = (entry: string) => entry.startsWith("@")
+export const ownLine = (event: LabelEvent, text: string) => `@${event}|${text}`
+export function parseOwnLine(entry: string): { event: LabelEvent; text: string } | null {
+  const bar = entry.indexOf("|")
+  return isOwnLine(entry) && bar > 1 ? { event: entry.slice(1, bar) as LabelEvent, text: entry.slice(bar + 1) } : null
 }
+export const labelsOf = (state: PooleanState, playerId: string): string[] => rawOf(state, playerId).filter((k) => !isOwnLine(k))
+
+// Headlines the editor has thumbed down. They are skipped when there is another wording to use, and dropped otherwise.
+let hidden = new Set<string>()
+export const setHiddenLines = (lines: string[]) => {
+  hidden = new Set(lines)
+}
+export const isHidden = (text: string) => hidden.has(text)
 
 const fill = (text: string, vars: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m))
 
@@ -444,15 +457,20 @@ function hash(seed: string): number {
 // A headline from the player's own labels for this kind of moment, or null when they have none that fit.
 export function labelLine(state: PooleanState, playerId: string, event: LabelEvent, vars: Record<string, string | number>, seed: string): string | null {
   const keys = labelsOf(state, playerId)
-  if (keys.length === 0) return null
   const lines: string[] = []
+  // The editor's own lines for this player come up three times as often as the library ones.
+  for (const entry of rawOf(state, playerId)) {
+    const own = parseOwnLine(entry)
+    if (own && own.event === event) lines.push(own.text, own.text, own.text)
+  }
   for (const k of keys) {
     const def = labelDef(k)
     if (def) lines.push(...(def.lines[event] ?? []))
     else lines.push(...GENERIC[event].map((t) => t.split("{label}").join(k.toLowerCase())))
   }
-  if (lines.length === 0) return null
-  return fill(lines[hash(seed + playerId + event) % lines.length], vars)
+  const shown = lines.map((l) => fill(l, vars)).filter((l) => !hidden.has(l))
+  if (shown.length === 0) return null
+  return shown[hash(seed + playerId + event) % shown.length]
 }
 
 // Injury report notes drawn from a player's labels, for the dice button.

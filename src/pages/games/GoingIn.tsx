@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { playerName } from "@/lib/players"
 import { useLabeledState } from "@/lib/labelsContext"
 import { usePublishedStories } from "@/lib/published"
+import { StoryList } from "@/components/StoryList"
 import { previewStories } from "@/lib/storylines"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
@@ -24,14 +25,7 @@ export function GoingIn({ state, update }: { state: PooleanState; update?: Updat
       <h3 className="flex items-center gap-2 font-display text-lg font-bold">
         <Newspaper aria-hidden className="size-4 text-accent" /> Going into the next night
       </h3>
-      <ul className="flex flex-col gap-2 text-sm">
-        {shown.map((x) => (
-          <li key={x} className="flex gap-2">
-            <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-accent" />
-            <span>{x}</span>
-          </li>
-        ))}
-      </ul>
+      <StoryList stories={shown} />
       {stories.length > SHOWN && (
         <button type="button" className="self-start text-sm font-medium text-accent hover:underline" onClick={() => setAll(!all)}>
           {all ? "Show less" : `Show ${stories.length - SHOWN} more`}

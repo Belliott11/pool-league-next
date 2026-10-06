@@ -1,8 +1,8 @@
 import { EmptyState } from "@/components/EmptyState"
 import { useState } from "react"
 import { PlayerLabels } from "@/components/PlayerLabels"
-import { labelName } from "@/lib/labels"
-import { useLabels } from "@/lib/labelsContext"
+import { isOwnLine, labelName } from "@/lib/labels"
+import { HIDDEN, useLabels } from "@/lib/labelsContext"
 import { useReadOnly } from "@/lib/mode"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -113,7 +113,8 @@ export function PlayersPage({
   const [roleFilter, setRoleFilter] = useState<string[]>([])
   const [editing, setEditing] = useState<string | null>(null)
   const [labelFor, setLabelFor] = useState<string | null>(null)
-  const { labels } = useLabels()
+  const { labels, restoreHidden } = useLabels()
+  const hiddenCount = (labels[HIDDEN] ?? []).length
 
   const sorted = [...state.players].sort((a, b) => a.name.localeCompare(b.name))
   const visible =
@@ -149,6 +150,14 @@ export function PlayersPage({
       </Card>
       )}
 
+      {!readOnly && hiddenCount > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {hiddenCount} headline{hiddenCount === 1 ? "" : "s"} removed.{" "}
+          <button type="button" className="font-medium text-accent hover:underline" onClick={restoreHidden}>
+            Bring them back
+          </button>
+        </p>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Roster ({state.players.length})</CardTitle>
@@ -201,9 +210,9 @@ export function PlayersPage({
                           ))}
                         </div>
                       )}
-                      {(labels[p.id] ?? []).length > 0 && (
+                      {(labels[p.id] ?? []).filter((k) => !isOwnLine(k)).length > 0 && (
                         <div className="flex flex-wrap gap-1.5" aria-label="Labels">
-                          {(labels[p.id] ?? []).map((k) => (
+                          {(labels[p.id] ?? []).filter((k) => !isOwnLine(k)).map((k) => (
                             <Badge key={k} className="bg-accent/15 text-accent">
                               {labelName(k)}
                             </Badge>

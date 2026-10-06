@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { labelLine, labelInjuryNotes, labelsOf, LABELS } from "@/lib/labels"
+import { labelLine, labelInjuryNotes, labelsOf, LABELS, ownLine, setHiddenLines } from "@/lib/labels"
 import type { PooleanState } from "@/lib/types"
 
 const state = (labels: Record<string, string[]>): PooleanState => ({ players: [{ id: "a", name: "A" }], games: [], playerLabels: labels })
@@ -41,5 +41,19 @@ describe("labels", () => {
       expect(all).not.toMatch(/—/)
       expect(all).not.toMatch(/\b(he|she|his|her|him)\b/i)
     }
+  })
+
+  it("uses the editor's own line for a player, and keeps it out of the label list", () => {
+    const st = state({ a: [ownLine("cold", "{n} blamed the rim again, {fg}.")] })
+    expect(labelsOf(st, "a")).toEqual([])
+    expect(labelLine(st, "a", "cold", { n: "Adam", fg: "1-for-8" }, "s")).toBe("Adam blamed the rim again, 1-for-8.")
+    expect(labelLine(st, "a", "hot", { n: "Adam", fg: "x" }, "s")).toBeNull()
+  })
+
+  it("skips a headline the editor removed", () => {
+    const st = state({ a: [ownLine("cold", "{n} blamed the rim again, {fg}.")] })
+    setHiddenLines(["Adam blamed the rim again, 1-for-8."])
+    expect(labelLine(st, "a", "cold", { n: "Adam", fg: "1-for-8" }, "s")).toBeNull()
+    setHiddenLines([])
   })
 })

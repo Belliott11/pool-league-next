@@ -10,6 +10,7 @@ import { formatDateDisplay } from "@/lib/format"
 import { LEADER_LABEL, gameDays, recapText, summarizeNight, type LeaderKey, type NightPlayer } from "@/lib/nightRecap"
 import { predictRealMatchup } from "@/lib/matchup"
 import { RECORD_KEYS, RECORD_LABEL, nightCallouts, recordBook } from "@/lib/records"
+import { StoryList } from "@/components/StoryList"
 import { nightStories } from "@/lib/storylines"
 import { useLabeledState } from "@/lib/labelsContext"
 import { usePublishedNight } from "@/lib/published"
@@ -227,14 +228,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onOpenPlayer, in
       {stories.length > 0 && (
         <section className="flex flex-col gap-2 rounded-xl border bg-card p-4" aria-label="Storylines">
           <h3 className="font-display text-lg font-bold">The story of the night</h3>
-          <ul className="flex flex-col gap-2 text-sm">
-            {stories.map((x) => (
-              <li key={x} className="flex gap-2">
-                <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-accent" />
-                <span>{x}</span>
-              </li>
-            ))}
-          </ul>
+          <StoryList stories={stories} />
         </section>
       )}
 

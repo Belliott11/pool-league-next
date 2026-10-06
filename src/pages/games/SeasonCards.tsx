@@ -6,6 +6,7 @@ import { playerName } from "@/lib/players"
 import { RECORD_KEYS, RECORD_LABEL, recordBook } from "@/lib/records"
 import { useLabeledState } from "@/lib/labelsContext"
 import { usePublishedStories } from "@/lib/published"
+import { StoryList } from "@/components/StoryList"
 import { seasonStories } from "@/lib/storylines"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
@@ -59,14 +60,7 @@ export function SeasonStoriesCard({ state, update }: { state: PooleanState; upda
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ul className="flex flex-col gap-2 text-sm">
-          {stories.map((x) => (
-            <li key={x} className="flex gap-2">
-              <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-accent" />
-              <span>{x}</span>
-            </li>
-          ))}
-        </ul>
+        <StoryList stories={stories} />
       </CardContent>
     </Card>
   )

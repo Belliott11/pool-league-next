@@ -7,9 +7,14 @@ import type { PooleanState } from "@/lib/types"
 export interface LabelsApi {
   labels: LabelBook
   setPlayerLabels: (playerId: string, update: (cur: string[]) => string[]) => void
+  // Thumbs a finished headline down so it is not written again. Kept in the same private book under HIDDEN.
+  hideLine: (text: string) => void
+  restoreHidden: () => void
 }
 
-export const LabelsContext = createContext<LabelsApi>({ labels: {}, setPlayerLabels: () => {} })
+export const HIDDEN = "__hidden"
+
+export const LabelsContext = createContext<LabelsApi>({ labels: {}, setPlayerLabels: () => {}, hideLine: () => {}, restoreHidden: () => {} })
 export const useLabels = () => useContext(LabelsContext)
 
 // The state with the private labels laid over it, for headline writing only. Never saved or shared.

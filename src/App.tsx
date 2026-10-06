@@ -5,7 +5,8 @@ import { StoryPublisher } from "@/components/StoryPublisher"
 import { SyncChip } from "@/components/SyncChip"
 import { getClient } from "@/lib/cloud"
 import { loadLabels, saveLabels, type LabelBook } from "@/lib/labelStore"
-import { LabelsContext } from "@/lib/labelsContext"
+import { HIDDEN, LabelsContext } from "@/lib/labelsContext"
+import { setHiddenLines } from "@/lib/labels"
 import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
@@ -135,6 +136,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly])
+  setHiddenLines(labels[HIDDEN] ?? [])
   const setPlayerLabels = (id: string, fn: (cur: string[]) => string[]) => {
     const book = { ...labelsRef.current }
     const next = fn(book[id] ?? [])
@@ -302,7 +304,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
 
   return (
     <ReadOnlyContext.Provider value={readOnly}>
-    <LabelsContext.Provider value={{ labels, setPlayerLabels }}>
+    <LabelsContext.Provider value={{ labels, setPlayerLabels, hideLine: (t) => setPlayerLabels(HIDDEN, (cur) => (cur.includes(t) ? cur : [...cur, t])), restoreHidden: () => setPlayerLabels(HIDDEN, () => []) }}>
     {!readOnly && <StoryPublisher state={state} update={update} />}
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 pb-24 sm:p-6 sm:pb-6">
       <a
