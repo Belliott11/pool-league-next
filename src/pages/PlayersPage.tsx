@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/EmptyState"
 import { useState } from "react"
+import { HeadlineReview } from "@/components/HeadlineReview"
 import { PlayerLabels } from "@/components/PlayerLabels"
 import { isOwnLine, labelName } from "@/lib/labels"
 import { HIDDEN, useLabels } from "@/lib/labelsContext"
@@ -150,6 +151,7 @@ export function PlayersPage({
       </Card>
       )}
 
+      {!readOnly && <HeadlineReview state={state} />}
       {!readOnly && hiddenCount > 0 && (
         <p className="text-sm text-muted-foreground">
           {hiddenCount} headline{hiddenCount === 1 ? "" : "s"} removed.{" "}

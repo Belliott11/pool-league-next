@@ -2,29 +2,11 @@ import { X } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { LABELS, isOwnLine, labelName, ownLine, parseOwnLine, type LabelEvent } from "@/lib/labels"
+import { LABELS, LABEL_EVENTS, isOwnLine, labelName, ownLine, parseOwnLine, type LabelEvent } from "@/lib/labels"
 import { useLabels } from "@/lib/labelsContext"
 import { cn } from "@/lib/utils"
 
-// The moments a line can be written for, and the extra blanks each one can use.
-const EVENTS: { key: LabelEvent; label: string; vars: string }[] = [
-  { key: "cold", label: "Cold shooting night", vars: "{fg} is their shooting line, like 2-for-9." },
-  { key: "hot", label: "Hot shooting night", vars: "{fg} is their shooting line, like 8-for-10." },
-  { key: "tov", label: "Lots of turnovers", vars: "{k} is how many." },
-  { key: "foul", label: "Lots of fouls", vars: "{k} is how many." },
-  { key: "zero", label: "Did not score", vars: "{g} is how many games." },
-  { key: "noshow", label: "Missed the night", vars: "" },
-  { key: "mvp", label: "Won MVP", vars: "{pts} is their points." },
-  { key: "sweep", label: "Won every game", vars: "{w} is how many." },
-  { key: "winless", label: "Lost every game", vars: "{l} is how many." },
-  { key: "streakW", label: "On a win streak", vars: "{k} is the streak." },
-  { key: "streakL", label: "On a losing streak", vars: "{k} is the streak." },
-  { key: "up", label: "Scored well above their usual", vars: "{pts} is tonight's average and {avg} their usual." },
-  { key: "down", label: "Scored well below their usual", vars: "{pts} is tonight's average and {avg} their usual." },
-  { key: "revenge", label: "Beat someone who usually beats them", vars: "{o} is the opponent and {r} the record." },
-  { key: "owned", label: "Lost to someone again", vars: "{o} is the opponent and {r} the record." },
-]
-const EVENT_HINT = Object.fromEntries(EVENTS.map((e) => [e.key, e.vars])) as Record<LabelEvent, string>
+const EVENT_HINT = Object.fromEntries(LABEL_EVENTS.map((e) => [e.key, e.vars])) as Record<LabelEvent, string>
 
 // Pick the labels that describe a player. They show up as personal touches in the night recap and injury report.
 export function PlayerLabels({ playerId, onClose }: { playerId: string; onClose: () => void }) {
@@ -92,7 +74,7 @@ export function PlayerLabels({ playerId, onClose }: { playerId: string; onClose:
           return l ? (
             <div key={entry} className="flex items-start gap-2 rounded-lg border bg-card p-2 text-sm">
               <span className="min-w-0 flex-1">
-                <span className="block text-xs text-muted-foreground">{EVENTS.find((e) => e.key === l.event)?.label ?? l.event}</span>
+                <span className="block text-xs text-muted-foreground">{LABEL_EVENTS.find((e) => e.key === l.event)?.label ?? l.event}</span>
                 {l.text}
               </span>
               <button type="button" aria-label="Remove this line" className="p-1 text-muted-foreground hover:text-foreground" onClick={() => change((cur) => cur.filter((c) => c !== entry))}>
@@ -111,7 +93,7 @@ export function PlayerLabels({ playerId, onClose }: { playerId: string; onClose:
           }}
         >
           <select className="h-10 rounded-md border bg-background px-2 text-sm" value={event} onChange={(e) => setEvent(e.target.value as LabelEvent)} aria-label="When it comes up">
-            {EVENTS.map((e) => (
+            {LABEL_EVENTS.map((e) => (
               <option key={e.key} value={e.key}>
                 {e.label}
               </option>

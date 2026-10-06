@@ -589,12 +589,63 @@ export function parseOwnLine(entry: string): { event: LabelEvent; text: string }
 }
 export const labelsOf = (state: PooleanState, playerId: string): string[] => rawOf(state, playerId).filter((k) => !isOwnLine(k))
 
-// Headlines the editor has thumbed down. They are skipped when there is another wording to use, and dropped otherwise.
+// Headlines the editor has reviewed. A line is identified by its wording with player names and numbers blanked
+// out, so thumbing one down removes that wording for every player and every night, not just that one rendering.
+let names: string[] = []
+let nameRe: RegExp | null = null
+let hiddenRaw: string[] = []
+let okRaw: string[] = []
 let hidden = new Set<string>()
-export const setHiddenLines = (lines: string[]) => {
-  hidden = new Set(lines)
+let approved = new Set<string>()
+export function lineKey(text: string): string {
+  return (nameRe ? text.replace(nameRe, "N") : text).replace(/\d+(\.\d+)?/g, "#")
 }
-export const isHidden = (text: string) => hidden.has(text)
+function rebuild() {
+  hidden = new Set(hiddenRaw.map(lineKey))
+  approved = new Set(okRaw.map(lineKey))
+}
+export const setLineNames = (list: string[]) => {
+  if (list.join("|") === names.join("|")) return
+  names = list
+  const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  nameRe = list.length ? new RegExp("\\b(" + [...list].sort((x, y) => y.length - x.length).map(esc).join("|") + ")\\b", "g") : null
+  rebuild()
+}
+export const setHiddenLines = (lines: string[]) => {
+  if (lines.join("\n") === hiddenRaw.join("\n")) return
+  hiddenRaw = lines
+  rebuild()
+}
+export const setApprovedLines = (lines: string[]) => {
+  if (lines.join("\n") === okRaw.join("\n")) return
+  okRaw = lines
+  rebuild()
+}
+export const isHidden = (text: string) => hidden.has(lineKey(text))
+export const isApproved = (text: string) => approved.has(lineKey(text))
+// Approved wordings come up twice as often as the rest.
+export const weighted = (options: string[]) => options.flatMap((o) => (isApproved(o) ? [o, o] : [o]))
+// While the review panel builds its list, every wording a headline picks from is reported here.
+export const lineSink: { current: ((options: string[]) => void) | null } = { current: null }
+
+// The moments a line can be written for, with the blanks each can use. Used by the line editor and the review list.
+export const LABEL_EVENTS: { key: LabelEvent; label: string; vars: string }[] = [
+  { key: "cold", label: "Cold shooting night", vars: "{fg} is their shooting line, like 2-for-9." },
+  { key: "hot", label: "Hot shooting night", vars: "{fg} is their shooting line, like 8-for-10." },
+  { key: "tov", label: "Lots of turnovers", vars: "{k} is how many." },
+  { key: "foul", label: "Lots of fouls", vars: "{k} is how many." },
+  { key: "zero", label: "Did not score", vars: "{g} is how many games." },
+  { key: "noshow", label: "Missed the night", vars: "" },
+  { key: "mvp", label: "Won MVP", vars: "{pts} is their points." },
+  { key: "sweep", label: "Won every game", vars: "{w} is how many." },
+  { key: "winless", label: "Lost every game", vars: "{l} is how many." },
+  { key: "streakW", label: "On a win streak", vars: "{k} is the streak." },
+  { key: "streakL", label: "On a losing streak", vars: "{k} is the streak." },
+  { key: "up", label: "Scored well above their usual", vars: "{pts} is tonight's average and {avg} their usual." },
+  { key: "down", label: "Scored well below their usual", vars: "{pts} is tonight's average and {avg} their usual." },
+  { key: "revenge", label: "Beat someone who usually beats them", vars: "{o} is the opponent and {r} the record." },
+  { key: "owned", label: "Lost to someone again", vars: "{o} is the opponent and {r} the record." },
+]
 
 const fill = (text: string, vars: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m))
 
@@ -612,7 +663,7 @@ export function labelLine(state: PooleanState, playerId: string, event: LabelEve
     if (def) lines.push(...(def.lines[event] ?? []))
     else lines.push(...GENERIC[event].map((t) => t.split("{label}").join(k.toLowerCase())))
   }
-  const shown = lines.map((l) => fill(l, vars)).filter((l) => !hidden.has(l))
+  const shown = weighted(lines.map((l) => fill(l, vars)).filter((l) => !isHidden(l)))
   if (shown.length === 0) return null
   return pick(seed + playerId + event, shown)
 }

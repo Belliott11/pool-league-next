@@ -10,11 +10,14 @@ export interface LabelsApi {
   // Thumbs a finished headline down so it is not written again. Kept in the same private book under HIDDEN.
   hideLine: (text: string) => void
   restoreHidden: () => void
+  // Marks a headline wording as approved, removed, or back to unreviewed.
+  reviewLine: (text: string, verdict: "ok" | "no" | "clear") => void
 }
 
 export const HIDDEN = "__hidden"
+export const APPROVED = "__ok"
 
-export const LabelsContext = createContext<LabelsApi>({ labels: {}, setPlayerLabels: () => {}, hideLine: () => {}, restoreHidden: () => {} })
+export const LabelsContext = createContext<LabelsApi>({ labels: {}, setPlayerLabels: () => {}, hideLine: () => {}, restoreHidden: () => {}, reviewLine: () => {} })
 export const useLabels = () => useContext(LabelsContext)
 
 // The state with the private labels laid over it, for headline writing only. Never saved or shared.

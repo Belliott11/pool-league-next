@@ -1,5 +1,5 @@
 import { pick } from "@/lib/pick"
-import { labelInjuryNotes } from "@/lib/labels"
+import { labelInjuryNotes, lineSink } from "@/lib/labels"
 import type { Injury, InjuryStatus, PooleanState } from "@/lib/types"
 
 export const TIMELINES: { key: NonNullable<Injury["timeline"]>; label: string }[] = [
@@ -22,7 +22,7 @@ export const INJURY_STATUSES: { key: InjuryStatus; label: string; tone: "neg" | 
 export const statusInfo = (key: InjuryStatus) => INJURY_STATUSES.find((s) => s.key === key) ?? INJURY_STATUSES[0]
 
 // Silly notes to start from. No pronouns, so they read right for anyone.
-const GOOFY: Record<InjuryStatus, string[]> = {
+export const GOOFY: Record<InjuryStatus, string[]> = {
   out: [
     "Rolled an ankle reaching for the last slice.",
     "Pulled something opening a pickle jar.",
@@ -105,7 +105,10 @@ export function unavailable(state: PooleanState): Injury[] {
 
 // One-line headlines about the report as a whole, in the same spirit as the night recap. The wording for a given
 // situation is fixed by the date, so it does not shuffle on refresh.
-const pickOne = (seed: string, ...options: string[]): string => pick(seed, options)
+const pickOne = (seed: string, ...options: string[]): string => {
+  lineSink.current?.(options)
+  return pick(seed, options)
+}
 
 export function injuryHeadlines(state: PooleanState, name: (id: string) => string, now = new Date()): string[] {
   const board = injuryBoard(state)

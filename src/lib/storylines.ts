@@ -1,6 +1,6 @@
 import { injuryBoard, statusInfo } from "@/lib/injuries"
 import { pick } from "@/lib/pick"
-import { isHidden, labelLine } from "@/lib/labels"
+import { isHidden, labelLine, lineSink, weighted } from "@/lib/labels"
 import type { NightSummary } from "@/lib/nightRecap"
 import { playerLine, scoreOf, type PlayerLine } from "@/lib/nightRecap"
 import { RECORD_LABEL, recordBook, type Callout } from "@/lib/records"
@@ -51,9 +51,9 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 const pct = (p: number) => Math.round(p * 100)
 const say = (seed: string, ...options: string[]): string => {
   // A wording the editor thumbed down is skipped when another one is available.
+  lineSink.current?.(options)
   const live = options.filter((o) => !isHidden(o))
-  const pool = live.length ? live : options
-  return pick(seed, pool)
+  return pick(seed, weighted(live.length ? live : options))
 }
 
 // Candidate headlines come with a weight for how unusual they are; the most unusual go first, no player gets more

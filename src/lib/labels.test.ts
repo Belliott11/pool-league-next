@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { labelLine, labelInjuryNotes, labelsOf, LABELS, ownLine, setHiddenLines } from "@/lib/labels"
+import { isHidden, labelLine, labelInjuryNotes, labelsOf, LABELS, ownLine, setApprovedLines, setHiddenLines, setLineNames, weighted } from "@/lib/labels"
 import type { PooleanState } from "@/lib/types"
 
 const state = (labels: Record<string, string[]>): PooleanState => ({ players: [{ id: "a", name: "A" }], games: [], playerLabels: labels })
@@ -55,5 +55,18 @@ describe("labels", () => {
     setHiddenLines(["Adam blamed the rim again, 1-for-8."])
     expect(labelLine(st, "a", "cold", { n: "Adam", fg: "1-for-8" }, "s")).toBeNull()
     setHiddenLines([])
+  })
+})
+
+describe("reviewed lines", () => {
+  it("removes a wording for every name and number, and boosts approved ones", () => {
+    setLineNames(["Adam", "Ben"])
+    setHiddenLines(["Adam shot 2-for-9 and kept shooting."])
+    expect(isHidden("Ben shot 5-for-12 and kept shooting.")).toBe(true)
+    expect(isHidden("Ben shot 5-for-12 and stopped.")).toBe(false)
+    setApprovedLines(["Ben went 0-3."])
+    expect(weighted(["Adam went 0-5.", "Other."])).toEqual(["Adam went 0-5.", "Adam went 0-5.", "Other."])
+    setHiddenLines([])
+    setApprovedLines([])
   })
 })
