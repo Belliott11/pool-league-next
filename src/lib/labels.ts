@@ -625,6 +625,13 @@ export const isHidden = (text: string) => hidden.has(lineKey(text))
 export const isApproved = (text: string) => approved.has(lineKey(text))
 // Approved wordings come up twice as often as the rest.
 export const weighted = (options: string[]) => options.flatMap((o) => (isApproved(o) ? [o, o] : [o]))
+// How many approved wordings finish a type of line. Once a type has that many, only the approved ones are used and
+// the rest of that type is no longer offered for review, so the approve and remove cycle has an end.
+export const LINE_CAP = { recap: 3, label: 3, note: 8 }
+export function finalSet(options: string[], cap: number): string[] {
+  const ok = options.filter(isApproved)
+  return ok.length >= cap ? ok : options
+}
 // While the review panel builds its list, every wording a headline picks from is reported here.
 export const lineSink: { current: ((options: string[]) => void) | null } = { current: null }
 
@@ -660,8 +667,9 @@ export function labelLine(state: PooleanState, playerId: string, event: LabelEve
   }
   for (const k of keys) {
     const def = labelDef(k)
-    if (def) lines.push(...(def.lines[event] ?? []))
-    else lines.push(...GENERIC[event].map((t) => t.split("{label}").join(k.toLowerCase())))
+    // Each label's lines for this moment are one type: once enough are approved, only those are used.
+    const mine = def ? (def.lines[event] ?? []) : GENERIC[event].map((t) => t.split("{label}").join(k.toLowerCase()))
+    lines.push(...finalSet(mine.map((l) => fill(l, vars)).filter((l) => !isHidden(l)), LINE_CAP.label))
   }
   const shown = weighted(lines.map((l) => fill(l, vars)).filter((l) => !isHidden(l)))
   if (shown.length === 0) return null

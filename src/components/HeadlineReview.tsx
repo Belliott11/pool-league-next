@@ -23,9 +23,17 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
   const noKeys = new Set((labels[HIDDEN] ?? []).map(lineKey))
   const verdict = (key: string): View => (okKeys.has(key) ? "ok" : noKeys.has(key) ? "no" : "new")
   const groups = [...new Set(catalog.map((c) => c.source.replace(/:.*$/, "")))]
-  const rows = catalog.filter((c) => verdict(c.key) === view && (!source || c.source.startsWith(source)))
-  const count = (v: View) => catalog.filter((c) => verdict(c.key) === v).length
-  const rejected = catalog.filter((c) => verdict(c.key) === "no")
+  // A type of line is finished once enough of its wordings are approved; its other wordings are not asked about again.
+  const approvedIn = new Map<string, number>()
+  for (const c of catalog) if (verdict(c.key) === "ok") approvedIn.set(c.group, (approvedIn.get(c.group) ?? 0) + 1)
+  const full = (c: { group: string; cap: number }) => (approvedIn.get(c.group) ?? 0) >= c.cap
+  const pending = (c: { key: string; group: string; cap: number }) => verdict(c.key) === "new" && !full(c)
+  const shownIn = (v: View, c: { key: string; group: string; cap: number }) => (v === "new" ? pending(c) : verdict(c.key) === v)
+  const rows = catalog.filter((c) => shownIn(view, c) && (!source || c.source.startsWith(source)))
+  const count = (v: View) => catalog.filter((c) => shownIn(v, c)).length
+  // Removed lines only need a replacement while their type is not already finished.
+  const rejected = catalog.filter((c) => verdict(c.key) === "no" && !full(c))
+  const finished = new Set(catalog.filter(full).map((c) => c.group)).size
 
   // What goes to Claude to write more: the removed lines to replace, and the approved ones as the standard to match.
   const copyRejected = () => {
@@ -50,7 +58,7 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
       {open && (
         <CardContent className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">
-            Approve the lines you like and remove the ones you do not. A removed line is gone for every player and every night. Approved lines come up twice as often. Recap lines show up here once that moment has happened in your games.
+            Approve the lines you like and remove the ones you do not. A removed line is gone for every player and every night. Approved lines come up twice as often. Once a type of line has 3 approved (8 for injury notes), only the approved ones are used and the rest stop appearing here, so there is an end. Recap lines show up here once that moment has happened in your games.
           </p>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Show">
             {(["new", "ok", "no"] as const).map((v) => (
@@ -82,7 +90,9 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
             {rows.slice(0, 60).map((r) => (
               <li key={r.key} className="flex items-start gap-2 rounded-lg border bg-card p-2 text-sm">
                 <span className="min-w-0 flex-1">
-                  <span className="block text-xs text-muted-foreground">{r.source}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {r.source} · {Math.min(approvedIn.get(r.group) ?? 0, r.cap)} of {r.cap} approved
+                  </span>
                   {r.text}
                 </span>
                 {view !== "ok" && (
@@ -105,6 +115,11 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
           </ul>
           {rows.length > 60 && <p className="text-center text-xs text-muted-foreground">Showing 60 of {rows.length}. Review these and the next ones appear.</p>}
           {rows.length === 0 && <p className="text-center text-sm text-muted-foreground">Nothing here.</p>}
+          {view === "new" && finished > 0 && (
+            <p className="text-center text-xs text-muted-foreground">
+              {finished} {finished === 1 ? "type is" : "types are"} finished and no longer asking for review.
+            </p>
+          )}
         </CardContent>
       )}
     </Card>

@@ -1,5 +1,5 @@
 import { pick } from "@/lib/pick"
-import { labelInjuryNotes, lineSink } from "@/lib/labels"
+import { finalSet, isHidden, labelInjuryNotes, LINE_CAP, lineSink } from "@/lib/labels"
 import type { Injury, InjuryStatus, PooleanState } from "@/lib/types"
 
 export const TIMELINES: { key: NonNullable<Injury["timeline"]>; label: string }[] = [
@@ -121,7 +121,8 @@ export const GOOFY: Record<InjuryStatus, string[]> = {
 export function goofyNote(status: InjuryStatus, avoid?: string, state?: PooleanState, playerId?: string): string {
   const kind = status === "away" ? "away" : status === "returning" ? "back" : "injury"
   const personal = state && playerId ? labelInjuryNotes(state, playerId, kind) : []
-  const pool = [...GOOFY[status], ...personal, ...personal].filter((n) => n !== avoid)
+  const own = finalSet(GOOFY[status].filter((n) => !isHidden(n)), LINE_CAP.note)
+  const pool = [...own, ...personal, ...personal].filter((n) => n !== avoid)
   return pool[Math.floor(Math.random() * pool.length)] ?? GOOFY[status][0]
 }
 
@@ -142,7 +143,7 @@ export function unavailable(state: PooleanState): Injury[] {
 // situation is fixed by the date, so it does not shuffle on refresh.
 const pickOne = (seed: string, ...options: string[]): string => {
   lineSink.current?.(options)
-  return pick(seed, options)
+  return pick(seed, finalSet(options, LINE_CAP.recap))
 }
 
 export function injuryHeadlines(state: PooleanState, name: (id: string) => string, now = new Date()): string[] {

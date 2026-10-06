@@ -1,5 +1,5 @@
 import { GOOFY, INJURY_STATUSES, injuryHeadlines } from "@/lib/injuries"
-import { LABELS, LABEL_EVENTS, lineKey, lineSink } from "@/lib/labels"
+import { LABELS, LABEL_EVENTS, LINE_CAP, lineKey, lineSink } from "@/lib/labels"
 import { predictRealMatchup } from "@/lib/matchup"
 import { gameDays, summarizeNight } from "@/lib/nightRecap"
 import { playerName } from "@/lib/players"
@@ -13,6 +13,9 @@ export interface CatalogLine {
   key: string
   text: string
   source: string
+  // The type of line this wording belongs to (all the wordings for one situation), and how many approvals finish it.
+  group: string
+  cap: number
 }
 
 const sampleVars = (n: string, o: string): Record<string, string> => ({ n, o, fg: "2-for-9", k: "4", w: "3", l: "3", g: "2", pts: "12", avg: "7.5", r: "2-4", label: "label" })
@@ -25,9 +28,10 @@ export function buildCatalog(state: PooleanState): CatalogLine[] {
   const seen = new Map<string, CatalogLine>()
   let source = ""
   lineSink.current = (options) => {
+    const group = lineKey(options[0])
     for (const text of options) {
       const key = lineKey(text)
-      if (!seen.has(key)) seen.set(key, { key, text, source })
+      if (!seen.has(key)) seen.set(key, { key, text, source, group, cap: LINE_CAP.recap })
     }
   }
   try {
@@ -51,20 +55,21 @@ export function buildCatalog(state: PooleanState): CatalogLine[] {
   }
 
   const out = [...seen.values()]
-  const add = (text: string, src: string) => {
+  const add = (text: string, src: string, cap: number) => {
     const key = lineKey(text)
     if (!seen.has(key)) {
-      seen.set(key, { key, text, source: src })
-      out.push({ key, text, source: src })
+      const line = { key, text, source: src, group: src, cap }
+      seen.set(key, line)
+      out.push(line)
     }
   }
-  for (const s of INJURY_STATUSES) for (const t of GOOFY[s.key]) add(t, `Injury note: ${s.label.toLowerCase()}`)
+  for (const s of INJURY_STATUSES) for (const t of GOOFY[s.key]) add(t, `Injury note: ${s.label.toLowerCase()}`, LINE_CAP.note)
   const n = state.players[0]?.name ?? "{n}"
   const o = state.players[1]?.name ?? n
   const vars = sampleVars(n, o)
   for (const l of LABELS) {
-    for (const ev of LABEL_EVENTS) for (const t of l.lines[ev.key] ?? []) add(fill(t, vars), `Label ${l.name}: ${ev.label.toLowerCase()}`)
-    for (const [k, title] of [["injury", "injury note"], ["away", "away note"], ["back", "back note"]] as const) for (const t of l[k] ?? []) add(t, `Label ${l.name}: ${title}`)
+    for (const ev of LABEL_EVENTS) for (const t of l.lines[ev.key] ?? []) add(fill(t, vars), `Label ${l.name}: ${ev.label.toLowerCase()}`, LINE_CAP.label)
+    for (const [k, title] of [["injury", "injury note"], ["away", "away note"], ["back", "back note"]] as const) for (const t of l[k] ?? []) add(t, `Label ${l.name}: ${title}`, LINE_CAP.label)
   }
   return out
 }

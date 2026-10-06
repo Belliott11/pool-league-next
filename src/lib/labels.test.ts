@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { isHidden, labelLine, labelInjuryNotes, labelsOf, LABELS, ownLine, setApprovedLines, setHiddenLines, setLineNames, weighted } from "@/lib/labels"
+import { isHidden, labelLine, labelInjuryNotes, labelsOf, LABELS, ownLine, setApprovedLines, setHiddenLines, setLineNames, weighted, finalSet } from "@/lib/labels"
 import type { PooleanState } from "@/lib/types"
 
 const state = (labels: Record<string, string[]>): PooleanState => ({ players: [{ id: "a", name: "A" }], games: [], playerLabels: labels })
@@ -67,6 +67,13 @@ describe("reviewed lines", () => {
     setApprovedLines(["Ben went 0-3."])
     expect(weighted(["Adam went 0-5.", "Other."])).toEqual(["Adam went 0-5.", "Adam went 0-5.", "Other."])
     setHiddenLines([])
+    setApprovedLines([])
+  })
+
+  it("uses only the approved wordings once a type has enough of them", () => {
+    setApprovedLines(["One.", "Two.", "Three."])
+    expect(finalSet(["One.", "Two.", "Three.", "Four."], 3)).toEqual(["One.", "Two.", "Three."])
+    expect(finalSet(["One.", "Two.", "Four."], 3)).toEqual(["One.", "Two.", "Four."])
     setApprovedLines([])
   })
 })
