@@ -2,7 +2,7 @@ import { Check, ClipboardCopy, ThumbsDown, Undo2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { APPROVED, HIDDEN, useLabels } from "@/lib/labelsContext"
+import { APPROVED, HIDDEN, SENT, useLabels } from "@/lib/labelsContext"
 import { buildCatalog } from "@/lib/lineCatalog"
 import { lineKey } from "@/lib/labels"
 import type { PooleanState } from "@/lib/types"
@@ -11,13 +11,14 @@ import { cn } from "@/lib/utils"
 type View = "new" | "ok" | "no"
 
 // Go through every wording the headline writers can use: approve it, or remove it. Approved wordings come up more
-// often and removed ones never do. New wordings are written from the removed ones, using the approved ones as the standard: copy them and send them over.
+// often and removed ones never do. One button copies the newly removed lines for Claude to rewrite.
 export function HeadlineReview({ state }: { state: PooleanState }) {
-  const { labels, reviewLine } = useLabels()
+  const { labels, reviewLine, setPlayerLabels } = useLabels()
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<View>("new")
   const [source, setSource] = useState("")
   const [copied, setCopied] = useState(false)
+  const [manual, setManual] = useState("")
   const catalog = useMemo(() => (open ? buildCatalog(state) : []), [open, state])
   const okKeys = new Set((labels[APPROVED] ?? []).map(lineKey))
   const noKeys = new Set((labels[HIDDEN] ?? []).map(lineKey))
@@ -35,16 +36,34 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
   const rejected = catalog.filter((c) => verdict(c.key) === "no" && !full(c))
   const finished = new Set(catalog.filter(full).map((c) => c.group)).size
 
-  // What goes to Claude to write more: the removed lines to replace, and the approved ones as the standard to match.
+  // One tap: the removed lines not sent before, plus the latest approved ones as the standard. They are marked as sent
+  // so the next copy only has what you have removed since.
+  const sentKeys = new Set((labels[SENT] ?? []).map(lineKey))
+  const unsent = rejected.filter((r) => !sentKeys.has(r.key))
   const copyRejected = () => {
-    const liked = catalog.filter((c) => verdict(c.key) === "ok")
-    const intro = "These headlines for my pool league app were rejected. For each one, write 2 new versions with more personality and more fun at people's expense, in different shapes (not always a stat then a quip), keeping the same facts and blanks. No em dashes."
-    const likedBlock = liked.length ? ["", "Here are lines I approved. Match what they do well: specific, everyday and relatable, deadpan, about how people behave.", ...liked.slice(0, 40).map((r) => `+ [${r.source}] ${r.text}`)] : []
-    const text = [intro, ...likedBlock, "", "Rejected:", ...rejected.map((r) => `- [${r.source}] ${r.text}`)].join("\n")
-    void navigator.clipboard?.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
+    const liked = (labels[APPROVED] ?? []).slice(-10)
+    const text = [
+      "Rewrite these rejected headlines for my pool league app: 2 new versions each, more personality and more fun at people's expense, different shapes, same facts and blanks, no em dashes. Match my approved style (see memory).",
+      ...(liked.length ? ["", "Latest approved:", ...liked.map((t) => `+ ${t}`)] : []),
+      "",
+      "Rejected:",
+      ...unsent.map((r) => `- [${r.source}] ${r.text}`),
+    ].join("\n")
+    const sent = () => setPlayerLabels(SENT, (cur) => [...cur, ...unsent.map((r) => r.text)].slice(-300))
+    // If the browser will not let the app use the clipboard, show the text to copy by hand instead.
+    const manually = () => {
+      setManual(text)
+      sent()
+    }
+    if (!navigator.clipboard) return manually()
+    navigator.clipboard.writeText(text).then(
+      () => {
+        sent()
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2500)
+      },
+      manually,
+    )
   }
 
   return (
@@ -57,8 +76,15 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
       </CardHeader>
       {open && (
         <CardContent className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">
-            Approve the lines you like and remove the ones you do not. A removed line is gone for every player and every night. Approved lines come up twice as often. Once a type of line has 3 approved (8 for injury notes), only the approved ones are used and the rest stop appearing here, so there is an end. Recap lines show up here once that moment has happened in your games.
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-2">
+            <Button size="sm" disabled={unsent.length === 0} onClick={copyRejected}>
+              <ClipboardCopy aria-hidden /> {copied ? "Copied" : unsent.length ? `Copy ${unsent.length} removed for Claude` : "Nothing new to send"}
+            </Button>
+            <span className="min-w-0 flex-1 text-xs text-muted-foreground">{copied ? "Now paste it to Claude. Those lines will not be in the next copy." : "Review, tap this, paste it to Claude. That is the whole loop."}</span>
+          </div>
+          {manual && <textarea readOnly autoFocus value={manual} onFocus={(e) => e.currentTarget.select()} aria-label="Text to copy" className="h-40 w-full rounded-lg border bg-background p-2 text-xs" />}
+          <p className="text-xs text-muted-foreground">
+            Approve what you like, remove what you do not. Removed lines are gone everywhere. A type with 3 approved (8 for injury notes) is finished and stops asking.
           </p>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Show">
             {(["new", "ok", "no"] as const).map((v) => (
@@ -81,17 +107,12 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
               ))}
             </select>
           </div>
-          {view === "no" && rejected.length > 0 && (
-            <Button size="sm" variant="outline" className="self-start" onClick={copyRejected}>
-              <ClipboardCopy aria-hidden /> {copied ? "Copied" : "Copy removed and approved lines to get new ones"}
-            </Button>
-          )}
           <ul className="flex flex-col gap-2">
             {rows.slice(0, 60).map((r) => (
               <li key={r.key} className="flex items-start gap-2 rounded-lg border bg-card p-2 text-sm">
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs text-muted-foreground">
-                    {r.source} · {Math.min(approvedIn.get(r.group) ?? 0, r.cap)} of {r.cap} approved
+                    {r.source} · {Math.min(approvedIn.get(r.group) ?? 0, r.cap)} of {r.cap} approved{view === "no" && sentKeys.has(r.key) ? " · sent" : ""}
                   </span>
                   {r.text}
                 </span>

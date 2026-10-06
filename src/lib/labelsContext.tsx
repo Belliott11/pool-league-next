@@ -16,6 +16,8 @@ export interface LabelsApi {
 
 export const HIDDEN = "__hidden"
 export const APPROVED = "__ok"
+// Removed lines already sent to Claude for rewriting, so the next copy only has the new ones.
+export const SENT = "__sent"
 
 export const LabelsContext = createContext<LabelsApi>({ labels: {}, setPlayerLabels: () => {}, hideLine: () => {}, restoreHidden: () => {}, reviewLine: () => {} })
 export const useLabels = () => useContext(LabelsContext)
