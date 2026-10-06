@@ -222,7 +222,7 @@ export const LABELS: LabelDef[] = [
     name: "Veteran Knees",
     blurb: "Plays smart because moving fast is gone",
     lines: {
-      cold: ["{n} went {fg}. The knees did not cooperate."],
+      cold: ["{n} went {fg} and blamed the knees before the game even started.", "{fg} for {n}. The knees were consulted and have no comment."],
       noshow: ["{n} skipped the night to rest the knees."],
       mvp: ["{n} won MVP on experience alone, and the knees held up."],
       streakW: ["{n} has won {k} straight on smart play, not speed. Younger players are taking notes, or ice."],
