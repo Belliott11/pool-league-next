@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { summarizeNight } from "@/lib/nightRecap"
 import { nightCallouts, recordBook } from "@/lib/records"
-import { nightStories, previewStories, streaks } from "@/lib/storylines"
+import { abnormality, nightStories, previewStories, streaks } from "@/lib/storylines"
 import type { Game, PooleanState } from "@/lib/types"
 
 const base = { stats: [], scoringEvents: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
@@ -80,5 +80,13 @@ describe("storylines", () => {
     const st = state([...history, game("g6", "2026-10-06", ["x"], ["z"], [["z", 6], ["x", 2]])])
     const stories = nightStories(st, summarizeNight(st, "2026-10-06"), [], name)
     expect(stories.join(" ")).toMatch(/Z .*X.*2-4/)
+  })
+
+  it("rates a stat by how far it is from the player's own norm", () => {
+    // X scored 5, 6, 7, 8, 2 before; Z scored 2, 3, 4, 1, 9.
+    const abn = abnormality(state(history), "2026-10-06")
+    const pts = (l: { pts: number }) => l.pts
+    expect(abn("x", pts, 20)).toBeGreaterThan(abn("x", pts, 6))
+    expect(abn("x", pts, 6)).toBeLessThan(1)
   })
 })
