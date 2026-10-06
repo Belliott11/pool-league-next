@@ -5,6 +5,7 @@ import { StoryPublisher } from "@/components/StoryPublisher"
 import { SyncChip } from "@/components/SyncChip"
 import { getClient } from "@/lib/cloud"
 import { loadLabels, saveLabels, type LabelBook } from "@/lib/labelStore"
+import { setPronouns } from "@/lib/pronouns"
 import { APPROVED, HIDDEN, LabelsContext } from "@/lib/labelsContext"
 import { lineKey, setApprovedLines, setHiddenLines, setLineNames } from "@/lib/labels"
 import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
@@ -137,6 +138,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly])
   setLineNames(state.players.map((p) => p.name))
+  setPronouns(state.players)
   setHiddenLines(labels[HIDDEN] ?? [])
   setApprovedLines(labels[APPROVED] ?? [])
   const setPlayerLabels = (id: string, fn: (cur: string[]) => string[]) => {

@@ -1,4 +1,5 @@
 import { pick } from "@/lib/pick"
+import { forPlayer } from "@/lib/pronouns"
 import type { PooleanState } from "@/lib/types"
 
 // Labels for personalizing the headlines: assign a few to each player on the Players tab and the recap and injury
@@ -598,7 +599,11 @@ let okRaw: string[] = []
 let hidden = new Set<string>()
 let approved = new Set<string>()
 export function lineKey(text: string): string {
-  return (nameRe ? text.replace(nameRe, "N") : text).replace(/\d+(\.\d+)?/g, "#")
+  // Pronouns and the verbs that go with them are blanked too, so a line is the same line whichever the editor chose.
+  return (nameRe ? text.replace(nameRe, "N") : text)
+    .replace(/\b(they|them|their|theirs|themselves|he|she|him|her|his|hers|himself|herself)\b/gi, "P")
+    .replace(/\b(is|has|knows|scores|proves|plays|keeps|comes|does|doesn't|was)\b/g, (v) => ({ is: "are", has: "have", knows: "know", scores: "score", proves: "prove", plays: "play", keeps: "keep", comes: "come", does: "do", "doesn't": "don't", was: "were" })[v] as string)
+    .replace(/\d+(\.\d+)?/g, "#")
 }
 function rebuild() {
   hidden = new Set(hiddenRaw.map(lineKey))
@@ -673,7 +678,7 @@ export function labelLine(state: PooleanState, playerId: string, event: LabelEve
   }
   const shown = weighted(lines.map((l) => fill(l, vars)).filter((l) => !isHidden(l)))
   if (shown.length === 0) return null
-  return pick(seed + playerId + event, shown)
+  return forPlayer(playerId, pick(seed + playerId + event, shown))
 }
 
 // Injury report notes drawn from a player's labels, for the dice button.

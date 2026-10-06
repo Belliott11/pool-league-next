@@ -5,6 +5,8 @@
 export interface Player {
   id: string
   name: string
+  // Which pronouns headlines use for this player. Unset means they/them.
+  pronouns?: "he" | "she"
 }
 
 export interface PlayerGameStats {

@@ -1,4 +1,5 @@
 import { pick } from "@/lib/pick"
+import { forPlayer } from "@/lib/pronouns"
 import { finalSet, isHidden, labelInjuryNotes, LINE_CAP, lineSink } from "@/lib/labels"
 import type { Injury, InjuryStatus, PooleanState } from "@/lib/types"
 
@@ -130,7 +131,7 @@ export function goofyNote(status: InjuryStatus, avoid?: string, state?: PooleanS
   const personal = state && playerId ? labelInjuryNotes(state, playerId, kind) : []
   const own = finalSet(GOOFY[status].filter((n) => !isHidden(n)), LINE_CAP.note)
   const pool = [...own, ...personal, ...personal].filter((n) => n !== avoid)
-  return pool[Math.floor(Math.random() * pool.length)] ?? GOOFY[status][0]
+  return forPlayer(playerId ?? null, pool[Math.floor(Math.random() * pool.length)] ?? GOOFY[status][0])
 }
 
 // Everyone currently on the board: worst status first, then newest.

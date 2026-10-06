@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/EmptyState"
 import { useState } from "react"
 import { HeadlineReview } from "@/components/HeadlineReview"
@@ -210,6 +211,25 @@ export function PlayersPage({
                               {PHYSICAL_ROLE_LABELS[r]}
                             </Badge>
                           ))}
+                        </div>
+                      )}
+                      {!readOnly && (
+                        <div className="flex items-center gap-1.5" role="group" aria-label={`Pronouns for ${p.name}`}>
+                          <span className="text-xs text-muted-foreground">Headlines say</span>
+                          {([["they", "They"], ["he", "He"], ["she", "She"]] as const).map(([v, label]) => {
+                            const on = (p.pronouns ?? "they") === v
+                            return (
+                              <button
+                                key={v}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() => update((s) => ({ ...s, players: s.players.map((x) => (x.id === p.id ? { ...x, pronouns: v === "they" ? undefined : v } : x)) }))}
+                                className={cn("min-h-8 rounded-lg border px-2.5 text-xs font-medium", on ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}
+                              >
+                                {label}
+                              </button>
+                            )
+                          })}
                         </div>
                       )}
                       {(labels[p.id] ?? []).filter((k) => !isOwnLine(k)).length > 0 && (
