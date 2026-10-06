@@ -1,7 +1,5 @@
-import { generateBalancedTeamSets } from "@/lib/balance"
 import { headToHead } from "@/lib/headToHead"
 import { injuryBoard, statusInfo } from "@/lib/injuries"
-import { predictRealMatchup } from "@/lib/matchup"
 import { gameDays, playerLine } from "@/lib/nightRecap"
 import { rank, say, streaks, type Item } from "@/lib/storylines"
 import type { PooleanState, Rsvp } from "@/lib/types"
@@ -91,22 +89,4 @@ export function previewStoriesFor(state: PooleanState, coming: string[], name: N
   }
 
   return rank(items, 6)
-}
-
-export interface Split {
-  teamA: string[]
-  teamB: string[]
-  pA: number | null
-  sitting: string[]
-}
-
-// The most even split of the group the balancer can find, with the model's odds for the first side.
-export function bestSplit(state: PooleanState, coming: string[]): Split | null {
-  if (coming.length < 4) return null
-  const size = Math.floor(coming.length / 2)
-  const option = generateBalancedTeamSets(state, coming, size)[0]
-  if (!option || option.teams.length < 2) return null
-  const [teamA, teamB] = option.teams
-  const used = new Set([...teamA, ...teamB])
-  return { teamA, teamB, pA: predictRealMatchup(teamA, teamB)?.pA ?? null, sitting: coming.filter((id) => !used.has(id)) }
 }
