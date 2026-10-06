@@ -14,7 +14,7 @@ describe("labels", () => {
 
   it("has nothing to say for a player without a fitting label", () => {
     expect(labelLine(state({}), "a", "cold", { n: "Adam", fg: "x" }, "s")).toBeNull()
-    expect(labelLine(state({ a: ["lockdown"] }), "a", "noshow", { n: "Adam" }, "s")).toBeNull()
+    expect(labelLine(state({ a: ["lockdown"] }), "a", "foul", { n: "Adam", k: 5 }, "s")).toBeNull()
   })
 
   it("works for a label typed by hand", () => {
