@@ -20,7 +20,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 const MAX_SCORES = 400
 
-type Score = { pid: string; points: number }
+type Score = { pid: string; points: number; bid?: string }
 type Game = {
   id: string
   date: string
@@ -34,7 +34,7 @@ type Game = {
   [key: string]: unknown
 }
 type State = { players: { id: string }[]; games: Game[]; [key: string]: unknown }
-type Body = { action?: string; gameId?: string; pid?: string; points?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
+type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
 
 const total = (g: Game, team: string[]) => [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])].filter((s) => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0)
 const ids = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
@@ -86,7 +86,10 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
     if (![...game.teamA, ...game.teamB].includes(pid)) return { error: "That player is not in this game.", status: 400 }
     if (![1, 2, 3].includes(points)) return { error: "A basket is worth 1, 2 or 3.", status: 400 }
     if (scores.length >= MAX_SCORES) return { error: "That is a lot of baskets for one game.", status: 400 }
-    scores.push({ pid, points })
+    // A phone that lost signal sends the same basket again; the id makes that harmless.
+    const bid = String(body.bid ?? "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40)
+    if (bid && scores.some((x) => x.bid === bid)) return null
+    scores.push(bid ? { pid, points, bid } : { pid, points })
     game.scorekeeperScores = scores
     return null
   }

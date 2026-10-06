@@ -69,9 +69,9 @@ export interface Game {
   videoStart?: number
   masterVideoId?: string | null
   liveInProgress?: boolean
-  liveScores?: { pid: string; points: number }[]
+  liveScores?: { pid: string; points: number; bid?: string }[]
   // Baskets added by friends using the scorekeeper code; folded into liveScores when the game is finished.
-  scorekeeperScores?: { pid: string; points: number }[]
+  scorekeeperScores?: { pid: string; points: number; bid?: string }[]
   matchups?: { id: string; defenderId: string; offenderId: string; note?: string; videoTime?: number | null }[]
   plays?: { id: string; type: "highlight" | "lowlight"; start: number; end: number; playerId?: string | null; note?: string }[]
   // every other field (matchups, plays, videoUrl, masterVideoId, …) round-trips via this index

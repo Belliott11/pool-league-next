@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { InjuryBoard } from "@/components/InjuryBoard"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import type { Update } from "@/lib/store"
+import { HeadToHeadCard } from "./HeadToHeadCard"
 import { RecordsCard, SeasonStoriesCard } from "./SeasonCards"
 import { formatDateDisplay } from "@/lib/format"
 import { computeLeaderboard, teamScore } from "@/lib/stats"
@@ -83,6 +84,7 @@ export function Sidebar({
           )}
         </CardContent>
       </Card>
+      <HeadToHeadCard state={state} onOpenGame={onOpenGame} />
       <RecordsCard state={state} onOpenPlayer={onOpenPlayer} />
       <Card>
         <CardHeader>

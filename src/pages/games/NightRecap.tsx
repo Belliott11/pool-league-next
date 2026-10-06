@@ -4,6 +4,8 @@ import { EmptyState } from "@/components/EmptyState"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useReadOnly } from "@/lib/mode"
+import { isLiveScoreOnly } from "@/lib/stats"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatDateDisplay } from "@/lib/format"
@@ -41,7 +43,8 @@ function sortValue(p: NightPlayer, key: SortKey, name: (id: string) => string): 
 
 // A day's games in one place: results, who led the night, and a picture or text to send around. Games scored
 // live count with their points; games with a box score add rebounds, assists, steals and blocks.
-export function NightRecap({ state, update, onBack, onOpenGame, onOpenPlayer, initialDate }: { state: PooleanState; update?: Update; onBack: () => void; onOpenGame: (id: string) => void; onOpenPlayer: (id: string) => void; initialDate?: string }) {
+export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onOpenPlayer, initialDate }: { state: PooleanState; update?: Update; onBack: () => void; onOpenGame: (id: string) => void; onStatEntry?: (id: string) => void; onOpenPlayer: (id: string) => void; initialDate?: string }) {
+  const readOnly = useReadOnly()
   const labeled = useLabeledState(state)
   const days = useMemo(() => gameDays(state), [state])
   const [date, setDate] = useState(initialDate && days.includes(initialDate) ? initialDate : (days[0] ?? ""))
@@ -50,6 +53,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onOpenPlayer, in
   const full = useMemo(() => summarizeNight(state, date), [state, date])
   // Two versions. Right after live scoring there are only points, so the quick recap sticks to results, points and
   // wins. Once the shots are entered from film the full recap adds MVP, leaders, lineups and records.
+  const liveOnly = state.games.filter((g) => g.date === date && !g.liveInProgress && isLiveScoreOnly(g))
   const hasBox = full.players.some((p) => p.boxGames > 0)
   const [pick, setPick] = useState<"quick" | "full" | null>(null)
   const quick = (pick ?? (hasBox ? "full" : "quick")) === "quick"
@@ -224,6 +228,17 @@ export function NightRecap({ state, update, onBack, onOpenGame, onOpenPlayer, in
           </Badge>
         )}
       </div>
+
+      {!readOnly && onStatEntry && liveOnly.length > 0 && (
+        <section className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed p-4" aria-label="Add stats">
+          <p className="min-w-0 flex-1 text-sm">
+            {liveOnly.length === 1 ? "One game from this night has only live scores." : `${liveOnly.length} games from this night have only live scores.`} Add the stats and video to unlock MVP, leaders and records.
+          </p>
+          <Button size="sm" onClick={() => onStatEntry(liveOnly[0].id)}>
+            Add stats and video
+          </Button>
+        </section>
+      )}
 
       {stories.length > 0 && (
         <section className="flex flex-col gap-2 rounded-xl border bg-card p-4" aria-label="Storylines">

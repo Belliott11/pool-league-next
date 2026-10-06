@@ -59,6 +59,7 @@ export function GamesPage({
         state={state}
         onBack={goBack}
         onOpenGame={(id) => go("game:" + id)}
+        onStatEntry={(id) => go("stat:" + id)}
         onOpenPlayer={onOpenPlayer}
       />
     )
