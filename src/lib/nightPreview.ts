@@ -1,7 +1,7 @@
 import { headToHead } from "@/lib/headToHead"
 import { injuryBoard, statusInfo } from "@/lib/injuries"
 import { gameDays, playerLine } from "@/lib/nightRecap"
-import { rank, say, streaks, type Item } from "@/lib/storylines"
+import { adder, rank, say, streaks, type Item } from "@/lib/storylines"
 import type { PooleanState, Rsvp } from "@/lib/types"
 
 type Name = (id: string) => string
@@ -18,7 +18,7 @@ export function upcomingRsvp(state: PooleanState, today = localToday()): Rsvp | 
 export function previewStoriesFor(state: PooleanState, coming: string[], name: Name): string[] {
   const here = new Set(coming)
   const items: Item[] = []
-  const add = (w: number, pid: string | null, text: string) => items.push({ w, pid, text })
+  const add = adder(items)
   const nights = gameDays(state)
   const attended = new Map<string, number>()
   for (const g of state.games) {

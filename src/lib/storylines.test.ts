@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { summarizeNight } from "@/lib/nightRecap"
 import { nightCallouts, recordBook } from "@/lib/records"
-import { abnormality, nightStories, previewStories, streaks } from "@/lib/storylines"
+import { abnormality, nightStories, previewStories, rank, streaks } from "@/lib/storylines"
 import type { Game, PooleanState } from "@/lib/types"
 
 const base = { stats: [], scoringEvents: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
@@ -88,5 +88,16 @@ describe("storylines", () => {
     const pts = (l: { pts: number }) => l.pts
     expect(abn("x", pts, 20)).toBeGreaterThan(abn("x", pts, 6))
     expect(abn("x", pts, 6)).toBeLessThan(1)
+  })
+
+  it("swaps to a wording that opens differently when the list would repeat itself", () => {
+    const out = rank(
+      [
+        { w: 2, pid: null, text: "Adam went 0-3 tonight." },
+        { w: 1, pid: null, text: "Adam went 2-for-9 tonight.", alts: ["Was Adam even looking at the rim? 2-for-9."] },
+      ],
+      5,
+    )
+    expect(out).toEqual(["Adam went 0-3 tonight.", "Was Adam even looking at the rim? 2-for-9."])
   })
 })

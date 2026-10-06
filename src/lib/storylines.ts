@@ -1,7 +1,7 @@
 import { injuryBoard, statusInfo } from "@/lib/injuries"
 import { pick } from "@/lib/pick"
 import { forPlayer } from "@/lib/pronouns"
-import { finalSet, isHidden, labelLine, LINE_CAP, lineSink, weighted } from "@/lib/labels"
+import { finalSet, isHidden, labelLine, LINE_CAP, lineKey, lineSink, weighted } from "@/lib/labels"
 import type { NightSummary } from "@/lib/nightRecap"
 import { playerLine, scoreOf, type PlayerLine } from "@/lib/nightRecap"
 import { RECORD_LABEL, recordBook, type Callout } from "@/lib/records"
@@ -50,18 +50,30 @@ export function streaks(state: PooleanState, upTo?: string): { id: string; kind:
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 const pct = (p: number) => Math.round(p * 100)
+// The wordings the last say() could have used, so the story it ends up in can swap to another one if that makes the
+// list less samey (see rank).
+let lastOptions: string[] = []
 export const say = (seed: string, ...options: string[]): string => {
   // A wording the editor thumbed down is skipped when another one is available.
   lineSink.current?.(options)
   const live = options.filter((o) => !isHidden(o))
-  return pick(seed, weighted(finalSet(live.length ? live : options, LINE_CAP.recap)))
+  const pool = finalSet(live.length ? live : options, LINE_CAP.recap)
+  lastOptions = pool
+  return pick(seed, weighted(pool))
 }
+// Adds a candidate story, remembering the other wordings it could have had.
+export const adder = (items: Item[]) => (w: number, pid: string | null, text: string) => items.push({ w, pid, text, alts: lastOptions.includes(text) ? lastOptions.filter((o) => o !== text) : [] })
 
 // Candidate headlines come with a weight for how unusual they are; the most unusual go first, no player gets more
 // than two (three on the season card), and anything the editor removed is dropped.
-export type Item = { w: number; pid: string | null; text: string }
+export type Item = { w: number; pid: string | null; text: string; alts?: string[] }
+// How a line begins and how it is built, so a list does not open every line the same way or use the same trick twice.
+const opener = (t: string) => lineKey(t).split(" ").slice(0, 2).join(" ").toLowerCase()
+const build = (t: string) => (t.includes("?") ? "question" : /, which /.test(t) ? "which" : /. /.test(t) ? "two-part" : "single")
 export function rank(items: Item[], limit: number, perPlayerMax = 2): string[] {
   const perPlayer = new Map<string, number>()
+  const openers = new Set<string>()
+  const builds = new Map<string, number>()
   return items
     .sort((x, y) => y.w - x.w)
     .filter((it) => {
@@ -70,7 +82,15 @@ export function rank(items: Item[], limit: number, perPlayerMax = 2): string[] {
       perPlayer.set(it.pid, n)
       return n <= perPlayerMax
     })
-    .map((it) => forPlayer(it.pid, it.text))
+    .map((it) => {
+      // Take the wording that starts differently from the ones already chosen, and has not been used much, when there is one.
+      const options = [it.text, ...(it.alts ?? [])].filter((o) => !isHidden(o))
+      const fresh = options.filter((o) => !openers.has(opener(o)))
+      const best = fresh.find((o) => (builds.get(build(o)) ?? 0) < 2) ?? fresh[0] ?? options[0] ?? it.text
+      openers.add(opener(best))
+      builds.set(build(best), (builds.get(build(best)) ?? 0) + 1)
+      return forPlayer(it.pid, best)
+    })
     .filter((x) => !isHidden(x))
     .slice(0, limit)
 }
@@ -94,7 +114,7 @@ export function nightStories(
   // of the night rather than a fixed order. For stat lines the weight is how many standard deviations tonight sat
   // from that player's own history (or the league's, for someone with too few games).
   const items: Item[] = []
-  const add = (w: number, pid: string | null, text: string) => items.push({ w, pid, text })
+  const add = adder(items)
   const abn = abnormality(state, s.date)
   const done = s.games.filter((g) => !g.live && g.winner)
 
@@ -157,7 +177,7 @@ export function nightStories(
 // ---- going into a night ---------------------------------------------------------------------------------
 export function previewStories(state: PooleanState, name: Name): string[] {
   const items: Item[] = []
-  const add = (w: number, pid: string | null, text: string) => items.push({ w, pid, text })
+  const add = adder(items)
   const abn = abnormality(state, "9999-12-31")
   // The injury board comes first: it changes who plays.
   const hurt = injuryBoard(state).filter((i) => i.status !== "returning")
@@ -271,7 +291,7 @@ export function seasonStories(state: PooleanState, name: Name): string[] {
   const since = state.currentSeasonStartedAt || ""
   const rs = results(state).filter((r) => !since || r.date >= since)
   const items: Item[] = []
-  const add = (w: number, pid: string | null, text: string) => items.push({ w, pid, text })
+  const add = adder(items)
   if (rs.length < 3) return []
 
   const dates = new Set(rs.map((r) => r.date))
