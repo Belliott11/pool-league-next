@@ -42,7 +42,7 @@ export const LABELS: LabelDef[] = [
       streakW: ["{n} has won {k} straight, and the shots keep going in."],
       streakL: ["{n} has lost {k} in a row and has not stopped shooting."],
     },
-    injury: ["Sore shooting wrist. Not from passing."],
+    injury: ["Out, so the shot count just dropped for everyone."],
   },
   {
     key: "ballHog",
@@ -61,7 +61,7 @@ export const LABELS: LabelDef[] = [
       winless: ["{n} went 0-{l}. Holding the ball did not help."],
       streakL: ["{n} has lost {k} in a row and is still not passing."],
     },
-    injury: ["Sore thumb from holding the ball too tight."],
+    injury: ["Out, and the ball is already being passed around more."],
   },
   {
     key: "brickLayer",
@@ -81,7 +81,7 @@ export const LABELS: LabelDef[] = [
       winless: ["{n} went 0-{l} and missed plenty of shots along the way."],
       streakL: ["{n} has lost {k} in a row. The shooting is not helping."],
     },
-    injury: ["Sore back from carrying all those bricks."],
+    injury: ["Out, which means the rim gets a break."],
   },
   {
     key: "cardioVillain",
@@ -97,8 +97,8 @@ export const LABELS: LabelDef[] = [
       mvp: ["{n} won MVP without being out of breath. That is a first."],
       sweep: ["{n} went {w}-0 and somehow had the legs for it."],
     },
-    injury: ["Winded. Doctors say that is not a medical condition."],
-    away: ["Out of town, and probably sitting down."],
+    injury: ["Out, and the team's average pace just went up."],
+    away: ["Away, and probably resting."],
   },
   {
     key: "trashTalker",
@@ -121,7 +121,7 @@ export const LABELS: LabelDef[] = [
       noshow: ["{n} skipped the night, so it was quiet."],
       foul: ["{n} was called for {k} fouls, probably for talking."],
     },
-    injury: ["Lost their voice. The quiet is the real injury."],
+    injury: ["Out, and the group chat is quieter."],
   },
   {
     key: "dunkMachine",
@@ -139,7 +139,7 @@ export const LABELS: LabelDef[] = [
       streakW: ["{n} has won {k} straight, mostly on dunks."],
       streakL: ["{n} has lost {k} in a row with nothing above the rim."],
     },
-    injury: ["Bruised hip after a hard landing."],
+    injury: ["Out, so the rim can relax."],
   },
   {
     key: "lockdown",
@@ -160,7 +160,7 @@ export const LABELS: LabelDef[] = [
       up: ["{n} scored {pts} a game tonight, up from {avg}, on top of the defense."],
       down: ["{n} scored {pts} a game against a usual {avg}. The defense was the point."],
     },
-    injury: ["Jammed a finger on a block."],
+    injury: ["Out, and scoring just got easier for everyone."],
   },
   {
     key: "clutch",
@@ -215,7 +215,7 @@ export const LABELS: LabelDef[] = [
       streakW: ["{n} has won {k} straight and the snacks are better for it."],
       streakL: ["{n} has lost {k} in a row. The snacks are carrying the group."],
     },
-    injury: ["Strained something reaching for the last chips."],
+    injury: ["Out, and the cooler has been left unattended."],
     back: ["Back, and hopefully with snacks."],
   },
   {
@@ -236,7 +236,7 @@ export const LABELS: LabelDef[] = [
       winless: ["{n} went 0-{l}. The knees need a day."],
       streakL: ["{n} has lost {k} in a row and could use a longer warmup."],
     },
-    injury: ["The knees made the call.", "Pulled a muscle getting out of the car."],
+    injury: ["The knees made the call."],
     back: ["Knees cleared to play."],
   },
   {
@@ -257,8 +257,8 @@ export const LABELS: LabelDef[] = [
       sweep: ["{n} went {w}-0. Not a rookie result."],
       streakW: ["{n} has won {k} straight and is no longer easy to pick on."],
     },
-    injury: ["Hurt trying a move seen online."],
-    back: ["Back, with a new move to try."],
+    injury: ["Out, and the veterans are being very understanding."],
+    back: ["Back, and still learning the court."],
   },
   {
     key: "passingWizard",
@@ -276,7 +276,7 @@ export const LABELS: LabelDef[] = [
       streakW: ["{n} has won {k} straight with everybody getting touches."],
       streakL: ["{n} has lost {k} in a row, passing the whole way."],
     },
-    injury: ["Sore wrist from too many no-look passes."],
+    injury: ["Out, so the assists are on hold."],
   },
   {
     key: "hustle",
@@ -294,7 +294,7 @@ export const LABELS: LabelDef[] = [
       winless: ["{n} went 0-{l} and hustled the whole way."],
       streakW: ["{n} has won {k} straight on effort."],
     },
-    injury: ["Scraped knee from diving for a ball that was out of bounds."],
+    injury: ["Out, and the loose balls are unclaimed."],
   },
   {
     key: "excuseMaker",
@@ -316,7 +316,7 @@ export const LABELS: LabelDef[] = [
       up: ["{n} scored {pts} a game against a usual {avg}. The excuses can wait."],
       revenge: ["{n} finally beat {o}, {r} all time, and has no excuses to offer."],
     },
-    injury: ["Hurt by the wind, the sun, and everyone else."],
+    injury: ["Out. The reason is being drafted."],
     away: ["Away. The reason is long and nobody asked."],
   },
   {
@@ -335,7 +335,7 @@ export const LABELS: LabelDef[] = [
       mvp: ["{n} won MVP and even played some defense."],
       streakW: ["{n} has won {k} straight, defense included."],
     },
-    injury: ["Pulled a muscle waving at someone driving past."],
+    injury: ["Out, and the defense is exactly as good as it was."],
   },
   {
     key: "butterfingers",
@@ -353,7 +353,7 @@ export const LABELS: LabelDef[] = [
       streakL: ["{n} has lost {k} in a row and the ball keeps slipping."],
       streakW: ["{n} has won {k} straight with surprisingly sticky hands."],
     },
-    injury: ["Hurt a hand dropping something simple."],
+    injury: ["Out, and the ball is finally safe."],
   },
   {
     key: "foulMagnet",
@@ -372,7 +372,7 @@ export const LABELS: LabelDef[] = [
       streakW: ["{n} has won {k} straight and fouled through all of them."],
       streakL: ["{n} has lost {k} in a row and the fouls keep coming."],
     },
-    injury: ["Bruised from everyone else's apologies."],
+    injury: ["Out, and the whistle has the night off."],
   },
   {
     key: "soreLoser",
@@ -392,7 +392,7 @@ export const LABELS: LabelDef[] = [
       sweep: ["{n} went {w}-0. Nothing to complain about."],
       streakW: ["{n} has won {k} straight and is in a good mood for once."],
     },
-    injury: ["Strained something throwing a ball after the buzzer."],
+    injury: ["Out, and the complaint about it will be long."],
   },
   {
     key: "fader",
@@ -410,7 +410,7 @@ export const LABELS: LabelDef[] = [
       sweep: ["{n} went {w}-0 and finished every one."],
       streakW: ["{n} has won {k} straight and held on every time."],
     },
-    injury: ["Ran out of gas with a lead."],
+    injury: ["Out, so nobody is running out of gas with a lead."],
   },
   {
     key: "warmupLegend",
@@ -429,7 +429,7 @@ export const LABELS: LabelDef[] = [
       streakW: ["{n} has won {k} straight, warmups and all."],
       streakL: ["{n} has lost {k} in a row and the warmup is the best part."],
     },
-    injury: ["Peaked in warmups and pulled something."],
+    injury: ["Out, so the layup line is shorter."],
   },
   {
     key: "flopper",
@@ -448,7 +448,7 @@ export const LABELS: LabelDef[] = [
       streakW: ["{n} has won {k} straight with a lot of falling down."],
       streakL: ["{n} has lost {k} in a row and keeps looking for a call."],
     },
-    injury: ["Hurt by a light breeze. Disputed."],
+    injury: ["Out, and the floor is relieved."],
   },
   {
     key: "tourist",
@@ -466,7 +466,7 @@ export const LABELS: LabelDef[] = [
       streakW: ["{n} has won {k} straight as a part-time player."],
       streakL: ["{n} has lost {k} in a row. Mostly here for the view."],
     },
-    away: ["Out sightseeing."],
+    away: ["Away, which fits."],
   },
   {
     key: "sleeper",
@@ -488,7 +488,7 @@ export const LABELS: LabelDef[] = [
       revenge: ["{n} beat {o}, {r} all time. They did not see it coming."],
       owned: ["{n} lost to {o} again, {r} all time. Still asleep on that matchup."],
     },
-    injury: ["Slept on it wrong."],
+    injury: ["Out, and everyone assumed they were just resting."],
   },
   {
     key: "showboat",
@@ -508,7 +508,7 @@ export const LABELS: LabelDef[] = [
       streakL: ["{n} has lost {k} in a row. The fancy stuff is not working."],
       down: ["{n} scored {pts} a game against a usual {avg}. Fancy, but not effective."],
     },
-    injury: ["Pulled something trying a move for the crowd."],
+    injury: ["Out, and the highlights are on hold."],
   },
   {
     key: "hothead",
@@ -531,7 +531,7 @@ export const LABELS: LabelDef[] = [
       down: ["{n} scored {pts} a game against a usual {avg}. Not a happy night."],
       revenge: ["{n} finally beat {o}, {r} all time. Probably a loud one."],
     },
-    injury: ["Sore hand from slamming the ball down."],
+    injury: ["Out, and the arguments are missing a participant."],
   },
   {
     key: "underdog",
@@ -553,7 +553,7 @@ export const LABELS: LabelDef[] = [
       down: ["{n} scored {pts} a game against a usual {avg}. Nobody expected much, and it went worse.", "{n} fell to {pts} a game from a usual {avg}, which is hard to do from there.", "{pts} a game for {n} when {avg} is normal. A bad night for a low bar.", "{n} dipped to {pts} a game from {avg}, so the bar has been moved to the floor."],
       owned: ["{n} lost to {o} again, {r} all time. The underdog story ran out."],
     },
-    injury: ["Out hurt, and the first thing anyone asked was who gets the last pick now.", "Hurt in a game nobody expected them to win. That is a very specific kind of bad luck.", "Injured, and the team's odds have not changed, which says something.", "Out hurt and has been described as irreplaceable by exactly one person, who is also hurt."],
+    injury: ["Out. The long shot just got longer.", "Injured, and the team's odds have not changed, which says something."],
   },
 ]
 
