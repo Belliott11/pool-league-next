@@ -1,3 +1,4 @@
+import { pick } from "@/lib/pick"
 import { labelInjuryNotes } from "@/lib/labels"
 import type { Injury, InjuryStatus, PooleanState } from "@/lib/types"
 
@@ -104,11 +105,7 @@ export function unavailable(state: PooleanState): Injury[] {
 
 // One-line headlines about the report as a whole, in the same spirit as the night recap. The wording for a given
 // situation is fixed by the date, so it does not shuffle on refresh.
-function pickOne(seed: string, ...options: string[]): string {
-  let h = 0
-  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0
-  return options[h % options.length]
-}
+const pickOne = (seed: string, ...options: string[]): string => pick(seed, options)
 
 export function injuryHeadlines(state: PooleanState, name: (id: string) => string, now = new Date()): string[] {
   const board = injuryBoard(state)

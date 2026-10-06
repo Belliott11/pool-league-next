@@ -1,4 +1,5 @@
 import { injuryBoard, statusInfo } from "@/lib/injuries"
+import { pick } from "@/lib/pick"
 import { isHidden, labelLine } from "@/lib/labels"
 import type { NightSummary } from "@/lib/nightRecap"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
@@ -48,14 +49,11 @@ export function streaks(state: PooleanState, upTo?: string): { id: string; kind:
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 const pct = (p: number) => Math.round(p * 100)
-// Picks one of several phrasings, the same one every time for the same seed, so headlines vary without shuffling on refresh.
 const say = (seed: string, ...options: string[]): string => {
-  let h = 0
-  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0
   // A wording the editor thumbed down is skipped when another one is available.
   const live = options.filter((o) => !isHidden(o))
   const pool = live.length ? live : options
-  return pool[h % pool.length]
+  return pick(seed, pool)
 }
 
 // ---- coming out of a night ------------------------------------------------------------------------------

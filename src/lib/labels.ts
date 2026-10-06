@@ -1,3 +1,4 @@
+import { pick } from "@/lib/pick"
 import type { PooleanState } from "@/lib/types"
 
 // Labels for personalizing the headlines: assign a few to each player on the Players tab and the recap and injury
@@ -14,6 +15,12 @@ export interface LabelDef {
   back?: string[]
 }
 
+// Labels you can give a player, each with the headline wording for the moments it fits. The first ones are
+// character types; the roast labels (Excuse Maker onward) are for the players who have earned it.
+// Labels you can give a player, each with the headline wording for the moments it fits. The first ones are
+// character types; the roast labels (Excuse Maker onward) are for the players who have earned it.
+// Labels you can give a player, each with the headline wording for the moments it fits. The first ones are
+// character types; the roast labels (Excuse Maker onward) are for the players who have earned it.
 export const LABELS: LabelDef[] = [
   {
     key: "gunner",
@@ -24,6 +31,9 @@ export const LABELS: LabelDef[] = [
       hot: ["{n} shot {fg}. Fine, the gunner was right this time."],
       mvp: ["{n} took every shot and most of them went in. MVP, and now they will shoot more."],
       tov: ["{n} had {k} turnovers, most of them forcing a shot nobody wanted."],
+      up: ["{n} scored {pts} a game tonight against a usual {avg}. The shots finally fell and they will not let it go."],
+      down: ["{n} scored {pts} a game against a usual {avg}. That is a lot of shooting for that little scoring."],
+      owned: ["{n} lost to {o} again, {r} all time. Shooting over them has not worked yet."],
     },
     injury: ["Sore shooting wrist. Not from passing."],
   },
@@ -35,6 +45,8 @@ export const LABELS: LabelDef[] = [
       tov: ["{n} had {k} turnovers. Teammates were open for most of them.", "{k} turnovers for {n}, and zero of them were passes."],
       cold: ["{n} kept the ball all night and went {fg}. Somebody else could have tried."],
       zero: ["{n} had the ball plenty and still scored zero in {g} games."],
+      up: ["{n} had {pts} a game tonight, up from {avg}, and held the ball for most of it."],
+      down: ["{n} scored {pts} a game against a usual {avg}, with the ball all night. Passing might have helped."],
     },
     injury: ["Sore thumb from holding the ball too tight."],
   },
@@ -46,6 +58,9 @@ export const LABELS: LabelDef[] = [
       cold: ["{n} went {fg}. Another night of bricks.", "{fg} for {n}. The rim has seen all of it."],
       zero: ["{n} scored zero in {g} games. Every shot was a brick."],
       hot: ["{n} shot {fg}. Mark the date, the bricks stopped."],
+      up: ["{n} scored {pts} a game tonight against a usual {avg}. Fewer bricks, more buckets."],
+      down: ["{n} scored {pts} a game against a usual {avg}. The bricks are back."],
+      revenge: ["{n} finally got one back on {o}, {r} all time. Bricks and all."],
     },
     injury: ["Sore back from carrying all those bricks."],
   },
@@ -72,6 +87,10 @@ export const LABELS: LabelDef[] = [
       sweep: ["{n} went {w}-0, so nobody will hear the end of it this week."],
       streakW: ["{n} has won {k} straight, and the talking has gone up with every win."],
       mvp: ["{n} won MVP, so for once the talking was backed up."],
+      revenge: ["{n} finally beat {o}, now {r} all time. Expect a lot of talking."],
+      owned: ["{n} lost to {o} again, {r} all time. Fewer words next time."],
+      up: ["{n} scored {pts} a game against a usual {avg}. The talking has numbers behind it for once."],
+      down: ["{n} scored {pts} a game against a usual {avg}. All talk, no points."],
     },
     injury: ["Lost their voice. The quiet is the real injury."],
   },
@@ -94,6 +113,8 @@ export const LABELS: LabelDef[] = [
       mvp: ["{n} locked people up all night and scored {pts} on top. MVP."],
       sweep: ["{n} went {w}-0 and nobody scored easily on them."],
       streakW: ["{n} has won {k} straight, mostly because nobody can score on them."],
+      owned: ["{n} lost to {o} again, {r} all time. Even the best defense has a problem opponent."],
+      revenge: ["{n} finally got past {o}, {r} all time."],
     },
     injury: ["Jammed a finger on a block."],
   },
@@ -106,6 +127,8 @@ export const LABELS: LabelDef[] = [
       sweep: ["{n} went {w}-0 and hit the big shots all night."],
       hot: ["{n} shot {fg}. Calm under pressure, as they will tell you."],
       cold: ["{n} went {fg}. Called for the last shot and did not get it done."],
+      up: ["{n} scored {pts} a game tonight, up from {avg}. Early shots count too."],
+      revenge: ["{n} beat {o} again when it counted, {r} all time."],
     },
     injury: ["Day-to-day, but will be there for the last possession."],
   },
@@ -143,6 +166,8 @@ export const LABELS: LabelDef[] = [
       noshow: ["{n} skipped the night to rest the knees."],
       mvp: ["{n} won MVP on experience alone, and the knees held up."],
       streakW: ["{n} has won {k} straight on smart play, not speed. Younger players are taking notes, or ice."],
+      up: ["{n} scored {pts} a game tonight, up from {avg}. The knees were worth it."],
+      down: ["{n} scored {pts} a game against a usual {avg}. The knees had a say."],
     },
     injury: ["The knees made the call.", "Pulled a muscle getting out of the car."],
     back: ["Knees cleared to play."],
@@ -156,6 +181,8 @@ export const LABELS: LabelDef[] = [
       winless: ["{n} went 0-{l}. Welcome to the league."],
       cold: ["{n} went {fg}. Still learning the court."],
       streakL: ["{n} has lost {k} in a row. That is what rookie year costs."],
+      up: ["{n} scored {pts} a game tonight against a usual {avg}. The rookie is learning."],
+      revenge: ["{n} beat {o}, {r} all time. Not bad for a rookie."],
     },
     injury: ["Hurt trying a move seen online."],
     back: ["Back, with a new move to try."],
@@ -182,10 +209,6 @@ export const LABELS: LabelDef[] = [
     },
     injury: ["Scraped knee from diving for a ball that was out of bounds."],
   },
-]
-
-// A few labels that are all roast: for the players who have earned it.
-LABELS.push(
   {
     key: "excuseMaker",
     name: "Excuse Maker",
@@ -196,6 +219,8 @@ LABELS.push(
       streakL: ["{n} has lost {k} in a row, and the excuses keep coming."],
       noshow: ["{n} skipped the night and sent a long reason. Nobody asked."],
       tov: ["{n} had {k} turnovers. Somebody bumped them, apparently."],
+      owned: ["{n} lost to {o} again, {r} all time. The excuse list is getting long."],
+      down: ["{n} scored {pts} a game against a usual {avg}. A reason is already on the way."],
     },
     injury: ["Hurt by the wind, the sun, and everyone else."],
     away: ["Away. The reason is long and nobody asked."],
@@ -242,6 +267,8 @@ LABELS.push(
       streakL: ["{n} has lost {k} straight and is not handling it well."],
       cold: ["{n} went {fg} and blamed the rim."],
       noshow: ["{n} skipped the night after the last loss. Still mad."],
+      owned: ["{n} lost to {o} again, {r} all time. Expect a text."],
+      revenge: ["{n} finally beat {o}, {r} all time, and wants everyone to know."],
     },
     injury: ["Strained something throwing a ball after the buzzer."],
   },
@@ -266,6 +293,7 @@ LABELS.push(
       zero: ["{n} scored zero in {g} games after a perfect warmup."],
       winless: ["{n} went 0-{l}. The warmup went well, at least."],
       hot: ["{n} shot {fg}. The warmup form finally carried over."],
+      down: ["{n} scored {pts} a game against a usual {avg}. The warmup was better."],
     },
     injury: ["Peaked in warmups and pulled something."],
   },
@@ -291,67 +319,6 @@ LABELS.push(
     },
     away: ["Out sightseeing."],
   },
-)
-
-
-// More lines for the labels above, including the personal moments (a night far from the player's own average, and
-// results against a specific opponent). Each is merged into the label it names.
-const MORE: Record<string, Partial<Record<LabelEvent, string[]>>> = {
-  gunner: {
-    up: ["{n} scored {pts} a game tonight against a usual {avg}. The shots finally fell and they will not let it go."],
-    down: ["{n} scored {pts} a game against a usual {avg}. That is a lot of shooting for that little scoring."],
-    owned: ["{n} lost to {o} again, {r} all time. Shooting over them has not worked yet."],
-  },
-  ballHog: {
-    up: ["{n} had {pts} a game tonight, up from {avg}, and held the ball for most of it."],
-    down: ["{n} scored {pts} a game against a usual {avg}, with the ball all night. Passing might have helped."],
-  },
-  brickLayer: {
-    up: ["{n} scored {pts} a game tonight against a usual {avg}. Fewer bricks, more buckets."],
-    down: ["{n} scored {pts} a game against a usual {avg}. The bricks are back."],
-    revenge: ["{n} finally got one back on {o}, {r} all time. Bricks and all."],
-  },
-  trashTalker: {
-    revenge: ["{n} finally beat {o}, now {r} all time. Expect a lot of talking."],
-    owned: ["{n} lost to {o} again, {r} all time. Fewer words next time."],
-    up: ["{n} scored {pts} a game against a usual {avg}. The talking has numbers behind it for once."],
-    down: ["{n} scored {pts} a game against a usual {avg}. All talk, no points."],
-  },
-  clutch: {
-    up: ["{n} scored {pts} a game tonight, up from {avg}. Early shots count too."],
-    revenge: ["{n} beat {o} again when it counted, {r} all time."],
-  },
-  lockdown: {
-    owned: ["{n} lost to {o} again, {r} all time. Even the best defense has a problem opponent."],
-    revenge: ["{n} finally got past {o}, {r} all time."],
-  },
-  excuseMaker: {
-    owned: ["{n} lost to {o} again, {r} all time. The excuse list is getting long."],
-    down: ["{n} scored {pts} a game against a usual {avg}. A reason is already on the way."],
-  },
-  soreLoser: {
-    owned: ["{n} lost to {o} again, {r} all time. Expect a text."],
-    revenge: ["{n} finally beat {o}, {r} all time, and wants everyone to know."],
-  },
-  rookie: {
-    up: ["{n} scored {pts} a game tonight against a usual {avg}. The rookie is learning."],
-    revenge: ["{n} beat {o}, {r} all time. Not bad for a rookie."],
-  },
-  veteranKnees: {
-    up: ["{n} scored {pts} a game tonight, up from {avg}. The knees were worth it."],
-    down: ["{n} scored {pts} a game against a usual {avg}. The knees had a say."],
-  },
-  warmupLegend: {
-    down: ["{n} scored {pts} a game against a usual {avg}. The warmup was better."],
-  },
-}
-for (const [key, lines] of Object.entries(MORE)) {
-  const def = LABELS.find((l) => l.key === key)
-  if (!def) continue
-  for (const [ev, list] of Object.entries(lines) as [LabelEvent, string[]][]) def.lines[ev] = [...(def.lines[ev] ?? []), ...list]
-}
-
-LABELS.push(
   {
     key: "sleeper",
     name: "Sleeper",
@@ -404,7 +371,7 @@ LABELS.push(
     },
     injury: ["Hurt, and still the underdog."],
   },
-)
+]
 
 export const labelDef = (key: string) => LABELS.find((l) => l.key === key)
 // What the label is called: a library name, or the custom text as typed.
@@ -448,12 +415,6 @@ export const isHidden = (text: string) => hidden.has(text)
 
 const fill = (text: string, vars: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m))
 
-function hash(seed: string): number {
-  let h = 0
-  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0
-  return h
-}
-
 // A headline from the player's own labels for this kind of moment, or null when they have none that fit.
 export function labelLine(state: PooleanState, playerId: string, event: LabelEvent, vars: Record<string, string | number>, seed: string): string | null {
   const keys = labelsOf(state, playerId)
@@ -470,7 +431,7 @@ export function labelLine(state: PooleanState, playerId: string, event: LabelEve
   }
   const shown = lines.map((l) => fill(l, vars)).filter((l) => !hidden.has(l))
   if (shown.length === 0) return null
-  return shown[hash(seed + playerId + event) % shown.length]
+  return pick(seed + playerId + event, shown)
 }
 
 // Injury report notes drawn from a player's labels, for the dice button.

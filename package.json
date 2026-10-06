@@ -9,10 +9,8 @@
     "lint": "oxlint",
     "test": "vitest run",
     "compare-models": "node scripts/compare-models.mjs",
-    "audit-headlines": "node scripts/audit-headlines.mjs",
-    "preview": "vite preview",
-    "extract-legacy": "node scripts/extract-legacy.mjs ../dashboard/app.js src/lib/legacy-core.ts ../dashboard/index.html",
-    "scope-legacy-css": "node scripts/scope-legacy-css.mjs ../dashboard/theme.css ../dashboard/style.css src/legacy-style.css"
+    "audit-headlines": "vitest run src/lib/headlineAudit.test.ts --reporter=verbose",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -23,7 +21,6 @@
     "lucide-react": "^1.49.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "shadcn": "^4.21.1",
     "tailwindcss": "^4.3.3",
     "tw-animate-css": "^1.4.0"
   },
@@ -32,10 +29,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
-    "acorn": "^8.18.0",
-    "acorn-walk": "^8.3.5",
     "oxlint": "^1.81.0",
-    "postcss": "^8.5.28",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.3"

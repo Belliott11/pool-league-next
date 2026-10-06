@@ -18,9 +18,9 @@ describe("label library", () => {
   })
 })
 
-// Run with `npm run audit-headlines -- backup.json`: writes every night's recap from a real backup and lists the
+// Run with `npm run audit-headlines --backup=backup.json`: writes every night's recap from a real backup and lists the
 // wordings that keep coming back, so the repeats are easy to spot and thumb down or reword.
-const file = process.env.HEADLINE_BACKUP
+const file = process.env.npm_config_backup
 describe.skipIf(!file)("headline audit", () => {
   it("lists repeated headlines across nights", () => {
     const raw = JSON.parse(readFileSync(file as string, "utf8"))
