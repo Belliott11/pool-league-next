@@ -2,7 +2,7 @@ import type { PooleanState } from "@/lib/types"
 
 // Labels for personalizing the headlines: assign a few to each player on the Players tab and the recap and injury
 // report write lines about them. {n} is the name; the other {x} slots are filled from the story (fg, k, w, l, g, pts).
-export type LabelEvent = "hot" | "cold" | "tov" | "zero" | "noshow" | "mvp" | "sweep" | "winless" | "streakW" | "streakL" | "foul"
+export type LabelEvent = "hot" | "cold" | "tov" | "zero" | "noshow" | "mvp" | "sweep" | "winless" | "streakW" | "streakL" | "foul" | "up" | "down" | "revenge" | "owned"
 
 export interface LabelDef {
   key: string
@@ -293,6 +293,119 @@ LABELS.push(
   },
 )
 
+
+// More lines for the labels above, including the personal moments (a night far from the player's own average, and
+// results against a specific opponent). Each is merged into the label it names.
+const MORE: Record<string, Partial<Record<LabelEvent, string[]>>> = {
+  gunner: {
+    up: ["{n} scored {pts} a game tonight against a usual {avg}. The shots finally fell and they will not let it go."],
+    down: ["{n} scored {pts} a game against a usual {avg}. That is a lot of shooting for that little scoring."],
+    owned: ["{n} lost to {o} again, {r} all time. Shooting over them has not worked yet."],
+  },
+  ballHog: {
+    up: ["{n} had {pts} a game tonight, up from {avg}, and held the ball for most of it."],
+    down: ["{n} scored {pts} a game against a usual {avg}, with the ball all night. Passing might have helped."],
+  },
+  brickLayer: {
+    up: ["{n} scored {pts} a game tonight against a usual {avg}. Fewer bricks, more buckets."],
+    down: ["{n} scored {pts} a game against a usual {avg}. The bricks are back."],
+    revenge: ["{n} finally got one back on {o}, {r} all time. Bricks and all."],
+  },
+  trashTalker: {
+    revenge: ["{n} finally beat {o}, now {r} all time. Expect a lot of talking."],
+    owned: ["{n} lost to {o} again, {r} all time. Fewer words next time."],
+    up: ["{n} scored {pts} a game against a usual {avg}. The talking has numbers behind it for once."],
+    down: ["{n} scored {pts} a game against a usual {avg}. All talk, no points."],
+  },
+  clutch: {
+    up: ["{n} scored {pts} a game tonight, up from {avg}. Early shots count too."],
+    revenge: ["{n} beat {o} again when it counted, {r} all time."],
+  },
+  lockdown: {
+    owned: ["{n} lost to {o} again, {r} all time. Even the best defense has a problem opponent."],
+    revenge: ["{n} finally got past {o}, {r} all time."],
+  },
+  excuseMaker: {
+    owned: ["{n} lost to {o} again, {r} all time. The excuse list is getting long."],
+    down: ["{n} scored {pts} a game against a usual {avg}. A reason is already on the way."],
+  },
+  soreLoser: {
+    owned: ["{n} lost to {o} again, {r} all time. Expect a text."],
+    revenge: ["{n} finally beat {o}, {r} all time, and wants everyone to know."],
+  },
+  rookie: {
+    up: ["{n} scored {pts} a game tonight against a usual {avg}. The rookie is learning."],
+    revenge: ["{n} beat {o}, {r} all time. Not bad for a rookie."],
+  },
+  veteranKnees: {
+    up: ["{n} scored {pts} a game tonight, up from {avg}. The knees were worth it."],
+    down: ["{n} scored {pts} a game against a usual {avg}. The knees had a say."],
+  },
+  warmupLegend: {
+    down: ["{n} scored {pts} a game against a usual {avg}. The warmup was better."],
+  },
+}
+for (const [key, lines] of Object.entries(MORE)) {
+  const def = LABELS.find((l) => l.key === key)
+  if (!def) continue
+  for (const [ev, list] of Object.entries(lines) as [LabelEvent, string[]][]) def.lines[ev] = [...(def.lines[ev] ?? []), ...list]
+}
+
+LABELS.push(
+  {
+    key: "sleeper",
+    name: "Sleeper",
+    blurb: "Quiet for a while, then suddenly everywhere",
+    lines: {
+      up: ["{n} scored {pts} a game tonight against a usual {avg}. They were hiding it until now."],
+      down: ["{n} scored {pts} a game against a usual {avg}. Back to sleep."],
+      mvp: ["{n} woke up and won MVP."],
+      zero: ["{n} scored zero in {g} games. Still asleep."],
+      noshow: ["{n} skipped the night. Probably overslept."],
+    },
+    injury: ["Slept on it wrong."],
+  },
+  {
+    key: "showboat",
+    name: "Showboat",
+    blurb: "Style points count, apparently",
+    lines: {
+      cold: ["{n} went {fg}. Lots of flair, very few points."],
+      tov: ["{n} had {k} turnovers, and every one of them was a fancy pass."],
+      mvp: ["{n} won MVP with style, and will bring up the highlights."],
+      sweep: ["{n} went {w}-0 and made sure everyone watched."],
+      up: ["{n} scored {pts} a game tonight against a usual {avg}. The show worked this time."],
+    },
+    injury: ["Pulled something trying a move for the crowd."],
+  },
+  {
+    key: "hothead",
+    name: "Hothead",
+    blurb: "Gets worked up over every call",
+    lines: {
+      foul: ["{n} was called for {k} fouls and had something to say about each one."],
+      winless: ["{n} went 0-{l}. Nobody could say anything to them afterward."],
+      streakL: ["{n} has lost {k} in a row and everyone can tell."],
+      tov: ["{n} had {k} turnovers and was mad at someone else for each one."],
+      owned: ["{n} lost to {o} again, {r} all time. That one will come up at the next game."],
+    },
+    injury: ["Sore hand from slamming the ball down."],
+  },
+  {
+    key: "underdog",
+    name: "Underdog",
+    blurb: "Nobody picks them, they keep winning anyway",
+    lines: {
+      sweep: ["{n} went {w}-0. Nobody picked them and nobody can say why."],
+      streakW: ["{n} has won {k} straight and is still being picked last."],
+      mvp: ["{n} won MVP. Pick them earlier next time."],
+      revenge: ["{n} beat {o}, {r} all time. The underdog is catching up."],
+      up: ["{n} scored {pts} a game tonight against a usual {avg}. Nobody saw it coming."],
+    },
+    injury: ["Hurt, and still the underdog."],
+  },
+)
+
 export const labelDef = (key: string) => LABELS.find((l) => l.key === key)
 // What the label is called: a library name, or the custom text as typed.
 export const labelName = (key: string) => labelDef(key)?.name ?? key
@@ -310,6 +423,10 @@ const GENERIC: Record<LabelEvent, string[]> = {
   streakW: ["{n} the {label} has won {k} straight."],
   streakL: ["{n} the {label} has lost {k} in a row."],
   foul: ["{n} the {label} picked up {k} fouls."],
+  up: ["{n} the {label} scored {pts} a game tonight, well above the usual {avg}."],
+  down: ["{n} the {label} scored {pts} a game tonight, well below the usual {avg}."],
+  revenge: ["{n} the {label} finally got one back on {o}, now {r} all time."],
+  owned: ["{n} the {label} lost to {o} again, {r} all time."],
 }
 
 export function labelsOf(state: PooleanState, playerId: string): string[] {

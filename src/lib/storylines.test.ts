@@ -74,4 +74,11 @@ describe("storylines", () => {
     expect(previewStories(state(history.slice(0, 2)), name)).toEqual([])
     expect(previewStories(state(history), name).join(" ")).toMatch(/shy of|owns the series|streak/)
   })
+
+  it("notes a result against a specific opponent from the history", () => {
+    // Z had won 1 of 5 against X, and wins tonight.
+    const st = state([...history, game("g6", "2026-10-06", ["x"], ["z"], [["z", 6], ["x", 2]])])
+    const stories = nightStories(st, summarizeNight(st, "2026-10-06"), [], name)
+    expect(stories.join(" ")).toMatch(/Z .*X.*2-4/)
+  })
 })

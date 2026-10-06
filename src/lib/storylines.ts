@@ -380,6 +380,59 @@ function extraNightStories(state: PooleanState, s: NightSummary, name: Name): { 
     regulars.slice(0, 2).forEach(([id]) => bad.push(labelLine(state, id, "noshow", { n: name(id) }, s.date) ?? say(s.date + id + "ns", `${name(id)} was not there tonight and usually is. Somebody should check on them, or at least text them.`, `${name(id)} missed the night. Their teams had to find someone else to blame.`)))
   }
 
+  // Personal: tonight against each player's own history.
+  const hist = results(state).filter((r) => r.date < s.date)
+  const prior = new Map<string, number[]>()
+  for (const r of hist) {
+    for (const id of [...r.game.teamA, ...r.game.teamB]) {
+      const a = prior.get(id) ?? []
+      a.push(playerLine(r.game, id).pts)
+      prior.set(id, a)
+    }
+  }
+  const swings = s.players
+    .filter((p) => p.games >= 2 && (prior.get(p.id)?.length ?? 0) >= 6)
+    .map((p) => {
+      const ps = prior.get(p.id) as number[]
+      const avg = ps.reduce((a, b) => a + b, 0) / ps.length
+      return { p, avg, now: p.pts / p.games }
+    })
+  const up = swings.filter((x) => x.now >= x.avg * 1.5 && x.now - x.avg >= 3).sort((x, y) => y.now - y.avg - (x.now - x.avg))[0]
+  if (up) good.push(labelLine(state, up.p.id, "up", { n: name(up.p.id), pts: up.now.toFixed(1), avg: up.avg.toFixed(1) }, s.date) ?? say(s.date + up.p.id + "up", `${name(up.p.id)} scored ${up.now.toFixed(1)} a game tonight, well above the usual ${up.avg.toFixed(1)}.`, `${name(up.p.id)} averages ${up.avg.toFixed(1)} and put up ${up.now.toFixed(1)} tonight. Somebody was holding out.`))
+  const down = swings.filter((x) => x.now <= x.avg * 0.5 && x.avg - x.now >= 3).sort((x, y) => y.avg - y.now - (x.avg - x.now))[0]
+  if (down) bad.push(labelLine(state, down.p.id, "down", { n: name(down.p.id), pts: down.now.toFixed(1), avg: down.avg.toFixed(1) }, s.date) ?? say(s.date + down.p.id + "down", `${name(down.p.id)} scored ${down.now.toFixed(1)} a game tonight, far below the usual ${down.avg.toFixed(1)}. Was that on purpose?`, `${name(down.p.id)} averages ${down.avg.toFixed(1)} and managed ${down.now.toFixed(1)} tonight. Maybe save some for next time.`))
+
+  // Personal: results against a specific opponent, from everything before tonight.
+  const seen = (a: string, b: string) => {
+    let aw = 0
+    let bw = 0
+    for (const r of hist) {
+      if (r.winners.includes(a) && r.losers.includes(b)) aw++
+      else if (r.winners.includes(b) && r.losers.includes(a)) bw++
+    }
+    return { aw, bw }
+  }
+  const done = s.games.filter((g) => !g.live && g.winner)
+  let gotOne = false
+  let ownedAgain = false
+  for (const g of done) {
+    const winners = g.winner === "A" ? g.teamA : g.teamB
+    const losers = g.winner === "A" ? g.teamB : g.teamA
+    for (const w of winners) {
+      for (const l of losers) {
+        const { aw, bw } = seen(w, l)
+        if (aw + bw < 4) continue
+        if (!gotOne && bw - aw >= 2) {
+          gotOne = true
+          good.push(labelLine(state, w, "revenge", { n: name(w), o: name(l), r: `${aw + 1}-${bw}` }, s.date) ?? say(s.date + w + l + "rev", `${name(w)} finally got one back on ${name(l)}, ${aw + 1}-${bw} all time.`, `${name(w)} beat ${name(l)} tonight. Still ${bw} to ${aw + 1} the other way, but it is a start.`))
+        } else if (!ownedAgain && aw - bw >= 2) {
+          ownedAgain = true
+          bad.push(labelLine(state, l, "owned", { n: name(l), o: name(w), r: `${bw}-${aw + 1}` }, s.date) ?? say(s.date + w + l + "own", `${name(l)} lost to ${name(w)} again, ${bw}-${aw + 1} all time. At this point it is a trend.`, `${name(w)} beat ${name(l)} again and leads ${aw + 1}-${bw} all time. ${name(l)} should ask for a different matchup.`))
+        }
+      }
+    }
+  }
+
   // How the whole night felt.
   const perGame = (date: string) => {
     const gs = state.games.filter((g) => g.date === date && !g.liveInProgress)
