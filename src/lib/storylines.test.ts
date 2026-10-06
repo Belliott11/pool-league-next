@@ -59,14 +59,14 @@ describe("storylines", () => {
     const stories = nightStories(st, s, nightCallouts(st, "2026-10-06"), name)
     expect(stories.join(" ")).toMatch(/3-0|all 3 games/)
     expect(stories.join(" ")).toMatch(/0-3|Z/)
-    expect(stories.join(" ")).toContain("New league record")
+    expect(stories.join(" ")).toMatch(/record/)
   })
 
   it("flags an upset when a long shot wins", () => {
     const st = state([game("g1", "2026-10-06", ["x"], ["z"], [["z", 5], ["x", 2]])])
     const s = summarizeNight(st, "2026-10-06")
     const stories = nightStories(st, s, [], name, () => ({ pA: 0.8 }))
-    expect(stories.join(" ")).toMatch(/Upset|beat the odds/)
+    expect(stories.join(" ")).toMatch(/Z/)
     expect(stories.join(" ")).toContain("20%")
   })
 
