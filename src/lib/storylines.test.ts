@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { summarizeNight } from "@/lib/nightRecap"
 import { nightCallouts, recordBook } from "@/lib/records"
+import { lineSink } from "@/lib/labels"
 import { abnormality, nightStories, previewStories, rank, streaks } from "@/lib/storylines"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -99,5 +100,22 @@ describe("storylines", () => {
       5,
     )
     expect(out).toEqual(["Adam went 0-3 tonight.", "Was Adam even looking at the rim? 2-for-9."])
+  })
+
+  it("counts a double-double in one game, not across a night", () => {
+    const stat = (playerId: string, pts: number, oreb: number, dreb: number) => ({ playerId, pts, oreb, dreb, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 })
+    const box = (id: string, p: number, o: number, d: number): Game => ({ ...base, id, date: "2026-10-06", teamA: ["x"], teamB: ["z"], stats: [stat("x", p, o, d), stat("z", 2, 0, 0)], scoringEvents: [{ id: "e" + id } as never] })
+    const said: string[] = []
+    const run = (games: Game[]) => {
+      said.length = 0
+      lineSink.current = (options) => said.push(...options)
+      const st = state(games)
+      nightStories(st, summarizeNight(st, "2026-10-06"), [], name)
+      lineSink.current = null
+      return said.some((t) => t.includes("both stats at once"))
+    }
+    // 6 points and 6 rebounds in each of two games is 12 and 12 for the night, but never 10 and 10 in a game.
+    expect(run([box("a", 6, 3, 3), box("b", 6, 3, 3)])).toBe(false)
+    expect(run([box("a", 12, 6, 6)])).toBe(true)
   })
 })
