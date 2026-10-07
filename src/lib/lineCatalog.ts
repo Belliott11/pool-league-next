@@ -58,10 +58,10 @@ export function buildCatalog(state: PooleanState): CatalogLine[] {
   }
 
   const out = [...seen.values()]
-  const add = (text: string, src: string, cap: number) => {
+  const add = (text: string, src: string, cap: number, group = src) => {
     const key = lineKey(text)
     if (!seen.has(key)) {
-      const line = { key, text, source: src, group: src, cap }
+      const line = { key, text, source: src, group, cap }
       seen.set(key, line)
       out.push(line)
     }
@@ -71,8 +71,8 @@ export function buildCatalog(state: PooleanState): CatalogLine[] {
   const o = state.players[1]?.name ?? n
   const vars = sampleVars(n, o)
   for (const l of LABELS) {
-    for (const ev of LABEL_EVENTS) for (const t of l.lines[ev.key] ?? []) add(fill(t, vars), `Label ${l.name}: ${ev.label.toLowerCase()}`, LINE_CAP.label)
-    for (const [k, title] of [["injury", "injury note"], ["away", "away note"], ["back", "back note"]] as const) for (const t of l[k] ?? []) add(t, `Label ${l.name}: ${title}`, LINE_CAP.label)
+    for (const ev of LABEL_EVENTS) for (const t of l.lines[ev.key] ?? []) add(fill(t, vars), `Label ${l.name}: ${ev.label.toLowerCase()}`, LINE_CAP.label, `Label ${l.name}`)
+    for (const [k, title] of [["injury", "injury note"], ["away", "away note"], ["back", "back note"]] as const) for (const t of l[k] ?? []) add(t, `Label ${l.name}: ${title}`, LINE_CAP.label, `Label ${l.name}`)
   }
   return out
 }

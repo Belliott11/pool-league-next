@@ -632,7 +632,8 @@ export const isApproved = (text: string) => approved.has(lineKey(text))
 export const weighted = (options: string[]) => options.flatMap((o) => (isApproved(o) ? [o, o] : [o]))
 // How many approved wordings finish a type of line. Once a type has that many, only the approved ones are used and
 // the rest of that type is no longer offered for review, so the approve and remove cycle has an end.
-export const LINE_CAP = { recap: 3, label: 2, note: 8 }
+// A player type (label) is finished for review after one approved line; its other lines are still used as written.
+export const LINE_CAP = { recap: 3, label: 1, note: 8 }
 export function finalSet(options: string[], cap: number): string[] {
   const ok = options.filter(isApproved)
   return ok.length >= cap ? ok : options
@@ -672,9 +673,8 @@ export function labelLine(state: PooleanState, playerId: string, event: LabelEve
   }
   for (const k of keys) {
     const def = labelDef(k)
-    // Each label's lines for this moment are one type: once enough are approved, only those are used.
     const mine = def ? (def.lines[event] ?? []) : GENERIC[event].map((t) => t.split("{label}").join(k.toLowerCase()))
-    lines.push(...finalSet(mine.map((l) => fill(l, vars)).filter((l) => !isHidden(l)), LINE_CAP.label))
+    lines.push(...mine.map((l) => fill(l, vars)).filter((l) => !isHidden(l)))
   }
   const shown = weighted(lines.map((l) => fill(l, vars)).filter((l) => !isHidden(l)))
   if (shown.length === 0) return null
