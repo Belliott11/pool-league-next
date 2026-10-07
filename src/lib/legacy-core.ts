@@ -1319,17 +1319,7 @@ function getRealMatchupModel() {
   const rows = buildRealMatchupRows();
   if (rows.length < REAL_MATCHUP_MIN_GAMES) { realMatchupModelCache = false; return null; }
   const w = fitRealMatchupWeights(rows);
-  let looCorrect = 0, looN = 0;
-  rows.forEach((r, i) => {
-    // Starting from the full fit: dropping one game barely moves the answer, so a short refit
-    // lands in the same place as a from-scratch one at a fraction of the cost.
-    const wi = fitRealMatchupWeights(rows.filter((_, j) => j !== i), w, 150);
-    const p = sigmoid(wi[0] * r.x[0] + wi[1] * r.x[1] + wi[2] * r.x[2]);
-    if (p === 0.5) return;
-    looN++;
-    if ((p > 0.5) === (r.y === 1)) looCorrect++;
-  });
-  realMatchupModelCache = { w, n: rows.length, looCorrect, looN, lookups: realMatchupLookups() };
+  realMatchupModelCache = { w, n: rows.length, lookups: realMatchupLookups() };
   return realMatchupModelCache;
 }
 

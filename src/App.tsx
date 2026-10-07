@@ -35,6 +35,8 @@ import { PlayersPage } from "@/pages/PlayersPage"
 const ExportPage = lazy(() => import("@/pages/ExportPage").then((m) => ({ default: m.ExportPage })))
 const PlayerDetailPage = lazy(() => import("@/pages/PlayerDetail").then((m) => ({ default: m.PlayerDetailPage })))
 const LeaderboardPage = lazy(() => import("@/pages/Leaderboard").then((m) => ({ default: m.LeaderboardPage })))
+// Once the first screen is up, load the other tabs' code while the page is idle.
+const preloadTabs = () => void Promise.all([import("@/pages/Leaderboard"), import("@/pages/PlayerDetail"), import("@/pages/ExportPage")])
 
 function ImportScreen({ onImported }: { onImported: (state: PooleanState) => void }) {
   const [error, setError] = useState<string | null>(null)
@@ -232,6 +234,10 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   const liveOpen = view.tab === "games" && view.sub === "live"
   // On a phone, swipe sideways to move between tabs (visitors only see three of them).
   useTabSwipe(tab, readOnly ? ["games", "leaderboard", "player"] : ["games", "leaderboard", "player", "players", "export"], setTab)
+  useEffect(() => {
+    const t = setTimeout(preloadTabs, 800)
+    return () => clearTimeout(t)
+  }, [])
   useEffect(() => installStackTables(), [])
   useEffect(() => installDataViz(), [])
   // The header shrinks once the page is scrolled.

@@ -290,7 +290,7 @@
   @keyframes open-down { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
   @keyframes row-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
   @keyframes chip-in { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
-  [role="tabpanel"] { animation: page-in 280ms ease-out; }
+  [role="tabpanel"] { animation: page-in 150ms ease-out; }
   .anim-rise { animation: rise 480ms cubic-bezier(0.22, 1, 0.36, 1) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
   details[open] > div { animation: open-down 260ms ease-out; }
   tbody tr { animation: row-in 360ms ease-out backwards; }
@@ -313,15 +313,15 @@
   @keyframes line-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes bar-grow { from { transform: scaleX(0); } to { transform: none; } }
   @keyframes sheen { from { transform: translateX(-120%); } to { transform: translateX(120%); } }
-  .anim-card { animation: rise 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
-  .anim-card:nth-child(2) { animation-delay: 60ms; }
-  .anim-card:nth-child(3) { animation-delay: 120ms; }
-  .anim-card:nth-child(4) { animation-delay: 180ms; }
-  .anim-card:nth-child(5) { animation-delay: 240ms; }
-  .anim-card:nth-child(n + 6) { animation-delay: 300ms; }
+  .anim-card { animation: rise 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+  .anim-card:nth-child(2) { animation-delay: 30ms; }
+  .anim-card:nth-child(3) { animation-delay: 60ms; }
+  .anim-card:nth-child(4) { animation-delay: 90ms; }
+  .anim-card:nth-child(5) { animation-delay: 120ms; }
+  .anim-card:nth-child(n + 6) { animation-delay: 150ms; }
   .anim-line { animation: line-in 380ms ease-out backwards; animation-delay: calc(var(--i, 0) * 80ms); }
   .anim-bar { transform-origin: left; animation: bar-grow 600ms cubic-bezier(0.22, 1, 0.36, 1) 150ms backwards; }
-  .anim-page { animation: page-in 280ms ease-out; }
+  .anim-page { animation: page-in 160ms ease-out; }
   .anim-sheen { position: relative; overflow: hidden; }
   .anim-sheen::after {
     content: "";

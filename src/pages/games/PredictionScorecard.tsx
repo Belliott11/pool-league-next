@@ -1,4 +1,5 @@
 import { Target } from "lucide-react"
+import { useEffect, useState } from "react"
 import { CountUp } from "@/components/CountUp"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
@@ -51,8 +52,12 @@ function Record({ title, note, s, onOpenGame }: { title: string; note: string; s
 // The model's calls against what happened. Picks saved before a game are the live record; past games with no saved pick
 // get a backtest, each called by a model that had only the games before it, shown separately and labeled.
 export function PredictionScorecard({ state, onOpenGame }: { state: PooleanState; onOpenGame: (g: Game) => void }) {
-  const sc = scorecard(state)
-  if (sc.called === 0 && sc.waiting === 0 && sc.backtest.called === 0 && sc.imported.called === 0) return null
+  const [sc, setSc] = useState<ReturnType<typeof scorecard> | null>(null)
+  useEffect(() => {
+    const t = setTimeout(() => setSc(scorecard(state)), 50)
+    return () => clearTimeout(t)
+  }, [state.games])
+  if (!sc || sc.called === 0 && sc.waiting === 0 && sc.backtest.called === 0 && sc.imported.called === 0) return null
   return (
     <Card>
       <CardHeader>
