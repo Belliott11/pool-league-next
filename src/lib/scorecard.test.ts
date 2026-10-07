@@ -57,7 +57,7 @@ describe("backtest on past games", () => {
     // A game with nothing before it to go on comes out at exactly 50% and is not scored as a call.
     expect(sc.backtest.called).toBe([...calls.values()].filter((p) => p !== 0.5).length)
     expect(sc.backtest.called).toBeGreaterThan(0)
-    expect(predictionNote(games[2])).toMatch(/^Backtest pick: Team [AB] \(\d+%\), (right|wrong)$/)
+    expect(predictionNote(games.find((g) => g.id === [...calls].find(([, p]) => p !== 0.5)![0]))).toMatch(/^Backtest pick: Team [AB] \(\d+%\), (right|wrong)$/)
     setAppGames([])
   })
 
