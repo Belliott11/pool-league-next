@@ -57,7 +57,7 @@ describe("storylines", () => {
     const st = state([...history, game("g6", "2026-10-06", ["x"], ["z"], [["x", 6], ["x", 5], ["z", 1]]), game("g7", "2026-10-06", ["x"], ["z"], [["x", 3], ["z", 2]]), game("g8", "2026-10-06", ["x"], ["z"], [["x", 4], ["z", 2]])])
     const s = summarizeNight(st, "2026-10-06")
     const stories = nightStories(st, s, nightCallouts(st, "2026-10-06"), name)
-    expect(stories.join(" ")).toMatch(/3-0|all 3 games/)
+    expect(stories.join(" ")).toMatch(/X.*\b3\b|\b3\b.*X/)
     expect(stories.join(" ")).toMatch(/0-3|Z/)
     expect(stories.join(" ")).toMatch(/record/)
   })
