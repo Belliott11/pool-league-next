@@ -1,4 +1,5 @@
 import { predictRealMatchup } from "@/lib/matchup"
+import { pregamePrediction } from "@/lib/scorecard"
 import { liveScoreOf } from "@/lib/stats"
 import { newGame } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
@@ -19,7 +20,7 @@ export function liveTotals(game: Game): [number, number] {
 }
 
 export function startLive(state: PooleanState, id: string, date: string, teamA: string[], teamB: string[], target: number): PooleanState {
-  const g = newGame({ id, date, teamA, teamB, liveInProgress: true, liveScores: [], liveTarget: target })
+  const g = newGame({ id, date, teamA, teamB, liveInProgress: true, liveScores: [], liveTarget: target, prediction: pregamePrediction(teamA, teamB) })
   return { ...state, games: [...state.games, g] }
 }
 

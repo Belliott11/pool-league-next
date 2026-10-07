@@ -26,6 +26,7 @@ type Game = {
   date: string
   liveInProgress?: boolean
   liveTarget?: number
+  prediction?: { pA: number; at: string }
   liveScores?: Score[]
   scorekeeperScores?: Score[]
   winner?: "A" | "B" | null
@@ -34,7 +35,7 @@ type Game = {
   [key: string]: unknown
 }
 type State = { players: { id: string }[]; games: Game[]; [key: string]: unknown }
-type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
+type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; pA?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
 
 const total = (g: Game, team: string[]) => [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])].filter((s) => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0)
 const ids = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
@@ -72,6 +73,8 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
       liveInProgress: true,
       liveScores: [],
       liveTarget: target,
+      // The model's call, sent by the phone that started the game before anything was played.
+      ...(Number(body.pA) > 0 && Number(body.pA) < 1 ? { prediction: { pA: Math.round(Number(body.pA) * 1000) / 1000, at: new Date().toISOString() } } : {}),
     })
     return null
   }

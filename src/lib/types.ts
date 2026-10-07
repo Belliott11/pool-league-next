@@ -71,6 +71,8 @@ export interface Game {
   videoStart?: number
   masterVideoId?: string | null
   liveInProgress?: boolean
+  // The model's call, saved when the game was set up: team A's chance to win. Never filled in after the fact.
+  prediction?: { pA: number; at: string }
   liveScores?: { pid: string; points: number; bid?: string }[]
   // Baskets added by friends using the scorekeeper code; folded into liveScores when the game is finished.
   scorekeeperScores?: { pid: string; points: number; bid?: string }[]

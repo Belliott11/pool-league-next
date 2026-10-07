@@ -13,6 +13,7 @@ import { LEADER_LABEL, gameDays, recapText, summarizeNight, type LeaderKey, type
 import { predictRealMatchup } from "@/lib/matchup"
 import { RECORD_KEYS, RECORD_LABEL, nightCallouts, recordBook } from "@/lib/records"
 import { StoryList } from "@/components/StoryList"
+import { predictionNote } from "@/lib/scorecard"
 import { nightStories } from "@/lib/storylines"
 import { useLabeledState } from "@/lib/labelsContext"
 import { usePublishedNight } from "@/lib/published"
@@ -200,6 +201,10 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
                 Game {i + 1}
                 {g.live ? " · live" : g.liveOnly ? " · scored live" : ""}
               </span>
+              {(() => {
+                const note = predictionNote(state.games.find((x) => x.id === g.id))
+                return note && <span className="text-[11px] text-muted-foreground">{note}</span>
+              })()}
             </span>
             <span className={cn("min-w-0 truncate text-right text-sm", g.winner === "B" ? "font-semibold" : "text-muted-foreground")}>{names(g.teamB)}</span>
           </button>

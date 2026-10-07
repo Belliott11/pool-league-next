@@ -26,7 +26,7 @@ async function call(body: Record<string, unknown>): Promise<Reply> {
 }
 
 export const sendBasket = (gameId: string, pid: string, points: number, bid: string): Promise<Reply> => call({ action: "add", gameId, pid, points, bid })
-export const startGame = (gameId: string, date: string, teamA: string[], teamB: string[], target: number): Promise<Reply> =>
-  call({ action: "start", gameId, date, teamA, teamB, target })
+export const startGame = (gameId: string, date: string, teamA: string[], teamB: string[], target: number, pA?: number): Promise<Reply> =>
+  call({ action: "start", gameId, date, teamA, teamB, target, pA })
 export const finishGame = (gameId: string): Promise<Reply> => call({ action: "finish", gameId })
 export const undoBasket = (gameId: string): Promise<Reply> => call({ action: "undo", gameId })

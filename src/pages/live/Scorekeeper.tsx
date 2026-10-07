@@ -5,6 +5,7 @@ import { getClient } from "@/lib/cloud"
 import { haptic } from "@/lib/haptics"
 import { uid } from "@/lib/format"
 import { DEFAULT_TARGET } from "@/lib/live"
+import { pregamePrediction } from "@/lib/scorecard"
 import { finishGame, sendBasket, startGame, undoBasket } from "@/lib/scorekeeper"
 import { liveScoreOf } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
@@ -184,7 +185,7 @@ export function ViewerSetup({ state, onClose }: { state: PooleanState; onClose: 
     setBusy(true)
     setError("")
     haptic("medium")
-    const r = await startGame(uid("game"), new Date().toISOString().slice(0, 10), teamA, teamB, target)
+    const r = await startGame(uid("game"), new Date().toISOString().slice(0, 10), teamA, teamB, target, pregamePrediction(teamA, teamB)?.pA)
     setBusy(false)
     if (!r.ok) return setError(r.error)
     window.dispatchEvent(new Event("poolean-refresh"))

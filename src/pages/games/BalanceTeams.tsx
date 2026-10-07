@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { pregamePrediction } from "@/lib/scorecard"
 import {
   BUILD_LABELS,
   computeBalanceQualityMap,
@@ -304,7 +305,7 @@ export function BalanceTeams({
   }
 
   function useTeams(a: string[], b: string[]) {
-    const game = newGame({ id: uid("game"), date, teamA: [...a], teamB: [...b] })
+    const game = newGame({ id: uid("game"), date, teamA: [...a], teamB: [...b], prediction: pregamePrediction(a, b) })
     update((s) => ({ ...s, games: [...s.games, game] }))
     onCreated(game)
   }

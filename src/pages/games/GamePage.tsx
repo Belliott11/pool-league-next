@@ -13,6 +13,7 @@ import { WatchContext, WatchTime } from "@/components/WatchTime"
 import type { PlayerControl } from "@/components/YouTubePlayer"
 import { JUMP_LEAD_SECONDS } from "@/lib/legacy-core"
 import { gameVideoUrl } from "@/lib/video"
+import { predictionNote } from "@/lib/scorecard"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
@@ -418,6 +419,8 @@ export function GamePage({ state, update, game, onBack, onStatEntry, autoSeek }:
           <TeamScore state={state} game={game} ids={game.teamB} label="Team B" score={scoreB} />
         </CardContent>
       </Card>
+
+      {predictionNote(game) && <p className="-mt-2 text-center text-sm text-muted-foreground">{predictionNote(game)}</p>}
 
       <div ref={videoBox}>
         <GameVideoPanel state={state} game={game} update={update} readOnly={readOnly} control={control} />

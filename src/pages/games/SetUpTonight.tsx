@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { PlayerChips, toggleId } from "@/components/PlayerChips"
 import { formatDateDisplay, uid } from "@/lib/format"
 import { playerName } from "@/lib/players"
+import { pregamePrediction } from "@/lib/scorecard"
 import { newGame, type Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -134,7 +135,7 @@ function CreateGame({ state, update, onCreated }: { state: PooleanState; update:
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    const game = newGame({ id: uid("game"), date, videoUrl: videoUrl.trim(), notes: notes.trim(), teamA, teamB })
+    const game = newGame({ id: uid("game"), date, videoUrl: videoUrl.trim(), notes: notes.trim(), teamA, teamB, prediction: pregamePrediction(teamA, teamB) })
     update((s) => ({ ...s, games: [...s.games, game] }))
     setDate("")
     setVideoUrl("")
