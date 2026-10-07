@@ -204,40 +204,19 @@ export const LABELS: LabelDef[] = [
     name: "Snack Captain",
     blurb: "In charge of the cooler",
     lines: {
-      noshow: ["{n} skipped the night, so nobody knows where the snacks are.", "{n} was not there tonight, and neither were the snacks."],
-      tov: ["{n} had {k} turnovers. Gave away the ball and the chips."],
-      zero: ["{n} scored zero in {g} games, but brought good snacks."],
-      winless: ["{n} went 0-{l}. The snacks were the only win."],
+      noshow: ["{n} skipped the night, and the cooler has been left in a leadership vacuum."],
+      tov: ["{n} had {k} turnovers and still found time to restock the cooler."],
+      zero: ["{n} scored zero in {g} games and was seen carrying a tray of orange slices like a trophy."],
+      winless: ["{n} went 0-{l} and ate the sorrow, one handful at a time."],
       hot: ["{n} shot {fg} on a full stomach."],
       cold: ["{n} went {fg}. Too many snacks before the game."],
-      mvp: ["{n} won MVP and kept the cooler stocked."],
-      sweep: ["{n} went {w}-0 and fed everyone after."],
-      streakW: ["{n} has won {k} straight and the snacks are better for it."],
-      streakL: ["{n} has lost {k} in a row. The snacks are carrying the group."],
+      mvp: ["{n} won MVP and is being paid in chips."],
+      sweep: ["{n} went {w}-0 and celebrated with a snack that nobody else got to see."],
+      streakW: ["{n} has won {k} straight and the group has started to wonder what is in the dip."],
+      streakL: ["{n} has lost {k} in a row and brought a bigger bag of chips as an apology."],
     },
     injury: ["Strained something reaching for the last chips."],
-    back: ["Back, and hopefully with snacks."],
-  },
-  {
-    key: "veteranKnees",
-    name: "Veteran Knees",
-    blurb: "Plays smart because moving fast is gone",
-    lines: {
-      cold: ["{n} went {fg} and blamed the knees before the game even started.", "{fg} for {n}. The knees were consulted and have no comment."],
-      noshow: ["{n} skipped the night to rest the knees."],
-      mvp: ["{n} won MVP on experience alone, and the knees held up."],
-      streakW: ["{n} has won {k} straight on smart play, not speed. Younger players are taking notes, or ice."],
-      up: ["{n} scored {pts} a game tonight, up from {avg}. The knees were worth it."],
-      down: ["{n} scored {pts} a game against a usual {avg}. The knees had a say."],
-      hot: ["{n} shot {fg} without jumping once."],
-      tov: ["{n} had {k} turnovers. The legs were a step slow."],
-      zero: ["{n} scored zero in {g} games and saved the knees."],
-      sweep: ["{n} went {w}-0 and barely moved."],
-      winless: ["{n} went 0-{l}. The knees need a day."],
-      streakL: ["{n} has lost {k} in a row and could use a longer warmup."],
-    },
-    injury: ["The knees made the call.", "Pulled a muscle getting out of the car."],
-    back: ["Knees cleared to play."],
+    back: ["Back, with a bag the size of a small dog."],
   },
   {
     key: "rookie",
@@ -588,7 +567,21 @@ export function parseOwnLine(entry: string): { event: LabelEvent; text: string }
   const bar = entry.indexOf("|")
   return isOwnLine(entry) && bar > 1 ? { event: entry.slice(1, bar) as LabelEvent, text: entry.slice(bar + 1) } : null
 }
-export const labelsOf = (state: PooleanState, playerId: string): string[] => rawOf(state, playerId).filter((k) => !isOwnLine(k))
+// Labels that no longer exist. They are dropped from anyone who still has them.
+export const RETIRED_LABELS = ["veteranKnees"]
+export const labelsOf = (state: PooleanState, playerId: string): string[] => rawOf(state, playerId).filter((k) => !isOwnLine(k) && !RETIRED_LABELS.includes(k))
+export function stripRetired(book: Record<string, string[]>): { book: Record<string, string[]>; changed: boolean } {
+  let changed = false
+  const out: Record<string, string[]> = {}
+  for (const [id, list] of Object.entries(book)) {
+    const kept = list.filter((k) => !RETIRED_LABELS.includes(k))
+    if (kept.length !== list.length) changed = true
+    if (kept.length) out[id] = kept
+    else if (!list.length) out[id] = list
+    else changed = true
+  }
+  return { book: out, changed }
+}
 
 // Headlines the editor has reviewed. A line is identified by its wording with player names and numbers blanked
 // out, so thumbing one down removes that wording for every player and every night, not just that one rendering.

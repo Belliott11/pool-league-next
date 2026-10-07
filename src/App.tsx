@@ -7,7 +7,7 @@ import { getClient } from "@/lib/cloud"
 import { loadLabels, saveLabels, type LabelBook } from "@/lib/labelStore"
 import { setPronouns } from "@/lib/pronouns"
 import { APPROVED, HIDDEN, LabelsContext } from "@/lib/labelsContext"
-import { lineKey, setApprovedLines, setHiddenLines, setLineNames } from "@/lib/labels"
+import { lineKey, setApprovedLines, setHiddenLines, setLineNames, stripRetired } from "@/lib/labels"
 import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
@@ -121,8 +121,9 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       if (dead) return
       // Labels an earlier version saved in the shared data are moved here and removed from it.
       const legacy = (state.playerLabels ?? {}) as LabelBook
-      const merged = { ...legacy, ...stored }
+      const { book: merged, changed } = stripRetired({ ...legacy, ...stored })
       setLabelsState(merged)
+      if (changed) void saveLabels(getClient(), merged)
       if (Object.keys(legacy).length) {
         void saveLabels(getClient(), merged)
         update((s) => {

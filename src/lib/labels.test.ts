@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { isHidden, labelLine, labelInjuryNotes, labelsOf, LABELS, ownLine, setApprovedLines, setHiddenLines, setLineNames, weighted, finalSet } from "@/lib/labels"
+import { isHidden, labelLine, labelInjuryNotes, labelsOf, LABELS, ownLine, setApprovedLines, setHiddenLines, setLineNames, weighted, finalSet, stripRetired } from "@/lib/labels"
 import type { PooleanState } from "@/lib/types"
 
 const state = (labels: Record<string, string[]>): PooleanState => ({ players: [{ id: "a", name: "A" }], games: [], playerLabels: labels })
@@ -29,7 +29,7 @@ describe("labels", () => {
   })
 
   it("offers injury notes drawn from labels", () => {
-    expect(labelInjuryNotes(state({ a: ["veteranKnees"] }), "a", "injury").length).toBeGreaterThan(0)
+    expect(labelInjuryNotes(state({ a: ["gunner"] }), "a", "injury").length).toBeGreaterThan(0)
     expect(labelsOf(state({ a: ["gunner"] }), "a")).toEqual(["gunner"])
   })
 
@@ -75,5 +75,12 @@ describe("reviewed lines", () => {
     expect(finalSet(["One.", "Two.", "Three.", "Four."], 3)).toEqual(["One.", "Two.", "Three."])
     expect(finalSet(["One.", "Two.", "Four."], 3)).toEqual(["One.", "Two.", "Four."])
     setApprovedLines([])
+  })
+
+  it("drops a retired label from anyone who still has it", () => {
+    const { book, changed } = stripRetired({ a: ["gunner", "veteranKnees"], b: ["veteranKnees"] })
+    expect(changed).toBe(true)
+    expect(book).toEqual({ a: ["gunner"] })
+    expect(labelsOf(state({ a: ["gunner", "veteranKnees"] }), "a")).toEqual(["gunner"])
   })
 })

@@ -51,7 +51,7 @@ export const GOOFY: Record<InjuryStatus, string[]> = {
     "Abducted by a very polite alien who wanted to know about the pick and roll.",
     "Summoned to a hearing about a foul that happened in 2019.",
     "Held for questioning about a stat line that was suspiciously good.",
-    "Banned from a library for dribbling, which was the whole visit.",
+    "Away, signing paperwork to be officially declared the best at one specific shot.",
     "Away, testifying at a trial where the defendant is a particular bank shot.",
     "Detained at the airport for carrying a suspiciously good jump shot.",
     "Currently being studied by scientists who cannot explain the shot.",
