@@ -1,5 +1,5 @@
 import { playerLine, scoreOf } from "@/lib/nightRecap"
-import { computeLeaderboard, isCurrentSeasonGame } from "@/lib/stats"
+import { computeLeaderboard, defensiveRating, gameDefenseStats, getGameStats, isCurrentSeasonGame } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
 
 // Who leads each award so far this season, from this app's own games (the games since the season started). The
@@ -26,28 +26,32 @@ export function awardRace(state: PooleanState): RaceRow[] {
   const board = computeLeaderboard(season).filter((r) => r.gp >= Math.min(MIN_GAMES, 2))
   const nameOf = (id: string) => id
 
-  // Most wins, counting every finished game (live-scored ones too), not only box-scored ones.
-  const record = new Map<string, { w: number; l: number }>()
+  // MVP is total two-way score over the season, and the defender award is total defensive score: both need a box
+  // score, and both add up every game, so playing more games counts.
+  const totals = new Map<string, { twoWay: number; defense: number; gp: number }>()
   for (const g of games) {
-    const [a, b] = scoreOf(g)
-    if (a === b) continue
+    if (g.scoringEvents.length === 0) continue
     for (const id of [...g.teamA, ...g.teamB]) {
-      const r = record.get(id) ?? { w: 0, l: 0 }
-      if ((a > b) === g.teamA.includes(id)) r.w++
-      else r.l++
-      record.set(id, r)
+      const l = playerLine(g, id)
+      if (l.twoWay === null) continue
+      const t = totals.get(id) ?? { twoWay: 0, defense: 0, gp: 0 }
+      t.twoWay += l.twoWay
+      t.defense += defensiveRating(getGameStats(g, id), gameDefenseStats(g, id))
+      t.gp++
+      totals.set(id, t)
     }
   }
-  const byWins = [...record.entries()].sort((x, y) => y[1].w - x[1].w || x[1].l - y[1].l)
-  if (byWins.length) rows.push({ key: "mvp", label: "MVP race", basis: "Most wins", leaders: top(byWins.map(([id, r]) => ({ ids: [id], value: `${r.w}-${r.l}` }))) })
+  const boxed = [...totals.entries()].filter(([, t]) => t.gp >= 2)
+  const byTotal = [...boxed].sort((x, y) => y[1].twoWay - x[1].twoWay)
+  if (byTotal.length) rows.push({ key: "mvp", label: "MVP race", basis: "Total two-way score", leaders: top(byTotal.map(([id, t]) => ({ ids: [id], value: `${t.twoWay.toFixed(1)} over ${t.gp} games` }))) })
 
   // Best all-around: two-way per 20, the same number as the standings.
   const byTwoWay = board.filter((r) => r.gp >= MIN_GAMES).sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
   if (byTwoWay.length) rows.push({ key: "best-player", label: "Best player", basis: "Two-way per 20", leaders: top(byTwoWay.map((r) => ({ ids: [r.player.id], value: `${r.twoWayPer20.toFixed(1)} per 20` }))) })
 
-  // Defender: the defensive part of two-way (two-way minus offense), per 20.
-  const byDefense = board.filter((r) => r.gp >= MIN_GAMES).map((r) => ({ r, d: r.twoWayPer20 - r.offRatingPer20 })).sort((a, b) => b.d - a.d)
-  if (byDefense.length) rows.push({ key: "dpoy", label: "Defender", basis: "Defense rating per 20", leaders: top(byDefense.map((x) => ({ ids: [x.r.player.id], value: `${x.d.toFixed(1)} per 20` }))) })
+  // Defender: total defensive score.
+  const byDefense = [...boxed].sort((x, y) => y[1].defense - x[1].defense)
+  if (byDefense.length) rows.push({ key: "dpoy", label: "Defender", basis: "Total defensive score", leaders: top(byDefense.map(([id, t]) => ({ ids: [id], value: `${t.defense.toFixed(1)} over ${t.gp} games` }))) })
 
   // Clutch: win rate in games decided by 3 or fewer, at least 2 of them.
   const close = new Map<string, { w: number; gp: number }>()
