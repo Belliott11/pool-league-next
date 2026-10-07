@@ -4379,7 +4379,7 @@ function computeAwardsVsStats() {
         const idx = ranking.findIndex(r => r.player.id === slug);
         detail = idx === -1
           ? (AWARD_NOT_FOUND_TEXT[award.statKey] || "No games logged yet")
-          : `${ranking[idx].display} (#${idx + 1} of ${ranking.length})`;
+          : `${ranking[idx].display} (#${idx + 1} of ${ranking.length} on this stat)`;
       }
       return { slug, player, detail };
     });
@@ -4883,7 +4883,7 @@ function renderPlayerRankPill(playerId) {
   if (rank) {
     const arrow = rank.delta === null || rank.delta === 0 ? "" : rank.delta > 0
       ? `<span class="player-rank-pill-up">▲${rank.delta}</span>` : `<span class="player-rank-pill-down">▼${Math.abs(rank.delta)}</span>`;
-    parts.push(`<span class="player-rank-pill-main" title="Real site power ranking for the ${escapeHtml(String(selectedPooleanSeason))} season, among the ${rank.fieldSize} players with ${rank.min}+ parties. The arrow is the move from the latest party night.">#${rank.rank} of ${rank.fieldSize}</span>${arrow}`);
+    parts.push(`<span class="player-rank-pill-main" title="Real site power ranking for the ${escapeHtml(String(selectedPooleanSeason))} season, among the ${rank.fieldSize} players with ${rank.min}+ parties. The arrow is the move from the latest party night.">Power rank #${rank.rank} of ${rank.fieldSize}</span>${arrow}`);
   }
   if (summary) parts.push(`<span class="player-rank-pill-attendance">${icon("calendar")} ${summary.of} part${summary.of === 1 ? "y" : "ies"} this season</span>`);
   wrap.innerHTML = parts.join("");

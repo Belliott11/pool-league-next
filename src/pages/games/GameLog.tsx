@@ -1,6 +1,6 @@
 import { TEAM } from "@/lib/teamColors"
 import { EmptyState } from "@/components/EmptyState"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useReadOnly } from "@/lib/mode"
 import { LiveOddsMini } from "@/pages/live/LiveOdds"
 import { Badge } from "@/components/ui/badge"
@@ -163,7 +163,7 @@ function GameCard({
             {shared ? "Shared" : "Share"}
           </Button>
           {onDelete && (
-            <Button size="sm" variant="destructive" onClick={onDelete}>
+            <Button size="sm" variant="ghost" className="ml-auto text-destructive hover:bg-destructive/10" onClick={onDelete}>
               Delete
             </Button>
           )}
@@ -251,6 +251,13 @@ export function GameLog({
   update: Update
   onOpen: (game: Game) => void
 }) {
+  // A deleted game can be put back for a few seconds, in the same spot in the list.
+  const [undo, setUndo] = useState<{ game: Game; index: number } | null>(null)
+  useEffect(() => {
+    if (!undo) return
+    const t = setTimeout(() => setUndo(null), 10_000)
+    return () => clearTimeout(t)
+  }, [undo])
   const readOnly = useReadOnly()
   const [filters, setFilters] = useState<GameFilters>(EMPTY_FILTERS)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -300,6 +307,22 @@ export function GameLog({
           </span>
         )}
       </div>
+      {undo && (
+        <div role="status" className="flex items-center justify-between gap-2 rounded-lg border bg-card p-2 text-sm">
+          <span>Game deleted.</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const { game, index } = undo
+              update((s) => (s.games.some((x) => x.id === game.id) ? s : { ...s, games: [...s.games.slice(0, index), game, ...s.games.slice(index)] }))
+              setUndo(null)
+            }}
+          >
+            Undo
+          </Button>
+        </div>
+      )}
       {showAdvanced && <AdvancedFilters state={state} filters={filters} setFilters={setFilters} />}
       {state.games.length === 0 ? (
         <EmptyState title="No games yet" hint="Create a game below, then log its shots to start the record." />
@@ -314,6 +337,7 @@ export function GameLog({
             onOpen={() => onOpen(g)}
             onDelete={readOnly ? undefined : () => {
               if (!confirm("Delete this game and all its stats?")) return
+              setUndo({ game: g, index: state.games.findIndex((x) => x.id === g.id) })
               update((s) => ({ ...s, games: s.games.filter((x) => x.id !== g.id) }))
             }}
           />

@@ -1,5 +1,6 @@
 import { injuryBoard, statusInfo } from "@/lib/injuries"
 import { pick } from "@/lib/pick"
+import { computeLeaderboard } from "@/lib/stats"
 import { forPlayer } from "@/lib/pronouns"
 import { finalSet, isHidden, labelLine, LINE_CAP, lineKey, lineSink, weighted } from "@/lib/labels"
 import type { NightSummary } from "@/lib/nightRecap"
@@ -98,6 +99,11 @@ export function rank(items: Item[], limit: number, perPlayerMax = 2): string[] {
     if (chosen.length >= limit) break
   }
   return chosen.filter((x) => !isHidden(x))
+}
+// Two-way per 20, the same number the standings table shows, so a story and the table never disagree.
+export function twoWayPer20Of(state: PooleanState): (id: string) => string {
+  const rows = new Map(computeLeaderboard(state).map((r) => [r.player.id, r.twoWayPer20]))
+  return (id) => (rows.get(id) ?? 0).toFixed(1)
 }
 // How far a value sits from the others, in standard deviations.
 function zAmong(xs: number[], v: number): number {
@@ -218,8 +224,9 @@ export function previewStories(state: PooleanState, name: Name): string[] {
     }
   }
   const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / (xs.length || 1)
-  const leader = [...per.entries()].filter(([, v]) => v.tw.length >= 3).sort((x, y) => avg(y[1].tw) - avg(x[1].tw))[0]
-  if (leader) add(2 + zAmong([...per.values()].filter((v) => v.tw.length >= 3).map((v) => avg(v.tw)), avg(leader[1].tw)), leader[0], say(lastDate + "lead", `${name(leader[0])} leads the league in two-way score at ${avg(leader[1].tw).toFixed(1)} a game, which has been mentioned already, by ${name(leader[0])}.`, `${avg(leader[1].tw).toFixed(1)} two-way a game puts ${name(leader[0])} on top and the rest of the group on notice.`, `Best all-around player so far: ${name(leader[0])}, ${avg(leader[1].tw).toFixed(1)} two-way a game, and a lot of people are checking the math.`, `Ask who leads in two-way score. ${name(leader[0])}, ${avg(leader[1].tw).toFixed(1)} a game, and they will say it first.`))
+  const per20 = twoWayPer20Of(state)
+  const leader = [...per.entries()].filter(([, v]) => v.tw.length >= 3).sort((x, y) => Number(per20(y[0])) - Number(per20(x[0])))[0]
+  if (leader) add(2 + zAmong([...per.values()].filter((v) => v.tw.length >= 3).map((v) => avg(v.tw)), avg(leader[1].tw)), leader[0], say(lastDate + "lead", `${name(leader[0])} leads the league in two-way score at ${per20(leader[0])} per 20, which has been mentioned already, by ${name(leader[0])}.`, `${per20(leader[0])} two-way per 20 puts ${name(leader[0])} on top and the rest of the group on notice.`, `Best all-around player so far: ${name(leader[0])}, ${per20(leader[0])} two-way per 20, and a lot of people are checking the math.`, `Ask who leads in two-way score. ${name(leader[0])}, ${per20(leader[0])} per 20, and they will say it first.`))
   const seasonWins = new Map<string, number>()
   rs.forEach((r) => r.winners.forEach((id) => seasonWins.set(id, (seasonWins.get(id) ?? 0) + 1)))
   const heating = [...per.entries()]
@@ -286,8 +293,8 @@ export function previewStories(state: PooleanState, name: Name): string[] {
     .filter((x) => x.season - x.recent >= 2)
     .sort((x, y) => y.season - y.recent - (x.season - x.recent))[0]
   if (coldHand) add(abn(coldHand.id, ptsPick, coldHand.recent), coldHand.id, say(lastDate + coldHand.id + "ch", `${name(coldHand.id)} has scored ${coldHand.recent.toFixed(1)} a game lately, down from ${coldHand.season.toFixed(1)}, and is probably blaming the ball.`, `${name(coldHand.id)} is averaging ${coldHand.recent.toFixed(1)} over the last 3, down from ${coldHand.season.toFixed(1)}, which is the kind of drop people ask a doctor about.`, `${coldHand.recent.toFixed(1)} a game lately for ${name(coldHand.id)}, after ${coldHand.season.toFixed(1)} all season. Somebody is checking the car for the rest.`, `${name(coldHand.id)} dropped from ${coldHand.season.toFixed(1)} to ${coldHand.recent.toFixed(1)} a game, and the missing points are believed to be in the lost and found.`, `Last 3 games: ${coldHand.recent.toFixed(1)} a game for ${name(coldHand.id)}. Season average: ${coldHand.season.toFixed(1)}. The difference has been reported missing.`))
-  const lastTw = [...per.entries()].filter(([, v]) => v.tw.length >= 3).sort((x, y) => avg(x[1].tw) - avg(y[1].tw))[0]
-  if (lastTw && avg(lastTw[1].tw) < 0 && lastTw[0] !== leader?.[0]) add(1.5 + zAmong([...per.values()].filter((v) => v.tw.length >= 3).map((v) => avg(v.tw)), avg(lastTw[1].tw)), lastTw[0], say(lastDate + "rear", `${name(lastTw[0])} is last in two-way score at ${avg(lastTw[1].tw).toFixed(1)} a game. That is the whole league, and they are at the bottom of it.`, `Their team is usually better off when ${name(lastTw[0])} is not on it: ${avg(lastTw[1].tw).toFixed(1)} two-way a game.`, `${avg(lastTw[1].tw).toFixed(1)} two-way a game puts ${name(lastTw[0])} at the bottom of the league, which is the only place with enough room.`, `${name(lastTw[0])} is at ${avg(lastTw[1].tw).toFixed(1)} two-way a game. That is last, and it is not close.`))
+  const lastTw = [...per.entries()].filter(([, v]) => v.tw.length >= 3).sort((x, y) => Number(per20(x[0])) - Number(per20(y[0])))[0]
+  if (lastTw && Number(per20(lastTw[0])) < 0 && lastTw[0] !== leader?.[0]) add(1.5 + zAmong([...per.values()].filter((v) => v.tw.length >= 3).map((v) => avg(v.tw)), avg(lastTw[1].tw)), lastTw[0], say(lastDate + "rear", `${name(lastTw[0])} is last in two-way score at ${per20(lastTw[0])} per 20. That is the whole league, and they are at the bottom of it.`, `Their team is usually better off when ${name(lastTw[0])} is not on it: ${per20(lastTw[0])} two-way per 20.`, `${per20(lastTw[0])} two-way per 20 puts ${name(lastTw[0])} at the bottom of the league, which is the only place with enough room.`, `${name(lastTw[0])} is at ${per20(lastTw[0])} two-way per 20. That is last, and it is not close.`))
   return rank(items, 8)
 }
 
@@ -326,8 +333,9 @@ export function seasonStories(state: PooleanState, name: Name): string[] {
 
   const scorer = [...all].sort((x, y) => y[1].pts - x[1].pts)[0]
   if (scorer && scorer[1].pts > 0) add(2 + zAmong(all.map(([, v]) => v.pts), scorer[1].pts), scorer[0], say("scorer" + scorer[0], `${name(scorer[0])} is the top scorer with ${scorer[1].pts} points, ${(scorer[1].pts / scorer[1].gp).toFixed(1)} a game, and took every shot to get there.`, `${scorer[1].pts} points for ${name(scorer[0])}, the league's top scorer. Whether that is skill or volume is still being debated.`, `Who scores the most? ${name(scorer[0])}, ${scorer[1].pts} points, and a lot of shots to go with them.`))
-  const tw = all.filter(([, v]) => v.tw.length >= 3).sort((x, y) => y[1].tw.reduce((a, b) => a + b, 0) / y[1].tw.length - x[1].tw.reduce((a, b) => a + b, 0) / x[1].tw.length)[0]
-  if (tw) add(2, tw[0], `${name(tw[0])} leads in two-way score at ${(tw[1].tw.reduce((a, b) => a + b, 0) / tw[1].tw.length).toFixed(1)} a game, so the points and the stops are coming from the same person. Annoying.`)
+  const p20 = twoWayPer20Of(state)
+  const tw = all.filter(([, v]) => v.tw.length >= 3).sort((x, y) => Number(p20(y[0])) - Number(p20(x[0])))[0]
+  if (tw) add(2, tw[0], `${name(tw[0])} leads in two-way score at ${p20(tw[0])} per 20, so the points and the stops are coming from the same person. Annoying.`)
 
   // Longest win streak of the season.
   const run = new Map<string, number>()
