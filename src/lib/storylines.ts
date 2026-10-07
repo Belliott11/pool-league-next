@@ -316,7 +316,7 @@ export function seasonStories(state: PooleanState, name: Name): string[] {
   const all = [...rec.entries()]
   const winPct = (v: { w: number; l: number }) => v.w / (v.w + v.l)
   const ranked = all.filter(([, v]) => v.gp >= 5).sort((x, y) => winPct(y[1]) - winPct(x[1]) || y[1].w - x[1].w)
-  if (ranked[0]) add(4, ranked[0][0], say("pace" + ranked[0][0], `${ranked[0][1].w}-${ranked[0][1].l} for ${name(ranked[0][0])}, and nobody has caught up. Take your time, everyone.`, `${name(ranked[0][0])} leads at ${ranked[0][1].w}-${ranked[0][1].l} (${pct(winPct(ranked[0][1]))}%), and everyone behind is just watching the back of a jersey.`, `${ranked[0][1].w}-${ranked[0][1].l} for ${name(ranked[0][0])} and a comfortable lead, the kind that comes with a lot of waving.`, `${name(ranked[0][0])} is at the top at ${ranked[0][1].w}-${ranked[0][1].l}, and the rest of the table is looking for a ladder.`, `The standings have one clear leader: ${name(ranked[0][0])}, ${ranked[0][1].w}-${ranked[0][1].l}, and a very smug walk.`))
+  if (ranked[0]) add(4, ranked[0][0], say("pace" + ranked[0][0], `${ranked[0][1].w}-${ranked[0][1].l} for ${name(ranked[0][0])}, and nobody has caught up. Take your time, everyone.`, `${name(ranked[0][0])} is ${ranked[0][1].w}-${ranked[0][1].l} and in front, and the chasing pack has started calling it cardio.`))
   if (ranked[1] && winPct(ranked[0][1]) - winPct(ranked[1][1]) <= 0.05) add(2.2, ranked[0][0], `${name(ranked[0][0])} and ${name(ranked[1][0])} are neck and neck for the top spot. Whoever loses next will hear about it.`)
 
   const scorer = [...all].sort((x, y) => y[1].pts - x[1].pts)[0]
@@ -339,7 +339,7 @@ export function seasonStories(state: PooleanState, name: Name): string[] {
   if (b && b.n >= 4) add(b.n * 0.6, b.id, say("streak" + b.id, `${name(b.id)}'s ${b.n}-game win streak is the longest of the season. Somebody should have stopped them sooner.`, `The longest win streak of the season belongs to ${name(b.id)}: ${b.n}. Everybody else will have to live with that.`, `${name(b.id)} won ${b.n} in a row, the longest streak of the season, and the other side keeps asking for a recount.`, `${b.n} straight wins for ${name(b.id)}, a streak that has now outlasted most summer plans.`))
 
   const iron = [...all].sort((x, y) => y[1].gp - x[1].gp)[0]
-  if (iron && iron[1].gp >= 5) add(1, iron[0], say("iron" + iron[0], `${name(iron[0])} has played in ${iron[1].gp} of ${rs.length} games, more than anyone. Either dedicated, or has nothing else going on.`, `${name(iron[0])} has played ${iron[1].gp} of ${rs.length} games and could be given a key.`, `Attendance leader: ${name(iron[0])}, ${iron[1].gp} of ${rs.length}, and the pool probably knows them by name.`))
+  if (iron && iron[1].gp >= 5) add(1, iron[0], say("iron" + iron[0], `${name(iron[0])} has played in ${iron[1].gp} of ${rs.length} games, more than anyone. Either dedicated, or has nothing else going on.`, `Attendance leader: ${name(iron[0])}, ${iron[1].gp} of ${rs.length}, and the pool probably knows them by name.`, `${name(iron[0])} has played ${iron[1].gp} of ${rs.length} games, and the pool has started leaving the gate open for them.`))
 
   // Bad news for the season.
   const last = ranked[ranked.length - 1]
