@@ -85,3 +85,23 @@ describe("backtest on imported history", () => {
     expect(swapped).toBeCloseTo(1 - (p as number), 6)
   })
 })
+
+describe("pick'em standings", () => {
+  it("scores each voter on finished games and the model on the same games", async () => {
+    const { pickemStandings, openForVotes } = await import("@/lib/pickem")
+    const done = game("g1", 0.7, [["x", 5], ["z", 2]]) // A won, the model picked A
+    const done2 = game("g2", 0.7, [["x", 2], ["z", 5]]) // B won, the model picked A
+    const open: Game = { ...base, id: "g3", date: "2026-10-07", teamA: ["x"], teamB: ["z"] }
+    const st = state([done, done2, open])
+    const votes = [
+      { gameId: "g1", voter: "a", pick: "A" as const },
+      { gameId: "g2", voter: "a", pick: "B" as const },
+      { gameId: "g1", voter: "b", pick: "B" as const },
+      { gameId: "g3", voter: "a", pick: "A" as const },
+    ]
+    const s = pickemStandings(st, votes)
+    expect(s.rows).toEqual([{ voter: "a", right: 2, total: 2 }, { voter: "b", right: 0, total: 1 }])
+    expect(s.model).toEqual({ right: 1, total: 2 })
+    expect(openForVotes(st).map((g) => g.id)).toEqual(["g3"])
+  })
+})

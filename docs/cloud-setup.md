@@ -133,3 +133,7 @@ Because there is no code, anyone with the link could add a basket during a live 
 ## Private player labels
 
 The labels you give players on the Players tab are private. Run `supabase/labels.sql` once in the SQL Editor to keep them in a table only editors can read. Without it they are kept only in the browser you assigned them in. Either way they are never part of the data visitors can read: friends see the finished headlines saved with each night, not the labels behind them.
+
+## Pick'em votes
+
+Run `supabase/pickem.sql` once in the SQL Editor. It adds a table where friends vote on who wins a game before it starts; anyone can read the votes and add or change their own, and nobody can delete one. Without it the Pick the winner card simply shows nothing.

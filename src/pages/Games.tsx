@@ -15,6 +15,7 @@ import { LiveBanner, LiveWatch } from "./live/LiveWatch"
 import { NightRecap } from "./games/NightRecap"
 import { GoingIn } from "./games/GoingIn"
 import { NightPreviewCard } from "./games/NightPreview"
+import { PickEmCard } from "./games/PickEm"
 import { StatEntryPage } from "./statentry/StatEntryPage"
 import { findLiveGame } from "@/lib/live"
 
@@ -101,6 +102,7 @@ export function GamesPage({
             </Button>
           )}
         </div>
+        <PickEmCard state={state} />
         <NightPreviewCard state={state} update={update} />
         <GoingIn state={state} update={update} />
         <GameLog state={state} update={update} onOpen={open} />
