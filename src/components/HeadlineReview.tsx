@@ -95,7 +95,7 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
           </div>
           {manual && <textarea readOnly autoFocus value={manual} onFocus={(e) => e.currentTarget.select()} aria-label="Text to copy" className="h-40 w-full rounded-lg border bg-background p-2 text-xs" />}
           <p className="text-xs text-muted-foreground">
-            Approve what you like, remove what you do not. Removed lines are gone everywhere. A type with 3 approved (8 for injury notes) is finished and stops asking. A player type only needs 1 approved line.
+            Approve what you like, remove what you do not. Removed lines are gone everywhere. A type with 3 approved (8 for injury notes) is finished and stops asking. A player type needs 4 approved lines.
           </p>
           {typeLines > 0 && (
             <label className="flex items-center gap-2 text-xs text-muted-foreground">

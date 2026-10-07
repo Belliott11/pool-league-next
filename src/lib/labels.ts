@@ -632,8 +632,8 @@ export const isApproved = (text: string) => approved.has(lineKey(text))
 export const weighted = (options: string[]) => options.flatMap((o) => (isApproved(o) ? [o, o] : [o]))
 // How many approved wordings finish a type of line. Once a type has that many, only the approved ones are used and
 // the rest of that type is no longer offered for review, so the approve and remove cycle has an end.
-// A player type (label) is finished for review after one approved line; its other lines are still used as written.
-export const LINE_CAP = { recap: 3, label: 1, note: 8 }
+// A player type (label) is finished for review after 4 approved lines; its other lines are still used as written.
+export const LINE_CAP = { recap: 3, label: 4, note: 8 }
 export function finalSet(options: string[], cap: number): string[] {
   const ok = options.filter(isApproved)
   return ok.length >= cap ? ok : options
