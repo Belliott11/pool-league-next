@@ -69,30 +69,35 @@ export const adder = (items: Item[]) => (w: number, pid: string | null, text: st
 export type Item = { w: number; pid: string | null; text: string; alts?: string[] }
 // How a line begins and how it is built, so a list does not open every line the same way or use the same trick twice.
 const opener = (t: string) => lineKey(t).split(" ").slice(0, 2).join(" ").toLowerCase()
-const build = (t: string) => (t.includes("?") ? "question" : /, which /.test(t) ? "which" : /. /.test(t) ? "two-part" : "single")
+const build = (t: string) => (t.includes("?") ? "question" : /, which /.test(t) ? "which" : /\. /.test(t) ? "two-part" : "single")
+// The wording with names, numbers and the stat's name blanked out: two lines with the same skeleton are the same template
+// ("12 points ties the record for Adam" and "4 assists ties the record for Alex").
+const skeleton = (t: string) => lineKey(t).replace(/\b(points?|rebounds?|assists?|steals?|blocks?|threes?|three-pointers?|turnovers?|fouls?)\b/gi, "S")
 export function rank(items: Item[], limit: number, perPlayerMax = 2): string[] {
   const perPlayer = new Map<string, number>()
   const openers = new Set<string>()
+  const skeletons = new Set<string>()
   const builds = new Map<string, number>()
-  return items
-    .sort((x, y) => y.w - x.w)
-    .filter((it) => {
-      if (!it.pid) return true
+  const chosen: string[] = []
+  for (const it of items.sort((x, y) => y.w - x.w)) {
+    if (it.pid) {
       const n = (perPlayer.get(it.pid) ?? 0) + 1
       perPlayer.set(it.pid, n)
-      return n <= perPlayerMax
-    })
-    .map((it) => {
-      // Take the wording that starts differently from the ones already chosen, and has not been used much, when there is one.
-      const options = [it.text, ...(it.alts ?? [])].filter((o) => !isHidden(o))
-      const fresh = options.filter((o) => !openers.has(opener(o)))
-      const best = fresh.find((o) => (builds.get(build(o)) ?? 0) < 2) ?? fresh[0] ?? options[0] ?? it.text
-      openers.add(opener(best))
-      builds.set(build(best), (builds.get(build(best)) ?? 0) + 1)
-      return forPlayer(it.pid, best)
-    })
-    .filter((x) => !isHidden(x))
-    .slice(0, limit)
+      if (n > perPlayerMax) continue
+    }
+    // A template that is already in the list is not used again: another wording of the same story is taken, or the line is skipped.
+    const options = [it.text, ...(it.alts ?? [])].filter((o) => !isHidden(o) && !skeletons.has(skeleton(o)))
+    if (options.length === 0) continue
+    // Prefer the wording that starts differently from the ones already chosen, and has not been used much.
+    const fresh = options.filter((o) => !openers.has(opener(o)))
+    const best = fresh.find((o) => (builds.get(build(o)) ?? 0) < 2) ?? fresh[0] ?? options[0]
+    openers.add(opener(best))
+    skeletons.add(skeleton(best))
+    builds.set(build(best), (builds.get(build(best)) ?? 0) + 1)
+    chosen.push(forPlayer(it.pid, best))
+    if (chosen.length >= limit) break
+  }
+  return chosen.filter((x) => !isHidden(x))
 }
 // How far a value sits from the others, in standard deviations.
 function zAmong(xs: number[], v: number): number {

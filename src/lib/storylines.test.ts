@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { summarizeNight } from "@/lib/nightRecap"
 import { nightCallouts, recordBook } from "@/lib/records"
-import { lineSink } from "@/lib/labels"
+import { lineSink, setLineNames } from "@/lib/labels"
 import { abnormality, nightStories, previewStories, rank, streaks } from "@/lib/storylines"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -117,5 +117,19 @@ describe("storylines", () => {
     // 6 points and 6 rebounds in each of two games is 12 and 12 for the night, but never 10 and 10 in a game.
     expect(run([box("a", 6, 3, 3), box("b", 6, 3, 3)])).toBe(false)
     expect(run([box("a", 12, 6, 6)])).toBe(true)
+  })
+
+  it("never uses the same template twice in one list", () => {
+    setLineNames(["Adam", "Alex"])
+    const out = rank(
+      [
+        { w: 3, pid: null, text: "12 points ties the record for Adam.", alts: ["Adam matched the points record of 12."] },
+        { w: 2, pid: null, text: "4 assists ties the record for Alex.", alts: ["Alex matched the assists record of 4."] },
+        { w: 1, pid: null, text: "6 rebounds ties the record for Alex." },
+      ],
+      5,
+    )
+    setLineNames([])
+    expect(out).toEqual(["12 points ties the record for Adam.", "Alex matched the assists record of 4."])
   })
 })
