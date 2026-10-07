@@ -1,5 +1,7 @@
-import { CalendarClock } from "lucide-react"
-import { useMemo } from "react"
+import { CalendarClock, Share2 } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { shareText } from "@/lib/shareText"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { StoryList } from "@/components/StoryList"
 import { formatDateDisplay } from "@/lib/format"
@@ -18,7 +20,10 @@ export function NightPreviewCard({ state, update }: { state: PooleanState; updat
   const coming = rsvp?.playerIds ?? []
   const written = useMemo(() => (rsvp ? previewStoriesFor(labeled, coming, (id) => playerName(state, id)) : []), [labeled, state, rsvp, coming])
   const stories = usePublishedStories(state, update, "preview", written)
+  const [sent, setSent] = useState<string>("")
   if (!rsvp) return null
+  // The whole card as text for the group chat: who is coming and the lines about them.
+  const message = [`Poolean Intel, ${formatDateDisplay(rsvp.date)}: ${coming.length} coming`, coming.map((id) => playerName(state, id)).join(", "), "", ...stories.map((x) => `- ${x}`)].join("\n")
   return (
     <section className="flex flex-col gap-3 rounded-xl border bg-card p-4" aria-label="Next night">
       <h3 className="flex items-center gap-2 font-display text-lg font-bold">
@@ -33,6 +38,17 @@ export function NightPreviewCard({ state, update }: { state: PooleanState; updat
         ))}
       </div>
       {stories.length > 0 && <StoryList stories={stories} />}
+      <Button
+        size="sm"
+        variant="outline"
+        className="self-start"
+        onClick={async () => {
+          setSent(await shareText(message))
+          setTimeout(() => setSent(""), 2000)
+        }}
+      >
+        <Share2 aria-hidden /> {sent === "copied" ? "Copied" : sent === "failed" ? "Could not share" : "Share for the group chat"}
+      </Button>
     </section>
   )
 }
