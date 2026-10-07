@@ -50,7 +50,11 @@ export const GOOFY: Record<InjuryStatus, string[]> = {
     "Said they would be back by Friday.",
     "Abducted by a very polite alien who wanted to know about the pick and roll.",
     "Summoned to a hearing about a foul that happened in 2019.",
-    "Delayed by a very long argument about whether a screen was a screen.",
+    "Away, defending a bank shot in a very serious court.",
+    "Currently being studied by scientists who cannot explain the shot.",
+    "Summoned to explain a stat line from 2018 to a panel of nobody.",
+    "Abducted by an alien who wants to talk about the pick and roll a second time, and the first alien is jealous.",
+    "Away on a quest to find out who called next.",
   ],
   questionable: [
     "Game-time decision, depending on the snacks.",
@@ -64,7 +68,11 @@ export const GOOFY: Record<InjuryStatus, string[]> = {
     "Day-to-day. Sneezed too hard on Tuesday and is still processing.",
     "Day-to-day after a dramatic shrug during a disputed call.",
     "Day-to-day after celebrating a bank shot with too much commitment.",
-    "Day-to-day after raising both arms for an and-one that was not an and-one.",
+    "Day-to-day after a high five that missed and landed on the air.",
+    "Day-to-day after a very dramatic point at the scoreboard.",
+    "Day-to-day. Did the rim-wiggle celebration and the hip has questions.",
+    "Day-to-day after a layup that was too confident for the knees.",
+    "Day-to-day after loudly calling next and straining something in the voice.",
   ],
   returning: [
     "Medically cleared, not sure about the jump shot.",
@@ -72,7 +80,11 @@ export const GOOFY: Record<InjuryStatus, string[]> = {
     "Back and talking big, which is how it starts every time.",
     "Back after a magical weekend of lying very still.",
     "Back after a miracle recovery that mostly involved ignoring it.",
-    "Back after a recovery plan that consisted of declaring it over.",
+    "Back after a week of not jumping and calling it strategy.",
+    "Back after a very serious recovery that involved a lot of nodding.",
+    "Back after healing at a pace the doctor described as aggressive.",
+    "Back after the knee was told to behave and said it would think about it.",
+    "Back and cleared, assuming nobody asks them to rebound.",
   ],
 }
 

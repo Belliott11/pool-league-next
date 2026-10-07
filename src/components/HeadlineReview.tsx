@@ -48,12 +48,17 @@ export function HeadlineReview({ state }: { state: PooleanState }) {
     const liked = (labels[APPROVED] ?? []).slice(-10)
     const byKind = new Map<string, string[]>()
     for (const r of unsent) byKind.set(r.source, [...(byKind.get(r.source) ?? []), r.text])
+    // How many new lines each kind needs to be finished: its cap minus what is already approved.
+    const needed = (kindName: string) => {
+      const r = unsent.find((x) => x.source === kindName)
+      return r ? Math.max(1, r.cap - (approvedIn.get(r.group) ?? 0)) : 1
+    }
     const text = [
-      "Rewrite these rejected headlines for my pool league app. Write ONE new line for each kind below (not one per rejected line): more personality and more fun at people's expense, same facts and blanks, no em dashes. Match my approved style (see memory).",
+      "Rewrite these rejected headlines for my pool league app. For each kind below, write the number of new lines shown next to it (that is how many it still needs to be finished), not one per rejected line: more personality and more fun at people's expense, same facts and blanks, no em dashes. Match my approved style (see memory).",
       ...(liked.length ? ["", "Latest approved:", ...liked.map((t) => `+ ${t}`)] : []),
       "",
       "Rejected:",
-      ...[...byKind].flatMap(([kindName, texts]) => [`[${kindName}]`, ...texts.map((t) => `- ${t}`)]),
+      ...[...byKind].flatMap(([kindName, texts]) => [`[${kindName}] write ${needed(kindName)}`, ...texts.map((t) => `- ${t}`)]),
     ].join("\n")
     const sent = () => setPlayerLabels(SENT, (cur) => [...cur, ...unsent.map((r) => r.text)].slice(-300))
     // If the browser will not let the app use the clipboard, show the text to copy by hand instead.
