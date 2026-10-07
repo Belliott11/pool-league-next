@@ -12,6 +12,7 @@ import { formatDateDisplay } from "@/lib/format"
 import { LEADER_LABEL, gameDays, recapText, summarizeNight, type LeaderKey, type NightPlayer } from "@/lib/nightRecap"
 import { predictRealMatchup } from "@/lib/matchup"
 import { RECORD_KEYS, RECORD_LABEL, nightCallouts, recordBook } from "@/lib/records"
+import { CountUp } from "@/components/CountUp"
 import { StoryList } from "@/components/StoryList"
 import { predictionNote } from "@/lib/scorecard"
 import { nightStories } from "@/lib/storylines"
@@ -104,7 +105,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
 
   if (days.length === 0) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="anim-page flex flex-col gap-4">
         <Button variant="outline" size="sm" className="self-start" onClick={onBack}>
           &larr; Back to Games
         </Button>
@@ -179,7 +180,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
         ].map(([k, v]) => (
           <Card key={k}>
             <CardContent className="py-4">
-              <div className="font-display text-3xl font-bold tabular-nums">{v}</div>
+              <div className="font-display text-3xl font-bold tabular-nums">{typeof v === "number" ? <CountUp value={v} /> : v}</div>
               <div className="text-xs text-muted-foreground">{k}</div>
             </CardContent>
           </Card>
@@ -253,7 +254,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
       )}
 
       {!quick && s.mvp && (
-        <section className="rounded-xl border-2 border-accent bg-accent/10 p-4" aria-label="Night MVP">
+        <section className="anim-sheen rounded-xl border-2 border-accent bg-accent/10 p-4" aria-label="Night MVP">
           <p className="text-xs font-semibold uppercase tracking-wide text-accent">Night MVP</p>
           <button type="button" className="mt-1 flex items-center gap-3 text-left" onClick={() => onOpenPlayer(s.mvp!.id)}>
             <PlayerAvatar id={s.mvp.id} name={name(s.mvp.id)} />

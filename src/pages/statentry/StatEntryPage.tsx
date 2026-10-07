@@ -101,7 +101,7 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
   }
 
   return (
-    <div data-no-swipe className="flex flex-col gap-4">
+    <div data-no-swipe className="anim-page flex flex-col gap-4">
       <div className="flex flex-col gap-3">
         <Button type="button" variant="ghost" className="h-11 self-start px-3" onClick={onBack}>
           <ArrowLeft /> Back

@@ -378,6 +378,45 @@ export function backtestAppGames(): Map<string, number> {
   return out
 }
 
+// The same backtest for the imported games (most of the league's history lives there): each night is called by a model
+// fitted on only the nights before it. Keyed by date and the two rosters, so a game in the app can be matched to it.
+let realBacktestCache: Map<string, number> | null = null
+const gameKey = (date: string, a: string[], b: string[]) => `${date}|${[...a].sort().join(",")}|${[...b].sort().join(",")}`
+function realBacktest(): Map<string, number> {
+  if (realBacktestCache) return realBacktestCache
+  const out = new Map<string, number>()
+  realBacktestCache = out
+  const rows = buildRealMatchupRows()
+  const games = realSeasonsInOrder().flatMap((season) => [...season.games].sort(byPlayOrder))
+  let w: Features = [0, 0, 0]
+  let i = 0
+  while (i < games.length) {
+    let j = i
+    while (j < games.length && games[j].date === games[i].date) j++
+    if (i >= REAL_MATCHUP_MIN_GAMES) {
+      w = fitRealMatchupWeights(rows.slice(0, i), w, w[0] === 0 && w[1] === 0 && w[2] === 0 ? 1500 : 300)
+      for (let k = i; k < j; k++) {
+        const x = rows[k].x
+        out.set(gameKey(games[k].date, games[k].a, games[k].b), sigmoid(PREGAME_SHRINK * (w[0] * x[0] + w[1] * x[1] + w[2] * x[2])))
+      }
+    }
+    i = j
+  }
+  return out
+}
+
+// Team A's backtest chance for a game already played: from the app's own games, or the imported history matched by
+// date and rosters (either side as team A). undefined when the model had too little to go on.
+export function backtestPick(g: Game): number | undefined {
+  const byId = backtestAppGames().get(g.id)
+  if (byId !== undefined) return byId
+  const real = realBacktest()
+  const direct = real.get(gameKey(g.date, g.teamA, g.teamB))
+  if (direct !== undefined) return direct
+  const flipped = real.get(gameKey(g.date, g.teamB, g.teamA))
+  return flipped === undefined ? undefined : 1 - flipped
+}
+
 // ---------- Balance Teams: win chances ----------
 // Each team's chance to win. Two teams play one game, so the two chances sum to 100%. With three
 // or more teams, each team's number is its average chance against every other team in the split.

@@ -1,4 +1,4 @@
-import { backtestAppGames, computeRealMatchupTrackRecord, predictRealMatchup } from "@/lib/matchup"
+import { backtestPick, computeRealMatchupTrackRecord, predictRealMatchup } from "@/lib/matchup"
 import { scoreOf } from "@/lib/nightRecap"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -48,9 +48,8 @@ export function scorecard(state: PooleanState) {
   const saved = summarize(savedCalls(state))
   const waiting = state.games.filter((g) => favoriteOf(g) && !winnerOf(g)).length
   // Past games with no saved pick: called afterward by a model that had only the games before them.
-  const back = backtestAppGames()
   const backCalls: Call[] = state.games.flatMap((game) => {
-    const pA = back.get(game.id)
+    const pA = backtestPick(game)
     const winner = winnerOf(game)
     if (game.prediction || pA === undefined || !winner || pA === 0.5) return []
     const favorite: Side = pA > 0.5 ? "A" : "B"
@@ -76,7 +75,7 @@ export function predictionNote(g: Game | undefined): string | null {
   const fav = favoriteOf(g)
   if (!g.prediction) {
     // Nothing was saved in advance: show the backtest call for a past game, labeled as one.
-    const pA = backtestAppGames().get(g.id)
+    const pA = backtestPick(g)
     const winner = winnerOf(g)
     if (pA === undefined || pA === 0.5) return null
     const pick: Side = pA > 0.5 ? "A" : "B"

@@ -1,4 +1,5 @@
 import { Target } from "lucide-react"
+import { CountUp } from "@/components/CountUp"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
 import { confidenceOf, scorecard, type Call } from "@/lib/scorecard"
@@ -14,7 +15,7 @@ function Record({ title, note, s, onOpenGame }: { title: string; note: string; s
       <h4 className="text-sm font-semibold">{title}</h4>
       <p>
         <span className="font-display text-3xl font-bold tabular-nums">
-          {s.correct} of {s.called}
+          <CountUp value={s.correct} /> of {s.called}
         </span>{" "}
         <span className="text-sm text-muted-foreground">favorites won ({s.pct}%). {note}</span>
       </p>
@@ -31,14 +32,14 @@ function Record({ title, note, s, onOpenGame }: { title: string; note: string; s
         </ul>
       )}
       <ul className="flex flex-col gap-1" aria-label={`Recent ${title}`}>
-        {recent.map((c) => (
+        {recent.map((c, i) => (
           <li key={c.game.id}>
             <button type="button" className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-muted" onClick={() => onOpenGame(c.game)}>
               <span>{formatDateDisplay(c.game.date)}</span>
               <span className="text-muted-foreground">
                 Picked {c.favorite} ({Math.round((c.game.prediction ? confidenceOf(c.game) : c.confidence) * 100)}%), {c.winner} won
               </span>
-              <span className={cn("font-semibold", c.correct ? "text-pos" : "text-neg")}>{c.correct ? "Right" : "Wrong"}</span>
+              <span className={cn("anim-chip font-semibold", c.correct ? "text-pos" : "text-neg")} style={{ "--i": i } as React.CSSProperties}>{c.correct ? "Right" : "Wrong"}</span>
             </button>
           </li>
         ))}

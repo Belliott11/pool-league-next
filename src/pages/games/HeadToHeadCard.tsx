@@ -61,8 +61,8 @@ export function HeadToHeadCard({ state, onOpenGame }: { state: PooleanState; onO
                   <span>{h.bWins}</span>
                 </div>
                 <div role="img" aria-label={`${playerName(state, a)} ${h.aWins}, ${playerName(state, b)} ${h.bWins}`} className="flex h-2 overflow-hidden rounded-full bg-muted">
-                  <span className="bg-[var(--team-a)]" style={{ width: `${total ? (h.aWins / total) * 100 : 50}%` }} />
-                  <span className="bg-[var(--team-b)]" style={{ width: `${total ? (h.bWins / total) * 100 : 50}%` }} />
+                  <span className="anim-bar bg-[var(--team-a)]" style={{ width: `${total ? (h.aWins / total) * 100 : 50}%` }} />
+                  <span className="anim-bar bg-[var(--team-b)]" style={{ width: `${total ? (h.bWins / total) * 100 : 50}%` }} />
                 </div>
               </div>
               <PlayerAvatar id={b} name={playerName(state, b)} size="sm" />

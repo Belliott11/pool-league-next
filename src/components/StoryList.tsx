@@ -9,8 +9,8 @@ export function StoryList({ stories }: { stories: string[] }) {
   const { hideLine } = useLabels()
   return (
     <ul className="flex flex-col gap-2 text-sm">
-      {stories.map((x) => (
-        <li key={x} className="flex gap-2">
+      {stories.map((x, i) => (
+        <li key={x} className="anim-line flex gap-2" style={{ "--i": i } as React.CSSProperties}>
           <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-accent" />
           <span className="min-w-0 flex-1">{x}</span>
           {!readOnly && (

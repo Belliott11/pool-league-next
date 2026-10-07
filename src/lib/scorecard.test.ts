@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { backtestAppGames, setAppGames } from "@/lib/matchup"
+import { backtestAppGames, backtestPick, setAppGames } from "@/lib/matchup"
+import { realSeasonsInOrder } from "@/lib/real"
 import { predictionNote, scorecard, winnerOf } from "@/lib/scorecard"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -68,5 +69,19 @@ describe("backtest on past games", () => {
     const others = [...backtestAppGames()].filter(([id, p]) => id !== "p1" && p !== 0.5).length
     expect(scorecard(state([saved, games[1], games[2]])).backtest.called).toBe(others)
     setAppGames([])
+  })
+})
+
+describe("backtest on imported history", () => {
+  it("matches a game in the app to its imported night and calls it from the nights before", () => {
+    const seasons = realSeasonsInOrder()
+    const last = seasons[seasons.length - 1].games.reduce((m, g) => (g.date > m.date ? g : m))
+    const asApp: Game = { ...base, id: "old", date: last.date, teamA: last.a, teamB: last.b, liveScores: [{ pid: last.a[0], points: 5 }, { pid: last.b[0], points: 2 }] }
+    const p = backtestPick(asApp)
+    expect(p).toBeGreaterThan(0)
+    expect(p).toBeLessThan(1)
+    // The same game entered with the sides swapped gets the mirror-image chance.
+    const swapped = backtestPick({ ...asApp, teamA: last.b, teamB: last.a }) as number
+    expect(swapped).toBeCloseTo(1 - (p as number), 6)
   })
 })

@@ -387,7 +387,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry, autoSeek }:
 
   return (
     <WatchContext.Provider value={watch}>
-    <div className="flex flex-col gap-4">
+    <div className="anim-page flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" size="sm" onClick={onBack}>
           &larr; Back to Games
