@@ -1,4 +1,4 @@
-import { predictRealMatchup } from "@/lib/matchup"
+import { backtestAppGames, computeRealMatchupTrackRecord, predictRealMatchup } from "@/lib/matchup"
 import { scoreOf } from "@/lib/nightRecap"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -35,8 +35,32 @@ const BUCKETS = [
   { label: "70% or more", min: 0.7, max: 1.01 },
 ]
 
+function summarize(calls: Call[]) {
+  const correct = calls.filter((c) => c.correct).length
+  const buckets = BUCKETS.map((b) => {
+    const inB = calls.filter((c) => c.confidence >= b.min && c.confidence < b.max)
+    return { label: b.label, called: inB.length, correct: inB.filter((c) => c.correct).length }
+  }).filter((b) => b.called > 0)
+  return { calls, called: calls.length, correct, pct: calls.length ? Math.round((correct / calls.length) * 100) : null, buckets }
+}
+
 export function scorecard(state: PooleanState) {
-  const calls: Call[] = state.games
+  const saved = summarize(savedCalls(state))
+  const waiting = state.games.filter((g) => favoriteOf(g) && !winnerOf(g)).length
+  // Past games with no saved pick: called afterward by a model that had only the games before them.
+  const back = backtestAppGames()
+  const backCalls: Call[] = state.games.flatMap((game) => {
+    const pA = back.get(game.id)
+    const winner = winnerOf(game)
+    if (game.prediction || pA === undefined || !winner || pA === 0.5) return []
+    const favorite: Side = pA > 0.5 ? "A" : "B"
+    return [{ game, favorite, winner, correct: favorite === winner, confidence: Math.max(pA, 1 - pA) }]
+  })
+  return { ...saved, waiting, backtest: summarize(backCalls), imported: computeRealMatchupTrackRecord().total }
+}
+
+function savedCalls(state: PooleanState): Call[] {
+  return state.games
     .map((game, i) => ({ game, i }))
     .sort((x, y) => (x.game.date || "").localeCompare(y.game.date || "") || x.i - y.i)
     .flatMap(({ game }) => {
@@ -44,20 +68,21 @@ export function scorecard(state: PooleanState) {
       const winner = winnerOf(game)
       return favorite && winner ? [{ game, favorite, winner, correct: favorite === winner, confidence: confidenceOf(game) }] : []
     })
-  const correct = calls.filter((c) => c.correct).length
-  const waiting = state.games.filter((g) => favoriteOf(g) && !winnerOf(g)).length
-  const buckets = BUCKETS.map((b) => {
-    const inB = calls.filter((c) => c.confidence >= b.min && c.confidence < b.max)
-    return { label: b.label, called: inB.length, correct: inB.filter((c) => c.correct).length }
-  }).filter((b) => b.called > 0)
-  return { calls, called: calls.length, correct, pct: calls.length ? Math.round((correct / calls.length) * 100) : null, waiting, buckets }
 }
 
 // One line for a game: what the model said beforehand and what happened. Null when nothing was saved for it.
 export function predictionNote(g: Game | undefined): string | null {
   if (!g) return null
   const fav = favoriteOf(g)
-  if (!fav || !g.prediction) return null
+  if (!g.prediction) {
+    // Nothing was saved in advance: show the backtest call for a past game, labeled as one.
+    const pA = backtestAppGames().get(g.id)
+    const winner = winnerOf(g)
+    if (pA === undefined || pA === 0.5) return null
+    const pick: Side = pA > 0.5 ? "A" : "B"
+    return `Backtest pick: Team ${pick} (${Math.round(Math.max(pA, 1 - pA) * 100)}%), ${winner ? (winner === pick ? "right" : "wrong") : "no result yet"}`
+  }
+  if (!fav) return null
   const pct = Math.round(confidenceOf(g) * 100)
   const winner = winnerOf(g)
   const result = winner ? (winner === fav ? "right" : "wrong") : "no result yet"

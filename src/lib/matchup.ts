@@ -70,6 +70,8 @@ interface Row {
 // Games scored in this app after the imported history ends also teach the model, so it keeps learning
 // as the league plays. Only decided games count (a winner by score), not live ones or stopped-early ones.
 let appGames: RealGame[] = []
+// The ids of those games, in the same order, so a past game can be matched to its backtest call.
+let appGameIds: string[] = []
 let appSignature = ""
 
 function lastRealDate(): string {
@@ -94,8 +96,10 @@ export function setAppGames(games: Game[]) {
   if (sig === appSignature) return
   appSignature = sig
   appGames = decided.map((x, i) => ({ n: i, date: x.g.date, a: x.g.teamA, b: x.g.teamB, w: x.a > x.b ? "A" : "B" }))
+  appGameIds = decided.map((x) => x.g.id)
   modelCache = null
   trackCache = null
+  backtestCache = null
 }
 
 function buildRealMatchupRows(): Row[] {
@@ -349,6 +353,29 @@ export function computeRealMatchupTrackRecord(): TrackRecord {
   const half = Math.floor(nights.length / 2)
   trackCache = { nights, total: sum(nights), early: sum(nights.slice(0, half)), late: sum(nights.slice(half)) }
   return trackCache
+}
+
+// Backtest for this app's own games: each one is called by a model fitted on only the games before it (the imported
+// history plus earlier games here), with the same shrink the live odds use. These calls were not saved in advance, so
+// they are shown apart from picks that were. Empty until the model has enough games to learn from.
+let backtestCache: Map<string, number> | null = null
+export function backtestAppGames(): Map<string, number> {
+  if (backtestCache) return backtestCache
+  const out = new Map<string, number>()
+  backtestCache = out
+  if (appGames.length === 0) return out
+  const rows = buildRealMatchupRows()
+  const first = rows.length - appGames.length
+  let w: Features = [0, 0, 0]
+  for (let k = 0; k < appGames.length; k++) {
+    const i = first + k
+    if (i < REAL_MATCHUP_MIN_GAMES) continue
+    // Starting from the previous fit, a short refit lands where a full one would.
+    w = fitRealMatchupWeights(rows.slice(0, i), w, w[0] === 0 && w[1] === 0 && w[2] === 0 ? 1500 : 300)
+    const x = rows[i].x
+    out.set(appGameIds[k], sigmoid(PREGAME_SHRINK * (w[0] * x[0] + w[1] * x[1] + w[2] * x[2])))
+  }
+  return out
 }
 
 // ---------- Balance Teams: win chances ----------
