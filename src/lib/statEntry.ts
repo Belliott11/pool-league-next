@@ -71,6 +71,21 @@ function fixShot(ev: ScoringEvent) {
   }
 }
 
+// Baskets that were only scored live (points, no shots). Offered for import only while the game has no shot log.
+export const liveBaskets = (g: Game) => [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])]
+export const pendingBaskets = (g: Game): number => (g.liveInProgress || g.scoringEvents.length > 0 ? 0 : liveBaskets(g).length)
+
+// Turns each live basket into a made shot by that player, so the box score has its points at once and the details
+// (assists, misses, rebounds, defenders) can be added to those shots afterward. The live list is cleared so the same
+// baskets cannot be imported twice.
+export function importLiveBaskets(game: Game): Game {
+  if (pendingBaskets(game) === 0) return game
+  const roster = new Set([...game.teamA, ...game.teamB])
+  let g = game
+  for (const b of liveBaskets(game)) if (roster.has(b.pid) && [1, 2, 3].includes(b.points)) g = addShot(g, { scorerId: b.pid, points: b.points as 1 | 2 | 3, made: true })
+  return { ...g, liveScores: [], scorekeeperScores: [] }
+}
+
 export function addShot(game: Game, input: ShotInput): Game {
   const g = structuredClone(game)
   const id = uid("score")

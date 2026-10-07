@@ -15,6 +15,7 @@ import { deleteEvent, isDirectVideoUrl, lastEvent, setStoppedEarly, undoLast, ty
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
 import { EventForm, type Apply, type Draft } from "./EventForm"
+import { QuickAdd } from "./QuickAdd"
 import { EventLog } from "./EventLog"
 import { ExtraEntry } from "./ExtraForms"
 
@@ -170,6 +171,7 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
           </Button>
         ))}
       </div>
+      <QuickAdd state={state} game={game} apply={apply} captureTime={captureTime} />
       <Button type="button" variant="outline" className="h-11" disabled={!lastEvent(game)} onClick={() => apply(undoLast)}>
         <Undo2 /> Undo last
       </Button>
