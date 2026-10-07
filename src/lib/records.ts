@@ -118,3 +118,34 @@ export function nightCallouts(state: PooleanState, date: string): Callout[] {
   }
   return out
 }
+
+export interface Chaser {
+  key: RecordKey
+  playerId: string
+  best: number // their best single game in this stat
+  gap: number // how far that is from the record
+  holderId: string
+  value: number // the record
+}
+
+// Who is closest to each league record: the best single game by anyone who does not hold it, and the gap. Ranked
+// by how small the gap is next to the record, so one point away from a 5 outranks 2 away from a 40.
+export function chasers(state: PooleanState, limit = 4): Chaser[] {
+  const list = entries(state)
+  const book = bookFrom(list)
+  const out: Chaser[] = []
+  for (const key of RECORD_KEYS) {
+    const rec = book[key]
+    if (!rec || key === "twoWay") continue
+    const bestBy = new Map<string, number>()
+    for (const e of list) {
+      const v = valueOf(e.line, key)
+      if (v !== null && e.playerId !== rec.playerId && v > (bestBy.get(e.playerId) ?? 0)) bestBy.set(e.playerId, v)
+    }
+    const top = [...bestBy.entries()].sort((a, b) => b[1] - a[1])[0]
+    if (!top || top[1] >= rec.value) continue
+    const gap = rec.value - top[1]
+    if (gap <= Math.max(2, rec.value * 0.25)) out.push({ key, playerId: top[0], best: top[1], gap, holderId: rec.playerId, value: rec.value })
+  }
+  return out.sort((a, b) => a.gap / a.value - b.gap / b.value).slice(0, limit)
+}

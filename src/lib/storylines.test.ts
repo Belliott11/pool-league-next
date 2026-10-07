@@ -133,3 +133,13 @@ describe("storylines", () => {
     expect(out).toEqual(["12 points ties the record for Adam.", "Alex matched the assists record of 4."])
   })
 })
+
+describe("records chase", () => {
+  it("lists who is closest to a record and by how much", async () => {
+    const { chasers } = await import("@/lib/records")
+    // Z holds the points record at 9 (g5); X's best is 8.
+    const c = chasers(state(history))
+    const pts = c.find((x) => x.key === "pts")
+    expect(pts).toMatchObject({ playerId: "x", best: 8, gap: 1, holderId: "z", value: 9 })
+  })
+})
