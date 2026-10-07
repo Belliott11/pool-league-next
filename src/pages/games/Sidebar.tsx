@@ -49,7 +49,7 @@ export function Sidebar({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((r, i) => (
+                {rows.map((r) => (
                   <TableRow key={r.player.id}>
                     <TableCell>{rows.filter((x) => x.twoWayPer20 > r.twoWayPer20).length + 1}{rows.filter((x) => x.twoWayPer20 === r.twoWayPer20).length > 1 ? " (tie)" : ""}</TableCell>
                     <TableCell>
