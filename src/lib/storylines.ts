@@ -339,7 +339,7 @@ export function seasonStories(state: PooleanState, name: Name): string[] {
   if (b && b.n >= 4) add(b.n * 0.6, b.id, say("streak" + b.id, `${name(b.id)}'s ${b.n}-game win streak is the longest of the season. Somebody should have stopped them sooner.`, `The longest win streak of the season belongs to ${name(b.id)}: ${b.n}. Everybody else will have to live with that.`, `${name(b.id)} won ${b.n} in a row, the longest streak of the season, and the other side keeps asking for a recount.`, `${b.n} straight wins for ${name(b.id)}, a streak that has now outlasted most summer plans.`))
 
   const iron = [...all].sort((x, y) => y[1].gp - x[1].gp)[0]
-  if (iron && iron[1].gp >= 5) add(1, iron[0], say("iron" + iron[0], `${name(iron[0])} has played in ${iron[1].gp} of ${rs.length} games, more than anyone. Either dedicated, or has nothing else going on.`, `Attendance leader: ${name(iron[0])}, ${iron[1].gp} of ${rs.length}, and the pool probably knows them by name.`, `${name(iron[0])} has played ${iron[1].gp} of ${rs.length} games, and the pool has started leaving the gate open for them.`))
+  if (iron && iron[1].gp >= 5) add(1, iron[0], say("iron" + iron[0], `${name(iron[0])} has played in ${iron[1].gp} of ${rs.length} games, more than anyone. Either dedicated, or has nothing else going on.`, `Attendance leader: ${name(iron[0])}, ${iron[1].gp} of ${rs.length}, and the pool probably knows them by name.`, `${name(iron[0])} has played ${iron[1].gp} of ${rs.length} games, which is the kind of attendance usually reserved for furniture.`))
 
   // Bad news for the season.
   const last = ranked[ranked.length - 1]

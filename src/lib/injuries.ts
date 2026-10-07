@@ -50,7 +50,7 @@ export const GOOFY: Record<InjuryStatus, string[]> = {
     "Said they would be back by Friday.",
     "Abducted by a very polite alien who wanted to know about the pick and roll.",
     "Summoned to a hearing about a foul that happened in 2019.",
-    "Called to testify about a travel that nobody saw but everybody remembers.",
+    "Delayed by a very long argument about whether a screen was a screen.",
   ],
   questionable: [
     "Game-time decision, depending on the snacks.",
@@ -64,7 +64,7 @@ export const GOOFY: Record<InjuryStatus, string[]> = {
     "Day-to-day. Sneezed too hard on Tuesday and is still processing.",
     "Day-to-day after a dramatic shrug during a disputed call.",
     "Day-to-day after celebrating a bank shot with too much commitment.",
-    "Day-to-day. Fist-pumped a made free throw and something pulled in the shoulder.",
+    "Day-to-day after raising both arms for an and-one that was not an and-one.",
   ],
   returning: [
     "Medically cleared, not sure about the jump shot.",
@@ -72,7 +72,7 @@ export const GOOFY: Record<InjuryStatus, string[]> = {
     "Back and talking big, which is how it starts every time.",
     "Back after a magical weekend of lying very still.",
     "Back after a miracle recovery that mostly involved ignoring it.",
-    "Back after a week of doing the stretches only in spirit.",
+    "Back after a recovery plan that consisted of declaring it over.",
   ],
 }
 
