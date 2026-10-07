@@ -7149,7 +7149,7 @@ function computeAreaCategory(playerId, def) {
   if (leagueMedian === null) return null;
 
   const { seasonRate, recentRate } = seasonVsRecentRate(playerId, def.statFn);
-  return { ownRate, leagueMedian, trend: trendNote(seasonRate, recentRate, def.higherIsBetter) };
+  return { ownRate, leagueMedian, trend: trendNote(seasonRate, recentRate, def.higherIsBetter), denom };
 }
 
 const AREA_CLIP_CATEGORY_LABELS = Object.fromEntries([
@@ -7505,12 +7505,13 @@ function computeAreasToWorkOn(playerId) {
       });
       return { num: pts, denom: fga * 2 };
     };
-    const cat = computeAreaCategory(playerId, { statFn, minSample: 5, higherIsBetter: true });
+    // The sample here counts 2 per shot, so 10 means at least 5 wide-open attempts.
+    const cat = computeAreaCategory(playerId, { statFn, minSample: 10, higherIsBetter: true });
     if (cat) {
       const diff = cat.ownRate - cat.leagueMedian;
       if (Math.abs(diff) >= 8) {
         const isWeak = diff < 0;
-        results.push({ key: "wideopen", isWeak, text: `Your wide-open shooting (no defender at all tagged) is ${formatPct(cat.ownRate)} TS%, ${isWeak ? "below" : "above"} the league median of ${formatPct(cat.leagueMedian)}. ${isWeak ? "Worth attention since a scouting report can't take these shots away" : "A real strength on the shots nobody can defend"}.${cat.trend}` });
+        results.push({ key: "wideopen", isWeak, text: `Your wide-open shooting (no defender at all tagged, ${cat.denom / 2} attempts) is ${formatPct(cat.ownRate)} TS%, ${isWeak ? "below" : "above"} the league median of ${formatPct(cat.leagueMedian)}. ${isWeak ? "Worth attention since a scouting report can't take these shots away" : "A real strength on the shots nobody can defend"}.${cat.trend}` });
       }
     }
   }
@@ -7526,9 +7527,17 @@ function computeAreasToWorkOn(playerId) {
       const others = board.filter(r => r.player.id !== playerId && (r.defense.timesBeaten + r.defense.stops) >= 10);
       const medDefRtg = median(others.map(r => defensiveRating(r.rate, r.rateDefense)));
       const medOppFg = median(others.map(r => pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops)));
-      if (medDefRtg !== null && medOppFg !== null && ownOppFg !== null) {
+      // Contested-only Opp FG% (medium or heavy contest) is the headline when there are enough of those shots; the
+      // all-tagged number is the fallback and is labeled as such.
+      const ownReal = computeRealContestedDefense(playerId);
+      const medReal = median(others.map(r => computeRealContestedDefense(r.player.id)).filter(Boolean).map(x => x.fgPct));
+      const useReal = ownReal !== null && medReal !== null;
+      const ownFg = useReal ? ownReal.fgPct : ownOppFg;
+      const medFg = useReal ? medReal : medOppFg;
+      const engagement = computeContestLevelDistribution(playerId).engagementRate;
+      if (medDefRtg !== null && medFg !== null && ownFg !== null) {
         const rtgDiff = ownDefRtg - medDefRtg;
-        const fgDiff = ownOppFg - medOppFg;
+        const fgDiff = ownFg - medFg;
         if (Math.abs(fgDiff) >= 8 || Math.abs(rtgDiff) >= 1.5) {
           const isWeak = Math.abs(fgDiff) >= 8 ? fgDiff > 0 : rtgDiff < 0;
           const statFn = (g, pid) => { const def = gameDefenseStats(g, pid); return { num: def.timesBeaten, denom: def.timesBeaten + def.stops }; };
@@ -7536,7 +7545,7 @@ function computeAreasToWorkOn(playerId) {
           const trend = trendNote(seasonRate, recentRate, false);
           results.push({
             key: "defense", isWeak,
-            text: `Your defense: Def Rating/20 of ${ownDefRtg.toFixed(1)} (league median ${medDefRtg.toFixed(1)}) and opponents shooting ${formatPct(ownOppFg)} against you (league median ${formatPct(medOppFg)}).${isWeak ? " Tighter closeouts or a different defensive matchup could close that gap." : " Real defensive strength, not a fluke at this sample size."}${trend}`
+            text: `Your defense: opponents shoot ${formatPct(ownFg)} ${useReal ? `on shots you contested medium or heavy (${ownReal.made}/${ownReal.attempts}, league median ${formatPct(medFg)})` : `against you on any tagged shot (league median ${formatPct(medFg)}, not contested-only)`}${engagement !== null ? `, with an engagement rate of ${formatPct(engagement)}` : ""}, and your Def Rating/20 is ${ownDefRtg.toFixed(1)} (league median ${medDefRtg.toFixed(1)}).${isWeak ? " Tighter closeouts or a different defensive matchup could close that gap." : " Real defensive strength, not a fluke at this sample size."}${trend}`
           });
         }
       }

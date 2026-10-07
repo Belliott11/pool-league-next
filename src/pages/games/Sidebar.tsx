@@ -35,6 +35,7 @@ export function Sidebar({
           <CardTitle className="font-display">Standings</CardTitle>
         </CardHeader>
         <CardContent>
+          {rows.length > 0 && <p className="mb-2 text-xs text-muted-foreground">W-L here counts only games with a box score and even teams. The season stories count every finished game, so their records can be higher.</p>}
           {rows.length === 0 ? (
             <EmptyState title="No standings yet" hint="Standings fill in once a game is logged with players." />
           ) : (
@@ -50,7 +51,7 @@ export function Sidebar({
               <TableBody>
                 {rows.map((r, i) => (
                   <TableRow key={r.player.id}>
-                    <TableCell>{i + 1}</TableCell>
+                    <TableCell>{rows.filter((x) => x.twoWayPer20 > r.twoWayPer20).length + 1}{rows.filter((x) => x.twoWayPer20 === r.twoWayPer20).length > 1 ? " (tie)" : ""}</TableCell>
                     <TableCell>
                       <button
                         type="button"

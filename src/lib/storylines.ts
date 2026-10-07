@@ -327,7 +327,7 @@ export function seasonStories(state: PooleanState, name: Name): string[] {
   const scorer = [...all].sort((x, y) => y[1].pts - x[1].pts)[0]
   if (scorer && scorer[1].pts > 0) add(2 + zAmong(all.map(([, v]) => v.pts), scorer[1].pts), scorer[0], say("scorer" + scorer[0], `${name(scorer[0])} is the top scorer with ${scorer[1].pts} points, ${(scorer[1].pts / scorer[1].gp).toFixed(1)} a game, and took every shot to get there.`, `${scorer[1].pts} points for ${name(scorer[0])}, the league's top scorer. Whether that is skill or volume is still being debated.`, `Who scores the most? ${name(scorer[0])}, ${scorer[1].pts} points, and a lot of shots to go with them.`))
   const tw = all.filter(([, v]) => v.tw.length >= 3).sort((x, y) => y[1].tw.reduce((a, b) => a + b, 0) / y[1].tw.length - x[1].tw.reduce((a, b) => a + b, 0) / x[1].tw.length)[0]
-  if (tw) add(2, tw[0], `${name(tw[0])} leads in two-way score at ${(tw[1].tw.reduce((a, b) => a + b, 0) / tw[1].tw.length).toFixed(1)} a game, which means they score and defend. Annoying.`)
+  if (tw) add(2, tw[0], `${name(tw[0])} leads in two-way score at ${(tw[1].tw.reduce((a, b) => a + b, 0) / tw[1].tw.length).toFixed(1)} a game, so the points and the stops are coming from the same person. Annoying.`)
 
   // Longest win streak of the season.
   const run = new Map<string, number>()
