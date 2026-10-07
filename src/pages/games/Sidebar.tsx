@@ -5,6 +5,7 @@ import { InjuryBoard } from "@/components/InjuryBoard"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import type { Update } from "@/lib/store"
 import { HeadToHeadCard } from "./HeadToHeadCard"
+import { AwardRaceCard } from "./AwardRace"
 import { PredictionScorecard } from "./PredictionScorecard"
 import { RecordsCard, SeasonStoriesCard } from "./SeasonCards"
 import { formatDateDisplay } from "@/lib/format"
@@ -88,6 +89,7 @@ export function Sidebar({
       </Card>
       <PredictionScorecard state={state} onOpenGame={onOpenGame} />
       <HeadToHeadCard state={state} onOpenGame={onOpenGame} />
+      <AwardRaceCard state={state} onOpenPlayer={onOpenPlayer} />
       <RecordsCard state={state} onOpenPlayer={onOpenPlayer} />
       <Card>
         <CardHeader>
