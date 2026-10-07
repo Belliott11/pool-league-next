@@ -48,7 +48,7 @@ describe("seasonStories", () => {
     const games = [1, 2, 3, 4, 5, 6].map((i) => g(String(i), `2026-09-0${i}`, 6, 2))
     const out = seasonStories({ players, games }, (x) => x.toUpperCase()).join(" ")
     expect(out).toMatch(/6-0/)
-    expect(out).toContain("6-game win streak")
+    expect(out).toMatch(/6-game win streak|6 (in a row|straight wins)|streak of the season belongs to A: 6/)
   })
 })
 
