@@ -1,5 +1,5 @@
-import { CalendarDays, Radio } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { CalendarDays, Radio, Tv } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { EmptyState } from "@/components/EmptyState"
 import { Button } from "@/components/ui/button"
 import { haptic } from "@/lib/haptics"
@@ -13,6 +13,7 @@ import { Confetti, useScorePops, type Pop } from "./LiveGamePage"
 import { LiveOdds, LiveOddsMini } from "./LiveOdds"
 import { getClient } from "@/lib/cloud"
 import { Scorekeeper, ViewerSetup } from "./Scorekeeper"
+import { TvBoard } from "./TvBoard"
 
 const NONE: Game = { id: "", date: "", teamA: [], teamB: [], stats: [], scoringEvents: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
 
@@ -74,6 +75,7 @@ function Side({ side, ids, total, other, game, state, pops }: { side: "A" | "B";
 // It follows whatever the editor is scoring; the data refreshes every few seconds.
 export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; onClose: () => void; onRecap?: (date: string) => void }) {
   const live = findLiveGame(state)
+  const [tv, setTv] = useState(false)
   // Remember the game so that when it ends the final score stays on screen instead of vanishing.
   const lastId = useRef<string | undefined>(live?.id)
   if (live) lastId.current = live.id
@@ -151,6 +153,10 @@ export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; on
         </p>
       )}
       {isLive && <LiveOdds game={game} />}
+      <Button variant="outline" onClick={() => setTv(true)}>
+        <Tv aria-hidden /> Big scoreboard for a TV
+      </Button>
+      {tv && <TvBoard game={game} state={state} onClose={() => setTv(false)} />}
       {!isLive && onRecap && (
         <Button onClick={() => onRecap(game.date)}>
           <CalendarDays aria-hidden /> See tonight&apos;s recap
