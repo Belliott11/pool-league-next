@@ -332,7 +332,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
               <ArrowLeft />
             </Button>
           )}
-          <h1 className={`font-display font-bold transition-[font-size] ${scrolled ? "text-lg" : "text-2xl"}`}>
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className={`mr-2 shrink-0 rounded-lg transition-[width,height] ${scrolled ? "size-6" : "size-7 sm:size-8"}`} />
+          <h1 className={`font-display font-extrabold uppercase whitespace-nowrap sm:tracking-wide transition-[font-size] ${scrolled ? "text-base sm:text-lg" : "text-lg sm:text-2xl"}`}>
             Poolean <span className="text-accent">Intel</span>
           </h1>
         </div>
@@ -352,6 +353,11 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           <ColorMenu />
           <ThemeToggle />
         </div>
+        <span aria-hidden className="absolute inset-x-0 bottom-0 flex h-[3px]">
+          <i className="flex-1 bg-[#1d4fd8]" />
+          <i className="flex-1 bg-[#f4f6f7]" />
+          <i className="flex-1 bg-[#e3262e]" />
+        </span>
       </div>
       <WhoPrompt state={state} />
       {mode === "admin" && cloud && cloud.sync === "conflict" && (

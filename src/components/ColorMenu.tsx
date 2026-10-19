@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { buttonVariants } from "@/components/ui/button"
 
 const ACCENTS = [
-  { key: "", label: "Coral", swatch: "#e8650f" },
+  { key: "", label: "Red", swatch: "#e3262e" },
   { key: "violet", label: "Violet", swatch: "#7a5ae0" },
   { key: "blue", label: "Blue", swatch: "#2f74e6" },
   { key: "magenta", label: "Magenta", swatch: "#b83fc4" },
@@ -16,7 +16,7 @@ const KEY = [
   { cls: "bg-pos", name: "Aqua", means: "Better than average, a good result" },
   { cls: "bg-neg", name: "Crimson", means: "Worse than average, a bad result" },
   { cls: "bg-gold", name: "Gold", means: "First place and awards" },
-  { cls: "bg-team-a", name: "Team A", means: "Opposite the accent on the color wheel, so it always stands apart" },
+  { cls: "bg-team-a", name: "Team A", means: "Blue with the red accent, and opposite the accent on the color wheel with the others" },
   { cls: "bg-chart-4", name: "Chart colors", means: "Only to tell lines or players apart; they shift with the accent" },
 ]
 
