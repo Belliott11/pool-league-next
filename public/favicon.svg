@@ -5,8 +5,6 @@
   <rect width="64" height="64" rx="14" fill="#071014"/>
   <g clip-path="url(#ball)">
     <rect x="10" y="8" width="44" height="40" fill="#f4f6f7"/>
-    <rect x="32" y="8" width="22" height="20" fill="#1d4fd8"/>
-    <rect x="10" y="28" width="22" height="20" fill="#e3262e"/>
     <path d="M21 16c5 4 5 20 0 24V48H10V8h11z" fill="#1d4fd8"/>
     <path d="M43 16c-5 4-5 20 0 24V48h11V8H43z" fill="#e3262e"/>
   </g>
