@@ -279,14 +279,6 @@ export function setDirection(game: Game, dir: "left" | "right" | null): Game {
   return { ...game, teamADirection: dir }
 }
 
-export function addMatchup(game: Game, m: { defenderId: string; offenderId: string; note?: string; videoTime?: number | null }): Game {
-  return { ...game, matchups: [...(game.matchups ?? []), { id: uid("matchup"), ...m }] }
-}
-
-export function deleteMatchup(game: Game, id: string): Game {
-  return { ...game, matchups: (game.matchups ?? []).filter((m) => m.id !== id) }
-}
-
 export function addPlay(game: Game, p: { type: "highlight" | "lowlight"; start: number; end: number; playerId?: string | null; note?: string }): Game {
   return { ...game, plays: [...(game.plays ?? []), { id: uid("play"), ...p }] }
 }

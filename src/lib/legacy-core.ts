@@ -11761,7 +11761,6 @@ export const MOUNT_PANELS = [
   }
 } }] }
 ];
-export const MOUNT_NO_RENDER = [];
 
 
 export const PLAYER_PANELS = [
@@ -11803,7 +11802,6 @@ export const PLAYER_PANELS = [
   { title: "Game Log", hint: "Every game this player was in, most recent first.", tag: null, open: true, section: "media", order: 35, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"playerGameLogTable\">\r\n          <thead><tr id=\"playerGameLogHeaderRow\"></tr></thead>\r\n          <tbody id=\"playerGameLogBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerGameLog(pid); }, wires: [] },
   { title: "Highlights & Lowlights", hint: "Every clip tagged to this player, across all games. Tag a clip to a player from the Highlight / Lowlight Reel table in Stat Entry.", tag: null, open: false, section: "media", order: 36, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"playerReelTable\">\r\n          <thead><tr><th>Date</th><th>Type</th><th>Time</th><th>Note</th><th></th></tr></thead>\r\n          <tbody id=\"playerReelBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerReel(pid); }, wires: [] }
 ];
-export function setLegacyPlayer(pid) { currentPlayerId = pid; }
 
 
 export const EXPORT_PANELS = [
