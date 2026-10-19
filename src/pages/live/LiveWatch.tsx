@@ -25,10 +25,13 @@ export function LiveBanner({ state, onOpen }: { state: PooleanState; onOpen: () 
   return (
     <button type="button" onClick={onOpen} className="flex flex-col gap-2 rounded-xl border-2 border-primary bg-card p-4 text-left">
       <span className="flex items-center gap-2 text-sm font-semibold text-primary">
-        <Radio className="size-4 animate-pulse" aria-hidden />
+        <span aria-hidden className="relative flex size-2.5">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/60" />
+          <span className="relative size-2.5 rounded-full bg-primary" />
+        </span>
         Live now
       </span>
-      <span className="font-display text-3xl tabular-nums">
+      <span key={`${a}-${b}`} className="anim-bump self-start font-display text-3xl tabular-nums">
         {a} <span className="text-muted-foreground">-</span> {b}
       </span>
       <LiveOddsMini game={g} />
@@ -38,10 +41,11 @@ export function LiveBanner({ state, onOpen }: { state: PooleanState; onOpen: () 
 }
 
 function Side({ side, ids, total, other, game, state, pops }: { side: "A" | "B"; ids: string[]; total: number; other: number; game: Game; state: PooleanState; pops: Pop[] }) {
+  const won = !game.liveInProgress && total > other
   const scored = pops.some((p) => ids.includes(p.pid))
   return (
     <section className="flex min-w-0 flex-col gap-2" aria-label={`Team ${side}`}>
-      <div className={cn("rounded-xl border-2 p-3 text-center transition-colors duration-300", total > other ? cn(TEAM[side].border, TEAM[side].tint) : "border-border bg-card")}>
+      <div className={cn("rounded-xl border-2 p-3 text-center transition-colors duration-300", won && "anim-sheen", total > other ? cn(TEAM[side].border, TEAM[side].tint) : "border-border bg-card")}>
         <div className={cn("text-xs font-semibold uppercase tracking-wide", TEAM[side].text)}>Team {side}</div>
         <div key={total} className={cn("font-display text-6xl leading-none tabular-nums", scored && "anim-bump")}>
           {total}

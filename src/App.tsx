@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { setAppGames } from "@/lib/matchup"
 import { AccountMenu } from "@/components/AccountMenu"
 import { StoryPublisher } from "@/components/StoryPublisher"
+import { PullToRefresh } from "@/components/PullToRefresh"
 import { SyncChip } from "@/components/SyncChip"
 import { getClient } from "@/lib/cloud"
 import { loadLabels, saveLabels, type LabelBook } from "@/lib/labelStore"
@@ -388,6 +389,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           onOpen={() => setSub("live")}
         />
       )}
+      {cloud && <PullToRefresh onRefresh={cloud.refresh} />}
       <main id="main" tabIndex={-1} className="outline-none">
       <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList className="max-sm:hidden">

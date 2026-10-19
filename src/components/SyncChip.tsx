@@ -35,7 +35,7 @@ export function SyncChip({ cloud }: { cloud: CloudState }) {
   const quiet = online && (cloud.sync === "saved" || cloud.sync === "idle")
   return (
     <span role="status" className={cn("flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium", tone, quiet && "max-sm:hidden")}>
-      <Icon aria-hidden className="size-3.5" />
+      <Icon key={label} aria-hidden className={cn("anim-chip size-3.5", cloud.sync === "saving" && online && "animate-pulse")} />
       <span className={cn(quiet && "max-md:sr-only")}>{label}</span>
     </span>
   )
