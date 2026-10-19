@@ -197,6 +197,7 @@ export function PlayerDetailPage({
       <PlayerHero
         pid={pid}
         name={player.name}
+        number={player.number}
         form={form}
         stats={row ? { twoWay: fmtRate(row.twoWayPer20), record: record!, pts: fmtRate(row.rate.pts), off: fmtRate(row.offRatingPer20) } : null}
         onShare={share}

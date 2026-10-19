@@ -332,7 +332,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
               <ArrowLeft />
             </Button>
           )}
-          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className={`mr-2 shrink-0 rounded-lg transition-[width,height] ${scrolled ? "size-6" : "size-7 sm:size-8"}`} />
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className={`mr-2 shrink-0 rounded-lg transition-[width,height] ${view.sub !== "" || view.tab !== "games" ? "max-sm:hidden" : ""} ${scrolled ? "size-6" : "size-7 sm:size-8"}`} />
           <h1 className={`font-display font-extrabold uppercase whitespace-nowrap sm:tracking-wide transition-[font-size] ${scrolled ? "text-base sm:text-lg" : "text-lg sm:text-2xl"}`}>
             Poolean <span className="text-accent">Intel</span>
           </h1>

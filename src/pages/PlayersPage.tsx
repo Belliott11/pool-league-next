@@ -232,6 +232,24 @@ export function PlayersPage({
                           })}
                         </div>
                       )}
+                      {!readOnly && (
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          Jersey number
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={99}
+                            value={p.number ?? ""}
+                            aria-label={`Jersey number for ${p.name}`}
+                            onChange={(e) => {
+                              const n = e.target.value === "" ? undefined : Math.min(99, Math.max(0, Math.round(Number(e.target.value))))
+                              update((s) => ({ ...s, players: s.players.map((x) => (x.id === p.id ? { ...x, number: Number.isNaN(n) ? undefined : n } : x)) }))
+                            }}
+                            className="h-8 w-16 rounded-lg border bg-card px-2 text-center text-sm tabular-nums text-foreground"
+                          />
+                        </label>
+                      )}
                       {(labels[p.id] ?? []).filter((k) => !isOwnLine(k)).length > 0 && (
                         <div className="flex flex-wrap gap-1.5" aria-label="Labels">
                           {(labels[p.id] ?? []).filter((k) => !isOwnLine(k)).map((k) => (

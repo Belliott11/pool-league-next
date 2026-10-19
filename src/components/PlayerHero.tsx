@@ -1,12 +1,13 @@
 import { IdCard, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { JerseyNumber } from "@/components/JerseyNumber"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 
 type Stats = { twoWay: string; record: string; pts: string; off: string }
 
 // Trading-card style header for the Player page. #playerRankPill is filled by the classic renderPlayerRankPill.
-export function PlayerHero({ pid, name, stats, form = [], onShare, onCard }: { pid: string; name: string; stats: Stats | null; form?: ("W" | "L" | "T")[]; onShare: () => void; onCard: () => void }) {
+export function PlayerHero({ pid, name, number, stats, form = [], onShare, onCard }: { pid: string; name: string; number?: number; stats: Stats | null; form?: ("W" | "L" | "T")[]; onShare: () => void; onCard: () => void }) {
   return (
     <Card className="tile overflow-hidden">
       <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
@@ -18,7 +19,10 @@ export function PlayerHero({ pid, name, stats, form = [], onShare, onCard }: { p
         />
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            <h2 className="font-display text-3xl font-bold leading-tight break-words">{name}</h2>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="font-display text-3xl font-bold leading-tight break-words">{name}</h2>
+              <JerseyNumber number={number} />
+            </div>
             <div id="playerRankPill" className="legacy" />
           </div>
           {stats ? (
