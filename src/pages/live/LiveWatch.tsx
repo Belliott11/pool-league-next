@@ -1,3 +1,4 @@
+import { FlipDigits } from "@/components/FlipDigits"
 import { CalendarDays, Radio, Tv } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { EmptyState } from "@/components/EmptyState"
@@ -31,8 +32,8 @@ export function LiveBanner({ state, onOpen }: { state: PooleanState; onOpen: () 
         </span>
         Live now
       </span>
-      <span key={`${a}-${b}`} className="anim-bump self-start font-score text-3xl tabular-nums">
-        {a} <span className="text-muted-foreground">-</span> {b}
+      <span className="flex items-center gap-2 self-start text-3xl">
+        <FlipDigits value={a} /> <span className="text-muted-foreground"><FlipDigits value="-" /></span> <FlipDigits value={b} />
       </span>
       <LiveOddsMini game={g} />
       <span className="text-sm text-muted-foreground">Tap to watch. It updates by itself.</span>
@@ -42,13 +43,12 @@ export function LiveBanner({ state, onOpen }: { state: PooleanState; onOpen: () 
 
 function Side({ side, ids, total, other, game, state, pops }: { side: "A" | "B"; ids: string[]; total: number; other: number; game: Game; state: PooleanState; pops: Pop[] }) {
   const won = !game.liveInProgress && total > other
-  const scored = pops.some((p) => ids.includes(p.pid))
   return (
     <section className="flex min-w-0 flex-col gap-2" aria-label={`Team ${side}`}>
       <div className={cn("rounded-xl border-2 p-3 text-center transition-colors duration-300", won && "anim-sheen", total > other ? cn(TEAM[side].border, TEAM[side].tint) : "border-border bg-card")}>
         <div className={cn("text-xs font-semibold uppercase tracking-wide", TEAM[side].text)}>Team {side}</div>
-        <div key={total} className={cn("font-score text-6xl leading-none tabular-nums", scored && "anim-bump")}>
-          {total}
+        <div className="flex justify-center text-6xl leading-none">
+          <FlipDigits value={total} />
         </div>
       </div>
       {ids.map((id) => {
@@ -65,8 +65,8 @@ function Side({ side, ids, total, other, game, state, pops }: { side: "A" | "B";
               </span>
             ))}
             <span className="truncate font-medium">{playerName(state, id)}</span>
-            <span key={pts} className={cn("font-score text-2xl tabular-nums", mine.length > 0 && "anim-bump")}>
-              {pts}
+            <span className="text-2xl">
+              <FlipDigits value={pts} />
             </span>
           </div>
         )

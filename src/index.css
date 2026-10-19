@@ -312,6 +312,8 @@ html { overscroll-behavior-y: contain; }
   tbody tr:nth-child(9) { animation-delay: 240ms; }
   tbody tr:nth-child(10) { animation-delay: 270ms; }
   .anim-chip { animation: chip-in 300ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+  @keyframes dot-flip { 0% { transform: scaleX(1); } 50% { transform: scaleX(0.05); } 100% { transform: scaleX(1); } }
+  .flip-dot { transform-box: fill-box; transform-origin: center; animation: dot-flip 420ms ease-in-out backwards; animation-delay: calc(var(--c, 0) * 30ms); }
   button:not(:disabled):active, summary:active { transform: scale(0.97); }
   button, summary { transition: transform 120ms ease-out; }
 
@@ -346,11 +348,4 @@ html { overscroll-behavior-y: contain; }
   @media (hover: hover) {
     [data-slot="card"]:hover { --tw-ring-color: color-mix(in srgb, var(--accent) 35%, transparent); }
   }
-}
-
-/* Scoreboard numerals: the dot-matrix look of a gym scoreboard. Used for scores and the big stat, never for small text. */
-.font-score {
-  font-family: "Doto", var(--font-display);
-  font-weight: 900;
-  letter-spacing: 0.02em;
 }

@@ -1,3 +1,4 @@
+import { FlipDigits } from "@/components/FlipDigits"
 import { TEAM } from "@/lib/teamColors"
 import { EmptyState } from "@/components/EmptyState"
 import { useEffect, useMemo, useState } from "react"
@@ -102,7 +103,9 @@ function GameCard({
               { team: game.teamB, score: scoreB, fb: "Team B", won: scoreB > scoreA, c: TEAM.B },
             ].map((t, i) => (
               <span key={i} className="flex items-baseline gap-3">
-                <span className={`font-score w-12 text-right text-3xl font-extrabold tabular-nums ${t.c.text} ${t.won ? "" : "opacity-60"}`}>{t.score}</span>
+                <span className={`flex w-12 justify-end text-3xl ${t.c.text} ${t.won ? "" : "opacity-60"}`}>
+                  <FlipDigits value={t.score} />
+                </span>
                 <span className={`text-sm ${t.won ? "font-bold" : "text-muted-foreground"}`}>{names(state, t.team, t.fb)}</span>
               </span>
             ))}

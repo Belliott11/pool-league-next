@@ -1,3 +1,4 @@
+import { FlipDigits } from "@/components/FlipDigits"
 import { ArrowLeft, Undo2 } from "lucide-react"
 import { useRef, useState } from "react"
 import { YouTubePlayer, type PlayerControl } from "@/components/YouTubePlayer"
@@ -121,7 +122,9 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
           ].map((t) => (
             <div key={t.label} className={`rounded-xl border p-3 text-center ${t.score > t.other ? "bg-primary text-primary-foreground" : "bg-card"}`}>
               <p className="text-xs opacity-80">{t.label}</p>
-              <p className="font-score text-3xl font-semibold tabular-nums">{t.score}</p>
+              <p className="flex justify-center text-3xl">
+                <FlipDigits value={t.score} />
+              </p>
             </div>
           ))}
         </div>

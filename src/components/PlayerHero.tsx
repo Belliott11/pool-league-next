@@ -1,6 +1,7 @@
 import { IdCard, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { FlipDigits } from "@/components/FlipDigits"
 import { JerseyNumber } from "@/components/JerseyNumber"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 
@@ -28,7 +29,9 @@ export function PlayerHero({ pid, name, number, stats, form = [], onShare, onCar
           {stats ? (
             <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
               <div>
-                <div className="font-score text-7xl font-extrabold leading-none tabular-nums text-primary sm:text-8xl">{stats.twoWay}</div>
+                <div className="text-7xl leading-none text-primary sm:text-8xl">
+                  <FlipDigits value={stats.twoWay} />
+                </div>
                 <div className="mt-1 text-sm text-muted-foreground">Two-Way/20</div>
               </div>
               <dl className="flex gap-6 sm:border-l sm:border-dashed sm:pl-6">
