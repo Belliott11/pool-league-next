@@ -312,7 +312,7 @@ function TeamScore({ state, game, ids, label, score }: { state: PooleanState; ga
   return (
     <div className="flex flex-1 flex-col items-center gap-2 text-center">
       <span className={cn("text-sm font-semibold", label === "Team A" ? TEAM.A.text : TEAM.B.text)}>{label}</span>
-      <span className="font-display text-5xl font-bold tabular-nums">{score}</span>
+      <span className="font-score text-5xl font-bold tabular-nums">{score}</span>
       <div className="flex flex-wrap justify-center gap-2">
         {ids.map((id) => (
           <span key={id} className="flex items-center gap-1 text-sm">

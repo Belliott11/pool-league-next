@@ -30,11 +30,11 @@ export function TvBoard({ game, state, onClose }: { game: Game; state: PooleanSt
   const side = (s: "A" | "B", ids: string[], total: number) => (
     <section aria-label={`Team ${s}`} className={cn("flex min-w-0 flex-1 flex-col items-center justify-center gap-[2vmin] rounded-3xl border-4 p-[2vmin]", !live && total > (s === "A" ? b : a) && "anim-sheen", total > (s === "A" ? b : a) ? cn(TEAM[s].border, TEAM[s].tint) : "border-border")}>
       <div className={cn("text-[3vmin] font-semibold", TEAM[s].text)}>Team {s}</div>
-      <div key={total} className="anim-bump font-display text-[28vmin] leading-none tabular-nums">{total}</div>
+      <div key={total} className="anim-bump font-score text-[28vmin] leading-none tabular-nums">{total}</div>
       <ul className="flex flex-wrap justify-center gap-x-[3vmin] gap-y-[0.5vmin] text-[3.2vmin]">
         {ids.map((id) => (
           <li key={id} className="whitespace-nowrap">
-            {playerName(state, id)} <span className="font-display tabular-nums text-muted-foreground">{liveScoreOf(game, [id])}</span>
+            {playerName(state, id)} <span className="font-score tabular-nums text-muted-foreground">{liveScoreOf(game, [id])}</span>
           </li>
         ))}
       </ul>

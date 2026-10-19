@@ -347,3 +347,10 @@ html { overscroll-behavior-y: contain; }
     [data-slot="card"]:hover { --tw-ring-color: color-mix(in srgb, var(--accent) 35%, transparent); }
   }
 }
+
+/* Scoreboard numerals: the dot-matrix look of a gym scoreboard. Used for scores and the big stat, never for small text. */
+.font-score {
+  font-family: "Doto", var(--font-display);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}

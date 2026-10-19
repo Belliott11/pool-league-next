@@ -102,7 +102,7 @@ function GameCard({
               { team: game.teamB, score: scoreB, fb: "Team B", won: scoreB > scoreA, c: TEAM.B },
             ].map((t, i) => (
               <span key={i} className="flex items-baseline gap-3">
-                <span className={`font-display w-9 text-right text-2xl font-extrabold tabular-nums ${t.c.text} ${t.won ? "" : "opacity-60"}`}>{t.score}</span>
+                <span className={`font-score w-12 text-right text-3xl font-extrabold tabular-nums ${t.c.text} ${t.won ? "" : "opacity-60"}`}>{t.score}</span>
                 <span className={`text-sm ${t.won ? "font-bold" : "text-muted-foreground"}`}>{names(state, t.team, t.fb)}</span>
               </span>
             ))}

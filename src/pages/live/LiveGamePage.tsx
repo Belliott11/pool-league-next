@@ -192,7 +192,7 @@ function PlayerTile({ id, name, on, setSel, score, mine, add }: {
         ))}
         <button type="button" aria-pressed={on} className="flex min-h-11 w-full items-center justify-between gap-2 text-left" onClick={() => setSel(on ? null : id)}>
           <span className="truncate font-medium">{name}</span>
-          <span key={score} className={cn("font-display text-2xl tabular-nums", mine.length > 0 && "anim-bump")}>
+          <span key={score} className={cn("font-score text-2xl tabular-nums", mine.length > 0 && "anim-bump")}>
             {score}
           </span>
         </button>
@@ -225,7 +225,7 @@ export function TeamColumn({ side, ids, total, other, game, state, sel, setSel, 
     <section className="flex min-w-0 flex-col gap-2" aria-label={`Team ${side}`}>
       <div className={cn("rounded-xl border-2 p-3 text-center transition-colors duration-300", total > other ? cn(TEAM[side].border, TEAM[side].tint) : "border-border bg-card")}>
         <div className={cn("text-xs font-semibold uppercase tracking-wide", TEAM[side].text)}>Team {side}</div>
-        <div key={total} className={cn("font-display text-6xl leading-none tabular-nums", scored && "anim-bump")}>
+        <div key={total} className={cn("font-score text-6xl leading-none tabular-nums", scored && "anim-bump")}>
           {total}
         </div>
       </div>
