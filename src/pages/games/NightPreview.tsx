@@ -6,6 +6,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { StoryList } from "@/components/StoryList"
 import { formatDateDisplay } from "@/lib/format"
 import { useLabeledState } from "@/lib/labelsContext"
+import { turnout } from "@/lib/attendance"
 import { previewStoriesFor, upcomingRsvp } from "@/lib/nightPreview"
 import { playerName } from "@/lib/players"
 import { usePublishedStories } from "@/lib/published"
@@ -20,6 +21,7 @@ export function NightPreviewCard({ state, update }: { state: PooleanState; updat
   const coming = rsvp?.playerIds ?? []
   const written = useMemo(() => (rsvp ? previewStoriesFor(labeled, coming, (id) => playerName(state, id)) : []), [labeled, state, rsvp, coming])
   const stories = usePublishedStories(state, update, "preview", written)
+  const t = useMemo(() => turnout(state, coming), [state, coming])
   const [sent, setSent] = useState<string>("")
   if (!rsvp) return null
   // The whole card as text for the group chat: who is coming and the lines about them.
@@ -37,6 +39,9 @@ export function NightPreviewCard({ state, update }: { state: PooleanState; updat
           </span>
         ))}
       </div>
+      <p className="text-sm text-muted-foreground">
+        {t.teams}.{t.missing.length > 0 && ` Regulars not on the list: ${t.missing.map((id) => playerName(state, id)).join(", ")}.`}
+      </p>
       {stories.length > 0 && <StoryList stories={stories} />}
       <Button
         size="sm"
