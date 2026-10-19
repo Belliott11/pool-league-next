@@ -59,7 +59,7 @@ function ImportScreen({ onImported }: { onImported: (state: PooleanState) => voi
           <CardTitle className="font-display">Import your data</CardTitle>
           <CardDescription>
             This is a separate, in-progress build of Poolean Intel. Import the JSON backup from the
-            classic site (Export &rarr; Export All Data, or Save Backup) to see your real games here.
+            classic site (Export &rarr; Export All Data, or Save Backup) to see your past seasons here.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -377,7 +377,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       )}
       {mode === "admin" && cloud && cloud.loaded && !cloud.remote && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3 text-sm">
-          <span className="min-w-0 flex-1">Nothing is shared yet. Publish this data so friends can open the link and view it.</span>
+          <span className="min-w-0 flex-1">Nothing is shared yet. Publish this data so visitors can open the link and view it.</span>
           <Button size="sm" onClick={() => void cloud.overwrite(state)}>
             Publish to the cloud
           </Button>

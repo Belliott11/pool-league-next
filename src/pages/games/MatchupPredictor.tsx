@@ -81,16 +81,16 @@ export function MatchupPredictor({ state }: { state: PooleanState }) {
     <Card>
       <CardHeader>
         <CardTitle className="font-display">
-          Matchup Predictor <Badge variant="secondary">Real site data</Badge>
+          Matchup Predictor <Badge variant="secondary">Past seasons data</Badge>
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Win odds for any two teams from a small model trained on every real game in every imported season. Tap a name once for Team A,
+          Win odds for any two teams from a small model trained on every game in every past season. Tap a name once for Team A,
           again for Team B, again to clear.
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {!model ? (
-          <p className="text-muted-foreground">Needs at least {REAL_MATCHUP_MIN_GAMES} real games imported before it can predict anything.</p>
+          <p className="text-muted-foreground">Needs at least {REAL_MATCHUP_MIN_GAMES} games imported from past seasons before it can predict anything.</p>
         ) : (
           <>
             <div className="flex flex-wrap gap-2">
@@ -148,7 +148,7 @@ export function MatchupPredictor({ state }: { state: PooleanState }) {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{confidence(model.n)}.</span> {realMatchupAccuracyText(model)} Trained on {model.n} real games.
+                  <span className="font-medium text-foreground">{confidence(model.n)}.</span> {realMatchupAccuracyText(model)} Trained on {model.n} games from past seasons.
                 </p>
               </div>
             )}

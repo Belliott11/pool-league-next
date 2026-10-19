@@ -70,15 +70,15 @@
  },
  "Rivalries": {
   "hint": "League-wide superlatives from the real Poolean site's full pairwise history: the most-played pairing, the best real record together, the tightest real head-to-head, and the most lopsided one, each needing at least 5 real games to count.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Head to Head": {
   "hint": "Pick any two players to see their real record together and against each other, their season lines, and both players' nightly power rankings on one chart.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Real Rivalry Matrix": {
   "hint": "Every real together-win% at once, not just the four superlatives above: every player down one side, every player across the other, cell color runs crimson (low) to aqua (high), opacity ramping up with real games shared. Click a name for their own page.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Head-to-Head Matchup Grid": {
   "hint": "Each scorer's FG% against each defender. Crimson is low, aqua is high, and fainter cells have fewer shots. Blank means that pairing has never been tagged."
@@ -178,31 +178,31 @@
  },
  "Season Timeline": {
   "hint": "The real season's story in order: who held the crown each real party night, and any upsets that same night. The same facts Season Recap and Upset Tracker show as static summaries, read here as one continuous timeline.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Season Recap": {
   "hint": "The real season on one screen: the champion, every award winner, the top of the final power rankings, and the biggest risers and fallers from the first party to the end of the season.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Award Race": {
   "hint": "Who the numbers point to for each award, top 3. The vote is what counts: once results are in, each award shows the real winner and whether the stats called it. DPOY, Clutch and Best Teammate use logged games.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Trophy Case": {
   "hint": "Every player with a real award win, gold first. Ring color and thickness match the avatar ring on each player's own profile page.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Iron Man": {
   "hint": "Everyone tied for the longest streak of real parties attended in a row.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Upset Tracker": {
   "hint": "Real games the lower-ranked side won anyway (by that night's power rankings), biggest surprise first. Uneven teams are adjusted for the extra player.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Party Recap": {
   "hint": "One real party night at a time: everyone's record that night, any upsets, the biggest climber in the rankings, and milestones. Download it as an image, or copy it as text for the group chat.",
-  "tag": "Real site data"
+  "tag": "Past seasons data"
  },
  "Best & Worst Individual Games": {
   "hint": "The best and worst single-game performances, by that game's own score. Switch between overall, offense and defense. Games stopped early are left out."

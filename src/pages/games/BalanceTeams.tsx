@@ -111,7 +111,7 @@ function TeamCard({
           {winProb !== undefined && (
             <Badge
               variant="secondary"
-              title={model ? `Matchup Predictor, trained on ${model.n} real games. ${realMatchupAccuracyText(model)}` : ""}
+              title={model ? `Matchup Predictor, trained on ${model.n} games from past seasons. ${realMatchupAccuracyText(model)}` : ""}
             >
               {Math.round(winProb * 100)}% win
             </Badge>
@@ -156,7 +156,7 @@ function TeamCard({
         <div className="text-xs text-muted-foreground" title="Two-Way/20-scale adjustment from this pairing's actual win rate in past games together, already included in the avg above.">
           Past record: {win.value >= 0 ? "+" : ""}
           {win.value.toFixed(1)}
-          {win.minGp !== null ? ` (min ${win.minGp} game${win.minGp === 1 ? "" : "s"} together${win.anyReal ? ", real site record" : ""})` : ""}
+          {win.minGp !== null ? ` (min ${win.minGp} game${win.minGp === 1 ? "" : "s"} together${win.anyReal ? ", past seasons record" : ""})` : ""}
         </div>
       )}
     </div>
@@ -243,8 +243,8 @@ function OptionCard({
         ))}
       </div>
       {warnings.map((w) => (
-        <div key={`${w.dominant}|${w.dominated}`} className="text-sm" title="Real Poolean site record, not this app's own logged games.">
-          {poolNameOf(state, w.dominant)} is {w.w}-{w.l} against {poolNameOf(state, w.dominated)} in real games, on opposite teams tonight
+        <div key={`${w.dominant}|${w.dominated}`} className="text-sm" title="Record from past seasons, not this app's own logged games.">
+          {poolNameOf(state, w.dominant)} is {w.w}-{w.l} against {poolNameOf(state, w.dominated)} in past seasons, on opposite teams tonight
         </div>
       ))}
       {option.teams.length === 2 && (

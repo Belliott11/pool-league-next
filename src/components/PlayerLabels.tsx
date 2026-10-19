@@ -25,7 +25,7 @@ export function PlayerLabels({ playerId, onClose }: { playerId: string; onClose:
   return (
     <div className="flex flex-col gap-3 rounded-xl border p-3">
       <p className="text-sm font-medium">Labels</p>
-      <p className="text-xs text-muted-foreground">Private to you: friends never see these. Headlines about this player are written around them, and friends only see the finished jokes.</p>
+      <p className="text-xs text-muted-foreground">Private to you: visitors never see these. Headlines about this player are written around them, and visitors only see the finished headlines.</p>
       <div className="flex flex-wrap gap-1.5">
         {LABELS.map((l) => (
           <button

@@ -59,3 +59,27 @@ _Avoid_: Tag, trait
 
 **Tone**:
 How a headline is worded, such as a quip or a roast. A tone is not a separate kind of headline.
+
+### Scores and predictions
+
+**Defensive score**:
+A player's defending value in one game: steals, blocks and stops, minus times beaten and points allowed. The defender award adds it up over this season.
+
+**Two-way score**:
+A player's offense and defense in one game, added together. The MVP award adds it up over this season.
+
+**Two-way per 20**:
+The two-way score scaled to 20 minutes of play. Standings rank by it, and so does "Best player".
+_Avoid_: Two-way rating
+
+**Prediction**:
+The model's win chance for a game, saved before it is played and never filled in afterward.
+
+**Backtest pick**:
+A pick for an old game, made only from the games before it. Shown on its own and never mixed with predictions.
+
+**Scorecard**:
+The record of how often the model's predictions were right. It scores predictions only, never Pick'em votes.
+
+**Pick'em**:
+A visitor's vote on which team will win a game, cast before it starts. Separate from the model's prediction.
