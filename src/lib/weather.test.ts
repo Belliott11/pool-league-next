@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { countdownLabel, eveningOf } from "@/lib/weather"
+import { countdownLabel, countdownTo, eveningOf } from "@/lib/weather"
 import { recentForm } from "@/lib/gamePreview"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -11,7 +11,8 @@ describe("evening weather", () => {
     weathercode: [0, 1, 3, 61, 95],
   }
   it("averages 5 to 9 PM, takes the worst rain chance, and ignores other hours", () => {
-    expect(eveningOf(h, "2026-10-24")).toEqual({ tempF: 69, rainPct: 40, label: "Rain" })
+    expect(eveningOf(h, "2026-10-24")).toEqual({ tempF: 69, rainPct: 40, label: "Rain", from: 17, to: 21 })
+    expect(eveningOf(h, "2026-10-24", 16, 17)).toMatchObject({ tempF: 75, from: 16, to: 17 })
     expect(eveningOf(h, "2026-10-25")).toBeNull()
   })
 })
@@ -22,6 +23,17 @@ describe("countdown", () => {
     expect(countdownLabel("2026-10-22", "2026-10-21")).toBe("Tomorrow")
     expect(countdownLabel("2026-10-26", "2026-10-21")).toBe("In 5 days")
     expect(countdownLabel("2026-10-20", "2026-10-21")).toBeNull()
+  })
+})
+
+describe("countdown to a start time", () => {
+  const at = (s: string) => new Date(s)
+  it("ticks inside a day, counts days before, and says started after", () => {
+    expect(countdownTo("2026-10-21", "19:00", at("2026-10-21T16:57:19"))).toEqual({ text: "Starts in 2:02:41", live: true })
+    expect(countdownTo("2026-10-25", "19:00", at("2026-10-21T19:00:00"))).toEqual({ text: "In 4 days", live: false })
+    expect(countdownTo("2026-10-21", "19:00", at("2026-10-21T19:30:00"))).toEqual({ text: "Started", live: false })
+    expect(countdownTo("2026-10-21", "19:00", at("2026-10-22T09:00:00"))).toBeNull()
+    expect(countdownTo("2026-10-23", undefined, at("2026-10-21T09:00:00"))).toEqual({ text: "In 2 days", live: false })
   })
 })
 

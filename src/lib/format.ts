@@ -14,3 +14,11 @@ export function formatDateDisplay(dateStr: string | undefined): string {
 export function uid(prefix: string): string {
   return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
 }
+
+// "19:00" -> "7:00 PM"; anything that isn't HH:MM comes back as given.
+export function formatTime(t: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t)
+  if (!m) return t
+  const h = +m[1]
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`
+}

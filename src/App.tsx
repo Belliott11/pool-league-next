@@ -353,11 +353,6 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           <ColorMenu />
           <ThemeToggle />
         </div>
-        <span aria-hidden className="absolute inset-x-0 bottom-0 flex h-[3px]">
-          <i className="flex-1 bg-[#1d4fd8]" />
-          <i className="flex-1 bg-[#f4f6f7]" />
-          <i className="flex-1 bg-[#e3262e]" />
-        </span>
       </div>
       <WhoPrompt state={state} />
       {mode === "admin" && cloud && cloud.sync === "conflict" && (

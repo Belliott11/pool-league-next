@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { PlayerChips, toggleId } from "@/components/PlayerChips"
-import { formatDateDisplay, uid } from "@/lib/format"
+import { formatDateDisplay, formatTime, uid } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import { pregamePrediction } from "@/lib/scorecard"
 import { newGame, type Update } from "@/lib/store"
@@ -19,12 +19,14 @@ function playerAttendedDate(state: PooleanState, playerId: string, date: string)
 
 function WhosComing({ state, update }: { state: PooleanState; update: Update }) {
   const [date, setDate] = useState("")
+  const [time, setTime] = useState("")
   const [selected, setSelected] = useState<string[]>([])
   const rsvps = [...(state.rsvps ?? [])].sort((a, b) => (b.date || "").localeCompare(a.date || ""))
 
   function pickDate(next: string) {
     setDate(next)
     setSelected(state.rsvps?.find((r) => r.date === next)?.playerIds ?? [])
+    setTime(state.rsvps?.find((r) => r.date === next)?.time ?? "")
   }
 
   function save() {
@@ -39,9 +41,9 @@ function WhosComing({ state, update }: { state: PooleanState; update: Update }) 
       if (selected.length === 0) {
         if (i !== -1) list.splice(i, 1)
       } else if (i !== -1) {
-        list[i] = { ...list[i], playerIds: selected }
+        list[i] = { ...list[i], playerIds: selected, time: time || undefined }
       } else {
-        list.push({ id: uid("rsvp"), date, playerIds: selected })
+        list.push({ id: uid("rsvp"), date, playerIds: selected, time: time || undefined })
       }
       return { ...s, rsvps: list }
     })
@@ -53,7 +55,13 @@ function WhosComing({ state, update }: { state: PooleanState; update: Update }) 
         <CardTitle className="font-display">Who&apos;s Coming?</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Input type="date" className="w-44" value={date} onChange={(e) => pickDate(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Input type="date" className="w-44" value={date} onChange={(e) => pickDate(e.target.value)} />
+          <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            Starts at
+            <Input type="time" className="w-32" value={time} onChange={(e) => setTime(e.target.value)} aria-label="Start time" />
+          </label>
+        </div>
         <PlayerChips state={state} selected={selected} onToggle={(id) => setSelected(toggleId(selected, id))} />
         <div className="flex gap-2">
           <Button size="sm" onClick={save}>
@@ -73,7 +81,7 @@ function WhosComing({ state, update }: { state: PooleanState; update: Update }) 
               return (
                 <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 text-sm">
                   <span className="flex flex-wrap items-center gap-1.5">
-                    {formatDateDisplay(r.date)}: {r.playerIds.map((id) => playerName(state, id)).join(", ") || "nobody"}
+                    {formatDateDisplay(r.date)}{r.time ? `, ${formatTime(r.time)}` : ""}: {r.playerIds.map((id) => playerName(state, id)).join(", ") || "nobody"}
                     {!hasGame ? (
                       <Badge variant="secondary">Pending: no game logged yet</Badge>
                     ) : missed.length === 0 ? (

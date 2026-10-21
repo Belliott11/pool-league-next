@@ -87,6 +87,8 @@ export interface Game {
 export interface Rsvp {
   id: string
   date: string
+  // When the night starts, "HH:MM" on a 24-hour clock in local time. Optional.
+  time?: string
   playerIds: string[]
 }
 
