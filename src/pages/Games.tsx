@@ -78,6 +78,7 @@ export function GamesPage({
         update={update}
         game={openGame}
         onStatEntry={() => go("stat:" + openGame.id)}
+        onOpenGame={open}
         autoSeek={openRequest && openRequest.id === openGame.id ? openRequest : null}
         onBack={goBack}
       />

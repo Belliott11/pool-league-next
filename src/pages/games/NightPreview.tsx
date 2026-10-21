@@ -8,6 +8,7 @@ import { formatDateDisplay } from "@/lib/format"
 import { useLabeledState } from "@/lib/labelsContext"
 import { turnout } from "@/lib/attendance"
 import { previewStoriesFor, upcomingRsvp } from "@/lib/nightPreview"
+import { countdownLabel, useEvening } from "@/lib/weather"
 import { playerName } from "@/lib/players"
 import { usePublishedStories } from "@/lib/published"
 import type { Update } from "@/lib/store"
@@ -22,15 +23,28 @@ export function NightPreviewCard({ state, update }: { state: PooleanState; updat
   const written = useMemo(() => (rsvp ? previewStoriesFor(labeled, coming, (id) => playerName(state, id)) : []), [labeled, state, rsvp, coming])
   const stories = usePublishedStories(state, update, "preview", written)
   const t = useMemo(() => turnout(state, coming), [state, coming])
+  const when = rsvp ? countdownLabel(rsvp.date) : null
+  const weather = useEvening(rsvp?.date)
   const [sent, setSent] = useState<string>("")
   if (!rsvp) return null
   // The whole card as text for the group chat: who is coming and the lines about them.
-  const message = [`Poolean Intel, ${formatDateDisplay(rsvp.date)}: ${coming.length} coming`, coming.map((id) => playerName(state, id)).join(", "), "", ...stories.map((x) => `- ${x}`)].join("\n")
+  const forecast = weather ? `${weather.label}, ${weather.tempF}°F, ${weather.rainPct}% rain` : ""
+  const message = [`Poolean Intel, ${formatDateDisplay(rsvp.date)}: ${coming.length} coming`, forecast, coming.map((id) => playerName(state, id)).join(", "), "", ...stories.map((x) => `- ${x}`)].join("\n")
   return (
     <section className="flex flex-col gap-3 rounded-xl border bg-card p-4" aria-label="Next night">
       <h3 className="flex items-center gap-2 font-display text-lg font-bold">
         <CalendarClock aria-hidden className="size-4 text-accent" /> {formatDateDisplay(rsvp.date)}: {coming.length} coming
       </h3>
+      {(when || weather) && (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          {when && <span className="font-display text-base font-bold text-accent">{when}</span>}
+          {weather && (
+            <span className="text-muted-foreground">
+              Cherry Hill, 5 to 9 PM: {weather.label}, <span className="tabular-nums">{weather.tempF}°F</span>, <span className="tabular-nums">{weather.rainPct}%</span> chance of rain
+            </span>
+          )}
+        </p>
+      )}
       <div className="flex flex-wrap gap-1.5">
         {coming.map((id) => (
           <span key={id} className="flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 text-sm">

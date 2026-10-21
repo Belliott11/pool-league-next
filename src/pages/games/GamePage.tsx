@@ -1,3 +1,5 @@
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TeamsTab } from "./TeamsTab"
 import { FlipDigits } from "@/components/FlipDigits"
 import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
@@ -331,7 +333,7 @@ function TeamScore({ state, game, ids, label, score }: { state: PooleanState; ga
 // Read-only version of the classic site's Stat Entry page for one game: scoreboard, everyone's
 // line, the full shot log, turnovers/steals/fouls, defensive matchups, and the highlight reel.
 // Editing (logging shots, assigning rosters) and the video player are not part of this app yet.
-export function GamePage({ state, update, game, onBack, onStatEntry, autoSeek }: { state: PooleanState; update: Update; game: Game; onBack: () => void; onStatEntry?: () => void; autoSeek?: { time: number | null; n: number } | null }) {
+export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame, autoSeek }: { state: PooleanState; update: Update; game: Game; onBack: () => void; onStatEntry?: () => void; onOpenGame?: (g: Game) => void; autoSeek?: { time: number | null; n: number } | null }) {
   const readOnly = useReadOnly()
   const liveOnly = isLiveScoreOnly(game)
   const scoreA = liveOnly ? liveScoreOf(game, game.teamA) : teamScore(game, game.teamA)
@@ -429,36 +431,69 @@ export function GamePage({ state, update, game, onBack, onStatEntry, autoSeek }:
         <GameVideoPanel state={state} game={game} update={update} readOnly={readOnly} control={control} />
       </div>
 
-      {!reviewed ? (
-        <Card>
-          <CardContent>
-            <EmptyState title="No stats for this game yet" hint={readOnly ? "The box score fills in once the editor logs this game's shots." : "Open Stat entry to log its shots while you watch the video, and the box score fills in."} />
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <Panel
-            title="Game Stats"
-            hint="Everyone's line for this game, built from the shot log. eFG% and TS% measure scoring efficiency, Pts Allowed and Opp FG% show defense, and Two-Way adds offense and defense into one number."
-          >
-            <GameStats state={state} game={game} />
-          </Panel>
-          <Panel title="Shot Log" hint="Every shot, make or miss, with the defender and any assist.">
-            <ShotLog state={state} game={game} />
-          </Panel>
-          <Panel title="Other Events" hint="Every turnover, steal, and foul, tagged with the opponent involved where noted.">
-            <OtherEvents state={state} game={game} />
-          </Panel>
-          <Panel title="Highlight / Lowlight Reel">
-            {hasVideo && (game.plays ?? []).length > 0 && (
-              <Button size="sm" variant="outline" className="self-start" onClick={playReel}>
-                <Play aria-hidden /> Play all clips
-              </Button>
-            )}
-            <Reel state={state} game={game} />
-          </Panel>
-        </>
-      )}
+      <Tabs defaultValue={reviewed ? "stats" : "teams"}>
+        <TabsList>
+          <TabsTrigger value="teams">Teams</TabsTrigger>
+          <TabsTrigger value="stats">Stats</TabsTrigger>
+          <TabsTrigger value="shots">Shots</TabsTrigger>
+          <TabsTrigger value="reel">Reel</TabsTrigger>
+        </TabsList>
+        <TabsContent value="teams">
+          <TeamsTab state={state} game={game} onOpenGame={onOpenGame} />
+        </TabsContent>
+        <TabsContent value="stats">
+          {!reviewed ? (
+            <Card>
+              <CardContent>
+                <EmptyState title="No stats for this game yet" hint={readOnly ? "The box score fills in once the editor logs this game's shots." : "Open Stat entry to log its shots while you watch the video, and the box score fills in."} />
+              </CardContent>
+            </Card>
+          ) : (
+            <Panel
+              title="Game Stats"
+              hint="Everyone's line for this game, built from the shot log. eFG% and TS% measure scoring efficiency, Pts Allowed and Opp FG% show defense, and Two-Way adds offense and defense into one number."
+            >
+              <GameStats state={state} game={game} />
+            </Panel>
+          )}
+        </TabsContent>
+        <TabsContent value="shots">
+          {!reviewed ? (
+            <Card>
+              <CardContent>
+                <EmptyState title="No stats for this game yet" hint={readOnly ? "The box score fills in once the editor logs this game's shots." : "Open Stat entry to log its shots while you watch the video, and the box score fills in."} />
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <Panel title="Shot Log" hint="Every shot, make or miss, with the defender and any assist.">
+                <ShotLog state={state} game={game} />
+              </Panel>
+              <Panel title="Other Events" hint="Every turnover, steal, and foul, tagged with the opponent involved where noted.">
+                <OtherEvents state={state} game={game} />
+              </Panel>
+            </div>
+          )}
+        </TabsContent>
+        <TabsContent value="reel">
+          {!reviewed ? (
+            <Card>
+              <CardContent>
+                <EmptyState title="No stats for this game yet" hint={readOnly ? "The box score fills in once the editor logs this game's shots." : "Open Stat entry to log its shots while you watch the video, and the box score fills in."} />
+              </CardContent>
+            </Card>
+          ) : (
+            <Panel title="Highlight / Lowlight Reel">
+              {hasVideo && (game.plays ?? []).length > 0 && (
+                <Button size="sm" variant="outline" className="self-start" onClick={playReel}>
+                  <Play aria-hidden /> Play all clips
+                </Button>
+              )}
+              <Reel state={state} game={game} />
+            </Panel>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
     </WatchContext.Provider>
   )
