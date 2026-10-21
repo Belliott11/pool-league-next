@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { TileShuffle } from "@/components/TileShuffle"
+import { ShotLoader } from "@/components/ShotLoader"
 
 const TRIGGER = 64
 const MAX = 96
 
-// Pull down from the top of the page on a phone to fetch the latest data. The tile shuffle plays while it loads.
+// Pull down from the top of the page on a phone to fetch the latest data. The shot loader plays while it loads.
 // It stays out of live scoring, form fields and dialogs, and only counts mostly-vertical drags.
 export function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<unknown> }) {
   const [pull, setPull] = useState(0)
@@ -66,10 +66,8 @@ export function PullToRefresh({ onRefresh }: { onRefresh: () => Promise<unknown>
       className="pointer-events-none fixed left-0 right-0 top-0 z-20 flex justify-center"
       style={{ transform: `translateY(${pull - 56}px)`, opacity: Math.min(1, pull / 40) }}
     >
-      <div className="flex size-12 items-center justify-center rounded-full border bg-card shadow-md">
-        <div className="size-[4.5rem] scale-[0.4] shrink-0">
-          <TileShuffle />
-        </div>
+      <div className="flex h-12 w-[4.5rem] items-center justify-center rounded-2xl border bg-card shadow-md">
+        <ShotLoader className="h-10" />
       </div>
     </div>,
     document.body,
