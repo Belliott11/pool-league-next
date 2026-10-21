@@ -36,6 +36,7 @@ function Ball() {
 export function ShotLoader({ className }: { className?: string }) {
   const ball = useRef<SVGGElement>(null)
   const net = useRef<SVGGElement>(null)
+  const spin = useRef<SVGGElement>(null)
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       ball.current?.setAttribute("transform", `translate(${RIM.x} ${RIM.y + 6})`)
@@ -54,6 +55,16 @@ export function ShotLoader({ className }: { className?: string }) {
       [...pts.map((p, i) => ({ transform: at(p), opacity: i === 0 || i === pts.length - 1 ? 0 : 1, offset: offsets[i] })), { transform: at(START), opacity: 0, offset: 1 }],
       { duration: 2400, iterations: Infinity },
     )
+    // Backspin: one and a half turns on the way up and over, then it slows as the ball drops.
+    const r = spin.current?.animate(
+      [
+        { transform: "rotate(0deg)", offset: 0 },
+        { transform: "rotate(-540deg)", offset: 0.6 },
+        { transform: "rotate(-640deg)", offset: 0.9 },
+        { transform: "rotate(-640deg)", offset: 1 },
+      ],
+      { duration: 2400, iterations: Infinity },
+    )
     const n = net.current?.animate(
       [
         { transform: "scaleY(1)", offset: 0 },
@@ -67,6 +78,7 @@ export function ShotLoader({ className }: { className?: string }) {
     )
     return () => {
       a?.cancel()
+      r?.cancel()
       n?.cancel()
     }
   }, [])
@@ -77,7 +89,9 @@ export function ShotLoader({ className }: { className?: string }) {
       <path d="M126 50H128" stroke="currentColor" strokeWidth="3" />
       {/* the ball is drawn between the back of the rim and the net, so it drops through */}
       <g ref={ball} style={{ transform: `translate(${START.x}px, ${START.y}px)` }}>
-        <Ball />
+        <g ref={spin}>
+          <Ball />
+        </g>
       </g>
       {/* net, hung from the rim */}
       <g ref={net} style={{ transformOrigin: `${RIM.x}px ${RIM.y}px`, transformBox: "view-box" }} stroke="currentColor" strokeWidth="1.2" opacity="0.7" fill="none">
