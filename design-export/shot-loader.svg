@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 100" width="140" height="100" role="img" aria-label="Loading">
+  <style>
+    .ball { animation: arc 2.4s linear infinite; }
+    .spin { animation: spin 2.4s linear infinite; transform-box: fill-box; transform-origin: center; }
+    .net { animation: snap 2.4s linear infinite; transform-origin: 113px 50px; }
+    @keyframes arc {
+      0% { transform: translate(14px,90px); opacity: 0 } 4% { opacity: 1 } 15% { transform: translate(40px,50px) }
+      30% { transform: translate(64px,29px) } 45% { transform: translate(88px,26px) } 60% { transform: translate(113px,50px) }
+      68% { transform: translate(113px,62px) } 78% { transform: translate(113px,76px) } 90% { transform: translate(113px,96px); opacity: 0 }
+      100% { transform: translate(14px,90px); opacity: 0 } }
+    @keyframes spin { 0% { transform: rotate(0) } 60% { transform: rotate(-540deg) } 90%,100% { transform: rotate(-640deg) } }
+    @keyframes snap { 0%,58% { transform: scale(1) } 66% { transform: scale(.94,1.22) } 76% { transform: scaleY(.94) } 86%,100% { transform: scale(1) } }
+    @media (prefers-reduced-motion: reduce) { .ball,.spin,.net { animation: none } .ball { transform: translate(113px,56px) } }
+  </style>
+  <path d="M128 14V52" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".85"/>
+  <g class="ball" style="transform:translate(14px,90px)"><g class="spin"><g transform="scale(.5) translate(-32 -28)">
+    <clipPath id="b"><circle cx="32" cy="28" r="17"/></clipPath>
+    <g clip-path="url(#b)"><rect x="10" y="8" width="44" height="40" fill="#f4f6f7"/><path d="M21 16c5 4 5 20 0 24V48H10V8h11z" fill="#1d4fd8"/><path d="M43 16c-5 4-5 20 0 24V48h11V8H43z" fill="#e3262e"/></g>
+    <g fill="none" stroke="#071014" stroke-width="2" stroke-linecap="round"><path d="M32 11v34M15 28h34"/><path d="M21 16c5 4 5 20 0 24M43 16c-5 4-5 20 0 24"/></g>
+  </g></g></g>
+  <g class="net" stroke="currentColor" stroke-width="1.2" opacity=".7" fill="none"><path d="M101 51L106 74M107 51L110 76M113 51V77M119 51L116 76M125 51L120 74"/><path d="M103 59H123M105 67H121"/></g>
+  <path d="M100 50H127" stroke="#e3262e" stroke-width="3.5" stroke-linecap="round"/>
+</svg>

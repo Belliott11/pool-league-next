@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Name</title>
+<link rel="icon" href="logo.svg">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .wrap { max-width: 56rem; margin: 0 auto; padding: 1rem 1rem 4rem; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 0; }
+  header .brand { display: flex; align-items: center; gap: .6rem; font-size: 1.25rem; }
+  header img { width: 32px; height: 32px; border-radius: 8px; }
+  nav { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .hero { display: grid; gap: 1rem; padding: 2rem 0 1rem; }
+  .hero h1 { margin: 0; font-size: clamp(2.4rem, 9vw, 4.5rem); line-height: 1; text-transform: uppercase; }
+  .hero h1 span { color: var(--accent); }
+  .score { display: flex; gap: 2rem; align-items: flex-end; flex-wrap: wrap; font-size: clamp(3rem, 14vw, 6rem); line-height: 1; }
+  .score small { display: block; font: 500 .85rem var(--font-body); color: var(--muted-foreground); margin-top: .35rem; }
+  .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin-top: 1.5rem; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .5rem 0; border-top: 1px solid var(--border); }
+  .row:first-of-type { border-top: 0; }
+  .meter { height: 6px; border-radius: 99px; background: var(--muted); overflow: hidden; margin-top: .4rem; }
+  .meter i { display: block; height: 100%; background: var(--accent); }
+  .split { display: flex; height: 8px; border-radius: 99px; overflow: hidden; margin-top: .75rem; }
+  .split i:first-child { background: var(--blue); } .split i:last-child { background: var(--red); }
+  .loader { display: flex; justify-content: center; padding: .5rem 0; color: var(--foreground); }
+  .loader svg { height: 6rem; width: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand title"><img src="logo.svg" alt=""> Your <span style="color:var(--accent)">Name</span></div>
+    <nav><a class="button" href="#work">Work</a><a class="button" href="#about">About</a><a class="button primary" href="#contact">Say hi</a></nav>
+  </header>
+
+  <section class="hero">
+    <h1 class="display rise">Builds things<br><span>people use</span></h1>
+    <p class="muted rise" style="--i:1; max-width: 34rem; margin: 0">One sentence about you. Keep it plain and specific, the way a good scoreboard is.</p>
+    <div class="score rise" style="--i:2">
+      <div style="color:var(--blue)"><span data-flip="12"></span><small>Projects shipped</small></div>
+      <div style="color:var(--accent)"><span data-flip="5"></span><small>Years building</small></div>
+    </div>
+    <div class="split rise" style="--i:3" aria-hidden="true"><i style="width:58%"></i><i style="width:42%"></i></div>
+  </section>
+
+  <section id="work" class="grid">
+    <article class="card rise" style="--i:1"><h3>Project one</h3><p class="muted" style="margin:0">What it is and what it does for people, in one line.</p>
+      <div class="meter"><i class="bar" style="width:80%"></i></div></article>
+    <article class="card rise" style="--i:2"><h3>Project two</h3><p class="muted" style="margin:0">Another line. Lead with the result, not the stack.</p>
+      <div class="meter"><i class="bar" style="width:55%"></i></div></article>
+    <article class="card rise" style="--i:3"><h3>Now</h3>
+      <div class="row"><span>Working on</span><span class="chip">Something new</span></div>
+      <div class="row"><span>Reading</span><span class="chip">A good book</span></div>
+      <div class="row"><span>Status</span><span class="chip" style="color:var(--good)">Open to work</span></div></article>
+  </section>
+
+  <section id="about" class="card rise" style="margin-top:1rem; --i:4"><h3>Loading state</h3>
+    <div class="loader"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 100" role="img" aria-label="Loading">
+  <style>
+    .ball { animation: arc 2.4s linear infinite; }
+    .spin { animation: spin 2.4s linear infinite; transform-box: fill-box; transform-origin: center; }
+    .net { animation: snap 2.4s linear infinite; transform-origin: 113px 50px; }
+    @keyframes arc {
+      0% { transform: translate(14px,90px); opacity: 0 } 4% { opacity: 1 } 15% { transform: translate(40px,50px) }
+      30% { transform: translate(64px,29px) } 45% { transform: translate(88px,26px) } 60% { transform: translate(113px,50px) }
+      68% { transform: translate(113px,62px) } 78% { transform: translate(113px,76px) } 90% { transform: translate(113px,96px); opacity: 0 }
+      100% { transform: translate(14px,90px); opacity: 0 } }
+    @keyframes spin { 0% { transform: rotate(0) } 60% { transform: rotate(-540deg) } 90%,100% { transform: rotate(-640deg) } }
+    @keyframes snap { 0%,58% { transform: scale(1) } 66% { transform: scale(.94,1.22) } 76% { transform: scaleY(.94) } 86%,100% { transform: scale(1) } }
+    @media (prefers-reduced-motion: reduce) { .ball,.spin,.net { animation: none } .ball { transform: translate(113px,56px) } }
+  </style>
+  <path d="M128 14V52" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".85"/>
+  <g class="ball" style="transform:translate(14px,90px)"><g class="spin"><g transform="scale(.5) translate(-32 -28)">
+    <clipPath id="b"><circle cx="32" cy="28" r="17"/></clipPath>
+    <g clip-path="url(#b)"><rect x="10" y="8" width="44" height="40" fill="#f4f6f7"/><path d="M21 16c5 4 5 20 0 24V48H10V8h11z" fill="#1d4fd8"/><path d="M43 16c-5 4-5 20 0 24V48h11V8H43z" fill="#e3262e"/></g>
+    <g fill="none" stroke="#071014" stroke-width="2" stroke-linecap="round"><path d="M32 11v34M15 28h34"/><path d="M21 16c5 4 5 20 0 24M43 16c-5 4-5 20 0 24"/></g>
+  </g></g></g>
+  <g class="net" stroke="currentColor" stroke-width="1.2" opacity=".7" fill="none"><path d="M101 51L106 74M107 51L110 76M113 51V77M119 51L116 76M125 51L120 74"/><path d="M103 59H123M105 67H121"/></g>
+  <path d="M100 50H127" stroke="#e3262e" stroke-width="3.5" stroke-linecap="round"/>
+</svg></div></section>
+
+  <section id="contact" style="margin-top:2rem"><a class="button primary" href="mailto:you@example.com">you@example.com</a></section>
+</div>
+<script type="module">
+  import { flipDots } from "./flipdots.js"
+  flipDots.init()
+</script>
+</body>
+</html>
