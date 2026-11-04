@@ -1,4 +1,4 @@
-import { CalendarDays, Radio } from "lucide-react"
+import { CalendarDays, Crown, Radio } from "lucide-react"
 import { getClient } from "@/lib/cloud"
 import { Button } from "@/components/ui/button"
 import type { Update } from "@/lib/store"
@@ -18,6 +18,11 @@ import { NightPreviewCard } from "./games/NightPreview"
 import { PickEmCard } from "./games/PickEm"
 import { StatEntryPage } from "./statentry/StatEntryPage"
 import { findLiveGame } from "@/lib/live"
+import { upcomingRsvp } from "@/lib/nightPreview"
+import { isOffseason } from "@/lib/offseason"
+import { HallOfFame } from "./games/HallOfFame"
+import { OffseasonHub } from "./games/OffseasonHub"
+import { Wrapped } from "./games/Wrapped"
 
 export function GamesPage({
   state,
@@ -47,6 +52,14 @@ export function GamesPage({
   // A finished live game lands on its night's recap, in place of the live screen.
   const showRecap = (date?: string) => go(date ? "recap:" + date : "recap", true)
   const open = (g: Game) => go(g.liveInProgress ? "live" : "game:" + g.id)
+
+  if (kind === "wrapped") {
+    return <Wrapped state={state} playerId={arg || undefined} onPick={(id) => go("wrapped:" + id, true)} onClose={goBack} />
+  }
+
+  if (kind === "hall") {
+    return <HallOfFame state={state} onBack={goBack} onOpenPlayer={onOpenPlayer} onOpenGame={(id) => go("game:" + id)} />
+  }
 
   if (liveOpen) {
     return readOnly ? <LiveWatch state={state} onClose={goBack} onRecap={showRecap} /> : <LiveGamePage state={state} update={update} onClose={goBack} onRecap={showRecap} />
@@ -102,9 +115,17 @@ export function GamesPage({
               Night recap
             </Button>
           )}
+          {state.games.length > 0 && (
+            <Button variant="outline" onClick={() => go("hall")}>
+              <Crown />
+              Hall of fame
+            </Button>
+          )}
         </div>
+        {isOffseason(state) && <OffseasonHub state={state} onWrapped={() => go("wrapped")} onOpenPlayer={onOpenPlayer} />}
         <PickEmCard state={state} />
-        <NightPreviewCard state={state} update={update} />
+        {/* The hub already covers opening night, so the regular next-night card would repeat it. */}
+        {!(isOffseason(state) && upcomingRsvp(state)?.date === state.openingNight?.date) && <NightPreviewCard state={state} update={update} />}
         <GoingIn state={state} update={update} />
         <GameLog state={state} update={update} onOpen={open} />
         {!readOnly && (

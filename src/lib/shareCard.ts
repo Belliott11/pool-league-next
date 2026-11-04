@@ -126,16 +126,15 @@ export async function drawGameCard(state: PooleanState, game: Game): Promise<HTM
   return canvas
 }
 
-// Shares the picture through the phone's share sheet when it can, otherwise saves it as a file.
-export async function shareGameCard(state: PooleanState, game: Game): Promise<void> {
-  const canvas = await drawGameCard(state, game)
+// Shares a picture through the phone's share sheet when it can, otherwise saves it as a file.
+async function shareCanvas(canvas: HTMLCanvasElement, fileName: string, title: string): Promise<void> {
   const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"))
   if (!blob) throw new Error("Could not make the picture.")
-  const file = new File([blob], `poolean-${game.date || "game"}.png`, { type: "image/png" })
+  const file = new File([blob], fileName, { type: "image/png" })
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
   if (nav.canShare?.({ files: [file] })) {
     try {
-      await nav.share({ files: [file], title: "Poolean Intel" })
+      await nav.share({ files: [file], title })
       return
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return
@@ -146,6 +145,10 @@ export async function shareGameCard(state: PooleanState, game: Game): Promise<vo
   a.download = file.name
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
+export async function shareGameCard(state: PooleanState, game: Game): Promise<void> {
+  await shareCanvas(await drawGameCard(state, game), `poolean-${game.date || "game"}.png`, "Poolean Intel")
 }
 
 // ---- the night recap picture: every game's result and the night's top scorers.
@@ -238,22 +241,42 @@ export async function drawNightCard(state: PooleanState, s: NightSummary, dateLa
 }
 
 export async function shareNightCard(state: PooleanState, s: NightSummary, dateLabel: string): Promise<void> {
-  const canvas = await drawNightCard(state, s, dateLabel)
-  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"))
-  if (!blob) throw new Error("Could not make the picture.")
-  const file = new File([blob], `poolean-recap-${s.date || "night"}.png`, { type: "image/png" })
-  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
-  if (nav.canShare?.({ files: [file] })) {
-    try {
-      await nav.share({ files: [file], title: "Poolean Intel recap" })
-      return
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return
-    }
+  await shareCanvas(await drawNightCard(state, s, dateLabel), `poolean-recap-${s.date || "night"}.png`, "Poolean Intel recap")
+}
+
+// ---- the Season Wrapped picture: one player's season on a single card.
+export async function shareWrappedCard(name: string, lines: { big: string; label: string }[], footer: string): Promise<void> {
+  try {
+    await Promise.all([document.fonts.load("800 120px Anybody"), document.fonts.load("600 40px 'Hanken Grotesk'")])
+  } catch {
+    /* the system font is used instead */
   }
-  const a = document.createElement("a")
-  a.href = URL.createObjectURL(file)
-  a.download = file.name
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  const display = "Anybody, 'Arial Black', sans-serif"
+  const body = "'Hanken Grotesk', system-ui, sans-serif"
+  const accent = cssColor("accent", "#ff4d5e")
+  const canvas = document.createElement("canvas")
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext("2d")!
+  ctx.fillStyle = "#071014"
+  ctx.fillRect(0, 0, W, H)
+  ctx.fillStyle = "#8aa0a6"
+  ctx.font = `600 38px ${body}`
+  ctx.fillText("Poolean Intel  Season Wrapped", 72, 120)
+  ctx.fillStyle = "#eaf2f4"
+  ctx.font = `800 104px ${display}`
+  ctx.fillText(fit(ctx, name, W - 144), 72, 250)
+  lines.slice(0, 4).forEach((l, i) => {
+    const y = 470 + i * 200
+    ctx.fillStyle = i === 0 ? accent : "#eaf2f4"
+    ctx.font = `800 110px ${display}`
+    ctx.fillText(fit(ctx, l.big, W - 144), 72, y)
+    ctx.fillStyle = "#8aa0a6"
+    ctx.font = `500 36px ${body}`
+    ctx.fillText(fit(ctx, l.label, W - 144), 72, y + 54)
+  })
+  ctx.fillStyle = "#8aa0a6"
+  ctx.font = `500 30px ${body}`
+  ctx.fillText(fit(ctx, footer, W - 144), 72, H - 44)
+  await shareCanvas(canvas, `poolean-wrapped-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`, "Poolean Intel Season Wrapped")
 }

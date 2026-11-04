@@ -137,3 +137,7 @@ The labels you give players on the Players tab are private. Run `supabase/labels
 ## Pick'em votes
 
 Run `supabase/pickem.sql` once in the SQL Editor. It adds a table where friends vote on who wins a game before it starts; anyone can read the votes and add or change their own, and nobody can delete one. Without it the Pick the winner card simply shows nothing.
+
+## Preseason predictions
+
+Run `supabase/predictions.sql` once in the SQL Editor. It adds a table where friends call next season's award winners and top three before opening night; anyone can read the picks and add or change their own, and nobody can delete one. Without it the predictions card says it could not save. The form closes when opening night starts, which the app enforces, not the database.

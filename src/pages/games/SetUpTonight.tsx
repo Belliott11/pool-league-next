@@ -181,9 +181,43 @@ function CreateGame({ state, update, onCreated }: { state: PooleanState; update:
   )
 }
 
+// The first night of next season. While it is in the future, the Games tab turns into the offseason hub.
+function OpeningNightCard({ state, update }: { state: PooleanState; update: Update }) {
+  const o = state.openingNight
+  const set = (patch: { date?: string; time?: string }) =>
+    update((s) => {
+      const date = patch.date ?? s.openingNight?.date ?? ""
+      const time = patch.time ?? s.openingNight?.time ?? ""
+      return { ...s, openingNight: date ? { date, time: time || undefined } : null }
+    })
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-display">Opening night</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <p className="text-sm text-muted-foreground">Set the first night of next season. Until then, everyone sees the countdown, Season Wrapped, the early power ranking and preseason predictions at the top of Games.</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input type="date" className="w-44" value={o?.date ?? ""} onChange={(e) => set({ date: e.target.value })} aria-label="Opening night date" />
+          <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            Starts at
+            <Input type="time" className="w-32" value={o?.time ?? ""} onChange={(e) => set({ time: e.target.value })} aria-label="Opening night start time" />
+          </label>
+          {o && (
+            <Button size="sm" variant="ghost" onClick={() => update((s) => ({ ...s, openingNight: null }))}>
+              Clear
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function SetUpTonight({ state, update, onCreated }: { state: PooleanState; update: Update; onCreated: (g: Game) => void }) {
   return (
     <div className="flex flex-col gap-4">
+      <OpeningNightCard state={state} update={update} />
       <WhosComing state={state} update={update} />
       <CreateGame state={state} update={update} onCreated={onCreated} />
     </div>

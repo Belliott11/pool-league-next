@@ -7,9 +7,11 @@ import type { Update } from "@/lib/store"
 import { HeadToHeadCard } from "./HeadToHeadCard"
 import { AwardRaceCard } from "./AwardRace"
 import { AttendanceCard, RivalriesCard } from "./RivalryCards"
+import { PredictionsCard } from "./Predictions"
 import { PredictionScorecard } from "./PredictionScorecard"
 import { RecordsCard, SeasonStoriesCard } from "./SeasonCards"
 import { formatDateDisplay } from "@/lib/format"
+import { isOffseason } from "@/lib/offseason"
 import { computeLeaderboard, teamScore } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -91,6 +93,7 @@ export function Sidebar({
       <PredictionScorecard state={state} onOpenGame={onOpenGame} />
       <HeadToHeadCard state={state} onOpenGame={onOpenGame} />
       <AwardRaceCard state={state} onOpenPlayer={onOpenPlayer} />
+      {state.openingNight && !isOffseason(state) && <PredictionsCard state={state} />}
       <RivalriesCard state={state} onOpenPlayer={onOpenPlayer} />
       <AttendanceCard state={state} onOpenPlayer={onOpenPlayer} />
       <RecordsCard state={state} onOpenPlayer={onOpenPlayer} />

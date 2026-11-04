@@ -83,3 +83,20 @@ The record of how often the model's predictions were right. It scores prediction
 
 **Pick'em**:
 A visitor's vote on which team will win a game, cast before it starts. Separate from the model's prediction.
+
+### Offseason
+
+**Opening night**:
+The first night of next season, set by the editor.
+
+**Offseason**:
+The stretch before opening night, once its date is set. The Games tab leads with the countdown, Season Wrapped, the early power ranking and preseason predictions.
+
+**Season Wrapped**:
+One player's season told one fact at a time, from the season that just ended.
+
+**Preseason prediction**:
+A friend's call, made before opening night, on next season's award winners and top three. Scored as the season plays out.
+
+**Hall of fame**:
+All-time marks across every game: career leaders, best single games, records, streaks, rivalries and past champions.

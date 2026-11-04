@@ -127,5 +127,7 @@ export interface PooleanState {
   // Finished headlines the editor has saved, so visitors see the jokes without ever seeing the labels behind them.
   publishedStories?: { nights?: Record<string, { quick: string[]; full: string[] }>; going?: string[]; season?: string[]; preview?: string[] }
   currentSeasonStartedAt?: string | null
+  // The first night of next season. While it is in the future the app is in the offseason.
+  openingNight?: { date: string; time?: string } | null
   [key: string]: unknown
 }
