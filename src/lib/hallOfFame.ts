@@ -1,9 +1,8 @@
 import data from "@/data/poolean-seasons.json"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
-import type { RealSeason } from "@/lib/real"
 import type { Game, PooleanState } from "@/lib/types"
 
-// All-time marks across every game in the app, plus the champions of the imported past seasons.
+// All-time marks across every game in the app, plus the voted MVPs of the imported past seasons.
 export interface Career {
   id: string
   gp: number
@@ -82,26 +81,20 @@ export function longestStreaks(state: PooleanState, n = 5): { id: string; n: num
   return [...best.entries()].map(([id, v]) => ({ id, ...v })).filter((s) => s.n >= 2).sort((x, y) => y.n - x.n).slice(0, n)
 }
 
-export interface Champion {
+export interface MvpWinner {
   season: string
-  name: string
-  id: string
-  how: string
+  ids: string[] // more than one when the vote tied
 }
 
-// Past seasons' champions: the best power percentage among players who came to at least half the nights.
-export function pastChampions(): Champion[] {
+// Each past season's voted MVP, from the imported seasons' own awards. Newest first.
+export function pastMvps(): MvpWinner[] {
   const list = data.list as string[]
-  const seasons = data.seasons as unknown as Record<string, RealSeason & { cards: Record<string, { powerPct: number; parties: number }> }>
+  const seasons = data.seasons as unknown as Record<string, { awards?: { key: string; winners: string[] }[] }>
   return list
     .map((year) => {
-      const s = seasons[year]
-      if (!s) return null
-      const cards = Object.entries(s.cards)
-      const most = Math.max(0, ...cards.map(([, c]) => c.parties))
-      const top = cards.filter(([, c]) => c.parties >= most / 2).sort((x, y) => y[1].powerPct - x[1].powerPct)[0]
-      return top ? { season: year, id: top[0], name: s.names[top[0]] ?? top[0], how: `${Math.round(top[1].powerPct)}% power` } : null
+      const winners = seasons[year]?.awards?.find((a) => a.key === "mvp")?.winners ?? []
+      return winners.length ? { season: year, ids: winners } : null
     })
-    .filter((c): c is Champion => !!c)
+    .filter((m): m is MvpWinner => !!m)
     .reverse()
 }

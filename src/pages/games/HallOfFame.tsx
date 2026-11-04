@@ -4,7 +4,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
-import { bestGames, careerTable, longestStreaks, pastChampions } from "@/lib/hallOfFame"
+import { bestGames, careerTable, longestStreaks, pastMvps } from "@/lib/hallOfFame"
 import { playerName } from "@/lib/players"
 import { poolNameOf } from "@/lib/real"
 import { RECORD_KEYS, RECORD_LABEL, recordBook } from "@/lib/records"
@@ -44,7 +44,7 @@ function Row({ i, state, id, value, sub, onOpenPlayer }: { i: number; state: Poo
   )
 }
 
-// Everything all-time: career leaders, the best single games, records, streaks, rivalries and past champions.
+// Everything all-time: career leaders, the best single games, records, streaks, rivalries and past MVPs.
 export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state: PooleanState; onBack: () => void; onOpenPlayer: (id: string) => void; onOpenGame: (id: string) => void }) {
   const data = useMemo(
     () => ({
@@ -54,7 +54,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
       book: recordBook(state),
       streaks: longestStreaks(state),
       rivals: rivalries(state, 5),
-      champs: pastChampions(),
+      mvps: pastMvps(),
     }),
     [state],
   )
@@ -75,13 +75,12 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
         </h2>
       </div>
 
-      {data.champs.length > 0 && (
-        <Board title="Champions">
-          {data.champs.map((c) => (
-            <div key={c.season} className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground">{c.season}</span>
-              <span className="font-semibold">{poolNameOf(state, c.id) || c.name}</span>
-              <span className="text-xs text-muted-foreground">{c.how}</span>
+      {data.mvps.length > 0 && (
+        <Board title="MVP" hint="Each past season's voted MVP.">
+          {data.mvps.map((m) => (
+            <div key={m.season} className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">{m.season}</span>
+              <span className="font-semibold">{m.ids.map((id) => poolNameOf(state, id)).join(" and ")}</span>
             </div>
           ))}
         </Board>

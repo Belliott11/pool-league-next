@@ -99,7 +99,7 @@ One player's season told one fact at a time, from the season that just ended.
 A friend's call, made before opening night, on next season's award winners and top three. Scored as the season plays out.
 
 **Hall of fame**:
-All-time marks across every game: career leaders, best single games, records, streaks, rivalries and past champions.
+All-time marks across every game: career leaders, best single games, records, streaks, rivalries and past MVPs.
 
 ### Scored ballots
 
