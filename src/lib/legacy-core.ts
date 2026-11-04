@@ -3295,7 +3295,7 @@ function renderPlayerRealSeasons(playerId) {
       <td>${Math.round(r.card.powerPct)}%${delta(r.powerDelta)}</td>
       <td>${r.card.crowns}</td>
       <td>${r.card.bestRank ? ordinal(r.card.bestRank) : "-"}</td>
-      <td>${r.wins.map(a => `<span title="${escapeHtml(a.label)}">${awardIconSvg(a.key)}</span>`).join(" ") || "-"}</td>
+      <td>${r.wins.length ? `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">${r.wins.map(a => `<span title="${escapeHtml(a.label)}" style="display:inline-flex">${awardIconSvg(a.key)}</span>`).join("")}</div>` : "-"}</td>
     </tr>`).join("");
   wrap.innerHTML = `<div class="table-scroll"><table class="matchup-table">
     <thead><tr><th>Season</th><th>Record</th><th>Win %</th><th>Power %</th><th>#1 nights</th><th>Best rank</th><th>Awards won</th></tr></thead>
