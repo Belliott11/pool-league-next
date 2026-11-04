@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { installDataViz } from "@/lib/dataViz"
 import { adoptScorekeeperScores, findLiveGame } from "@/lib/live"
 import { isOpeningNight } from "@/lib/offseason"
+import { syncWinnerFlags } from "@/lib/winner"
 import { useTabSwipe } from "@/lib/useSwipe"
 import { ReadOnlyContext } from "@/lib/mode"
 import { LiveMiniBar } from "@/pages/live/LiveMiniBar"
@@ -287,10 +288,21 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   }, [])
   const update: Update = (fn) => {
     if (readOnly) return
-    const next = fn(state)
+    // Every edit also corrects any winner flag that contradicts a game's score (see syncWinnerFlags).
+    const next = syncWinnerFlags(fn(state))
     persist(next)
     setState(next)
   }
+  // The editor's copy is corrected once on opening, so the fix reaches the shared data without needing another edit.
+  useEffect(() => {
+    if (mode !== "admin") return
+    const fixed = syncWinnerFlags(state)
+    if (fixed !== state) {
+      persist(fixed)
+      setState(fixed)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <ReadOnlyContext.Provider value={readOnly}>
