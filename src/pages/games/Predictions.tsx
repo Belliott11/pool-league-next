@@ -1,13 +1,13 @@
-import { ListOrdered, Target } from "lucide-react"
+import { ChevronDown, ChevronUp, ListOrdered, Target } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { getClient } from "@/lib/cloud"
 import { myPlayerId, useWho } from "@/lib/identity"
-import { isOffseason } from "@/lib/offseason"
+import { ballotPool, isOffseason } from "@/lib/offseason"
 import { ordinalOf } from "@/lib/ordinal"
 import { playerName } from "@/lib/players"
-import { actualResults, AWARD_PICKS, consensusRanking, duoKey, loadPredictions, RANK_SIZE, savePrediction, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
+import { actualResults, AWARD_PICKS, ballotFor, consensusRanking, duoKey, loadPredictions, savePrediction, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
 import type { PooleanState } from "@/lib/types"
 
 // Everyone's preseason entries for the season that starts on opening night. Both cards below read and write the same
@@ -53,43 +53,63 @@ function PlayerSelect({ state, value, onChange, label, taken = [] }: { state: Po
   )
 }
 
-// Before opening night everyone ranks their top 5. The group's ranking adds the ballots up, and it shows to everyone.
+// Before opening night everyone ranks the whole field, everyone who played last season. The ballot starts in the
+// by-the-numbers order and players move with the arrows. The group's ranking is everyone's average spot.
 export function PowerVoteCard({ state }: { state: PooleanState }) {
   const { client, season, me, entries, mine, save, open } = usePredictions(state)
+  const pool = useMemo(() => ballotPool(state), [state])
   const [ballot, setBallot] = useState<string[]>([])
   const [status, setStatus] = useState("")
+  const [showAll, setShowAll] = useState(false)
+  // Keyed on the contents, not the objects: the data refreshes every minute, and that must not undo a half-made ballot.
+  const poolKey = pool.join(",")
+  const savedKey = (mine?.picks.ranking ?? []).join(",")
   useEffect(() => {
-    if (mine?.picks.ranking) setBallot(mine.picks.ranking)
-  }, [mine])
-  const consensus = useMemo(() => consensusRanking(entries), [entries])
+    setBallot(ballotFor(poolKey.split(","), savedKey ? savedKey.split(",") : undefined, poolKey.split(",")))
+  }, [poolKey, savedKey])
+  const consensus = useMemo(() => consensusRanking(entries).filter((r) => pool.includes(r.id)), [entries, pool])
   const ballots = entries.filter((e) => (e.picks.ranking ?? []).length > 0).length
-  if (!client || !season || !open) return null
-  const slots = Math.min(RANK_SIZE, state.players.length)
-  const set = (i: number, v: string) => setBallot((cur) => Array.from({ length: slots }, (_, k) => (k === i ? v : (cur[k] ?? ""))))
+  if (!client || !season || !open || pool.length < 2) return null
+  const move = (i: number, d: number) =>
+    setBallot((cur) => {
+      const j = i + d
+      if (j < 0 || j >= cur.length) return cur
+      const next = [...cur]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
   const submit = async () => {
     setStatus("Saving")
-    setStatus((await save({ ranking: ballot.filter(Boolean) })) ? "Saved" : SAVE_FAILED)
+    setStatus((await save({ ranking: ballot })) ? "Saved" : SAVE_FAILED)
   }
+  const shown = showAll ? consensus : consensus.slice(0, 5)
   return (
     <section className="flex flex-col gap-3 rounded-xl border bg-card p-4" aria-label="Preseason power ranking vote">
       <h3 className="flex items-center gap-2 font-display text-lg font-bold">
         <ListOrdered aria-hidden className="size-4 text-accent" /> Preseason power ranking
       </h3>
       <p className="text-sm text-muted-foreground">
-        Rank your top {slots} going into next season. Each ballot gives {slots} points to 1st down to 1 for {ordinalOf(slots)}. {ballots} {ballots === 1 ? "ballot" : "ballots"} in.
+        Rank all {pool.length} players going into next season. The group's ranking is everyone's average spot. {ballots} {ballots === 1 ? "ballot" : "ballots"} in.
       </p>
       {consensus.length > 0 ? (
-        <ol className="flex flex-col gap-1 text-sm" aria-label="The group's ranking">
-          {consensus.slice(0, 8).map((r, i) => (
-            <li key={r.id} className="flex items-center gap-2">
-              <span className="w-5 font-display font-bold tabular-nums text-muted-foreground">{i + 1}</span>
-              <PlayerAvatar id={r.id} name={playerName(state, r.id)} size="sm" />
-              <span className="min-w-0 flex-1 truncate font-medium">{playerName(state, r.id)}</span>
-              {r.firsts > 0 && <span className="text-xs text-muted-foreground">{r.firsts} first-place</span>}
-              <span className="w-12 text-right font-display font-bold tabular-nums">{r.points} pts</span>
-            </li>
-          ))}
-        </ol>
+        <>
+          <ol className="flex flex-col gap-1 text-sm" aria-label="The group's ranking">
+            {shown.map((r, i) => (
+              <li key={r.id} className="flex items-center gap-2">
+                <span className="w-5 font-display font-bold tabular-nums text-muted-foreground">{i + 1}</span>
+                <PlayerAvatar id={r.id} name={playerName(state, r.id)} size="sm" />
+                <span className="min-w-0 flex-1 truncate font-medium">{playerName(state, r.id)}</span>
+                {r.firsts > 0 && <span className="text-xs text-muted-foreground">{r.firsts} first-place</span>}
+                <span className="w-16 text-right text-xs tabular-nums text-muted-foreground">avg {r.avg.toFixed(1)}</span>
+              </li>
+            ))}
+          </ol>
+          {consensus.length > 5 && (
+            <button type="button" className="self-start text-sm font-medium text-accent" onClick={() => setShowAll((v) => !v)}>
+              {showAll ? "Show top 5" : `Show all ${consensus.length}`}
+            </button>
+          )}
+        </>
       ) : (
         <p className="text-sm">No ballots yet. Be the first.</p>
       )}
@@ -97,11 +117,24 @@ export function PowerVoteCard({ state }: { state: PooleanState }) {
         <p className="text-sm">Say who you are (top right) to vote.</p>
       ) : (
         <div className="flex flex-col gap-2 border-t pt-3">
-          <p className="text-sm font-semibold">{mine?.picks.ranking ? "Your ballot" : "Your ballot (not sent yet)"}</p>
-          {Array.from({ length: slots }, (_, i) => (
-            <PlayerSelect key={i} state={state} value={ballot[i] || undefined} onChange={(v) => set(i, v)} label={ordinalOf(i + 1)} taken={ballot} />
-          ))}
-          <Button className="self-start" disabled={!ballot.some(Boolean)} onClick={() => void submit()}>
+          <p className="text-sm font-semibold">{mine?.picks.ranking ? "Your ballot" : "Your ballot, not sent yet"}</p>
+          <p className="text-xs text-muted-foreground">It starts in last season's order by the numbers. Use the arrows to move people.</p>
+          <ol className="flex flex-col gap-1" aria-label="Your ballot">
+            {ballot.map((id, i) => (
+              <li key={id} className="flex items-center gap-2 rounded-lg border px-2 py-1 text-sm">
+                <span className="w-6 font-display font-bold tabular-nums text-muted-foreground">{i + 1}</span>
+                <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
+                <span className="min-w-0 flex-1 truncate font-medium">{playerName(state, id)}</span>
+                <button type="button" className="flex size-11 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30" disabled={i === 0} aria-label={`Move ${playerName(state, id)} up`} onClick={() => move(i, -1)}>
+                  <ChevronUp aria-hidden className="size-5" />
+                </button>
+                <button type="button" className="flex size-11 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30" disabled={i === ballot.length - 1} aria-label={`Move ${playerName(state, id)} down`} onClick={() => move(i, 1)}>
+                  <ChevronDown aria-hidden className="size-5" />
+                </button>
+              </li>
+            ))}
+          </ol>
+          <Button className="self-start" onClick={() => void submit()}>
             {mine?.picks.ranking ? "Update my ballot" : "Send my ballot"}
           </Button>
           {status && <p className="text-xs text-muted-foreground">{status}</p>}

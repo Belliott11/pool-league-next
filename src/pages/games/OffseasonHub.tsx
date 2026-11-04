@@ -4,23 +4,15 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { turnout } from "@/lib/attendance"
 import { formatDateDisplay, formatTime } from "@/lib/format"
-import { seasonState } from "@/lib/offseason"
+import { powerRanking } from "@/lib/offseason"
 import { playerName } from "@/lib/players"
 import { shareText } from "@/lib/shareText"
-import { computeLeaderboard } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 import { useEvening } from "@/lib/weather"
 import { Countdown } from "./Countdown"
 import { PowerVoteCard, PredictionsCard } from "./Predictions"
 
 const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`
-
-// The way-too-early power ranking: this season's two-way per 20, at least 3 games, with each player's record.
-export function powerRanking(state: PooleanState) {
-  return computeLeaderboard(seasonState(state))
-    .filter((r) => r.gp >= 3)
-    .sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
-}
 
 // The top of the Games tab between seasons: the countdown to opening night, who is in, an early power ranking, and the
 // ways in to Wrapped and preseason predictions. The hall of fame has its own button at the top of Games all year.

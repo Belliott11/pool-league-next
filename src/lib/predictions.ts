@@ -39,32 +39,41 @@ export async function savePrediction(client: SupabaseClient, season: string, vot
   return !error
 }
 
-export const RANK_SIZE = 5
-
 export interface ConsensusRow {
   id: string
-  points: number
+  avg: number // average spot across the ballots that rank them, 1 is best
   firsts: number
   voters: number
 }
 
-// The group's power ranking: each ballot gives 5 points to its 1st, 4 to its 2nd, down to 1 for its 5th. Ties go to
-// whoever has more first-place votes, then more ballots.
+// The group's power ranking. Every ballot ranks everyone; a player's spot is their average place across ballots. Ties
+// go to whoever has more first-place votes, then more ballots.
 export function consensusRanking(entries: Entry[]): ConsensusRow[] {
-  const rows = new Map<string, ConsensusRow>()
+  const rows = new Map<string, { id: string; sum: number; firsts: number; voters: number }>()
   for (const e of entries) {
     const seen = new Set<string>()
-    ;(e.picks.ranking ?? []).slice(0, RANK_SIZE).forEach((id, i) => {
+    ;(e.picks.ranking ?? []).forEach((id) => {
       if (!id || seen.has(id)) return
       seen.add(id)
-      const r = rows.get(id) ?? { id, points: 0, firsts: 0, voters: 0 }
-      r.points += RANK_SIZE - i
-      if (i === 0) r.firsts++
+      const r = rows.get(id) ?? { id, sum: 0, firsts: 0, voters: 0 }
+      r.sum += seen.size
+      if (seen.size === 1) r.firsts++
       r.voters++
       rows.set(id, r)
     })
   }
-  return [...rows.values()].sort((a, b) => b.points - a.points || b.firsts - a.firsts || b.voters - a.voters)
+  return [...rows.values()]
+    .map((r) => ({ id: r.id, avg: r.sum / r.voters, firsts: r.firsts, voters: r.voters }))
+    .sort((a, b) => a.avg - b.avg || b.firsts - a.firsts || b.voters - a.voters)
+}
+
+// A ballot over exactly this pool: the saved order first (anyone no longer in the pool dropped), then anyone new in the
+// fallback order.
+export function ballotFor(pool: string[], saved: string[] | undefined, fallback: string[]): string[] {
+  const inPool = new Set(pool)
+  const kept = (saved ?? []).filter((id, i, a) => inPool.has(id) && a.indexOf(id) === i)
+  const rest = [...fallback.filter((id) => inPool.has(id)), ...pool].filter((id, i, a) => !kept.includes(id) && a.indexOf(id) === i)
+  return [...kept, ...rest]
 }
 
 export const duoKey = (a: string, b: string) => [a, b].sort().join("|")

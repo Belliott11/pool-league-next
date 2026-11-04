@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { bestGames, careerTable, longestStreaks } from "@/lib/hallOfFame"
 import { isOffseason } from "@/lib/offseason"
-import { consensusRanking, duoKey, scorePredictions } from "@/lib/predictions"
+import { ballotFor, consensusRanking, duoKey, scorePredictions } from "@/lib/predictions"
 import type { Game, PooleanState } from "@/lib/types"
 import { wrappedFor } from "@/lib/wrapped"
 
@@ -72,19 +72,24 @@ describe("predictions", () => {
 })
 
 describe("preseason power ranking", () => {
-  it("adds up ballots 5 points for 1st down to 1, ignores repeats, and breaks ties on first-place votes", () => {
+  it("ranks by average spot, counts a repeat once, and breaks ties on first-place votes", () => {
     const rows = consensusRanking([
       { voter: "a", picks: { ranking: ["x", "y", "z"] } },
-      { voter: "b", picks: { ranking: ["y", "x", "x"] } },
-      { voter: "c", picks: {} },
+      { voter: "b", picks: { ranking: ["y", "x", "x", "z"] } },
+      { voter: "c", picks: { ranking: ["x", "z", "y"] } },
+      { voter: "d", picks: {} },
     ])
-    // x: 5 + 4 = 9 and y: 4 + 5 = 9, one first each and two ballots each, so they keep ballot order. z: 3. The repeat x on b counts once.
-    expect(rows.map((r) => [r.id, r.points, r.voters])).toEqual([
-      ["x", 9, 2],
-      ["y", 9, 2],
-      ["z", 3, 1],
+    // x: 1, 2, 1 = 1.33. y: 2, 1, 3 = 2. z: 3, 3, 2 = 2.67 (the repeat x on b does not push z down).
+    expect(rows.map((r) => [r.id, Math.round(r.avg * 100) / 100, r.firsts])).toEqual([
+      ["x", 1.33, 2],
+      ["y", 2, 1],
+      ["z", 2.67, 0],
     ])
-    expect(consensusRanking([{ voter: "a", picks: { ranking: ["z", "x"] } }, { voter: "b", picks: { ranking: ["x", "z"] } }, { voter: "c", picks: { ranking: ["x"] } }])[0]).toMatchObject({ id: "x", firsts: 2 })
+  })
+
+  it("keeps a saved ballot's order, drops players who left and adds new ones at the end", () => {
+    expect(ballotFor(["x", "y", "z", "n"], ["z", "gone", "x"], ["y", "n", "x", "z"])).toEqual(["z", "x", "y", "n"])
+    expect(ballotFor(["x", "y"], undefined, ["y", "x"])).toEqual(["y", "x"])
   })
 })
 
