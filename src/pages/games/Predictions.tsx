@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronUp, ListOrdered, Target } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { ChevronDown, ChevronUp, GripVertical, ListOrdered, Target } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { getClient } from "@/lib/cloud"
@@ -7,12 +7,14 @@ import { myPlayerId, useWho } from "@/lib/identity"
 import { ballotPool, isOffseason } from "@/lib/offseason"
 import { ordinalOf } from "@/lib/ordinal"
 import { playerName } from "@/lib/players"
-import { actualResults, AWARD_PICKS, ballotFor, consensusRanking, duoKey, loadPredictions, savePrediction, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
+import { actualResults, AWARD_PICKS, ballotFor, duoKey, loadPredictions, savePrediction, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
 import type { PooleanState } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
-// Everyone's preseason entries for the season that starts on opening night. Both cards below read and write the same
-// row per person, so each save keeps whatever the other card already saved.
-function usePredictions(state: PooleanState) {
+// Everyone's preseason entries for the season that starts on opening night. The hub loads them once and hands them to
+// its list and both cards, so a saved ballot shows in the group ranking at once. Both cards write the same row per
+// person, and each save keeps whatever the other card already saved.
+export function usePredictions(state: PooleanState) {
   const client = getClient()
   const season = state.openingNight?.date
   const who = useWho()
@@ -33,6 +35,7 @@ function usePredictions(state: PooleanState) {
   }
   return { client, season, me, entries, mine, save, open: isOffseason(state) }
 }
+export type PredictionsData = ReturnType<typeof usePredictions>
 
 const SAVE_FAILED = "Could not save. Has the predictions table been set up?"
 
@@ -53,87 +56,39 @@ function PlayerSelect({ state, value, onChange, label, taken = [] }: { state: Po
   )
 }
 
-// Before opening night everyone ranks every player in the app. The ballot starts in the
-// by-the-numbers order and players move with the arrows. The group's ranking is everyone's average spot.
-export function PowerVoteCard({ state }: { state: PooleanState }) {
-  const { client, season, me, entries, mine, save, open } = usePredictions(state)
+// Before opening night everyone ranks every player in the app. Drag a row (or use its arrows) to move it. The group's
+// combined ranking shows in the hub's way too early list.
+export function PowerVoteCard({ state, p }: { state: PooleanState; p: PredictionsData }) {
+  const { client, season, me, entries, mine, save, open } = p
   const pool = useMemo(() => ballotPool(state), [state])
   const [ballot, setBallot] = useState<string[]>([])
   const [status, setStatus] = useState("")
-  const [showAll, setShowAll] = useState(false)
   // Keyed on the contents, not the objects: the data refreshes every minute, and that must not undo a half-made ballot.
   const poolKey = pool.join(",")
   const savedKey = (mine?.picks.ranking ?? []).join(",")
   useEffect(() => {
     setBallot(ballotFor(poolKey.split(","), savedKey ? savedKey.split(",") : undefined, poolKey.split(",")))
   }, [poolKey, savedKey])
-  const consensus = useMemo(() => consensusRanking(entries).filter((r) => pool.includes(r.id)), [entries, pool])
   const ballots = entries.filter((e) => (e.picks.ranking ?? []).length > 0).length
   if (!client || !season || !open || pool.length < 2) return null
-  const move = (i: number, d: number) =>
-    setBallot((cur) => {
-      const j = i + d
-      if (j < 0 || j >= cur.length) return cur
-      const next = [...cur]
-      ;[next[i], next[j]] = [next[j], next[i]]
-      return next
-    })
   const submit = async () => {
     setStatus("Saving")
     setStatus((await save({ ranking: ballot })) ? "Saved" : SAVE_FAILED)
   }
-  const shown = showAll ? consensus : consensus.slice(0, 5)
   return (
     <section className="flex flex-col gap-3 rounded-xl border bg-card p-4" aria-label="Preseason power ranking vote">
       <h3 className="flex items-center gap-2 font-display text-lg font-bold">
-        <ListOrdered aria-hidden className="size-4 text-accent" /> Preseason power ranking
+        <ListOrdered aria-hidden className="size-4 text-accent" /> Your power ranking
       </h3>
       <p className="text-sm text-muted-foreground">
-        Rank all {pool.length} players going into next season. The group's ranking is everyone's average spot. {ballots} {ballots === 1 ? "ballot" : "ballots"} in.
+        Rank all {pool.length} players going into next season. Every ballot goes into the way too early ranking above, as each player's average spot. {ballots} {ballots === 1 ? "ballot" : "ballots"} in.
       </p>
-      {consensus.length > 0 ? (
-        <>
-          <ol className="flex flex-col gap-1 text-sm" aria-label="The group's ranking">
-            {shown.map((r, i) => (
-              <li key={r.id} className="flex items-center gap-2">
-                <span className="w-5 font-display font-bold tabular-nums text-muted-foreground">{i + 1}</span>
-                <PlayerAvatar id={r.id} name={playerName(state, r.id)} size="sm" />
-                <span className="min-w-0 flex-1 truncate font-medium">{playerName(state, r.id)}</span>
-                {r.firsts > 0 && <span className="text-xs text-muted-foreground">{r.firsts} first-place</span>}
-                <span className="w-16 text-right text-xs tabular-nums text-muted-foreground">avg {r.avg.toFixed(1)}</span>
-              </li>
-            ))}
-          </ol>
-          {consensus.length > 5 && (
-            <button type="button" className="self-start text-sm font-medium text-accent" onClick={() => setShowAll((v) => !v)}>
-              {showAll ? "Show top 5" : `Show all ${consensus.length}`}
-            </button>
-          )}
-        </>
-      ) : (
-        <p className="text-sm">No ballots yet. Be the first.</p>
-      )}
       {!me ? (
         <p className="text-sm">Say who you are (top right) to vote.</p>
       ) : (
-        <div className="flex flex-col gap-2 border-t pt-3">
-          <p className="text-sm font-semibold">{mine?.picks.ranking ? "Your ballot" : "Your ballot, not sent yet"}</p>
-          <p className="text-xs text-muted-foreground">It starts in last season's order by the numbers, then everyone else. Use the arrows to move people.</p>
-          <ol className="flex flex-col gap-1" aria-label="Your ballot">
-            {ballot.map((id, i) => (
-              <li key={id} className="flex items-center gap-2 rounded-lg border px-2 py-1 text-sm">
-                <span className="w-6 font-display font-bold tabular-nums text-muted-foreground">{i + 1}</span>
-                <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
-                <span className="min-w-0 flex-1 truncate font-medium">{playerName(state, id)}</span>
-                <button type="button" className="flex size-11 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30" disabled={i === 0} aria-label={`Move ${playerName(state, id)} up`} onClick={() => move(i, -1)}>
-                  <ChevronUp aria-hidden className="size-5" />
-                </button>
-                <button type="button" className="flex size-11 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30" disabled={i === ballot.length - 1} aria-label={`Move ${playerName(state, id)} down`} onClick={() => move(i, 1)}>
-                  <ChevronDown aria-hidden className="size-5" />
-                </button>
-              </li>
-            ))}
-          </ol>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-muted-foreground">It starts in last season's order by the numbers. Drag a row by its handle, or use the arrows.</p>
+          <DragBallot state={state} ballot={ballot} setBallot={setBallot} />
           <Button className="self-start" onClick={() => void submit()}>
             {mine?.picks.ranking ? "Update my ballot" : "Send my ballot"}
           </Button>
@@ -144,9 +99,70 @@ export function PowerVoteCard({ state }: { state: PooleanState }) {
   )
 }
 
+// The ballot list. Press and drag a row's handle (any part of the row with a mouse) and the row follows the pointer,
+// swapping places as it passes the middle of its neighbours. The arrows do the same one step at a time for keyboards.
+function DragBallot({ state, ballot, setBallot }: { state: PooleanState; ballot: string[]; setBallot: (f: (cur: string[]) => string[]) => void }) {
+  const list = useRef<HTMLOListElement>(null)
+  const [dragging, setDragging] = useState<string | null>(null)
+  const move = (from: number, to: number) =>
+    setBallot((cur) => {
+      if (to < 0 || to >= cur.length || from === to) return cur
+      const next = [...cur]
+      const [id] = next.splice(from, 1)
+      next.splice(to, 0, id)
+      return next
+    })
+  const onDown = (e: React.PointerEvent<HTMLLIElement>, id: string) => {
+    const t = e.target as Element
+    if (t.closest("button")) return
+    if (e.pointerType !== "mouse" && !t.closest("[data-handle]")) return
+    e.preventDefault()
+    // Captured on the list, which never moves, so reordering the rows cannot drop the drag.
+    list.current?.setPointerCapture(e.pointerId)
+    setDragging(id)
+  }
+  const onMove = (e: React.PointerEvent<HTMLOListElement>) => {
+    if (!dragging || !list.current) return
+    const rows = [...list.current.children] as HTMLElement[]
+    const from = ballot.indexOf(dragging)
+    let to = rows.findIndex((r) => {
+      const b = r.getBoundingClientRect()
+      return e.clientY < b.top + b.height / 2
+    })
+    if (to === -1) to = rows.length - 1
+    else if (to > from) to -= 1
+    if (to !== from) move(from, to)
+  }
+  const end = () => setDragging(null)
+  return (
+    <ol ref={list} data-no-swipe onPointerMove={onMove} onPointerUp={end} onPointerCancel={end} className="flex select-none flex-col gap-1" aria-label="Your ballot">
+      {ballot.map((id, i) => (
+        <li
+          key={id}
+          onPointerDown={(e) => onDown(e, id)}
+          className={cn("flex items-center gap-2 rounded-lg border bg-card px-1 py-1 text-sm transition-shadow", dragging === id ? "relative z-10 shadow-lg ring-2 ring-accent" : "md:cursor-grab")}
+        >
+          <span data-handle aria-hidden className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground">
+            <GripVertical className="size-5" />
+          </span>
+          <span className="w-6 font-display font-bold tabular-nums text-muted-foreground">{i + 1}</span>
+          <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
+          <span className="min-w-0 flex-1 truncate font-medium">{playerName(state, id)}</span>
+          <button type="button" className="flex size-11 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30" disabled={i === 0} aria-label={`Move ${playerName(state, id)} up`} onClick={() => move(i, i - 1)}>
+            <ChevronUp aria-hidden className="size-5" />
+          </button>
+          <button type="button" className="flex size-11 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30" disabled={i === ballot.length - 1} aria-label={`Move ${playerName(state, id)} down`} onClick={() => move(i, i + 1)}>
+            <ChevronDown aria-hidden className="size-5" />
+          </button>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 // Before opening night: call the award winners and the top three. After it: everyone's picks, scored live.
-export function PredictionsCard({ state }: { state: PooleanState }) {
-  const { client, season, me, entries, mine, save, open } = usePredictions(state)
+export function PredictionsCard({ state, p }: { state: PooleanState; p: PredictionsData }) {
+  const { client, season, me, entries, mine, save, open } = p
   const [draft, setDraft] = useState<Picks>({})
   const [duo, setDuo] = useState<[string, string]>(["", ""])
   const [status, setStatus] = useState("")
@@ -222,4 +238,10 @@ export function PredictionsCard({ state }: { state: PooleanState }) {
       )}
     </section>
   )
+}
+
+// The scored predictions during the season, for the sidebar.
+export function SeasonPredictionsCard({ state }: { state: PooleanState }) {
+  const p = usePredictions(state)
+  return <PredictionsCard state={state} p={p} />
 }

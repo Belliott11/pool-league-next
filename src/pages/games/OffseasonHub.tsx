@@ -10,7 +10,9 @@ import { shareText } from "@/lib/shareText"
 import type { PooleanState } from "@/lib/types"
 import { useEvening } from "@/lib/weather"
 import { Countdown } from "./Countdown"
-import { PowerVoteCard, PredictionsCard } from "./Predictions"
+import { ordinalOf } from "@/lib/ordinal"
+import { consensusRanking } from "@/lib/predictions"
+import { PowerVoteCard, PredictionsCard, usePredictions } from "./Predictions"
 
 const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`
 
@@ -23,15 +25,28 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer }: { state: Poolea
   const coming = rsvp?.playerIds ?? []
   const t = useMemo(() => turnout(state, coming), [state, coming])
   const ranking = useMemo(() => powerRanking(state), [state])
+  const p = usePredictions(state)
+  const ballots = p.entries.filter((e) => (e.picks.ranking ?? []).length > 0).length
+  // Once anyone has voted, the list is the group's average spot; until then it is last season by the numbers.
+  const rows = useMemo(() => {
+    const numbersRank = new Map(ranking.map((r, i) => [r.player.id, i + 1]))
+    if (ballots === 0) return ranking.map((r) => ({ id: r.player.id, name: r.player.name, note: `${r.wins}-${r.losses}`, value: r.twoWayPer20.toFixed(1) }))
+    return consensusRanking(p.entries)
+      .filter((r) => state.players.some((x) => x.id === r.id))
+      .map((r) => {
+        const n = numbersRank.get(r.id)
+        return { id: r.id, name: playerName(state, r.id), note: n ? `${ordinalOf(n)} by the numbers` : "", value: `avg ${r.avg.toFixed(1)}` }
+      })
+  }, [ranking, ballots, p.entries, state])
   const [showAll, setShowAll] = useState(false)
   const [sent, setSent] = useState("")
-  const shown = showAll ? ranking : ranking.slice(0, 5)
+  const shown = showAll ? rows : rows.slice(0, 5)
   const message = [
     `Poolean Intel: opening night ${formatDateDisplay(o.date)}${o.time ? `, ${formatTime(o.time)}` : ""}`,
     coming.length ? `In so far: ${coming.map((id) => playerName(state, id)).join(", ")}` : "",
     "",
-    "Way too early power ranking:",
-    ...ranking.slice(0, 5).map((r, i) => `${i + 1}. ${r.player.name} (${r.wins}-${r.losses})`),
+    ballots ? `Way too early power ranking, from ${ballots} ${ballots === 1 ? "ballot" : "ballots"}:` : "Way too early power ranking:",
+    ...rows.slice(0, 5).map((r, i) => `${i + 1}. ${r.name}`),
   ]
     .filter((x, i) => x || i === 2)
     .join("\n")
@@ -71,30 +86,32 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer }: { state: Poolea
         <Gift aria-hidden /> See your Season Wrapped
       </Button>
 
-      {ranking.length > 0 && (
+      {rows.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <h4 className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles aria-hidden className="size-4 text-gold" /> Way too early power ranking, by the numbers
+            <Sparkles aria-hidden className="size-4 text-gold" /> Way too early power ranking
           </h4>
-          <p className="text-xs text-muted-foreground">Last season's two-way per 20, at least 3 games. Everyone starts at 0-0 on opening night.</p>
+          <p className="text-xs text-muted-foreground">
+            {ballots > 0
+              ? `Everyone's ballots combined: each player's average spot across ${ballots} ${ballots === 1 ? "ballot" : "ballots"}. Vote below and it updates.`
+              : "No ballots yet, so this is last season's two-way per 20 (at least 3 games). Vote below and it becomes the group's ranking."}
+          </p>
           <ol className="flex flex-col gap-1 text-sm">
             {shown.map((r, i) => (
-              <li key={r.player.id} className="flex items-center gap-2">
+              <li key={r.id} className="flex items-center gap-2">
                 <span className="w-5 font-display font-bold tabular-nums text-muted-foreground">{i + 1}</span>
-                <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left hover:underline" onClick={() => onOpenPlayer(r.player.id)}>
-                  <PlayerAvatar id={r.player.id} name={r.player.name} size="sm" />
-                  <span className="truncate font-medium">{r.player.name}</span>
+                <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left hover:underline" onClick={() => onOpenPlayer(r.id)}>
+                  <PlayerAvatar id={r.id} name={r.name} size="sm" />
+                  <span className="truncate font-medium">{r.name}</span>
                 </button>
-                <span className="tabular-nums text-muted-foreground">
-                  {r.wins}-{r.losses}
-                </span>
-                <span className="w-10 text-right font-display font-bold tabular-nums">{r.twoWayPer20.toFixed(1)}</span>
+                {r.note && <span className="text-xs tabular-nums text-muted-foreground">{r.note}</span>}
+                <span className="w-14 text-right font-display font-bold tabular-nums">{r.value}</span>
               </li>
             ))}
           </ol>
-          {ranking.length > 5 && (
+          {rows.length > 5 && (
             <button type="button" className="self-start text-sm font-medium text-accent" onClick={() => setShowAll((v) => !v)}>
-              {showAll ? "Show top 5" : `Show all ${ranking.length}`}
+              {showAll ? "Show top 5" : `Show all ${rows.length}`}
             </button>
           )}
         </div>
@@ -112,8 +129,8 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer }: { state: Poolea
         <Share2 aria-hidden /> {sent === "copied" ? "Copied" : sent === "failed" ? "Could not share" : "Share for the group chat"}
       </Button>
 
-      <PowerVoteCard state={state} />
-      <PredictionsCard state={state} />
+      <PowerVoteCard state={state} p={p} />
+      <PredictionsCard state={state} p={p} />
     </section>
   )
 }
