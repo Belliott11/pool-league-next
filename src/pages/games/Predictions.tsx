@@ -60,7 +60,7 @@ function PlayerSelect({ state, value, onChange, label, taken = [] }: { state: Po
 }
 
 // Before opening night everyone ranks every player in the app. Drag a row (or use its arrows) to move it. The group's
-// combined ranking shows in the hub's way too early list.
+// combined ranking shows in the hub's predicted power ranking.
 export function PowerVoteCard({ state, p }: { state: PooleanState; p: PredictionsData }) {
   const { client, season, me, all, entries, mine, save, open } = p
   const pool = useMemo(() => ballotPool(state), [state])
@@ -80,26 +80,26 @@ export function PowerVoteCard({ state, p }: { state: PooleanState; p: Prediction
     setStatus((await save({ ranking: ballot })) ? "Saved" : SAVE_FAILED)
   }
   return (
-    <section className="flex flex-col gap-3 rounded-xl border bg-card p-4" aria-label="Preseason power ranking vote">
+    <section className="flex flex-col gap-3 rounded-xl border bg-card p-4" aria-label="Preseason power ranking prediction">
       <h3 className="flex items-center gap-2 font-display text-lg font-bold">
-        <ListOrdered aria-hidden className="size-4 text-accent" /> Your power ranking
+        <ListOrdered aria-hidden className="size-4 text-accent" /> Your power ranking prediction
       </h3>
       <p className="text-sm text-muted-foreground">
-        Rank all {pool.length} players going into next season. Every ballot goes into the way too early ranking above, as each player's average spot. {ballots} {ballots === 1 ? "ballot" : "ballots"} in.
+        Predict how all {pool.length} players will rank next season: drag them into the order you think they will finish. At the end of the season your prediction is scored against the real Standings, and the closest one wins. Everyone's predictions are combined into the predicted ranking above. {ballots} {ballots === 1 ? "prediction" : "predictions"} in.
       </p>
       {last?.ballot && (
         <p className="rounded-lg bg-muted px-3 py-2 text-sm">
-          Last season's closest ballot: <span className="font-semibold">{playerName(state, last.ballot.voter)}</span>, off by {last.ballot.miss.toFixed(1)} spots a player.
+          Last season's closest prediction: <span className="font-semibold">{playerName(state, last.ballot.voter)}</span>, off by {last.ballot.miss.toFixed(1)} spots a player.
         </p>
       )}
       {!me ? (
         <IdentityPrompt state={state} text="Who are you? Pick yourself to vote." />
       ) : (
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-muted-foreground">It starts in last season's order by the numbers. Drag a row by its handle, or use the arrows.</p>
+          <p className="text-xs text-muted-foreground">Drag a row by its handle, or use the arrows. It starts in last season's order by the numbers.</p>
           <DragBallot state={state} ballot={ballot} setBallot={setBallot} />
           <Button className="self-start" onClick={() => void submit()}>
-            {mine?.picks.ranking ? "Update my ballot" : "Send my ballot"}
+            {mine?.picks.ranking ? "Update my prediction" : "Lock in my prediction"}
           </Button>
           {status && <p className="text-xs text-muted-foreground">{status}</p>}
         </div>
@@ -108,7 +108,7 @@ export function PowerVoteCard({ state, p }: { state: PooleanState; p: Prediction
   )
 }
 
-// The ballot list. Press and drag a row's handle (any part of the row with a mouse) and the row follows the pointer,
+// The prediction list (the ballot). Press and drag a row's handle (any part of the row with a mouse) and the row follows the pointer,
 // swapping places as it passes the middle of its neighbours. The arrows do the same one step at a time for keyboards.
 function DragBallot({ state, ballot, setBallot }: { state: PooleanState; ballot: string[]; setBallot: (f: (cur: string[]) => string[]) => void }) {
   const list = useRef<HTMLOListElement>(null)
@@ -144,7 +144,7 @@ function DragBallot({ state, ballot, setBallot }: { state: PooleanState; ballot:
   }
   const end = () => setDragging(null)
   return (
-    <ol ref={list} data-no-swipe onPointerMove={onMove} onPointerUp={end} onPointerCancel={end} className="flex select-none flex-col gap-1" aria-label="Your ballot">
+    <ol ref={list} data-no-swipe onPointerMove={onMove} onPointerUp={end} onPointerCancel={end} className="flex select-none flex-col gap-1" aria-label="Your prediction">
       {ballot.map((id, i) => (
         <li
           key={id}
@@ -264,8 +264,8 @@ function BallotsSoFar({ state, entries, season }: { state: PooleanState; entries
   const { overrated, underrated } = biggestMisses(entries, order)
   return (
     <div className="flex flex-col gap-1.5 border-t pt-3">
-      <h4 className="text-sm font-semibold">Power ranking ballots so far</h4>
-      <p className="text-xs text-muted-foreground">Average spots each ballot misses a player by, against the Standings. Lowest is closest.</p>
+      <h4 className="text-sm font-semibold">Power ranking predictions so far</h4>
+      <p className="text-xs text-muted-foreground">Average spots each prediction misses a player by, against the Standings. Lowest is closest.</p>
       <ol className="flex flex-col gap-1 text-sm">
         {scored.map((r, i) => (
           <li key={r.voter} className="flex justify-between gap-2">

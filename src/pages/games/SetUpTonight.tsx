@@ -196,7 +196,7 @@ function OpeningNightCard({ state, update }: { state: PooleanState; update: Upda
         <CardTitle className="font-display">Opening night</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">Set the first night of next season. Until then, everyone sees the countdown, Season Wrapped, the early power ranking and preseason predictions at the top of Games.</p>
+        <p className="text-sm text-muted-foreground">Set the first night of next season. Until then, everyone sees the countdown, Season Wrapped, the predicted power ranking and preseason predictions at the top of Games.</p>
         <div className="flex flex-wrap items-center gap-2">
           <Input type="date" className="w-44" value={o?.date ?? ""} onChange={(e) => set({ date: e.target.value })} aria-label="Opening night date" />
           <label className="flex items-center gap-1.5 text-sm text-muted-foreground">

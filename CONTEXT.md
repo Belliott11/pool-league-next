@@ -100,7 +100,11 @@ The stretch before opening night, once its date is set. The Games tab leads with
 One player's season told one fact at a time, from the season that just ended.
 
 **Preseason prediction**:
-A friend's call, made before opening night, on next season's award winners and top three. Scored as the season plays out.
+A friend's call, made before opening night, on next season's award winners, top three and a power ranking of every player. Scored as the season plays out.
+
+**Predicted power ranking**:
+Everyone's power ranking predictions combined: each player's average predicted spot. Until anyone predicts, it shows last season by the numbers.
+_Avoid_: Way too early power ranking, ballot
 
 **Hall of fame**:
 All-time marks across every game: career leaders, best single games, records, streaks, rivalries and past MVPs.
@@ -116,4 +120,4 @@ Shooting better right after a make than right after a miss. Measured within one 
 ### Scored ballots
 
 **Average miss**:
-How far off a preseason power ranking ballot was: the average number of spots it missed each ranked player by. Lowest is closest.
+How far off a preseason power ranking prediction was: the average number of spots it missed each ranked player by. Lowest is closest.

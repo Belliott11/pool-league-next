@@ -87,13 +87,13 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
       )}
 
       {called.length > 0 && (
-        <Board title="Called it" hint="Each season's closest preseason power ranking and best set of predictions.">
+        <Board title="Called it" hint="Each season's closest power ranking prediction and best award predictions.">
           {called.map((c) => (
             <div key={c.season} className="flex flex-col gap-0.5 border-t pt-1.5 first:border-t-0 first:pt-0">
               <span className="text-xs text-muted-foreground">Season starting {formatDateDisplay(c.season)}</span>
               {c.ballot && (
                 <span>
-                  Closest ballot: <span className="font-semibold">{playerName(state, c.ballot.voter)}</span>, off by {c.ballot.miss.toFixed(1)} spots a player
+                  Closest prediction: <span className="font-semibold">{playerName(state, c.ballot.voter)}</span>, off by {c.ballot.miss.toFixed(1)} spots a player
                 </span>
               )}
               {c.picks && (

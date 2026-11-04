@@ -10,7 +10,9 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { turnout } from "@/lib/attendance"
 import { formatDateLong, formatTime } from "@/lib/format"
+import { myPlayerId, useWho } from "@/lib/identity"
 import { useReadOnly } from "@/lib/mode"
+import { wrappedPlayers } from "@/lib/wrapped"
 import { isOpeningNight, powerRanking } from "@/lib/offseason"
 import { playerName } from "@/lib/players"
 import { shareText } from "@/lib/shareText"
@@ -28,6 +30,9 @@ const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`
 export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGame }: { state: PooleanState; onWrapped: () => void; onOpenPlayer: (id: string) => void; onLive: () => void; onOpenGame: (g: Game) => void }) {
   const o = state.openingNight!
   const readOnly = useReadOnly()
+  const who = useWho()
+  const me = myPlayerId(who, state.players)
+  const hasWrapped = !!me && wrappedPlayers(state).includes(me)
   const tonight = isOpeningNight(state)
   const liveGame = findLiveGame(state)
   const tonightsGames = state.games.filter((g) => g.date === o.date && !g.liveInProgress)
@@ -57,7 +62,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
     `Poolean Intel: opening night ${formatDateLong(o.date)}${o.time ? `, ${formatTime(o.time)}` : ""}`,
     coming.length ? `In so far: ${coming.map((id) => playerName(state, id)).join(", ")}` : "",
     "",
-    ballots ? `Way too early power ranking, from ${ballots} ${ballots === 1 ? "ballot" : "ballots"}:` : "Way too early power ranking:",
+    ballots ? `Predicted power ranking, from ${ballots} ${ballots === 1 ? "prediction" : "predictions"}:` : "Power ranking by last season's numbers:",
     ...rows.slice(0, 5).map((r, i) => `${i + 1}. ${r.name}`),
   ]
     .filter((x, i) => x || i === 2)
@@ -136,7 +141,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
         </div>
       )}
 
-      {!tonight && (
+      {!tonight && hasWrapped && (
         <Button className="h-12 text-base" onClick={onWrapped}>
           <Gift aria-hidden /> See your Season Wrapped
         </Button>
@@ -145,12 +150,12 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
       {rows.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <h4 className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles aria-hidden className="size-4 text-gold" /> {tonight ? "Preseason ranking" : "Way too early power ranking"}
+            <Sparkles aria-hidden className="size-4 text-gold" /> {tonight ? "Preseason prediction" : "Predicted power ranking"}
           </h4>
           <p className="text-xs text-muted-foreground">
             {ballots > 0
-              ? `Everyone's ballots combined: each player's average spot across ${ballots} ${ballots === 1 ? "ballot" : "ballots"}. Vote below and it updates.`
-              : "No ballots yet, so this is last season's two-way per 20 (at least 3 games). Vote below and it becomes the group's ranking."}
+              ? `The group's predictions combined: each player's average predicted spot across ${ballots} ${ballots === 1 ? "prediction" : "predictions"}. Make yours below and it updates.`
+              : "No predictions yet, so this shows last season by the numbers (two-way per 20, at least 3 games). Make your prediction below and it becomes the group's."}
           </p>
           <ol className="flex flex-col gap-1 text-sm">
             {shown.map((r, i) => (

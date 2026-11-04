@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { formatDateDisplay } from "@/lib/format"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { ordinalOf } from "@/lib/ordinal"
-import { playerName } from "@/lib/players"
+import { playerName, resolvePlayer } from "@/lib/players"
 import { shareWrappedCard } from "@/lib/shareCard"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -124,12 +124,36 @@ function SlideBody({ s, state, name }: { s: Slide; state: PooleanState; name: st
 export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanState; playerId?: string; onPick: (id: string) => void; onClose: () => void }) {
   const who = useWho()
   const ids = useMemo(() => wrappedPlayers(state), [state])
-  const id = playerId && ids.includes(playerId) ? playerId : (myPlayerId(who, state.players) ?? ids[0])
+  const requested = playerId ? resolvePlayer(state, playerId) : null
+  const id = requested && ids.includes(requested.id) ? requested.id : playerId ? undefined : (myPlayerId(who, state.players) ?? ids[0])
   const slides = useMemo(() => (id ? wrappedFor(state, id) : []), [state, id])
   const [i, setI] = useState(0)
   const [shared, setShared] = useState("")
   const at = Math.min(i, Math.max(0, slides.length - 1))
   const name = id ? playerName(state, id) : ""
+  if (playerId && !id) {
+    // A link for someone who is not a player here, or who has not played this season.
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <p>{requested ? `${requested.name} has no Season Wrapped: they have not played a game this season.` : `No player matches "${playerId}".`}</p>
+        {ids.length > 0 && (
+          <>
+            <p className="text-sm text-muted-foreground">These players have one:</p>
+            <div className="flex flex-wrap gap-2">
+              {ids.map((p) => (
+                <Button key={p} size="sm" variant="outline" onClick={() => onPick(p)}>
+                  {playerName(state, p)}
+                </Button>
+              ))}
+            </div>
+          </>
+        )}
+        <Button variant="ghost" onClick={onClose}>
+          Back to games
+        </Button>
+      </div>
+    )
+  }
   if (!id || slides.length === 0) {
     return (
       <div className="flex flex-col items-start gap-3">
