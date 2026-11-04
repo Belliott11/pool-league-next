@@ -21,7 +21,7 @@ const HIGHLIGHT = {
 
 function ToggleRow({ label, checked, disabled, title, onChange }: { label: string; checked: boolean; disabled?: boolean; title?: string; onChange: (v: boolean) => void }) {
   return (
-    <label className={`flex items-center justify-between gap-3 text-sm ${disabled ? "opacity-50" : ""}`} title={title}>
+    <label className={`flex min-h-11 items-center justify-between gap-3 text-sm ${disabled ? "opacity-50" : ""}`} title={title}>
       <span>{label}</span>
       <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
     </label>
@@ -42,16 +42,18 @@ export function SeasonRates({
   const [showAdvanced, setShowAdvanced] = useState(() => localStorage.getItem(ADVANCED_KEY) === "true")
   const columns = LEADERBOARD_COLUMNS.filter((c: { advanced?: boolean }) => !c.advanced || showAdvanced)
   // Players with no games yet would just be a row of dashes.
-  const rows = computeLeaderboard().filter((r: { gp: number }) => r.gp > 0)
+  const all = computeLeaderboard() as { gp: number }[]
+  const rows = all.filter((r: { gp: number }) => r.gp > 0)
+  const missing = all.length - rows.length
   const noSeasonClosed = !state.currentSeasonStartedAt
 
   return (
     <Panel
       title="Season Rates (Individual)"
-      hint="Each stat is per 20 combined points, so 16- and 21-point games compare fairly. Only fully logged, even-sided games count. Two-Way is offense plus defense in one number. Click a name for their page, or a column to sort."
+      hint={`Each stat is per 20 combined points, so 16- and 21-point games compare fairly. Only fully logged games count${toggles.imbalanced ? ", uneven teams included because Include Imbalanced Games is on" : ", and only even teams (turn on Include Imbalanced Games to count uneven ones)"}. Two-Way is offense plus defense in one number. Click a name for their page, or a column to sort.`}
     >
       <details className="rounded-lg border p-3">
-        <summary className="cursor-pointer text-sm font-medium">Filters</summary>
+        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">Filters</summary>
         <div className="mt-3 flex flex-col gap-3">
           <ToggleRow label="Include Imbalanced Games" checked={toggles.imbalanced} onChange={(v) => setToggles({ ...toggles, imbalanced: v })} />
           <ToggleRow
@@ -72,6 +74,11 @@ export function SeasonRates({
           />
         </div>
       </details>
+      {missing > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {rows.length} of {all.length} players shown. The other {missing} have no qualifying games yet, so they have nothing to rank.
+        </p>
+      )}
       <DataTable<any>
         key={showAdvanced ? "adv" : "basic"}
         columns={columns}

@@ -1,4 +1,5 @@
 import { UserRound } from "lucide-react"
+import { useId } from "react"
 import { buttonVariants } from "@/components/ui/button"
 import { GUEST, myPlayerId, setWho, useWho } from "@/lib/identity"
 import type { PooleanState } from "@/lib/types"
@@ -25,6 +26,20 @@ function WhoSelect({ state, id }: { state: PooleanState; id?: string }) {
           </option>
         ))}
     </select>
+  )
+}
+
+// The same picker, placed where it is needed: in a voting card for someone who has not said who they are.
+export function IdentityPrompt({ state, text }: { state: PooleanState; text: string }) {
+  const id = useId()
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border border-dashed p-3">
+      <label htmlFor={id} className="text-sm font-medium">
+        {text}
+      </label>
+      <WhoSelect state={state} id={id} />
+      <p className="text-xs text-muted-foreground">No password. It is kept on this device.</p>
+    </div>
   )
 }
 

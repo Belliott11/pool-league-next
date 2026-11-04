@@ -4,6 +4,20 @@ export function playerName(state: PooleanState, id: string): string {
   return state.players.find((p) => p.id === id)?.name ?? "?"
 }
 
+// The player a link means. Exact ids win; otherwise a name or the name part of an id ("ian" for "g-ian", "logan-hoskins"
+// or "logan hoskins" for the id with a surname) matches, as long as exactly one player does. Null when nothing or more
+// than one matches, so a bad link never quietly shows someone else.
+export function resolvePlayer(state: PooleanState, key: string): PooleanState["players"][number] | null {
+  const exact = state.players.find((p) => p.id === key)
+  if (exact) return exact
+  const slug = key.trim().toLowerCase().replace(/[\s_]+/g, "-")
+  const hits = state.players.filter((p) => {
+    const id = p.id.toLowerCase()
+    return id === slug || id.replace(/^g-/, "") === slug || p.name.toLowerCase().replace(/\s+/g, "-") === slug
+  })
+  return hits.length === 1 ? hits[0] : null
+}
+
 export function playerInitial(name: string): string {
   return name.trim().charAt(0).toUpperCase() || "?"
 }

@@ -1,3 +1,4 @@
+import { Play } from "lucide-react"
 import { FlipDigits } from "@/components/FlipDigits"
 import { TEAM } from "@/lib/teamColors"
 import { EmptyState } from "@/components/EmptyState"
@@ -126,7 +127,11 @@ function GameCard({
               {formatDateDisplay(game.date)} &middot; {game.teamA.length + game.teamB.length} players
               {game.notes ? ` · ${game.notes}` : ""}
             </span>
-            {hasVideo && <Badge variant="secondary">Video</Badge>}
+            {hasVideo && (
+              <Badge variant="secondary" title="This game has a recording. Open the game to watch it.">
+                <Play aria-hidden className="size-3" /> Video
+              </Badge>
+            )}
             {hasVideo && needsReview && <Badge variant="secondary">Needs Review</Badge>}
             {game.liveInProgress && <Badge variant="secondary">Live now</Badge>}
             {!game.liveInProgress && liveOnly && <Badge variant="secondary">Live score only</Badge>}

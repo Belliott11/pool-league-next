@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp, GripVertical, ListOrdered, Target } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
+import { IdentityPrompt } from "@/components/WhoAmI"
 import { Button } from "@/components/ui/button"
 import { getClient } from "@/lib/cloud"
 import { myPlayerId, useWho } from "@/lib/identity"
@@ -92,7 +93,7 @@ export function PowerVoteCard({ state, p }: { state: PooleanState; p: Prediction
         </p>
       )}
       {!me ? (
-        <p className="text-sm">Say who you are (top right) to vote.</p>
+        <IdentityPrompt state={state} text="Who are you? Pick yourself to vote." />
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-xs text-muted-foreground">It starts in last season's order by the numbers. Drag a row by its handle, or use the arrows.</p>
@@ -209,7 +210,7 @@ export function PredictionsCard({ state, p }: { state: PooleanState; p: Predicti
             Call the award winners and the top three by two-way per 20 (the Standings order, at least 3 games) before opening night. Awards are worth 2 points, a top three spot 3 if exact and 1 if in the wrong spot. {entries.filter((e) => e.picks.mvp || (e.picks.top3 ?? []).length).length} in so far.
           </p>
           {!me ? (
-            <p className="text-sm">Say who you are (top right) to make your picks.</p>
+            <IdentityPrompt state={state} text="Who are you? Pick yourself to make your picks." />
           ) : (
             <div className="flex flex-col gap-2">
               {AWARD_PICKS.map((a) => (

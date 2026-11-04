@@ -77,7 +77,8 @@ export function SeasonStoriesCard({ state, update }: { state: PooleanState; upda
           <Newspaper aria-hidden className="size-4 text-accent" /> The season so far
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-2">
+        <p className="text-xs text-muted-foreground">Counts every finished game, so records here can differ from the Standings, which count only games with a box score and even teams.</p>
         <StoryList stories={stories} />
       </CardContent>
     </Card>

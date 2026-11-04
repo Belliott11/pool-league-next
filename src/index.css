@@ -176,6 +176,15 @@ html { overscroll-behavior-y: contain; }
   }
 }
 
+/* Phone-sized screens: buttons and the chips that jump between sections are at least 44px tall, big enough for a
+   thumb. Rows inside dense tables keep their compact size. */
+@media (max-width: 639px) {
+  [data-slot="button"],
+  nav[aria-label="Player sections"] button {
+    min-height: 2.75rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

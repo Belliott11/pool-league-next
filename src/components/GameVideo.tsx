@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MutableRefObject, type Ref } from "react"
+import { useEffect, useRef, useState, type MutableRefObject, type Ref } from "react"
 import { ExternalLink } from "lucide-react"
 import { EmptyState } from "@/components/EmptyState"
 import { YouTubePlayer, type PlayerControl } from "@/components/YouTubePlayer"
@@ -23,6 +23,8 @@ function embedSrc(url: string, kind: "youtube" | "vimeo", start = 0): string | n
 
 function FileVideo({ url, videoRef, className, onTimeUpdate, start, control }: { url: string; videoRef?: Ref<HTMLVideoElement>; className?: string; onTimeUpdate?: (t: number) => void; start: number; control?: MutableRefObject<PlayerControl | null> }) {
   const own = useRef<HTMLVideoElement | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [url])
   // Once something has asked for a moment, the game's own start must not move the video off it.
   const sought = useRef(false)
   useEffect(() => {
@@ -49,22 +51,30 @@ function FileVideo({ url, videoRef, className, onTimeUpdate, start, control }: {
     }
   }, [control])
   return (
-    <video
-      ref={(el) => {
-        own.current = el
-        if (typeof videoRef === "function") videoRef(el)
-        else if (videoRef) (videoRef as MutableRefObject<HTMLVideoElement | null>).current = el
-      }}
-      src={url}
-      controls
-      playsInline
-      preload="metadata"
-      className={cn("aspect-video w-full rounded-xl bg-muted", className)}
-      onLoadedMetadata={(e) => {
-        if (start > 0 && !sought.current) e.currentTarget.currentTime = start
-      }}
-      onTimeUpdate={(e) => onTimeUpdate?.(e.currentTarget.currentTime)}
-    />
+    <div className="flex flex-col gap-1.5">
+      <video
+        ref={(el) => {
+          own.current = el
+          if (typeof videoRef === "function") videoRef(el)
+          else if (videoRef) (videoRef as MutableRefObject<HTMLVideoElement | null>).current = el
+        }}
+        src={url}
+        controls
+        playsInline
+        preload="metadata"
+        className={cn("aspect-video w-full rounded-xl bg-muted", className)}
+        onLoadedMetadata={(e) => {
+          if (start > 0 && !sought.current) e.currentTarget.currentTime = start
+        }}
+        onTimeUpdate={(e) => onTimeUpdate?.(e.currentTarget.currentTime)}
+        onError={() => setFailed(true)}
+      />
+      {failed && (
+        <p role="alert" className="text-sm text-neg">
+          This browser could not play the video. Try another browser or your phone, or open the link directly: <a className="underline" href={url} target="_blank" rel="noreferrer">open video</a>.
+        </p>
+      )}
+    </div>
   )
 }
 

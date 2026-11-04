@@ -61,7 +61,7 @@ function ImportScreen({ onImported }: { onImported: (state: PooleanState) => voi
           <CardTitle className="font-display">Import your data</CardTitle>
           <CardDescription>
             This is a separate, in-progress build of Poolean Intel. Import the JSON backup from the
-            classic site (Export &rarr; Export All Data, or Save Backup) to see your past seasons here.
+            classic site (Export &rarr; Export All Data, or Save Backup) to see your old site games here.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { resolvePlayer } from "@/lib/players"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { PlayerHero } from "@/components/PlayerHero"
@@ -140,7 +141,11 @@ export function PlayerDetailPage({
     return { state, toggles }
   }, [state, toggles])
 
-  const player = state.players.find((p) => p.id === playerId) ?? state.players[0] ?? null
+  // A link names a player by slug. Resolve it forgivingly ("ian" finds "g-ian"); a slug that matches nobody is said so
+  // below, never answered with some other player's page.
+  const resolved = playerId ? resolvePlayer(state, playerId) : null
+  const unknownLink = !!playerId && !resolved
+  const player = resolved ?? (playerId ? null : (state.players[0] ?? null))
   const pid = player?.id ?? null
   const row = pid ? (computeLeaderboard() as { player: { id: string }; wins: number; losses: number; ties: number; rate: { pts: number }; offRatingPer20: number; twoWayPer20: number }[]).find((r) => r.player.id === pid) : null
   // Result of each of the last ten counted games, oldest first, for the form strip in the header.
@@ -162,6 +167,22 @@ export function PlayerDetailPage({
     if (pid) renderPlayerRankPill(pid)
   }, [pid, version])
 
+  if (unknownLink) {
+    return (
+      <div className="flex flex-col gap-3">
+        <p>
+          No player matches <span className="font-semibold">&quot;{playerId}&quot;</span>. The link may be mistyped. Pick someone:
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {state.players.map((p) => (
+            <Button key={p.id} size="sm" variant="outline" onClick={() => onChangePlayer(p.id)}>
+              {p.name}
+            </Button>
+          ))}
+        </div>
+      </div>
+    )
+  }
   if (!player || !pid) return <p className="text-muted-foreground">No players yet. Add one in the Players tab, then pick them here.</p>
 
   const record = row ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}` : null
@@ -204,8 +225,6 @@ export function PlayerDetailPage({
         onCard={() => downloadTradingCard(pid)}
       />
 
-      {pid && <PlayerGameFlow state={state} pid={pid} />}
-
       <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as shot chart or tips (press /)" />
       <nav className="flex flex-wrap gap-2" aria-label="Player sections">
         {SECTIONS.map((s) => (
@@ -233,6 +252,8 @@ export function PlayerDetailPage({
           <Panels section={s.key} pid={pid} version={version} />
         </Section>
       ))}
+
+      {pid && <PlayerGameFlow state={state} pid={pid} />}
     </div>
   )
 }

@@ -9,7 +9,8 @@ import { useMemo, useState } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { turnout } from "@/lib/attendance"
-import { formatDateDisplay, formatTime } from "@/lib/format"
+import { formatDateLong, formatTime } from "@/lib/format"
+import { useReadOnly } from "@/lib/mode"
 import { isOpeningNight, powerRanking } from "@/lib/offseason"
 import { playerName } from "@/lib/players"
 import { shareText } from "@/lib/shareText"
@@ -26,6 +27,7 @@ const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`
 // ways in to Wrapped and preseason predictions. The hall of fame has its own button at the top of Games all year.
 export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGame }: { state: PooleanState; onWrapped: () => void; onOpenPlayer: (id: string) => void; onLive: () => void; onOpenGame: (g: Game) => void }) {
   const o = state.openingNight!
+  const readOnly = useReadOnly()
   const tonight = isOpeningNight(state)
   const liveGame = findLiveGame(state)
   const tonightsGames = state.games.filter((g) => g.date === o.date && !g.liveInProgress)
@@ -52,7 +54,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
   const [sent, setSent] = useState("")
   const shown = showAll ? rows : rows.slice(0, 5)
   const message = [
-    `Poolean Intel: opening night ${formatDateDisplay(o.date)}${o.time ? `, ${formatTime(o.time)}` : ""}`,
+    `Poolean Intel: opening night ${formatDateLong(o.date)}${o.time ? `, ${formatTime(o.time)}` : ""}`,
     coming.length ? `In so far: ${coming.map((id) => playerName(state, id)).join(", ")}` : "",
     "",
     ballots ? `Way too early power ranking, from ${ballots} ${ballots === 1 ? "ballot" : "ballots"}:` : "Way too early power ranking:",
@@ -66,9 +68,10 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
       <div className="flex flex-col gap-1">
         <p className="text-xs font-semibold uppercase tracking-wider text-accent">{tonight ? "Opening night is tonight" : "Opening night"}</p>
         <h3 className="font-display text-2xl font-bold">
-          {formatDateDisplay(o.date)}
+          {formatDateLong(o.date)}
           {o.time && <span className="text-muted-foreground">, {formatTime(o.time)}</span>}
         </h3>
+        <p className="text-xs text-muted-foreground">Cherry Hill time.</p>
         <Countdown date={o.date} time={o.time} className="font-display text-xl font-bold tabular-nums text-accent" />
         {weather && (
           <p className="text-sm text-muted-foreground">
@@ -79,7 +82,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
 
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-semibold">
-          {tonight ? (coming.length ? `${coming.length} said they're in. ${coming.filter((id) => playedTonight.has(id)).length} have played so far.` : "Who's here") : coming.length ? `${coming.length} in so far` : "Nobody has said they're in yet"}
+          {tonight ? (coming.length ? `${coming.length} said they're in. ${coming.filter((id) => playedTonight.has(id)).length} have played so far.` : "Who's here") : coming.length ? `${coming.length} in so far` : `Nobody is on the list yet. ${readOnly ? "The editor adds RSVPs." : "Add RSVPs under Set Up Tonight."}`}
         </p>
         {coming.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

@@ -1,5 +1,6 @@
 import { Vote as VoteIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
+import { IdentityPrompt } from "@/components/WhoAmI"
 import { Button } from "@/components/ui/button"
 import { getClient } from "@/lib/cloud"
 import { formatDateDisplay } from "@/lib/format"
@@ -45,7 +46,7 @@ export function PickEmCard({ state }: { state: PooleanState }) {
       <h3 className="flex items-center gap-2 font-display text-lg font-bold">
         <VoteIcon aria-hidden className="size-4 text-accent" /> Pick the winner
       </h3>
-      {open.length > 0 && !me && <p className="text-sm text-muted-foreground">Say who you are (top right) to vote.</p>}
+      {open.length > 0 && !me && <IdentityPrompt state={state} text="Who are you? Pick yourself to vote." />}
       {open.map((g) => {
         const a = votes.filter((v) => v.gameId === g.id && v.pick === "A").length
         const b = votes.filter((v) => v.gameId === g.id && v.pick === "B").length

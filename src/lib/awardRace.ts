@@ -1,3 +1,4 @@
+import { distinctNumbers } from "@/lib/format"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
 import { computeLeaderboard, defensiveRating, gameDefenseStats, getGameStats, isCurrentSeasonGame } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
@@ -47,7 +48,10 @@ export function awardRace(state: PooleanState): RaceRow[] {
 
   // Best all-around: two-way per 20, the same number as the standings.
   const byTwoWay = board.filter((r) => r.gp >= MIN_GAMES).sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
-  if (byTwoWay.length) rows.push({ key: "best-player", label: "Best player", basis: "Two-way per 20", leaders: top(byTwoWay.map((r) => ({ ids: [r.player.id], value: `${r.twoWayPer20.toFixed(1)} per 20` }))) })
+  if (byTwoWay.length) {
+    const text = distinctNumbers(byTwoWay.map((r) => r.twoWayPer20))
+    rows.push({ key: "best-player", label: "Best player", basis: "Two-way per 20", leaders: top(byTwoWay.map((r, i) => ({ ids: [r.player.id], value: `${text[i]} per 20` }))) })
+  }
 
   // Defender: total defensive score.
   const byDefense = [...boxed].sort((x, y) => y[1].defense - x[1].defense)

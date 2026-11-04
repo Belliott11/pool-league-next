@@ -44,7 +44,13 @@ export function ColorMenu() {
     if (!hint) return
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismissHint()
     document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
+    window.addEventListener("hashchange", dismissHint)
+    const timer = setTimeout(dismissHint, 8000)
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      window.removeEventListener("hashchange", dismissHint)
+      clearTimeout(timer)
+    }
   }, [hint])
   const [accent, setAccent] = useState(() => document.documentElement.getAttribute("data-accent") ?? "")
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"))

@@ -26,8 +26,12 @@ The games since the current season started.
 _Avoid_: Current season, new season
 
 **Past seasons**:
-Earlier seasons brought in as imported data. Imported games belong only to past seasons.
+Earlier seasons, once there are any. Not the same as imported data, which can include the season being played now.
 _Avoid_: Real games, old games
+
+**Old site data**:
+Games, ranks and awards brought in from the old site. It can cover the current season, so it is labelled by where it came from, not by when.
+_Avoid_: Real site data, past seasons data
 
 ### People
 

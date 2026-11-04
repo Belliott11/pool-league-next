@@ -40,8 +40,8 @@ const JUMP_ITEMS: JumpItem[] = [
 const NAV = [
   { id: "lb-ranking", label: "Ranking" },
   { id: "lb-rates", label: "Season rates" },
-  { id: "lb-flow", label: "Game flow" },
   ...SECTIONS.map((s) => ({ id: `lb-section-${s.key}`, label: s.title })),
+  { id: "lb-flow", label: "Game flow" },
 ]
 
 function QuickNav() {
@@ -89,9 +89,6 @@ export function LeaderboardPage({
       <div id="lb-rates" className="anim-rise scroll-mt-28" style={{ "--i": 1 } as React.CSSProperties}>
         <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
       </div>
-      <div id="lb-flow" className="anim-rise scroll-mt-28" style={{ "--i": 2 } as React.CSSProperties}>
-        <GameFlowCard state={state} />
-      </div>
       {SECTIONS.map((s, i) => (
         <div key={s.key} className="anim-rise" style={{ "--i": i + 2 } as React.CSSProperties}>
           <Section id={`lb-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
@@ -99,6 +96,9 @@ export function LeaderboardPage({
           </Section>
         </div>
       ))}
+      <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 2 } as React.CSSProperties}>
+        <GameFlowCard state={state} />
+      </div>
     </div>
   )
 }
