@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { PlayerHero } from "@/components/PlayerHero"
-import { gamesNeeded, ratingsWithTrend } from "@/lib/ratings"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
@@ -140,7 +139,6 @@ export function PlayerDetailPage({
     return { state, toggles }
   }, [state, toggles])
 
-  const ratingRows = useMemo(() => ratingsWithTrend(state).rows, [state])
   const player = state.players.find((p) => p.id === playerId) ?? state.players[0] ?? null
   const pid = player?.id ?? null
   const row = pid ? (computeLeaderboard() as { player: { id: string }; wins: number; losses: number; ties: number; rate: { pts: number }; offRatingPer20: number; twoWayPer20: number }[]).find((r) => r.player.id === pid) : null
@@ -199,8 +197,6 @@ export function PlayerDetailPage({
       <PlayerHero
         pid={pid}
         name={player.name}
-        rating={ratingRows.find((r) => r.id === pid) ?? null}
-        needed={gamesNeeded(state, pid)}
         form={form}
         stats={row ? { twoWay: fmtRate(row.twoWayPer20), record: record!, pts: fmtRate(row.rate.pts), off: fmtRate(row.offRatingPer20) } : null}
         onShare={share}

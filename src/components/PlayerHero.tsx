@@ -2,14 +2,12 @@ import { IdCard, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { JerseyStat } from "@/components/JerseyStat"
-import { AttrBar, OvrChip } from "@/components/OvrBadge"
-import { ATTR_LABEL, ATTRS, type RatedPlayer } from "@/lib/ratings"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 
 type Stats = { twoWay: string; record: string; pts: string; off: string }
 
 // Trading-card style header for the Player page. #playerRankPill is filled by the classic renderPlayerRankPill.
-export function PlayerHero({ pid, name, stats, form = [], rating, needed = 0, onShare, onCard }: { pid: string; name: string; stats: Stats | null; form?: ("W" | "L" | "T")[]; rating?: RatedPlayer | null; needed?: number; onShare: () => void; onCard: () => void }) {
+export function PlayerHero({ pid, name, stats, form = [], onShare, onCard }: { pid: string; name: string; stats: Stats | null; form?: ("W" | "L" | "T")[]; onShare: () => void; onCard: () => void }) {
   return (
     <Card className="tile overflow-hidden">
       <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
@@ -26,7 +24,6 @@ export function PlayerHero({ pid, name, stats, form = [], rating, needed = 0, on
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div id="playerRankPill" className="legacy" />
-              {rating && <OvrChip ovr={rating.ovr} change={rating.change} />}
             </div>
           </div>
           {stats ? (
@@ -64,20 +61,6 @@ export function PlayerHero({ pid, name, stats, form = [], rating, needed = 0, on
             </div>
           ) : (
             <p className="text-muted-foreground">No games yet</p>
-          )}
-          {rating ? (
-            <details className="group text-sm">
-              <summary className="cursor-pointer list-none text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-                <span className="underline-offset-2 group-open:no-underline">Ratings</span> <span className="group-open:hidden">(show the five parts)</span>
-              </summary>
-              <div className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2" aria-label="Ratings">
-                {ATTRS.map((a) => (
-                  <AttrBar key={a} label={ATTR_LABEL[a]} value={rating.attrs[a]} />
-                ))}
-              </div>
-            </details>
-          ) : (
-            needed > 0 && <p className="text-xs text-muted-foreground">{needed} more box-scored {needed === 1 ? "game" : "games"} for a rating.</p>
           )}
         </div>
         <div className="flex gap-2 sm:flex-col">

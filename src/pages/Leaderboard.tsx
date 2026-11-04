@@ -11,7 +11,6 @@ import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
 import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
 import { LaneBars } from "./leaderboard/LaneBars"
 import { SeasonRates } from "./leaderboard/SeasonRates"
-import { RatingsCard } from "./leaderboard/RatingsCard"
 
 // Same six groups, in the same order, as the classic Leaderboard tab.
 const SECTIONS: { key: string; title: string }[] = [
@@ -40,7 +39,6 @@ const JUMP_ITEMS: JumpItem[] = [
 const NAV = [
   { id: "lb-ranking", label: "Ranking" },
   { id: "lb-rates", label: "Season rates" },
-  { id: "lb-ratings", label: "Ratings" },
   ...SECTIONS.map((s) => ({ id: `lb-section-${s.key}`, label: s.title })),
 ]
 
@@ -88,9 +86,6 @@ export function LeaderboardPage({
       </div>
       <div id="lb-rates" className="anim-rise scroll-mt-28" style={{ "--i": 1 } as React.CSSProperties}>
         <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
-      </div>
-      <div id="lb-ratings" className="anim-rise scroll-mt-28" style={{ "--i": 2 } as React.CSSProperties}>
-        <RatingsCard state={state} onOpenPlayer={onOpenPlayer} />
       </div>
       {SECTIONS.map((s, i) => (
         <div key={s.key} className="anim-rise" style={{ "--i": i + 2 } as React.CSSProperties}>

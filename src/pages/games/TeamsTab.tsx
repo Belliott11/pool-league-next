@@ -1,4 +1,3 @@
-import { ratings } from "@/lib/ratings"
 import { Star } from "lucide-react"
 import { useMemo } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -23,7 +22,7 @@ function Form({ results }: { results: Result[] }) {
   )
 }
 
-// Both sides as a lineup: number, name, recent form and rating, with each side's key player marked and compared.
+// Both sides as a lineup: name, recent form and two-way per 20, with each side's key player marked and compared.
 export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; game: Game; onOpenGame?: (g: Game) => void }) {
   const rows = useMemo(() => boardOf(state), [state])
   const byId = useMemo(() => new Map(rows.map((r) => [r.player.id, r])), [rows])
@@ -33,21 +32,13 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
   ].map((s) => ({ ...s, key_: keyPlayer(rows, s.ids) }))
   const [ka, kb] = [sides[0].key_, sides[1].key_]
   const others = otherGamesThatNight(state, game)
-  const ovr = useMemo(() => new Map(ratings(state).map((r) => [r.id, r.ovr])), [state])
-  const avgOvr = (ids: string[]) => {
-    const vals = ids.map((id) => ovr.get(id)).filter((v): v is number => v !== undefined)
-    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null
-  }
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         {sides.map((s) => (
           <Card key={s.key}>
             <CardHeader>
-              <CardTitle className={cn("flex items-baseline justify-between gap-2 font-display", TEAM[s.key].text)}>
-                Team {s.key}
-                {avgOvr(s.ids) !== null && <span className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">avg {avgOvr(s.ids)} OVR</span>}
-              </CardTitle>
+              <CardTitle className={cn("font-display", TEAM[s.key].text)}>Team {s.key}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
               {s.ids.map((id) => {
@@ -56,9 +47,6 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
                 return (
                   <div key={id} className="flex items-center gap-2 text-sm">
                     <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
-                    <span className="w-7 text-center text-xs tabular-nums text-muted-foreground" title="Overall rating">
-                      {ovr.get(id) ?? "-"}
-                    </span>
                     <span className="min-w-0 flex-1 truncate font-medium">
                       {playerName(state, id)}
                       {isKey && <Star aria-label="Key player" className="ml-1 inline size-3.5 fill-gold text-gold" />}
@@ -68,7 +56,7 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
                   </div>
                 )
               })}
-              <p className="text-xs text-muted-foreground">Overall rating, last 5 games before this one, then two-way per 20.</p>
+              <p className="text-xs text-muted-foreground">Last 5 games before this one, then two-way per 20.</p>
             </CardContent>
           </Card>
         ))}
