@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { FlipDigits } from "@/components/FlipDigits"
 import { JerseyNumber } from "@/components/JerseyNumber"
+import { AttrBar, OvrBadge } from "@/components/OvrBadge"
+import { ATTR_LABEL, ATTRS, type RatedPlayer } from "@/lib/ratings"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 
 type Stats = { twoWay: string; record: string; pts: string; off: string }
 
 // Trading-card style header for the Player page. #playerRankPill is filled by the classic renderPlayerRankPill.
-export function PlayerHero({ pid, name, number, stats, form = [], onShare, onCard }: { pid: string; name: string; number?: number; stats: Stats | null; form?: ("W" | "L" | "T")[]; onShare: () => void; onCard: () => void }) {
+export function PlayerHero({ pid, name, number, stats, form = [], rating, needed = 0, onShare, onCard }: { pid: string; name: string; number?: number; stats: Stats | null; form?: ("W" | "L" | "T")[]; rating?: RatedPlayer | null; needed?: number; onShare: () => void; onCard: () => void }) {
   return (
     <Card className="tile overflow-hidden">
       <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
@@ -22,10 +24,22 @@ export function PlayerHero({ pid, name, number, stats, form = [], onShare, onCar
           <div className="flex min-w-0 flex-col gap-2">
             <div className="flex items-start justify-between gap-3">
               <h2 className="font-display text-3xl font-bold leading-tight break-words">{name}</h2>
-              <JerseyNumber number={number} />
+              <div className="flex shrink-0 items-start gap-2">
+                {rating && <OvrBadge ovr={rating.ovr} change={rating.change} />}
+                <JerseyNumber number={number} />
+              </div>
             </div>
             <div id="playerRankPill" className="legacy" />
           </div>
+          {rating ? (
+            <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2" aria-label="Ratings">
+              {ATTRS.map((a) => (
+                <AttrBar key={a} label={ATTR_LABEL[a]} value={rating.attrs[a]} />
+              ))}
+            </div>
+          ) : (
+            needed > 0 && <p className="text-xs text-muted-foreground">{needed} more box-scored {needed === 1 ? "game" : "games"} for a rating.</p>
+          )}
           {stats ? (
             <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
               <div>

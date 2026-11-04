@@ -1,5 +1,5 @@
 import { Crown } from "lucide-react"
-import { useMemo, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,8 @@ import { playerName } from "@/lib/players"
 import { poolNameOf } from "@/lib/real"
 import { RECORD_KEYS, RECORD_LABEL, recordBook } from "@/lib/records"
 import { rivalries } from "@/lib/rivalries"
+import { getClient } from "@/lib/cloud"
+import { loadAllPredictions, pastSeasons, type PastSeason } from "@/lib/predictions"
 import type { PooleanState } from "@/lib/types"
 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
@@ -56,6 +58,12 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
     }),
     [state],
   )
+  // Past seasons' preseason picks, scored on how each season went. Needs the shared data; quietly empty without it.
+  const [called, setCalled] = useState<PastSeason[]>([])
+  useEffect(() => {
+    const client = getClient()
+    if (client) void loadAllPredictions(client).then((all) => setCalled(pastSeasons(state, all)))
+  }, [state])
   return (
     <div className="anim-page flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -74,6 +82,26 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
               <span className="text-muted-foreground">{c.season}</span>
               <span className="font-semibold">{poolNameOf(state, c.id) || c.name}</span>
               <span className="text-xs text-muted-foreground">{c.how}</span>
+            </div>
+          ))}
+        </Board>
+      )}
+
+      {called.length > 0 && (
+        <Board title="Called it" hint="Each season's closest preseason power ranking and best set of predictions.">
+          {called.map((c) => (
+            <div key={c.season} className="flex flex-col gap-0.5 border-t pt-1.5 first:border-t-0 first:pt-0">
+              <span className="text-xs text-muted-foreground">Season starting {formatDateDisplay(c.season)}</span>
+              {c.ballot && (
+                <span>
+                  Closest ballot: <span className="font-semibold">{playerName(state, c.ballot.voter)}</span>, off by {c.ballot.miss.toFixed(1)} spots a player
+                </span>
+              )}
+              {c.picks && (
+                <span>
+                  Best predictions: <span className="font-semibold">{playerName(state, c.picks.voter)}</span>, {c.picks.points} points
+                </span>
+              )}
             </div>
           ))}
         </Board>

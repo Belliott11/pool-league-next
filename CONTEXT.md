@@ -100,3 +100,17 @@ A friend's call, made before opening night, on next season's award winners and t
 
 **Hall of fame**:
 All-time marks across every game: career leaders, best single games, records, streaks, rivalries and past champions.
+
+### Ratings
+
+**Rating**:
+A 2K-style score from 40 to 99, from a player's last 20 box-scored games measured against everyone else who has at least 5. 74 is average; 85 and up is elite. It moves as games come in.
+
+**OVR**:
+The overall rating: mostly two-way per 20, plus the five attributes.
+
+**Attribute**:
+One of the five parts of a rating: Scoring, Shooting, Playmaking, Rebounding and Defense.
+
+**Average miss**:
+How far off a preseason power ranking ballot was: the average number of spots it missed each ranked player by. Lowest is closest.

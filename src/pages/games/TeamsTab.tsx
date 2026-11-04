@@ -1,3 +1,4 @@
+import { ratings } from "@/lib/ratings"
 import { Star } from "lucide-react"
 import { useMemo } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -32,13 +33,21 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
   ].map((s) => ({ ...s, key_: keyPlayer(rows, s.ids) }))
   const [ka, kb] = [sides[0].key_, sides[1].key_]
   const others = otherGamesThatNight(state, game)
+  const ovr = useMemo(() => new Map(ratings(state).map((r) => [r.id, r.ovr])), [state])
+  const avgOvr = (ids: string[]) => {
+    const vals = ids.map((id) => ovr.get(id)).filter((v): v is number => v !== undefined)
+    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null
+  }
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         {sides.map((s) => (
           <Card key={s.key}>
             <CardHeader>
-              <CardTitle className={cn("font-display", TEAM[s.key].text)}>Team {s.key}</CardTitle>
+              <CardTitle className={cn("flex items-baseline justify-between gap-2 font-display", TEAM[s.key].text)}>
+                Team {s.key}
+                {avgOvr(s.ids) !== null && <span className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">avg {avgOvr(s.ids)} OVR</span>}
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
               {s.ids.map((id) => {
@@ -48,6 +57,9 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
                 return (
                   <div key={id} className="flex items-center gap-2 text-sm">
                     <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
+                    <span className="w-7 rounded bg-primary/15 text-center text-xs font-bold tabular-nums text-primary" title="Overall rating">
+                      {ovr.get(id) ?? "-"}
+                    </span>
                     <span className="min-w-0 flex-1 truncate font-medium">
                       {num !== undefined && <span className="mr-1 tabular-nums text-muted-foreground">#{num}</span>}
                       {playerName(state, id)}
@@ -58,7 +70,7 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
                   </div>
                 )
               })}
-              <p className="text-xs text-muted-foreground">Last 5 games before this one, then two-way per 20.</p>
+              <p className="text-xs text-muted-foreground">Overall rating, last 5 games before this one, then two-way per 20.</p>
             </CardContent>
           </Card>
         ))}

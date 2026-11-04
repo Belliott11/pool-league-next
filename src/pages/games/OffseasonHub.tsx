@@ -1,13 +1,19 @@
-import { Gift, Share2, Sparkles } from "lucide-react"
+import { Check, Gift, Radio, Share2, Sparkles } from "lucide-react"
+import { FlipDigits } from "@/components/FlipDigits"
+import { findLiveGame, liveTotals } from "@/lib/live"
+import { scoreOf } from "@/lib/nightRecap"
+import { TEAM } from "@/lib/teamColors"
+import { cn } from "@/lib/utils"
+import { LiveOddsMini } from "@/pages/live/LiveOdds"
 import { useMemo, useState } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { turnout } from "@/lib/attendance"
 import { formatDateDisplay, formatTime } from "@/lib/format"
-import { powerRanking } from "@/lib/offseason"
+import { isOpeningNight, powerRanking } from "@/lib/offseason"
 import { playerName } from "@/lib/players"
 import { shareText } from "@/lib/shareText"
-import type { PooleanState } from "@/lib/types"
+import type { Game, PooleanState } from "@/lib/types"
 import { useEvening } from "@/lib/weather"
 import { Countdown } from "./Countdown"
 import { ordinalOf } from "@/lib/ordinal"
@@ -18,8 +24,12 @@ const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`
 
 // The top of the Games tab between seasons: the countdown to opening night, who is in, an early power ranking, and the
 // ways in to Wrapped and preseason predictions. The hall of fame has its own button at the top of Games all year.
-export function OffseasonHub({ state, onWrapped, onOpenPlayer }: { state: PooleanState; onWrapped: () => void; onOpenPlayer: (id: string) => void }) {
+export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGame }: { state: PooleanState; onWrapped: () => void; onOpenPlayer: (id: string) => void; onLive: () => void; onOpenGame: (g: Game) => void }) {
   const o = state.openingNight!
+  const tonight = isOpeningNight(state)
+  const liveGame = findLiveGame(state)
+  const tonightsGames = state.games.filter((g) => g.date === o.date && !g.liveInProgress)
+  const playedTonight = new Set(state.games.filter((g) => g.date === o.date).flatMap((g) => [...g.teamA, ...g.teamB]))
   const weather = useEvening(o.date, o.time)
   const rsvp = (state.rsvps ?? []).find((r) => r.date === o.date)
   const coming = rsvp?.playerIds ?? []
@@ -54,7 +64,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer }: { state: Poolea
   return (
     <section className="flex flex-col gap-4 rounded-xl border-2 border-accent/60 bg-card p-4" aria-label="Offseason">
       <div className="flex flex-col gap-1">
-        <p className="text-xs font-semibold uppercase tracking-wider text-accent">Opening night</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-accent">{tonight ? "Opening night is tonight" : "Opening night"}</p>
         <h3 className="font-display text-2xl font-bold">
           {formatDateDisplay(o.date)}
           {o.time && <span className="text-muted-foreground">, {formatTime(o.time)}</span>}
@@ -68,13 +78,16 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer }: { state: Poolea
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-sm font-semibold">{coming.length ? `${coming.length} in so far` : "Nobody has said they're in yet"}</p>
+        <p className="text-sm font-semibold">
+          {tonight ? (coming.length ? `${coming.length} said they're in. ${coming.filter((id) => playedTonight.has(id)).length} have played so far.` : "Who's here") : coming.length ? `${coming.length} in so far` : "Nobody has said they're in yet"}
+        </p>
         {coming.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {coming.map((id) => (
-              <span key={id} className="flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 text-sm">
+              <span key={id} className={cn("flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 text-sm", tonight && playedTonight.has(id) && "border-pos")}>
                 <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
                 {playerName(state, id)}
+                {tonight && playedTonight.has(id) && <Check aria-label="has played tonight" className="size-3.5 text-pos" />}
               </span>
             ))}
           </div>
@@ -82,14 +95,54 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer }: { state: Poolea
         {coming.length > 0 && <p className="text-xs text-muted-foreground">{t.teams}.</p>}
       </div>
 
-      <Button className="h-12 text-base" onClick={onWrapped}>
-        <Gift aria-hidden /> See your Season Wrapped
-      </Button>
+      {tonight && liveGame && (
+        <button type="button" onClick={onLive} className="flex flex-col gap-2 rounded-xl border-2 border-primary bg-background p-3 text-left">
+          <span className="flex items-center gap-2 text-sm font-semibold text-primary">
+            <Radio aria-hidden className="size-4 animate-pulse" /> Live now
+          </span>
+          <span className="flex items-center gap-3 text-4xl">
+            <span className={TEAM.A.text}>
+              <FlipDigits value={liveTotals(liveGame)[0]} />
+            </span>
+            <span className="text-2xl text-muted-foreground">-</span>
+            <span className={TEAM.B.text}>
+              <FlipDigits value={liveTotals(liveGame)[1]} />
+            </span>
+          </span>
+          <LiveOddsMini game={liveGame} />
+          <span className="text-sm text-muted-foreground">Tap to watch.</span>
+        </button>
+      )}
+
+      {tonight && tonightsGames.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <h4 className="text-sm font-semibold">Tonight so far</h4>
+          {tonightsGames.map((g) => {
+            const [a, b] = scoreOf(g)
+            return (
+              <button key={g.id} type="button" onClick={() => onOpenGame(g)} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted">
+                <span className="min-w-0 flex-1 truncate">
+                  {g.teamA.map((id) => playerName(state, id)).join(", ")} <span className="text-muted-foreground">vs</span> {g.teamB.map((id) => playerName(state, id)).join(", ")}
+                </span>
+                <span className="font-display font-bold tabular-nums">
+                  <span className={a > b ? TEAM.A.text : ""}>{a}</span>-<span className={b > a ? TEAM.B.text : ""}>{b}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {!tonight && (
+        <Button className="h-12 text-base" onClick={onWrapped}>
+          <Gift aria-hidden /> See your Season Wrapped
+        </Button>
+      )}
 
       {rows.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <h4 className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles aria-hidden className="size-4 text-gold" /> Way too early power ranking
+            <Sparkles aria-hidden className="size-4 text-gold" /> {tonight ? "Preseason ranking" : "Way too early power ranking"}
           </h4>
           <p className="text-xs text-muted-foreground">
             {ballots > 0

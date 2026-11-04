@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { bestGames, careerTable, longestStreaks } from "@/lib/hallOfFame"
-import { ballotPool, isOffseason } from "@/lib/offseason"
-import { ballotFor, consensusRanking, duoKey, scorePredictions } from "@/lib/predictions"
+import { ballotPool, isOffseason, isOpeningNight } from "@/lib/offseason"
+import { ballotFor, biggestMisses, consensusRanking, duoKey, scoreBallots, scorePredictions } from "@/lib/predictions"
 import type { Game, PooleanState } from "@/lib/types"
 import { wrappedFor } from "@/lib/wrapped"
 
@@ -27,6 +27,16 @@ describe("offseason switch", () => {
     expect(isOffseason(state([]), now)).toBe(false)
     expect(isOffseason(state([], { openingNight: { date: "2027-05-01" } }), now)).toBe(true)
     expect(isOffseason(state([], { openingNight: { date: "2026-11-04", time: "10:00" } }), now)).toBe(false)
+  })
+})
+
+describe("opening night", () => {
+  it("is on from midnight of the date until 8 hours after the start", () => {
+    const s = state([], { openingNight: { date: "2026-11-04", time: "19:00" } })
+    expect(isOpeningNight(s, new Date("2026-11-04T09:00:00"))).toBe(true)
+    expect(isOpeningNight(s, new Date("2026-11-04T23:30:00"))).toBe(true)
+    expect(isOpeningNight(s, new Date("2026-11-03T23:00:00"))).toBe(false)
+    expect(isOpeningNight(state([], { openingNight: { date: "2026-11-04", time: "10:00" } }), new Date("2026-11-04T19:00:00"))).toBe(false)
   })
 })
 
@@ -90,6 +100,30 @@ describe("preseason power ranking", () => {
   it("keeps a saved ballot's order, drops players who left and adds new ones at the end", () => {
     expect(ballotFor(["x", "y", "z", "n"], ["z", "gone", "x"], ["y", "n", "x", "z"])).toEqual(["z", "x", "y", "n"])
     expect(ballotFor(["x", "y"], undefined, ["y", "x"])).toEqual(["y", "x"])
+  })
+})
+
+describe("scored ballots", () => {
+  const order = ["x", "y", "z", "w"]
+  const entries = [
+    { voter: "a", picks: { ranking: ["x", "y", "z", "w", "gone"] } },
+    { voter: "b", picks: { ranking: ["w", "z", "y", "x"] } },
+    { voter: "c", picks: { ranking: ["y", "x"] } },
+  ]
+  it("scores by average spots missed, ignores players not in the standings, and needs 3 ranked players", () => {
+    // a is perfect once "gone" is dropped. b misses by 3, 1, 1, 3 = 2. c only ranks two, so it does not count.
+    expect(scoreBallots(entries, order)).toEqual([
+      { voter: "a", miss: 0 },
+      { voter: "b", miss: 2 },
+    ])
+  })
+  it("finds who the group rated too high and too low", () => {
+    // w: actual 4th, ballots 4, 1 (c leaves w off), average 2.5, so overrated by 1.5. x: actual 1st, ballots 1, 4, 2,
+    // average 2.33, so underrated by 1.33.
+    const m = biggestMisses(entries, order)
+    expect(m.overrated).toMatchObject({ id: "w", gap: 1.5 })
+    expect(m.underrated?.id).toBe("x")
+    expect(m.underrated!.gap).toBeCloseTo(1.33, 2)
   })
 })
 

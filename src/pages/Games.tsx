@@ -19,7 +19,7 @@ import { PickEmCard } from "./games/PickEm"
 import { StatEntryPage } from "./statentry/StatEntryPage"
 import { findLiveGame } from "@/lib/live"
 import { upcomingRsvp } from "@/lib/nightPreview"
-import { isOffseason } from "@/lib/offseason"
+import { showHub } from "@/lib/offseason"
 import { HallOfFame } from "./games/HallOfFame"
 import { OffseasonHub } from "./games/OffseasonHub"
 import { Wrapped } from "./games/Wrapped"
@@ -122,10 +122,10 @@ export function GamesPage({
             </Button>
           )}
         </div>
-        {isOffseason(state) && <OffseasonHub state={state} onWrapped={() => go("wrapped")} onOpenPlayer={onOpenPlayer} />}
+        {showHub(state) && <OffseasonHub state={state} onWrapped={() => go("wrapped")} onOpenPlayer={onOpenPlayer} onLive={() => go("live")} onOpenGame={open} />}
         <PickEmCard state={state} />
         {/* The hub already covers opening night, so the regular next-night card would repeat it. */}
-        {!(isOffseason(state) && upcomingRsvp(state)?.date === state.openingNight?.date) && <NightPreviewCard state={state} update={update} />}
+        {!(showHub(state) && upcomingRsvp(state)?.date === state.openingNight?.date) && <NightPreviewCard state={state} update={update} />}
         <GoingIn state={state} update={update} />
         <GameLog state={state} update={update} onOpen={open} />
         {!readOnly && (

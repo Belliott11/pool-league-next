@@ -7,7 +7,7 @@ import { myPlayerId, useWho } from "@/lib/identity"
 import { ballotPool, isOffseason } from "@/lib/offseason"
 import { ordinalOf } from "@/lib/ordinal"
 import { playerName } from "@/lib/players"
-import { actualResults, AWARD_PICKS, ballotFor, duoKey, loadPredictions, savePrediction, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
+import { actualOrder, actualResults, AWARD_PICKS, ballotFor, biggestMisses, duoKey, loadAllPredictions, pastSeasons, savePrediction, scoreBallots, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -19,13 +19,15 @@ export function usePredictions(state: PooleanState) {
   const season = state.openingNight?.date
   const who = useWho()
   const me = myPlayerId(who, state.players)
-  const [entries, setEntries] = useState<Entry[]>([])
+  // One read of every season's rows: this season's entries, plus the past seasons for "last season's best ballot".
+  const [all, setAll] = useState<(Entry & { season: string })[]>([])
   const refresh = useCallback(() => {
-    if (client && season) void loadPredictions(client, season).then(setEntries)
-  }, [client, season])
+    if (client) void loadAllPredictions(client).then(setAll)
+  }, [client])
   useEffect(() => {
     refresh()
   }, [refresh])
+  const entries: Entry[] = useMemo(() => all.filter((e) => e.season === season), [all, season])
   const mine = entries.find((e) => e.voter === me)
   const save = async (patch: Picks) => {
     if (!client || !season || !me) return false
@@ -33,7 +35,7 @@ export function usePredictions(state: PooleanState) {
     refresh()
     return ok
   }
-  return { client, season, me, entries, mine, save, open: isOffseason(state) }
+  return { client, season, me, all, entries, mine, save, open: isOffseason(state) }
 }
 export type PredictionsData = ReturnType<typeof usePredictions>
 
@@ -59,8 +61,9 @@ function PlayerSelect({ state, value, onChange, label, taken = [] }: { state: Po
 // Before opening night everyone ranks every player in the app. Drag a row (or use its arrows) to move it. The group's
 // combined ranking shows in the hub's way too early list.
 export function PowerVoteCard({ state, p }: { state: PooleanState; p: PredictionsData }) {
-  const { client, season, me, entries, mine, save, open } = p
+  const { client, season, me, all, entries, mine, save, open } = p
   const pool = useMemo(() => ballotPool(state), [state])
+  const last = useMemo(() => pastSeasons(state, all)[0], [state, all])
   const [ballot, setBallot] = useState<string[]>([])
   const [status, setStatus] = useState("")
   // Keyed on the contents, not the objects: the data refreshes every minute, and that must not undo a half-made ballot.
@@ -83,6 +86,11 @@ export function PowerVoteCard({ state, p }: { state: PooleanState; p: Prediction
       <p className="text-sm text-muted-foreground">
         Rank all {pool.length} players going into next season. Every ballot goes into the way too early ranking above, as each player's average spot. {ballots} {ballots === 1 ? "ballot" : "ballots"} in.
       </p>
+      {last?.ballot && (
+        <p className="rounded-lg bg-muted px-3 py-2 text-sm">
+          Last season's closest ballot: <span className="font-semibold">{playerName(state, last.ballot.voter)}</span>, off by {last.ballot.miss.toFixed(1)} spots a player.
+        </p>
+      )}
       {!me ? (
         <p className="text-sm">Say who you are (top right) to vote.</p>
       ) : (
@@ -233,6 +241,7 @@ export function PredictionsCard({ state, p }: { state: PooleanState; p: Predicti
                 </li>
               ))}
             </ol>
+            <BallotsSoFar state={state} entries={entries} season={season} />
           </>
         )
       )}
@@ -244,4 +253,38 @@ export function PredictionsCard({ state, p }: { state: PooleanState; p: Predicti
 export function SeasonPredictionsCard({ state }: { state: PooleanState }) {
   const p = usePredictions(state)
   return <PredictionsCard state={state} p={p} />
+}
+
+// How each preseason power ranking ballot is holding up against the standings, and who the group got most wrong.
+function BallotsSoFar({ state, entries, season }: { state: PooleanState; entries: Entry[]; season: string }) {
+  const order = useMemo(() => actualOrder(state, season), [state, season])
+  const scored = scoreBallots(entries, order)
+  if (scored.length === 0) return null
+  const { overrated, underrated } = biggestMisses(entries, order)
+  return (
+    <div className="flex flex-col gap-1.5 border-t pt-3">
+      <h4 className="text-sm font-semibold">Power ranking ballots so far</h4>
+      <p className="text-xs text-muted-foreground">Average spots each ballot misses a player by, against the Standings. Lowest is closest.</p>
+      <ol className="flex flex-col gap-1 text-sm">
+        {scored.map((r, i) => (
+          <li key={r.voter} className="flex justify-between gap-2">
+            <span>
+              {i + 1}. {playerName(state, r.voter)}
+            </span>
+            <span className="tabular-nums text-muted-foreground">off by {r.miss.toFixed(1)}</span>
+          </li>
+        ))}
+      </ol>
+      {overrated && (
+        <p className="text-xs">
+          Most overrated: <span className="font-semibold">{playerName(state, overrated.id)}</span>, ranked {overrated.gap.toFixed(1)} spots higher than they are.
+        </p>
+      )}
+      {underrated && (
+        <p className="text-xs">
+          Most underrated: <span className="font-semibold">{playerName(state, underrated.id)}</span>, {underrated.gap.toFixed(1)} spots better than the group thought.
+        </p>
+      )}
+    </div>
+  )
 }

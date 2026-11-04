@@ -15,6 +15,16 @@ export const isOffseason = (state: PooleanState, now = new Date()): boolean => {
   return !!at && at.getTime() > now.getTime()
 }
 
+// Opening night itself: from midnight of its date until 8 hours after it starts. The hub turns into a live board.
+export const isOpeningNight = (state: PooleanState, now = new Date()): boolean => {
+  const at = openingAt(state)
+  if (!at || state.openingNight?.date !== now.toLocaleDateString("en-CA")) return false
+  return now.getTime() < at.getTime() + 8 * 3600 * 1000
+}
+
+// The hub shows before opening night and through the night itself.
+export const showHub = (state: PooleanState, now = new Date()) => isOffseason(state, now) || isOpeningNight(state, now)
+
 // The season just played: finished games with a result in the current season. During the offseason this is the season
 // that just ended, until the editor starts a new one.
 export function seasonGames(state: PooleanState): Game[] {
