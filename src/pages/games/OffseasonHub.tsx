@@ -19,6 +19,7 @@ import { shareText } from "@/lib/shareText"
 import type { Game, PooleanState } from "@/lib/types"
 import { useEvening } from "@/lib/weather"
 import { Countdown } from "./Countdown"
+import { PlayersToWatch } from "./PlayersToWatch"
 import { ordinalOf } from "@/lib/ordinal"
 import { consensusRanking } from "@/lib/predictions"
 import { PowerVoteCard, PredictionsCard, usePredictions } from "./Predictions"
@@ -177,6 +178,8 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
           )}
         </div>
       )}
+
+      {!tonight && <PlayersToWatch state={state} onOpenPlayer={onOpenPlayer} />}
 
       <Button
         size="sm"

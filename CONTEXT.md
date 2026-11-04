@@ -106,6 +106,9 @@ A friend's call, made before opening night, on next season's award winners, top 
 Everyone's power ranking predictions combined: each player's average predicted spot. Until anyone predicts, it shows last season by the numbers.
 _Avoid_: Way too early power ranking, ballot
 
+**Players to watch**:
+Two short lists for next season from how players finished against how they started: "finishing strong" (played better in the second half of their games) and "due a bounce back" (cooled off late but strong over the season). A hint from a few games, never a forecast.
+
 **Hall of fame**:
 All-time marks across every game: career leaders, best single games, records, streaks, rivalries and past MVPs.
 
