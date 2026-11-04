@@ -2,7 +2,7 @@ import { IdCard, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { JerseyStat } from "@/components/JerseyStat"
-import { AttrBar, OvrBadge } from "@/components/OvrBadge"
+import { AttrBar, OvrChip } from "@/components/OvrBadge"
 import { ATTR_LABEL, ATTRS, type RatedPlayer } from "@/lib/ratings"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 
@@ -23,19 +23,12 @@ export function PlayerHero({ pid, name, stats, form = [], rating, needed = 0, on
           <div className="flex min-w-0 flex-col gap-2">
             <div className="flex items-start justify-between gap-3">
               <h2 className="font-display text-3xl font-bold leading-tight break-words">{name}</h2>
-              {rating && <OvrBadge ovr={rating.ovr} change={rating.change} className="shrink-0" />}
             </div>
-            <div id="playerRankPill" className="legacy" />
+            <div className="flex flex-wrap items-center gap-2">
+              <div id="playerRankPill" className="legacy" />
+              {rating && <OvrChip ovr={rating.ovr} change={rating.change} />}
+            </div>
           </div>
-          {rating ? (
-            <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2" aria-label="Ratings">
-              {ATTRS.map((a) => (
-                <AttrBar key={a} label={ATTR_LABEL[a]} value={rating.attrs[a]} />
-              ))}
-            </div>
-          ) : (
-            needed > 0 && <p className="text-xs text-muted-foreground">{needed} more box-scored {needed === 1 ? "game" : "games"} for a rating.</p>
-          )}
           {stats ? (
             <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
               <div className="flex flex-col items-center">
@@ -71,6 +64,20 @@ export function PlayerHero({ pid, name, stats, form = [], rating, needed = 0, on
             </div>
           ) : (
             <p className="text-muted-foreground">No games yet</p>
+          )}
+          {rating ? (
+            <details className="group text-sm">
+              <summary className="cursor-pointer list-none text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+                <span className="underline-offset-2 group-open:no-underline">Ratings</span> <span className="group-open:hidden">(show the five parts)</span>
+              </summary>
+              <div className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2" aria-label="Ratings">
+                {ATTRS.map((a) => (
+                  <AttrBar key={a} label={ATTR_LABEL[a]} value={rating.attrs[a]} />
+                ))}
+              </div>
+            </details>
+          ) : (
+            needed > 0 && <p className="text-xs text-muted-foreground">{needed} more box-scored {needed === 1 ? "game" : "games"} for a rating.</p>
           )}
         </div>
         <div className="flex gap-2 sm:flex-col">

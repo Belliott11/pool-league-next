@@ -22,6 +22,21 @@ export function OvrBadge({ ovr, change, className }: { ovr: number; change?: num
   )
 }
 
+// The overall rating as a quiet inline chip: small text, no fill, a tiny arrow for the move.
+export function OvrChip({ ovr, change, className }: { ovr: number; change?: number | null; className?: string }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground", className)} title="Overall rating, from the box scores">
+      <span className="font-semibold tabular-nums text-foreground">{ovr}</span> OVR
+      {!!change && (
+        <span className={cn("inline-flex items-center tabular-nums", change > 0 ? "text-pos" : "text-neg")}>
+          {change > 0 ? <ArrowUp aria-hidden className="size-3" /> : <ArrowDown aria-hidden className="size-3" />}
+          {Math.abs(change)}
+        </span>
+      )}
+    </span>
+  )
+}
+
 // One attribute as a label, a bar from 40 to 99, and the number.
 export function AttrBar({ label, value }: { label: string; value: number | null }) {
   const pct = value === null ? 0 : ((value - 40) / 59) * 100

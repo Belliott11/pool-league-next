@@ -39,8 +39,8 @@ const JUMP_ITEMS: JumpItem[] = [
 // Phones only: one row of chips pinned under the header, so the long page is a jump away instead of a scroll.
 const NAV = [
   { id: "lb-ranking", label: "Ranking" },
-  { id: "lb-ratings", label: "Ratings" },
   { id: "lb-rates", label: "Season rates" },
+  { id: "lb-ratings", label: "Ratings" },
   ...SECTIONS.map((s) => ({ id: `lb-section-${s.key}`, label: s.title })),
 ]
 
@@ -86,11 +86,11 @@ export function LeaderboardPage({
       <div id="lb-ranking" className="anim-rise scroll-mt-28" style={{ "--i": 0 } as React.CSSProperties}>
         <LaneBars onOpenPlayer={onOpenPlayer} />
       </div>
-      <div id="lb-ratings" className="anim-rise scroll-mt-28" style={{ "--i": 1 } as React.CSSProperties}>
-        <RatingsCard state={state} onOpenPlayer={onOpenPlayer} />
-      </div>
       <div id="lb-rates" className="anim-rise scroll-mt-28" style={{ "--i": 1 } as React.CSSProperties}>
         <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
+      </div>
+      <div id="lb-ratings" className="anim-rise scroll-mt-28" style={{ "--i": 2 } as React.CSSProperties}>
+        <RatingsCard state={state} onOpenPlayer={onOpenPlayer} />
       </div>
       {SECTIONS.map((s, i) => (
         <div key={s.key} className="anim-rise" style={{ "--i": i + 2 } as React.CSSProperties}>

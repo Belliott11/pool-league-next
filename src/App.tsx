@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { installDataViz } from "@/lib/dataViz"
 import { adoptScorekeeperScores, findLiveGame } from "@/lib/live"
+import { isOpeningNight } from "@/lib/offseason"
 import { useTabSwipe } from "@/lib/useSwipe"
 import { ReadOnlyContext } from "@/lib/mode"
 import { LiveMiniBar } from "@/pages/live/LiveMiniBar"
@@ -360,7 +361,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           </Button>
         </div>
       )}
-      {!liveOpen && findLiveGame(state) && (
+      {!liveOpen && findLiveGame(state) && !(isOpeningNight(state) && view.tab === "games" && view.sub === "") && (
         <LiveMiniBar
           state={state}
           onOpen={() => setSub("live")}

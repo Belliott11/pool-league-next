@@ -56,7 +56,7 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
                 return (
                   <div key={id} className="flex items-center gap-2 text-sm">
                     <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
-                    <span className="w-7 rounded bg-primary/15 text-center text-xs font-bold tabular-nums text-primary" title="Overall rating">
+                    <span className="w-7 text-center text-xs tabular-nums text-muted-foreground" title="Overall rating">
                       {ovr.get(id) ?? "-"}
                     </span>
                     <span className="min-w-0 flex-1 truncate font-medium">

@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { OvrBadge } from "@/components/OvrBadge"
+import { ArrowDown, ArrowUp } from "lucide-react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
@@ -47,7 +47,15 @@ export function RatingsCard({ state, onOpenPlayer }: { state: PooleanState; onOp
                       </button>
                     </td>
                     <td className="py-2">
-                      <OvrBadge ovr={r.ovr} change={r.change} className="[&>div]:px-1.5 [&_.text-3xl]:text-xl" />
+                      <span className="inline-flex items-center gap-1 font-semibold tabular-nums">
+                        {r.ovr}
+                        {!!r.change && (
+                          <span className={cn("inline-flex items-center text-xs font-medium", r.change > 0 ? "text-pos" : "text-neg")}>
+                            {r.change > 0 ? <ArrowUp aria-hidden className="size-3" /> : <ArrowDown aria-hidden className="size-3" />}
+                            {Math.abs(r.change)}
+                          </span>
+                        )}
+                      </span>
                     </td>
                     {ATTRS.map((a) => (
                       <td key={a} className={cn("py-2 text-right tabular-nums", (r.attrs[a] ?? 0) >= 85 && "font-bold text-gold")}>
