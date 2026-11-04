@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { bestGames, careerTable, longestStreaks } from "@/lib/hallOfFame"
 import { isOffseason } from "@/lib/offseason"
-import { duoKey, scorePredictions } from "@/lib/predictions"
+import { consensusRanking, duoKey, scorePredictions } from "@/lib/predictions"
 import type { Game, PooleanState } from "@/lib/types"
 import { wrappedFor } from "@/lib/wrapped"
 
@@ -68,6 +68,23 @@ describe("predictions", () => {
       { voter: "a", points: 8 },
       { voter: "b", points: 5 },
     ])
+  })
+})
+
+describe("preseason power ranking", () => {
+  it("adds up ballots 5 points for 1st down to 1, ignores repeats, and breaks ties on first-place votes", () => {
+    const rows = consensusRanking([
+      { voter: "a", picks: { ranking: ["x", "y", "z"] } },
+      { voter: "b", picks: { ranking: ["y", "x", "x"] } },
+      { voter: "c", picks: {} },
+    ])
+    // x: 5 + 4 = 9 and y: 4 + 5 = 9, one first each and two ballots each, so they keep ballot order. z: 3. The repeat x on b counts once.
+    expect(rows.map((r) => [r.id, r.points, r.voters])).toEqual([
+      ["x", 9, 2],
+      ["y", 9, 2],
+      ["z", 3, 1],
+    ])
+    expect(consensusRanking([{ voter: "a", picks: { ranking: ["z", "x"] } }, { voter: "b", picks: { ranking: ["x", "z"] } }, { voter: "c", picks: { ranking: ["x"] } }])[0]).toMatchObject({ id: "x", firsts: 2 })
   })
 })
 

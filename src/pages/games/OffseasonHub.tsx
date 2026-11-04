@@ -11,7 +11,7 @@ import { computeLeaderboard } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 import { useEvening } from "@/lib/weather"
 import { Countdown } from "./Countdown"
-import { PredictionsCard } from "./Predictions"
+import { PowerVoteCard, PredictionsCard } from "./Predictions"
 
 const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`
 
@@ -82,7 +82,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer }: { state: Poolea
       {ranking.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <h4 className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles aria-hidden className="size-4 text-gold" /> Way too early power ranking
+            <Sparkles aria-hidden className="size-4 text-gold" /> Way too early power ranking, by the numbers
           </h4>
           <p className="text-xs text-muted-foreground">Last season's two-way per 20, at least 3 games. Everyone starts at 0-0 on opening night.</p>
           <ol className="flex flex-col gap-1 text-sm">
@@ -120,6 +120,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer }: { state: Poolea
         <Share2 aria-hidden /> {sent === "copied" ? "Copied" : sent === "failed" ? "Could not share" : "Share for the group chat"}
       </Button>
 
+      <PowerVoteCard state={state} />
       <PredictionsCard state={state} />
     </section>
   )

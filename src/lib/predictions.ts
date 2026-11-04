@@ -11,6 +11,7 @@ export interface Picks {
   mip?: string
   duo?: string // two player ids joined by "|", sorted
   top3?: string[]
+  ranking?: string[] // a preseason power ranking, best first
 }
 export interface Entry {
   voter: string
@@ -36,6 +37,34 @@ export async function loadPredictions(client: SupabaseClient, season: string): P
 export async function savePrediction(client: SupabaseClient, season: string, voter: string, picks: Picks): Promise<boolean> {
   const { error } = await client.from("season_predictions").upsert({ season, voter, picks, updated_at: new Date().toISOString() }, { onConflict: "season,voter" })
   return !error
+}
+
+export const RANK_SIZE = 5
+
+export interface ConsensusRow {
+  id: string
+  points: number
+  firsts: number
+  voters: number
+}
+
+// The group's power ranking: each ballot gives 5 points to its 1st, 4 to its 2nd, down to 1 for its 5th. Ties go to
+// whoever has more first-place votes, then more ballots.
+export function consensusRanking(entries: Entry[]): ConsensusRow[] {
+  const rows = new Map<string, ConsensusRow>()
+  for (const e of entries) {
+    const seen = new Set<string>()
+    ;(e.picks.ranking ?? []).slice(0, RANK_SIZE).forEach((id, i) => {
+      if (!id || seen.has(id)) return
+      seen.add(id)
+      const r = rows.get(id) ?? { id, points: 0, firsts: 0, voters: 0 }
+      r.points += RANK_SIZE - i
+      if (i === 0) r.firsts++
+      r.voters++
+      rows.set(id, r)
+    })
+  }
+  return [...rows.values()].sort((a, b) => b.points - a.points || b.firsts - a.firsts || b.voters - a.voters)
 }
 
 export const duoKey = (a: string, b: string) => [a, b].sort().join("|")

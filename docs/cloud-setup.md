@@ -140,4 +140,4 @@ Run `supabase/pickem.sql` once in the SQL Editor. It adds a table where friends 
 
 ## Preseason predictions
 
-Run `supabase/predictions.sql` once in the SQL Editor. It adds a table where friends call next season's award winners and top three before opening night; anyone can read the picks and add or change their own, and nobody can delete one. Without it the predictions card says it could not save. The form closes when opening night starts, which the app enforces, not the database.
+Run `supabase/predictions.sql` once in the SQL Editor. It adds a table where friends call next season's award winners and top three, and rank their preseason top 5, before opening night; anyone can read the picks and add or change their own, and nobody can delete one. Without it the predictions card says it could not save. The form closes when opening night starts, which the app enforces, not the database.
