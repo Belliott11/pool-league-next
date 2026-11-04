@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { bestGames, careerTable, longestStreaks } from "@/lib/hallOfFame"
-import { isOffseason } from "@/lib/offseason"
+import { ballotPool, isOffseason } from "@/lib/offseason"
 import { ballotFor, consensusRanking, duoKey, scorePredictions } from "@/lib/predictions"
 import type { Game, PooleanState } from "@/lib/types"
 import { wrappedFor } from "@/lib/wrapped"
@@ -90,6 +90,13 @@ describe("preseason power ranking", () => {
   it("keeps a saved ballot's order, drops players who left and adds new ones at the end", () => {
     expect(ballotFor(["x", "y", "z", "n"], ["z", "gone", "x"], ["y", "n", "x", "z"])).toEqual(["z", "x", "y", "n"])
     expect(ballotFor(["x", "y"], undefined, ["y", "x"])).toEqual(["y", "x"])
+  })
+})
+
+describe("ballot pool", () => {
+  it("puts every player in the app on the ballot, players from this season first", () => {
+    const s = state([game("1", "2026-08-01", ["z"], ["y"], 2, 1)])
+    expect(ballotPool(s)).toEqual(["y", "z", "w", "x"])
   })
 })
 

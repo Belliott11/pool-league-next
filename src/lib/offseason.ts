@@ -36,14 +36,15 @@ export function powerRanking(state: PooleanState) {
     .sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
 }
 
-// Who goes on a preseason ballot: everyone who played this season, best by the numbers first, then the rest by most
-// games. Before anyone has played, the whole roster.
+// Who goes on a preseason ballot: every player in the app. The starting order is best by the numbers first, then the
+// rest of this season's players by most games, then everyone else by name.
 export function ballotPool(state: PooleanState): string[] {
-  const games = seasonGames(state)
-  if (games.length === 0) return state.players.map((p) => p.id)
   const gp = new Map<string, number>()
-  for (const g of games) for (const id of [...g.teamA, ...g.teamB]) gp.set(id, (gp.get(id) ?? 0) + 1)
+  for (const g of seasonGames(state)) for (const id of [...g.teamA, ...g.teamB]) gp.set(id, (gp.get(id) ?? 0) + 1)
   const ranked = powerRanking(state).map((r) => r.player.id)
-  const rest = [...gp.keys()].filter((id) => !ranked.includes(id) && state.players.some((p) => p.id === id)).sort((a, b) => (gp.get(b) ?? 0) - (gp.get(a) ?? 0))
+  const rest = [...state.players]
+    .filter((p) => !ranked.includes(p.id))
+    .sort((a, b) => (gp.get(b.id) ?? 0) - (gp.get(a.id) ?? 0) || a.name.localeCompare(b.name))
+    .map((p) => p.id)
   return [...ranked, ...rest]
 }

@@ -53,7 +53,7 @@ function PlayerSelect({ state, value, onChange, label, taken = [] }: { state: Po
   )
 }
 
-// Before opening night everyone ranks the whole field, everyone who played last season. The ballot starts in the
+// Before opening night everyone ranks every player in the app. The ballot starts in the
 // by-the-numbers order and players move with the arrows. The group's ranking is everyone's average spot.
 export function PowerVoteCard({ state }: { state: PooleanState }) {
   const { client, season, me, entries, mine, save, open } = usePredictions(state)
@@ -118,7 +118,7 @@ export function PowerVoteCard({ state }: { state: PooleanState }) {
       ) : (
         <div className="flex flex-col gap-2 border-t pt-3">
           <p className="text-sm font-semibold">{mine?.picks.ranking ? "Your ballot" : "Your ballot, not sent yet"}</p>
-          <p className="text-xs text-muted-foreground">It starts in last season's order by the numbers. Use the arrows to move people.</p>
+          <p className="text-xs text-muted-foreground">It starts in last season's order by the numbers, then everyone else. Use the arrows to move people.</p>
           <ol className="flex flex-col gap-1" aria-label="Your ballot">
             {ballot.map((id, i) => (
               <li key={id} className="flex items-center gap-2 rounded-lg border px-2 py-1 text-sm">
@@ -182,7 +182,7 @@ export function PredictionsCard({ state }: { state: PooleanState }) {
       {open ? (
         <>
           <p className="text-sm text-muted-foreground">
-            Call the award winners and the top three before opening night. Awards are worth 2 points, a top three spot 3 if exact and 1 if in the wrong spot. {entries.filter((e) => e.picks.mvp || (e.picks.top3 ?? []).length).length} in so far.
+            Call the award winners and the top three by two-way per 20 (the Standings order, at least 3 games) before opening night. Awards are worth 2 points, a top three spot 3 if exact and 1 if in the wrong spot. {entries.filter((e) => e.picks.mvp || (e.picks.top3 ?? []).length).length} in so far.
           </p>
           {!me ? (
             <p className="text-sm">Say who you are (top right) to make your picks.</p>
@@ -194,7 +194,7 @@ export function PredictionsCard({ state }: { state: PooleanState }) {
               <PlayerSelect state={state} value={duo[0] || undefined} onChange={(v) => setDuo([v, duo[1]])} label="Best duo" taken={[duo[1]]} />
               <PlayerSelect state={state} value={duo[1] || undefined} onChange={(v) => setDuo([duo[0], v])} label="and" taken={[duo[0]]} />
               {[0, 1, 2].map((i) => (
-                <PlayerSelect key={i} state={state} value={top[i] || undefined} onChange={(v) => setTop(i, v)} label={`Standings, ${ordinalOf(i + 1)}`} taken={top} />
+                <PlayerSelect key={i} state={state} value={top[i] || undefined} onChange={(v) => setTop(i, v)} label={`Top 3 by two-way/20, ${ordinalOf(i + 1)}`} taken={top} />
               ))}
               <Button className="self-start" onClick={() => void submit()}>
                 {mine?.picks.mvp || (mine?.picks.top3 ?? []).length ? "Update my picks" : "Save my picks"}
