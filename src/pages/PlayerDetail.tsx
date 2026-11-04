@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { PlayerHero } from "@/components/PlayerHero"
+import { PlayerGameFlow } from "@/pages/PlayerGameFlow"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
@@ -202,6 +203,8 @@ export function PlayerDetailPage({
         onShare={share}
         onCard={() => downloadTradingCard(pid)}
       />
+
+      {pid && <PlayerGameFlow state={state} pid={pid} />}
 
       <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as shot chart or tips (press /)" />
       <nav className="flex flex-wrap gap-2" aria-label="Player sections">

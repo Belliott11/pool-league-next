@@ -101,6 +101,14 @@ A friend's call, made before opening night, on next season's award winners and t
 **Hall of fame**:
 All-time marks across every game: career leaders, best single games, records, streaks, rivalries and past MVPs.
 
+### Game flow
+
+**Game phase**:
+One third of a game by elapsed time, from its first shot to its last: first, middle or last third.
+
+**Hot hand**:
+Shooting better right after a make than right after a miss. Measured within one game for one shooter.
+
 ### Scored ballots
 
 **Average miss**:
