@@ -1,0 +1,25 @@
+name: Keep Supabase awake
+
+# Free Supabase projects pause after about 7 days with no activity. This makes one small read every few days, the
+# same read the site makes when someone opens it, so the project stays awake in weeks when nobody plays.
+on:
+  schedule:
+    - cron: "17 9 */3 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read the league row
+        run: |
+          url=$(jq -r .url public/cloud-config.json)
+          key=$(jq -r .anonKey public/cloud-config.json)
+          if [ -z "$url" ] || [ "$url" = "null" ]; then echo "No cloud configured, nothing to keep awake."; exit 0; fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" -H "apikey: $key" -H "Authorization: Bearer $key" "$url/rest/v1/league_state?select=updated_at&id=eq.1")
+          echo "Supabase answered $code"
+          test "$code" = "200"
