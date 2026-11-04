@@ -7,8 +7,6 @@ export interface Player {
   name: string
   // Which pronouns headlines use for this player. Unset means they/them.
   pronouns?: "he" | "she"
-  // Jersey number, 0 to 99, shown as a badge on the player page. Unset means no badge.
-  number?: number
 }
 
 export interface PlayerGameStats {

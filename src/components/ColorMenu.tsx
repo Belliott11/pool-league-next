@@ -1,4 +1,4 @@
-import { Palette } from "lucide-react"
+import { Moon, Palette, Sun } from "lucide-react"
 import { useEffect, useState } from "react"
 import { buttonVariants } from "@/components/ui/button"
 
@@ -47,6 +47,16 @@ export function ColorMenu() {
     return () => document.removeEventListener("keydown", onKey)
   }, [hint])
   const [accent, setAccent] = useState(() => document.documentElement.getAttribute("data-accent") ?? "")
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"))
+  function theme(next: boolean) {
+    document.documentElement.classList.toggle("dark", next)
+    try {
+      localStorage.setItem("pooleanIntelTheme", next ? "dark" : "light")
+    } catch {
+      /* private mode: the choice just won't persist */
+    }
+    setDark(next)
+  }
   function pick(key: string) {
     if (key) document.documentElement.setAttribute("data-accent", key)
     else document.documentElement.removeAttribute("data-accent")
@@ -62,9 +72,23 @@ export function ColorMenu() {
     <details className="relative" onToggle={(e) => e.currentTarget.open && hint && dismissHint()}>
       <summary className={`${buttonVariants({ variant: "outline", size: "sm" })} cursor-pointer list-none gap-1.5 [&::-webkit-details-marker]:hidden`}>
         <Palette aria-hidden className="size-4" />
-        <span className="max-sm:sr-only">Colors</span>
+        <span className="max-sm:sr-only">Look</span>
       </summary>
       <div className="absolute right-0 z-20 mt-2 w-72 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
+        <div className="mb-1 font-semibold">Theme</div>
+        <div className="mb-3 grid grid-cols-2 gap-2" role="group" aria-label="Theme">
+          {([[false, "Light", Sun], [true, "Dark", Moon]] as const).map(([value, label, Icon]) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={dark === value}
+              onClick={() => theme(value)}
+              className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg border font-medium ${dark === value ? "border-primary bg-primary text-primary-foreground" : ""}`}
+            >
+              <Icon aria-hidden className="size-4" /> {label}
+            </button>
+          ))}
+        </div>
         <div className="mb-1 font-semibold">Accent</div>
         <div className="mb-3 flex gap-2">
           {ACCENTS.map((a) => (
@@ -96,7 +120,7 @@ export function ColorMenu() {
     </details>
     {hint && (
       <div role="note" className="absolute right-0 top-full z-10 mt-2 w-60 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
-        <p className="mb-2">Pick an accent color, and see what each color means.</p>
+        <p className="mb-2">Light or dark, an accent color, and what each color means.</p>
         <button type="button" onClick={dismissHint} className={buttonVariants({ size: "sm" })}>
           Got it
         </button>

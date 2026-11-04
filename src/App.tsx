@@ -12,7 +12,7 @@ import { lineKey, setApprovedLines, setHiddenLines, setLineNames, stripRetired }
 import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
-import { ArrowLeft, Moon, Sun } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { DEFAULT_VIEW, hashToView, sameView, viewToHash, type View } from "@/lib/nav"
 import { ColorMenu } from "@/components/ColorMenu"
 import { PageSkeleton } from "@/components/PageSkeleton"
@@ -81,29 +81,6 @@ function ImportScreen({ onImported }: { onImported: (state: PooleanState) => voi
   )
 }
 
-function ThemeToggle() {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"))
-  return (
-    <Button
-      size="sm"
-      variant="outline"
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
-      onClick={() => {
-        const next = !dark
-        document.documentElement.classList.toggle("dark", next)
-        try {
-          localStorage.setItem("pooleanIntelTheme", next ? "dark" : "light")
-        } catch {
-          /* private mode: the choice just won't persist */
-        }
-        setDark(next)
-      }}
-    >
-      {dark ? <Sun aria-hidden className="size-4" /> : <Moon aria-hidden className="size-4" />}
-      <span className="max-sm:sr-only">{dark ? "Light" : "Dark"}</span>
-    </Button>
-  )
-}
 
 // local: no cloud, this browser's own copy. viewer: the shared copy, read-only. admin: the editor,
 // whose changes are saved to this browser and to the cloud.
@@ -326,14 +303,14 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         Skip to content
       </a>
       <div className={`sticky top-0 z-20 -mx-4 flex items-center justify-between gap-3 bg-background/90 px-4 backdrop-blur transition-[padding] sm:-mx-6 sm:px-6 ${scrolled ? "py-1.5" : "py-3"}`}>
-        <div className="flex min-w-0 items-center gap-1">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
           {(view.sub !== "" || view.tab !== "games") && (
             <Button size="icon" variant="ghost" className="-ml-2 size-9 shrink-0" aria-label="Back" onClick={goBack}>
               <ArrowLeft />
             </Button>
           )}
           <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className={`mr-2 shrink-0 rounded-lg transition-[width,height] ${view.sub !== "" || view.tab !== "games" ? "max-sm:hidden" : ""} ${scrolled ? "size-6" : "size-7 sm:size-8"}`} />
-          <h1 className={`font-display font-extrabold uppercase whitespace-nowrap sm:tracking-wide transition-[font-size] ${scrolled ? "text-base sm:text-lg" : "text-lg sm:text-2xl"}`}>
+          <h1 className={`min-w-0 truncate font-display font-extrabold uppercase whitespace-nowrap sm:tracking-wide transition-[font-size] ${scrolled ? "text-sm sm:text-lg" : "text-base sm:text-2xl"}`}>
             Poolean <span className="text-accent">Intel</span>
           </h1>
         </div>
@@ -351,7 +328,6 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
             />
           )}
           <ColorMenu />
-          <ThemeToggle />
         </div>
       </div>
       <WhoPrompt state={state} />

@@ -158,7 +158,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
                   <span className="truncate font-medium">{r.name}</span>
                 </button>
                 {r.note && <span className="text-xs tabular-nums text-muted-foreground">{r.note}</span>}
-                <span className="w-14 text-right font-display font-bold tabular-nums">{r.value}</span>
+                <span className="shrink-0 whitespace-nowrap text-right font-display font-bold tabular-nums">{r.value}</span>
               </li>
             ))}
           </ol>

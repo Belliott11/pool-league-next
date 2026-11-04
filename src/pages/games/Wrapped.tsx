@@ -1,7 +1,6 @@
 import { Share2, X } from "lucide-react"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { FlipDigits } from "@/components/FlipDigits"
-import { JerseyNumber } from "@/components/JerseyNumber"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { formatDateDisplay } from "@/lib/format"
@@ -113,10 +112,7 @@ function SlideBody({ s, state, name }: { s: Slide; state: PooleanState; name: st
     case "summary":
       return frame(
         "That was your season",
-        <div className="flex items-center gap-4">
-          <span className="font-display text-5xl font-extrabold">{name}</span>
-          <JerseyNumber number={state.players.find((p) => p.name === name)?.number} />
-        </div>,
+        <span className="font-display text-5xl font-extrabold">{name}</span>,
         <>
           {s.w}-{s.l}, {s.pts} points{s.bestDate && <>, best night {formatDateDisplay(s.bestDate)}</>}. See you on opening night.
         </>,

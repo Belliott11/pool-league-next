@@ -201,7 +201,6 @@ export function PlayerDetailPage({
         name={player.name}
         rating={ratingRows.find((r) => r.id === pid) ?? null}
         needed={gamesNeeded(state, pid)}
-        number={player.number}
         form={form}
         stats={row ? { twoWay: fmtRate(row.twoWayPer20), record: record!, pts: fmtRate(row.rate.pts), off: fmtRate(row.offRatingPer20) } : null}
         onShare={share}

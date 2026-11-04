@@ -1,8 +1,7 @@
 import { IdCard, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { FlipDigits } from "@/components/FlipDigits"
-import { JerseyNumber } from "@/components/JerseyNumber"
+import { JerseyStat } from "@/components/JerseyStat"
 import { AttrBar, OvrBadge } from "@/components/OvrBadge"
 import { ATTR_LABEL, ATTRS, type RatedPlayer } from "@/lib/ratings"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -10,7 +9,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 type Stats = { twoWay: string; record: string; pts: string; off: string }
 
 // Trading-card style header for the Player page. #playerRankPill is filled by the classic renderPlayerRankPill.
-export function PlayerHero({ pid, name, number, stats, form = [], rating, needed = 0, onShare, onCard }: { pid: string; name: string; number?: number; stats: Stats | null; form?: ("W" | "L" | "T")[]; rating?: RatedPlayer | null; needed?: number; onShare: () => void; onCard: () => void }) {
+export function PlayerHero({ pid, name, stats, form = [], rating, needed = 0, onShare, onCard }: { pid: string; name: string; stats: Stats | null; form?: ("W" | "L" | "T")[]; rating?: RatedPlayer | null; needed?: number; onShare: () => void; onCard: () => void }) {
   return (
     <Card className="tile overflow-hidden">
       <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
@@ -24,10 +23,7 @@ export function PlayerHero({ pid, name, number, stats, form = [], rating, needed
           <div className="flex min-w-0 flex-col gap-2">
             <div className="flex items-start justify-between gap-3">
               <h2 className="font-display text-3xl font-bold leading-tight break-words">{name}</h2>
-              <div className="flex shrink-0 items-start gap-2">
-                {rating && <OvrBadge ovr={rating.ovr} change={rating.change} />}
-                <JerseyNumber number={number} />
-              </div>
+              {rating && <OvrBadge ovr={rating.ovr} change={rating.change} className="shrink-0" />}
             </div>
             <div id="playerRankPill" className="legacy" />
           </div>
@@ -42,10 +38,8 @@ export function PlayerHero({ pid, name, number, stats, form = [], rating, needed
           )}
           {stats ? (
             <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-              <div>
-                <div className="text-7xl leading-none text-primary sm:text-8xl">
-                  <FlipDigits value={stats.twoWay} />
-                </div>
+              <div className="flex flex-col items-center">
+                <JerseyStat value={stats.twoWay} label="Two-Way/20" />
                 <div className="mt-1 text-sm text-muted-foreground">Two-Way/20</div>
               </div>
               <dl className="flex gap-6 sm:border-l sm:border-dashed sm:pl-6">

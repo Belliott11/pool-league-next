@@ -52,7 +52,6 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
             <CardContent className="flex flex-col gap-2">
               {s.ids.map((id) => {
                 const r = byId.get(id)
-                const num = state.players.find((p) => p.id === id)?.number
                 const isKey = s.key_?.player.id === id
                 return (
                   <div key={id} className="flex items-center gap-2 text-sm">
@@ -61,7 +60,6 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
                       {ovr.get(id) ?? "-"}
                     </span>
                     <span className="min-w-0 flex-1 truncate font-medium">
-                      {num !== undefined && <span className="mr-1 tabular-nums text-muted-foreground">#{num}</span>}
                       {playerName(state, id)}
                       {isKey && <Star aria-label="Key player" className="ml-1 inline size-3.5 fill-gold text-gold" />}
                     </span>
