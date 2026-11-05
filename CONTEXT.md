@@ -124,3 +124,6 @@ Shooting better right after a make than right after a miss. Measured within one 
 
 **Average miss**:
 How far off a preseason power ranking prediction was: the average number of spots it missed each ranked player by. Lowest is closest.
+
+**Pace, runs and swings**:
+League card on the Leaderboard from games with video times. Pace counts logged plays (shots and turnovers) per minute and the time between them, since there is no possession count. A run is unanswered baskets by one team, judged against a random order of the same baskets. Lead swings are lead changes, ties and games won from behind. Shooting by score state groups shots by the shooter's team margin: trailing 3 or more, close, leading 3 or more.

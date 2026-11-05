@@ -12,6 +12,7 @@ import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
 import { LaneBars } from "./leaderboard/LaneBars"
 import { SeasonRates } from "./leaderboard/SeasonRates"
 import { GameFlowCard } from "./leaderboard/GameFlowCard"
+import { TempoCard } from "./leaderboard/TempoCard"
 
 // Same six groups, in the same order, as the classic Leaderboard tab.
 const SECTIONS: { key: string; title: string }[] = [
@@ -42,6 +43,7 @@ const NAV = [
   { id: "lb-rates", label: "Season rates" },
   ...SECTIONS.map((s) => ({ id: `lb-section-${s.key}`, label: s.title })),
   { id: "lb-flow", label: "Game flow" },
+  { id: "lb-tempo", label: "Pace and runs" },
 ]
 
 function QuickNav() {
@@ -98,6 +100,9 @@ export function LeaderboardPage({
       ))}
       <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 2 } as React.CSSProperties}>
         <GameFlowCard state={state} />
+      </div>
+      <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 3 } as React.CSSProperties}>
+        <TempoCard state={state} />
       </div>
     </div>
   )
