@@ -117,7 +117,7 @@
   "hint": "Points a player's team scores within 15 seconds of that player's steal. Only steals count, not every turnover."
  },
  "Turnover Type Breakdown": {
-  "hint": "Bad Pass, Lost Handle, and Possession/Decision Error are self-inflicted -- the player's own execution or decision caused it. Stripped is the one genuinely defense-forced category: credit belongs at least partly to the defender, not solely a mark against the offensive player. Only live-ball turnovers with a type tagged count here (Export, Review Turnover Types) -- a turnover that's really just a missed shot going out of bounds is excluded entirely. Sorted by Self-Inflicted % (worst ball security first). Needs 5+ tagged turnovers to show a row."
+  "hint": "Bad Pass, Lost Handle, and Possession/Decision Error are self-inflicted -- the player's own execution or decision caused it. Stripped is the one genuinely defense-forced category: credit belongs at least partly to the defender, not solely a mark against the offensive player. Only live-ball turnovers with a type tagged count here (Export, Review Turnover Types) -- a turnover that's really just a missed shot going out of bounds is excluded entirely. Sorted by Self-Inflicted % (highest first). Needs 5+ tagged turnovers to show a row."
  },
  "TOV Recomputed": {
   "hint": "A missed shot ruled out of bounds isn't the same as giving the ball away live, so TOV% and A/TO now count only live-ball turnovers (bad pass, lost handle, stripped, decision/drive error, or untyped). The old blended number (which counted both) is kept here alongside the new one so the change is visible, not silent."
@@ -205,7 +205,7 @@
   "tag": "Old site data"
  },
  "Best & Worst Individual Games": {
-  "hint": "The best and worst single-game performances, by that game's own score. Switch between overall, offense and defense. Games stopped early are left out."
+  "hint": "The best and roughest single-game performances, by that game's own score. Switch between overall, offense and defense. Games stopped early are left out."
  },
  "Play Search": {
   "hint": "Pick a player and a play type to see every one of them across every game -- Ben's steals, Zach's missed 3s, whatever you're after -- newest first, with a jump straight to the moment. Shot type and defender narrow it further for any made or missed shot."

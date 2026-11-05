@@ -388,7 +388,9 @@
   }
   .legacy.legacy table.stack-rows tbody tr {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, ...) lets a column shrink below its content, so a cell with several players wraps instead of pushing
+       the next columns out of the card. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 0.25rem 1rem;
     margin-bottom: 0.5rem;
     padding: 0.75rem;
@@ -398,6 +400,9 @@
   }
   .legacy.legacy table.stack-rows tbody td {
     display: flex;
+    flex-wrap: wrap;
+    min-width: 0;
+    overflow-wrap: anywhere;
     justify-content: space-between;
     gap: 0.5rem;
     padding: 0;
