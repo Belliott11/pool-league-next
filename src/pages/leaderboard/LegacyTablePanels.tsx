@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Panel } from "@/components/Panel"
+import { PanelGroup } from "@/components/PanelGroup"
+import { arrange, LEADERBOARD_DROP, LEADERBOARD_GROUPS } from "@/lib/panelGroups"
+import { useReadOnly } from "@/lib/mode"
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { DataTable } from "@/components/DataTable"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -38,12 +41,10 @@ const HINTS = hints as Record<string, { hint: string; tag?: string }>
 
 // One table panel generated from the classic site's own render function (rows, sort, per-column
 // formatting and empty-state text all come from there, so the numbers match exactly).
-function LegacyTablePanel({ spec, onOpenPlayer }: { spec: TableSpec; onOpenPlayer: (id: string) => void }) {
+function LegacyTablePanel({ spec, onOpenPlayer, bare }: { spec: TableSpec; onOpenPlayer: (id: string) => void; bare?: boolean }) {
   const rows = spec.rows()
   const meta = HINTS[spec.title]
-  return (
-    <div data-parity={spec.bodyId}>
-      <Panel title={spec.title} hint={meta?.hint} tag={meta?.tag}>
+  const table = (
         <DataTable<any>
           columns={spec.columns}
           rows={rows}
@@ -59,7 +60,16 @@ function LegacyTablePanel({ spec, onOpenPlayer }: { spec: TableSpec; onOpenPlaye
             ) : undefined
           }
         />
-      </Panel>
+  )
+  return (
+    <div data-parity={spec.bodyId}>
+      {bare ? (
+        table
+      ) : (
+        <Panel title={spec.title} hint={meta?.hint} tag={meta?.tag}>
+          {table}
+        </Panel>
+      )}
     </div>
   )
 }
@@ -67,7 +77,7 @@ function LegacyTablePanel({ spec, onOpenPlayer }: { spec: TableSpec; onOpenPlaye
 // Every other panel is drawn by its classic render function into the panel's original markup.
 // The markup sits under .legacy (the classic stylesheet, scoped) and the function re-runs whenever
 // the data or a toggle changes.
-function LegacyMountPanel({ spec, version }: { spec: MountSpec; version: unknown }) {
+function LegacyMountPanel({ spec, version, bare }: { spec: MountSpec; version: unknown; bare?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const meta = HINTS[spec.title]
@@ -86,12 +96,21 @@ function LegacyMountPanel({ spec, version }: { spec: MountSpec; version: unknown
       setError(String(e))
     }
   }, [spec, version])
+  const inner = (
+    <>
+      {error && <p className="text-sm text-destructive">This panel hit an error: {error}</p>}
+      <div ref={ref} className="legacy" dangerouslySetInnerHTML={{ __html: spec.html }} />
+    </>
+  )
   return (
     <div data-mount={spec.title}>
-      <Panel title={spec.title} hint={meta?.hint} tag={meta?.tag}>
-        {error && <p className="text-sm text-destructive">This panel hit an error: {error}</p>}
-        <div ref={ref} className="legacy" dangerouslySetInnerHTML={{ __html: spec.html }} />
-      </Panel>
+      {bare ? (
+        inner
+      ) : (
+        <Panel title={spec.title} hint={meta?.hint} tag={meta?.tag}>
+          {inner}
+        </Panel>
+      )}
     </div>
   )
 }
@@ -127,31 +146,35 @@ export function LegacyPanels({
   onOpenPlayer: (id: string) => void
   version: unknown
 }) {
-  const items = [
-    ...TABLES.filter((s) => s.section === section).map((s) => ({ order: s.order, node: <LegacyTablePanel spec={s} onOpenPlayer={onOpenPlayer} />, title: s.title })),
-    ...MOUNTS.filter((s) => s.section === section).map((s) => {
-      const native = nativePanel(s.title, state, onOpenPlayer)
-      const meta = HINTS[s.title]
-      return {
-        order: s.order,
-        title: s.title,
-        node: native ? (
-          <Panel title={s.title} hint={meta?.hint} tag={meta?.tag}>
-            {native}
-          </Panel>
-        ) : (
-          <LegacyMountPanel spec={s} version={version} />
-        ),
-      }
-    }),
-  ].sort((a, b) => a.order - b.order)
+  const readOnly = useReadOnly()
+  const layout = useMemo(() => arrange([...TABLES, ...MOUNTS] as { title: string; section: string; order: number }[], LEADERBOARD_GROUPS, { drop: LEADERBOARD_DROP, editor: !readOnly }), [readOnly])
+  const specOf = (title: string) => [...TABLES, ...MOUNTS].find((s) => s.title === title)!
+  // A panel's body without its card, for use as a tab; or the whole card when it stands alone.
+  const bodyOf = (title: string, bare: boolean) => {
+    const s = specOf(title)
+    if ("bodyId" in s) return <LegacyTablePanel spec={s as TableSpec} onOpenPlayer={onOpenPlayer} bare={bare} />
+    const native = nativePanel(title, state, onOpenPlayer)
+    if (native) return bare ? <>{native}</> : <Panel title={title} hint={HINTS[title]?.hint} tag={HINTS[title]?.tag}>{native}</Panel>
+    return <LegacyMountPanel spec={s as MountSpec} version={version} bare={bare} />
+  }
   return (
     <>
-      {items.map((it) => (
-        <PanelBoundary key={it.title} title={it.title}>
-          {it.node}
-        </PanelBoundary>
-      ))}
+      {(layout.get(section) ?? []).map((p) =>
+        p.group ? (
+          <PanelBoundary key={p.group.id} title={p.group.title}>
+            <PanelGroup
+              title={p.group.title}
+              section={section}
+              frame="card"
+              tabs={p.members!.map((m) => ({ title: m.title, label: m.label, hint: HINTS[m.title]?.hint, tag: HINTS[m.title]?.tag, node: () => bodyOf(m.title, true) }))}
+            />
+          </PanelBoundary>
+        ) : (
+          <PanelBoundary key={p.item!.title} title={p.item!.title}>
+            {bodyOf(p.item!.title, false)}
+          </PanelBoundary>
+        ),
+      )}
     </>
   )
 }

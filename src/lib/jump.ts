@@ -6,9 +6,13 @@ export function jumpToPanel(sectionId: string | null, title: string) {
     if (section) section.open = true
   }
   const selector = `[data-panel=${JSON.stringify(title)}], [data-player-panel=${JSON.stringify(title)}]`
+  // A panel inside a tabbed group: find the group that lists it and ask it to show that tab.
+  const inGroup = () => [...document.querySelectorAll<HTMLElement>("[data-group-members]")].find((g) => (JSON.parse(g.dataset.groupMembers ?? "[]") as string[]).includes(title))
   let tries = 0
   const go = () => {
-    const el = document.querySelector<HTMLElement>(selector)
+    const grouped = inGroup()
+    if (grouped) grouped.dispatchEvent(new CustomEvent("panel-select", { detail: title }))
+    const el = grouped ?? document.querySelector<HTMLElement>(selector)
     if (!el) {
       // The group builds its panels just after opening; look again for about a second.
       if (tries++ < 20) setTimeout(go, 60)

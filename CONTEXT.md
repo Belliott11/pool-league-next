@@ -127,3 +127,6 @@ How far off a preseason power ranking prediction was: the average number of spot
 
 **Pace, runs and swings**:
 League card on the Leaderboard from games with video times. Pace counts logged plays (shots and turnovers) per minute and the time between them, since there is no possession count. A run is unanswered baskets by one team, judged against a random order of the same baskets. Lead swings are lead changes, ties and games won from behind. Shooting by score state groups shots by the shooter's team margin: trailing 3 or more, close, leading 3 or more.
+
+**Panel group**:
+Related Leaderboard or Player panels combined into one panel with a tab each, so nothing repeats and the pages are shorter (for example Awards, Shot mix, Turnovers, Old site history). Defined in `src/lib/panelGroups.ts`. A panel that only repeated another (Season Timeline, the self-inflicted turnover bars) was dropped; tuning views (Calibrated Thresholds, Win Shares model) sit in an editor-only Developer views group.

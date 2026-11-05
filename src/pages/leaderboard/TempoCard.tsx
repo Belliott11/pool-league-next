@@ -1,6 +1,4 @@
-import { Gauge } from "lucide-react"
 import { useMemo, type ReactNode } from "react"
-import { Section } from "@/components/Section"
 import { MIN_SIDE_SHOTS, PHASE_LABEL, pct, VERDICT_LABEL, compareRates, type Rate, type Verdict } from "@/lib/gameFlow"
 import { formatDateDisplay } from "@/lib/format"
 import { GAP_CAP, MIN_RUN_BASKETS, TRAIL, tempo } from "@/lib/tempo"
@@ -33,14 +31,13 @@ const Line = ({ label, value, sub }: { label: string; value: string; sub?: strin
 
 // Pace, scoring runs, lead swings and shooting by score state for the league, from games with video times. A collapsed
 // section like Game flow, built only when opened.
-export function TempoCard({ state }: { state: PooleanState }) {
+export function TempoBody({ state }: { state: PooleanState }) {
   const t = useMemo(() => tempo(state), [state])
-  const teaser = t.games === 0 ? "Needs games logged shot by shot with video times." : `How fast games go, who runs off points and how leads swing. ${t.games} games.`
   const ppm = t.minutes > 0 ? t.plays / t.minutes : 0
   const trailVsLead = compareRates(t.state.trailing, t.state.leading)
   const s = t.runs.streaky
   return (
-    <Section id="lb-tempo" title="Pace, runs and swings" icon={Gauge} teaser={teaser}>
+    <>
       {t.games === 0 ? (
         <p className="text-sm text-muted-foreground">Games show up here once they are logged shot by shot, with video times and 12 or more shots.</p>
       ) : (
@@ -95,6 +92,6 @@ export function TempoCard({ state }: { state: PooleanState }) {
           </Block>
         </div>
       )}
-    </Section>
+    </>
   )
 }

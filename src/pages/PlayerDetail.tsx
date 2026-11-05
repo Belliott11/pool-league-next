@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button"
 import { resolvePlayer } from "@/lib/players"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PanelBoundary } from "@/components/PanelBoundary"
+import { PanelGroup } from "@/components/PanelGroup"
+import { arrange, PLAYER_GROUPS, placeOf } from "@/lib/panelGroups"
 import { PlayerHero } from "@/components/PlayerHero"
 import { PlayerGameFlow } from "@/pages/PlayerGameFlow"
 import { PlayerOldSite } from "@/pages/PlayerOldSite"
-import { PlayerTempo } from "@/pages/PlayerTempo"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
@@ -55,10 +56,8 @@ const SECTIONS: { key: string; title: string }[] = [
 
 // One panel drawn by the classic render function into the panel's original markup (kept under
 // .legacy, the scoped classic stylesheet). Re-runs when the player, data, or a toggle changes.
-function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: string; version: unknown }) {
+function PlayerPanelBody({ spec, pid, version, opened }: { spec: PlayerPanelSpec; pid: string; version: unknown; opened: number }) {
   const [error, setError] = useState<string | null>(null)
-  // Charts draw to their container's width, which is 0 while a panel is closed: draw again on open.
-  const [opened, setOpened] = useState(0)
   useEffect(() => {
     const ctl = new AbortController()
     spec.wires.forEach((w) => document.getElementById(w.id)?.addEventListener(w.evt, w.handler, { signal: ctl.signal }))
@@ -74,6 +73,17 @@ function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: strin
     }
   }, [spec, pid, version, opened])
   return (
+    <>
+      {error && <p className="text-sm text-destructive">This panel hit an error: {error}</p>}
+      <div className="legacy" dangerouslySetInnerHTML={{ __html: spec.html }} />
+    </>
+  )
+}
+
+function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: string; version: unknown }) {
+  // Charts draw to their container's width, which is 0 while a panel is closed: draw again on open.
+  const [opened, setOpened] = useState(0)
+  return (
     <details
       open={spec.open}
       className="group scroll-mt-20 rounded-xl border bg-card"
@@ -88,39 +98,43 @@ function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: strin
       </summary>
       <div className="flex min-w-0 flex-col gap-3 p-4 pt-0">
         {spec.hint && <p className="text-sm text-muted-foreground">{spec.hint}</p>}
-        {error && <p className="text-sm text-destructive">This panel hit an error: {error}</p>}
-        <div className="legacy" dangerouslySetInnerHTML={{ __html: spec.html }} />
+        <PlayerPanelBody spec={spec} pid={pid} version={version} opened={opened} />
       </div>
     </details>
   )
 }
 
 function Panels({ section, pid, version }: { section: string; pid: string; version: unknown }) {
+  const layout = useMemo(() => arrange(PANELS, PLAYER_GROUPS), [])
+  const body = (p: PlayerPanelSpec, opened: number) => (p.title === "League Rank" ? <LeagueRank pid={pid} /> : <PlayerPanelBody spec={p} pid={pid} version={version} opened={opened} />)
   return (
     <>
-      {PANELS.filter((p) => p.section === section)
-        .sort((a, b) => a.order - b.order)
-        .map((p) => (
-          <PanelBoundary key={p.title} title={p.title}>
-            {p.title === "League Rank" ? (
-              <Panel title={p.title} hint={p.hint}>
+      {(layout.get(section) ?? []).map((p) =>
+        p.group ? (
+          <PanelBoundary key={p.group.id} title={p.group.title}>
+            <PanelGroup title={p.group.title} section={section} frame="details" tabs={p.members!.map((m) => ({ title: m.title, label: m.label, hint: m.item.hint, tag: m.item.tag, node: (opened) => body(m.item, opened) }))} />
+          </PanelBoundary>
+        ) : (
+          <PanelBoundary key={p.item!.title} title={p.item!.title}>
+            {p.item!.title === "League Rank" ? (
+              <Panel title={p.item!.title} hint={p.item!.hint}>
                 <LeagueRank pid={pid} />
               </Panel>
             ) : (
-              <PlayerPanel spec={p} pid={pid} version={version} />
+              <PlayerPanel spec={p.item!} pid={pid} version={version} />
             )}
           </PanelBoundary>
-        ))}
+        ),
+      )}
     </>
   )
 }
 
-const JUMP_ITEMS: JumpItem[] = PANELS.map((p) => ({
-  title: p.title,
-  group: SECTIONS.find((s) => s.key === p.section)?.title ?? "Overview",
-  sectionId: p.section === "overview" ? null : `section-${p.section}`,
-  hint: p.hint,
-}))
+const JUMP_ITEMS: JumpItem[] = PANELS.map((p) => {
+  const g = placeOf(p.title, PLAYER_GROUPS)
+  const home = g?.home ?? p.section
+  return { title: p.title, group: `${SECTIONS.find((s) => s.key === home)?.title ?? "Overview"}${g ? `, ${g.title}` : ""}`, sectionId: home === "overview" ? null : `section-${home}`, hint: p.hint }
+})
 
 function fmtRate(v: number) {
   return v.toFixed(1)
@@ -257,7 +271,6 @@ export function PlayerDetailPage({
 
       {pid && <PlayerOldSite state={state} pid={pid} />}
       {pid && <PlayerGameFlow state={state} pid={pid} />}
-      {pid && <PlayerTempo state={state} pid={pid} />}
     </div>
   )
 }

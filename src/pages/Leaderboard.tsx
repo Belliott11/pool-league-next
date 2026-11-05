@@ -7,12 +7,12 @@ import { computeLeaderboardSectionTeasers } from "@/lib/legacy-core"
 import type { PooleanState } from "@/lib/types"
 import hints from "@/data/panel-hints.json"
 import { MOUNT_PANELS, TABLE_PANELS } from "@/lib/legacy-core"
+import { LEADERBOARD_DROP, LEADERBOARD_GROUPS, placeOf } from "@/lib/panelGroups"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
 import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
 import { LaneBars } from "./leaderboard/LaneBars"
 import { SeasonRates } from "./leaderboard/SeasonRates"
 import { GameFlowCard } from "./leaderboard/GameFlowCard"
-import { TempoCard } from "./leaderboard/TempoCard"
 
 // Same six groups, in the same order, as the classic Leaderboard tab.
 const SECTIONS: { key: string; title: string }[] = [
@@ -29,12 +29,12 @@ const sectionTitle = (key: string) => SECTIONS.find((s) => s.key === key)?.title
 const JUMP_ITEMS: JumpItem[] = [
   { title: "Two-Way Ranking", group: "Top of the page", sectionId: null, hint: "Every player ranked by Two-Way/20" },
   { title: "Season Rates (Individual)", group: "Top of the page", sectionId: null, hint: "The full stat table" },
-  ...[...(TABLE_PANELS as { title: string; section: string }[]), ...(MOUNT_PANELS as { title: string; section: string }[])].map((p) => ({
-    title: p.title,
-    group: sectionTitle(p.section),
-    sectionId: `lb-section-${p.section}`,
-    hint: HINTS[p.title]?.hint,
-  })),
+  ...[...(TABLE_PANELS as { title: string; section: string }[]), ...(MOUNT_PANELS as { title: string; section: string }[])]
+    .filter((p) => !LEADERBOARD_DROP.has(p.title) && !placeOf(p.title, LEADERBOARD_GROUPS)?.editorOnly)
+    .map((p) => {
+      const g = placeOf(p.title, LEADERBOARD_GROUPS)
+      return { title: p.title, group: g ? `${sectionTitle(g.home)}, ${g.title}` : sectionTitle(p.section), sectionId: `lb-section-${g ? g.home : p.section}`, hint: HINTS[p.title]?.hint }
+    }),
 ]
 
 // Phones only: one row of chips pinned under the header, so the long page is a jump away instead of a scroll.
@@ -43,7 +43,6 @@ const NAV = [
   { id: "lb-rates", label: "Season rates" },
   ...SECTIONS.map((s) => ({ id: `lb-section-${s.key}`, label: s.title })),
   { id: "lb-flow", label: "Game flow" },
-  { id: "lb-tempo", label: "Pace and runs" },
 ]
 
 function QuickNav() {
@@ -100,9 +99,6 @@ export function LeaderboardPage({
       ))}
       <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 2 } as React.CSSProperties}>
         <GameFlowCard state={state} />
-      </div>
-      <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 3 } as React.CSSProperties}>
-        <TempoCard state={state} />
       </div>
     </div>
   )
