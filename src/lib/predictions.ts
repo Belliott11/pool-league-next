@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { awardRace } from "@/lib/awardRace"
+import { oldRanksBetween } from "@/lib/oldSite"
 import { computeLeaderboard } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 
@@ -100,12 +101,26 @@ const seasonFrom = (state: PooleanState, from: string, to?: string): PooleanStat
   currentSeasonStartedAt: from,
 })
 
-// The Standings order for that season: two-way per 20, at least 3 games.
+// The order for that season: two-way per 20 over at least 3 games. Where the old site has power rankings from nights inside
+// the season, each player's two-way spot (0 to 100) is averaged with their old power percentile, so players whose games
+// were never filmed are scored too. Seasons the old site did not cover are ordered by two-way alone.
 export function actualOrder(state: PooleanState, from: string, to?: string): string[] {
-  return computeLeaderboard(seasonFrom(state, from, to))
+  const rated = computeLeaderboard(seasonFrom(state, from, to))
     .filter((r) => r.gp >= 3)
     .sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
     .map((r) => r.player.id)
+  const old = oldRanksBetween(from, to)
+  if (old.size === 0) return rated
+  const own = new Map(rated.map((id, i) => [id, rated.length > 1 ? (1 - i / (rated.length - 1)) * 100 : 50]))
+  const known = new Set(state.players.map((p) => p.id))
+  return [...new Set([...own.keys(), ...old.keys()])]
+    .filter((id) => known.has(id))
+    .map((id) => {
+      const parts = [own.get(id), old.get(id)].filter((x): x is number => x !== undefined)
+      return { id, score: parts.reduce((a, b) => a + b, 0) / parts.length }
+    })
+    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
+    .map((r) => r.id)
 }
 
 // Who leads right now in the season that started on opening night.

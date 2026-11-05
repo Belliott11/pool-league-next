@@ -26,6 +26,17 @@ export function oldRecord(id: string): { w: number; l: number } | null {
   return w && w.length > 0 ? { w: w.filter(Boolean).length, l: w.filter((x) => !x).length } : null
 }
 
+// Each ranked player's average power ranking percentile over the old site's nights that fall in [from, to), so a season
+// is only ever scored with the nights that happened in it. Needs at least 2 nights.
+export function oldRanksBetween(from: string, to?: string): Map<string, number> {
+  const per = new Map<string, number[]>()
+  for (const r of currentRealSeason()?.rankings ?? []) {
+    if (r.date < from || (to !== undefined && r.date >= to)) continue
+    for (const p of r.players) per.set(p.slug, [...(per.get(p.slug) ?? []), p.pct])
+  }
+  return new Map([...per].filter(([, xs]) => xs.length >= 2).map(([id, xs]) => [id, xs.reduce((a, b) => a + b, 0) / xs.length]))
+}
+
 const shrunk = (p: Pair) => (p.w + 2.5) / (p.w + p.l + 5)
 const MIN_TOGETHER = 5
 const MIN_AGAINST = 5
