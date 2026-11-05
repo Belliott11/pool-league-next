@@ -108,7 +108,7 @@ function nativePanel(title: string, state: PooleanState, open: (id: string) => v
     case "Two-Way/20 Rank Over the Season": return <TwoWayRankChart state={state} />
     case "League Passing Chemistry Grid": return <PassingChemistryGrid onOpen={open} />
     case "Shot-Making Added, Cumulative Over the Season": return <ShotMakingAddedChart state={state} />
-    case "Play Style Clusters": return <PlayStyleClusters onOpen={open} />
+    case "Stat Strengths": return <PlayStyleClusters onOpen={open} />
     case "TS% by Shot Distance": return <TsByZone />
     case "Two-Way Quadrant": return <TwoWayQuadrant onOpen={open} />
     case "Passing Chemistry: Pair Detail": return <PassingChemistryPair state={state} />

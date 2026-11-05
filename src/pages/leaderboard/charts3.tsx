@@ -6,7 +6,7 @@ import {
   PLAY_STYLE_MIN_GP,
   PLAY_STYLE_MIN_PLAYERS,
   computeLeagueZonePointsPerAttempt,
-  computePlayerStyleClusters,
+  computePlayerStrengths,
   computeShotMakingAddedOverSeason,
   computeXptsCombos,
   formatDateDisplay,
@@ -111,44 +111,46 @@ export function ShotMakingAddedChart({ state }: { state: PooleanState }) {
   )
 }
 
-/* ---------- Play Style Clusters: groups of similar players. Colors only tell groups apart. ---------- */
-const GROUP = ["bg-chart-4", "bg-chart-5", "bg-muted-foreground", "bg-chart-3"]
+/* ---------- Stat Strengths: each player against the league average, stat by stat ---------- */
+const STAND_OUT = 0.75
 
 export function PlayStyleClusters({ onOpen }: { onOpen: (id: string) => void }) {
-  const clusters = computePlayerStyleClusters() as { label: string; explain: string; members: { player: { id: string; name: string } }[] }[] | null
-  if (!clusters) {
-    return (
-      <EmptyState
-        title="Not enough players to group yet"
-        hint={`Groups appear once at least ${PLAY_STYLE_MIN_PLAYERS} players have ${PLAY_STYLE_MIN_GP}+ qualifying games.`}
-      />
-    )
+  const rows = computePlayerStrengths() as { player: { id: string; name: string }; gp: number; stats: { label: string; z: number }[] }[] | null
+  if (!rows) {
+    return <EmptyState title="Not enough players yet" hint={`Appears once at least ${PLAY_STYLE_MIN_PLAYERS} players have ${PLAY_STYLE_MIN_GP}+ qualifying games.`} />
   }
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {clusters.map((c, i) => (
-        <div key={c.label} className="rounded-xl border bg-card p-3">
-          <div className="flex items-center gap-2">
-            <span className={`size-3 rounded-full ${GROUP[i % GROUP.length]}`} />
-            <h4 className="font-display font-bold">{c.label}</h4>
-            <span className="text-xs text-muted-foreground">({c.members.length})</span>
+    <div className="flex flex-col gap-2">
+      {rows.map((r) => {
+        const up = r.stats.filter((s) => s.z >= STAND_OUT).sort((a, b) => b.z - a.z)
+        const down = r.stats.filter((s) => s.z <= -STAND_OUT).sort((a, b) => a.z - b.z)
+        return (
+          <div key={r.player.id} className="flex flex-col gap-1 rounded-xl border bg-card p-3">
+            <button type="button" className="flex items-center gap-2 self-start text-sm font-semibold hover:underline" onClick={() => onOpen(r.player.id)}>
+              <PlayerAvatar id={r.player.id} name={r.player.name} size="sm" />
+              {r.player.name}
+              <span className="text-xs font-normal text-muted-foreground">{r.gp} games</span>
+            </button>
+            {up.length === 0 && down.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Near the league average in everything.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 text-xs">
+                {up.map((s) => (
+                  <span key={s.label} className="rounded-full bg-chart-4/20 px-2 py-0.5 font-medium">
+                    Strong: {s.label}
+                  </span>
+                ))}
+                {down.map((s) => (
+                  <span key={s.label} className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                    Weaker: {s.label}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{c.explain}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {c.members.map((m) => (
-              <button
-                key={m.player.id}
-                type="button"
-                className="flex items-center gap-2 rounded-full border py-0.5 pl-0.5 pr-3 text-sm font-semibold hover:bg-muted"
-                onClick={() => onOpen(m.player.id)}
-              >
-                <PlayerAvatar id={m.player.id} name={m.player.name} size="sm" />
-                {m.player.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
+        )
+      })}
+      <p className="text-xs text-muted-foreground">Compared with the league average per 20. Only stats at least 0.75 standard deviations from average are listed, and with few games a player's list can change quickly.</p>
     </div>
   )
 }

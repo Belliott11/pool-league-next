@@ -156,8 +156,8 @@
  "Game-Winning Buckets": {
   "hint": "Who scored the last basket in wins. In a race to a score the winner always scores last, so this counts who tends to close games, not rare heroics. Needs a video time on that shot."
  },
- "Play Style Clusters": {
-  "hint": "Groups players whose stat lines look alike (offense, defense, assists, rebounds, steals and blocks), not by anyone's labels. Needs at least 4 players."
+ "Stat Strengths": {
+  "hint": "Where each player sits against the league average on offense, defense, assists, rebounds, and steals plus blocks, per 20. A stat is called out only when it is well above or below average (0.75 standard deviations or more). Needs at least 4 players with 2 or more games."
  },
  "Defensive Load": {
   "hint": "How much of their team's defending each player does: 1.0 is an even share, and above is more. Opp FG% is now Real Contested Opp FG% -- restricted to shots with a medium or heavy contest level, since a nominally-tagged defender and one who actually challenged the shot aren't the same thing. The old any-tag number is shown alongside it for comparison this first time it ships. Read it with Pts Allowed Under Exp (how they did against what they faced), not on its own."
