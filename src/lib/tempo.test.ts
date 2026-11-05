@@ -55,3 +55,14 @@ describe("tempo", () => {
     expect(tempo(state([untimed])).games).toBe(0)
   })
 })
+
+describe("one player's score state", () => {
+  it("buckets only that player's shots, using the whole game's score", async () => {
+    const { playerScoreState } = await import("@/lib/tempo")
+    const s = playerScoreState(state([game]), "a")
+    expect(s.trailing).toEqual({ made: 1, att: 1 }) // a's shot at 8-12 down 4
+    expect(s.leading).toEqual({ made: 1, att: 1 })
+    expect(s.close).toEqual({ made: 3, att: 4 })
+    expect(playerScoreState(state([game]), "nobody")).toEqual({ trailing: { made: 0, att: 0 }, close: { made: 0, att: 0 }, leading: { made: 0, att: 0 } })
+  })
+})

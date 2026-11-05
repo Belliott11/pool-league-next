@@ -7,6 +7,7 @@ import { PanelBoundary } from "@/components/PanelBoundary"
 import { PlayerHero } from "@/components/PlayerHero"
 import { PlayerGameFlow } from "@/pages/PlayerGameFlow"
 import { PlayerOldSite } from "@/pages/PlayerOldSite"
+import { PlayerTempo } from "@/pages/PlayerTempo"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
@@ -256,6 +257,7 @@ export function PlayerDetailPage({
 
       {pid && <PlayerOldSite state={state} pid={pid} />}
       {pid && <PlayerGameFlow state={state} pid={pid} />}
+      {pid && <PlayerTempo state={state} pid={pid} />}
     </div>
   )
 }

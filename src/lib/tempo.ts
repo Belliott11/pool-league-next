@@ -1,4 +1,4 @@
-import { CLEAR_Z, compareMeans, compareRates, HINT_Z, PHASES, phaseOf, timedGame, type Mean, type Phase, type Rate, type Verdict } from "@/lib/gameFlow"
+import { CLEAR_Z, compareMeans, HINT_Z, PHASES, phaseOf, timedGame, type Mean, type Phase, type Rate, type Verdict } from "@/lib/gameFlow"
 import type { PooleanState } from "@/lib/types"
 
 // Pace, scoring runs, lead swings and shooting by score state, all from games whose shots carry video times (the same
@@ -48,7 +48,7 @@ const mean = (): Mean => ({ sum: 0, sq: 0, n: 0 })
 const rate = (): Rate => ({ made: 0, att: 0 })
 const verdictOf = (z: number): Verdict => (Math.abs(z) >= CLEAR_Z ? "clear" : Math.abs(z) >= HINT_Z ? "hint" : "early")
 
-export function tempo(state: PooleanState): Tempo {
+export function tempo(state: PooleanState, only?: string): Tempo {
   const out: Tempo = {
     games: 0,
     plays: 0,
@@ -96,7 +96,7 @@ export function tempo(state: PooleanState): Tempo {
       const tm = teamOf(e.scorerId)
       if (tm < 0) continue
       const margin = score[tm] - score[1 - tm]
-      if (e.id !== endId) {
+      if (e.id !== endId && (!only || e.scorerId === only)) {
         const b = margin <= -TRAIL ? out.state.trailing : margin >= TRAIL ? out.state.leading : out.state.close
         b.att++
         if (e.made !== false) b.made++
@@ -167,4 +167,5 @@ export function tempo(state: PooleanState): Tempo {
   return out
 }
 
-export const stateCompare = (t: Tempo) => compareRates(t.state.trailing, t.state.leading)
+// One player's shooting by score state. The whole tempo is built the same way; only their shots are bucketed.
+export const playerScoreState = (state: PooleanState, id: string): Tempo["state"] => tempo(state, id).state
