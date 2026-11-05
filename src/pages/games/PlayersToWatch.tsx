@@ -3,20 +3,23 @@ import { useMemo } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
-import { watchList, type Watch } from "@/lib/watchList"
+import { watchList, type Kind, type Signal, type Watch } from "@/lib/watchList"
 
-const num = (n: number) => n.toFixed(1)
+const LABEL: Record<Kind, string> = { twoWay: "Two-way per 20", scoring: "Points per 20", wins: "Win rate", power: "Old site power rank" }
+const show = (s: Signal, v: number) => (s.kind === "wins" ? `${Math.round(v * 100)}%` : s.kind === "power" ? String(Math.round(v)) : v.toFixed(1))
 
 function Row({ state, w, onOpenPlayer }: { state: PooleanState; w: Watch; onOpenPlayer: (id: string) => void }) {
   return (
-    <li className="flex items-center gap-2 text-sm">
-      <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left hover:underline" onClick={() => onOpenPlayer(w.id)}>
+    <li className="flex flex-col gap-0.5 text-sm">
+      <button type="button" className="flex min-w-0 items-center gap-2 self-start text-left hover:underline" onClick={() => onOpenPlayer(w.id)}>
         <PlayerAvatar id={w.id} name={playerName(state, w.id)} size="sm" />
         <span className="truncate font-medium">{playerName(state, w.id)}</span>
       </button>
-      <span className="flex items-center gap-1 tabular-nums text-muted-foreground" title="Two-way per 20, first half of their games then second half">
-        {num(w.early)} <ArrowRight aria-hidden className="size-3" /> <span className="font-semibold text-foreground">{num(w.late)}</span>
-      </span>
+      {w.signals.map((s) => (
+        <span key={s.kind} className="ml-9 flex items-center gap-1 text-xs tabular-nums text-muted-foreground" title={`${s.n} games or nights, first half then second half`}>
+          {LABEL[s.kind]} {show(s, s.early)} <ArrowRight aria-hidden className="size-3" /> <span className="font-semibold text-foreground">{show(s, s.late)}</span>
+        </span>
+      ))}
     </li>
   )
 }
@@ -53,7 +56,7 @@ export function PlayersToWatch({ state, onOpenPlayer }: { state: PooleanState; o
           </ul>
         </div>
       )}
-      <p className="text-xs text-muted-foreground">Numbers are two-way per 20, first half of a player's games then the second half, from box-scored games ({w.rated} players had at least 4). With this few games it is a hint, not a forecast.</p>
+      <p className="text-xs text-muted-foreground">Each line compares the first half of a player's record with the second half. It uses box scores where there are enough, points for games without them, and the old site's results and power rankings for games that were never filmed ({w.rated} players had something to compare). With this few games it is a hint, not a forecast.</p>
     </section>
   )
 }

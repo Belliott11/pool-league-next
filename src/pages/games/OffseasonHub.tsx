@@ -13,7 +13,7 @@ import { formatDateLong, formatTime } from "@/lib/format"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { useReadOnly } from "@/lib/mode"
 import { wrappedPlayers } from "@/lib/wrapped"
-import { isOpeningNight, powerRanking } from "@/lib/offseason"
+import { earlyRanking, isOpeningNight } from "@/lib/offseason"
 import { playerName } from "@/lib/players"
 import { shareText } from "@/lib/shareText"
 import type { Game, PooleanState } from "@/lib/types"
@@ -42,13 +42,13 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
   const rsvp = (state.rsvps ?? []).find((r) => r.date === o.date)
   const coming = rsvp?.playerIds ?? []
   const t = useMemo(() => turnout(state, coming), [state, coming])
-  const ranking = useMemo(() => powerRanking(state), [state])
+  const ranking = useMemo(() => earlyRanking(state), [state])
   const p = usePredictions(state)
   const ballots = p.entries.filter((e) => (e.picks.ranking ?? []).length > 0).length
   // Once anyone has voted, the list is the group's average spot; until then it is last season by the numbers.
   const rows = useMemo(() => {
-    const numbersRank = new Map(ranking.map((r, i) => [r.player.id, i + 1]))
-    if (ballots === 0) return ranking.map((r) => ({ id: r.player.id, name: r.player.name, note: `${r.wins}-${r.losses}`, value: r.twoWayPer20.toFixed(1) }))
+    const numbersRank = new Map(ranking.map((r, i) => [r.id, i + 1]))
+    if (ballots === 0) return ranking.map((r) => ({ id: r.id, name: playerName(state, r.id), note: r.twoWayPer20 !== undefined ? `two-way ${r.twoWayPer20.toFixed(1)}` : "old site only", value: String(Math.round(r.score)) }))
     return consensusRanking(p.entries)
       .filter((r) => state.players.some((x) => x.id === r.id))
       .map((r) => {
@@ -63,7 +63,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
     `Poolean Intel: opening night ${formatDateLong(o.date)}${o.time ? `, ${formatTime(o.time)}` : ""}`,
     coming.length ? `In so far: ${coming.map((id) => playerName(state, id)).join(", ")}` : "",
     "",
-    ballots ? `Predicted power ranking, from ${ballots} ${ballots === 1 ? "prediction" : "predictions"}:` : "Power ranking by last season's numbers:",
+    ballots ? `Predicted power ranking, from ${ballots} ${ballots === 1 ? "prediction" : "predictions"}:` : "Power ranking by last season's numbers and the old site's rankings:",
     ...rows.slice(0, 5).map((r, i) => `${i + 1}. ${r.name}`),
   ]
     .filter((x, i) => x || i === 2)
@@ -156,7 +156,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
           <p className="text-xs text-muted-foreground">
             {ballots > 0
               ? `The group's predictions combined: each player's average predicted spot across ${ballots} ${ballots === 1 ? "prediction" : "predictions"}. Make yours below and it updates.`
-              : "No predictions yet, so this shows last season by the numbers (two-way per 20, at least 3 games). Make your prediction below and it becomes the group's."}
+              : "No predictions yet, so this is last season by the numbers out of 100: two-way per 20 (at least 3 games) blended with the old site's power rankings, which cover games that were never filmed. Make your prediction below and it becomes the group's."}
           </p>
           <ol className="flex flex-col gap-1 text-sm">
             {shown.map((r, i) => (

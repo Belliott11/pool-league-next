@@ -22,7 +22,7 @@ export interface RealSeason {
   rankings: { date: string; players: { slug: string; rank: number; fieldSize: number; pct: number }[] }[]
   together: Record<string, PairRecord>
   against: Record<string, PairRecord>
-  cards: Record<string, { powerPct: number; parties: number }>
+  cards: Record<string, { powerPct: number; parties: number; w?: number; l?: number }>
   games: RealGame[]
   names: Record<string, string>
 }
