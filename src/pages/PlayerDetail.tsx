@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { PlayerHero } from "@/components/PlayerHero"
 import { PlayerGameFlow } from "@/pages/PlayerGameFlow"
+import { PlayerOldSite } from "@/pages/PlayerOldSite"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
@@ -253,6 +254,7 @@ export function PlayerDetailPage({
         </Section>
       ))}
 
+      {pid && <PlayerOldSite state={state} pid={pid} />}
       {pid && <PlayerGameFlow state={state} pid={pid} />}
     </div>
   )

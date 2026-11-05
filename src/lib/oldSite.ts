@@ -12,6 +12,44 @@ export const EMPTY_OLD: OldSite = { wins: new Map(), ranks: new Map(), power: ne
 
 const SHRINK = 5 // a player's power counts as five games of 50 before their own games count
 
+export interface Pair {
+  id: string
+  w: number
+  l: number
+}
+
+// A player's whole record on the old site, from its season card (which counts every game), else from the results list.
+export function oldRecord(id: string): { w: number; l: number } | null {
+  const c = currentRealSeason()?.cards[id]
+  if (c && c.w !== undefined && c.l !== undefined && c.w + c.l > 0) return { w: c.w, l: c.l }
+  const w = oldSite().wins.get(id)
+  return w && w.length > 0 ? { w: w.filter(Boolean).length, l: w.filter((x) => !x).length } : null
+}
+
+const shrunk = (p: Pair) => (p.w + 2.5) / (p.w + p.l + 5)
+const MIN_TOGETHER = 5
+const MIN_AGAINST = 5
+
+// Best partner (record together pulled toward even, as the duo award) and most played opponent (closest record breaking
+// ties), from the old site's pair records. Each needs at least 5 games.
+export function oldPairs(id: string): { mate: Pair | null; rival: Pair | null } {
+  const s = currentRealSeason()
+  const mates: Pair[] = []
+  const rivals: Pair[] = []
+  for (const [k, r] of Object.entries(s?.together ?? {})) {
+    const [a, b] = k.split("|")
+    if ((a === id || b === id) && r.gp >= MIN_TOGETHER) mates.push({ id: a === id ? b : a, w: r.w, l: r.l ?? r.gp - r.w })
+  }
+  for (const [k, r] of Object.entries(s?.against ?? {})) {
+    const [a, b] = k.split("|")
+    if (a === id && r.gp >= MIN_AGAINST) rivals.push({ id: b, w: r.w, l: r.l ?? r.gp - r.w })
+  }
+  return {
+    mate: mates.sort((x, y) => shrunk(y) - shrunk(x) || y.w + y.l - (x.w + x.l))[0] ?? null,
+    rival: rivals.sort((x, y) => y.w + y.l - (x.w + x.l) || Math.abs(x.w - x.l) - Math.abs(y.w - y.l))[0] ?? null,
+  }
+}
+
 let cached: OldSite | null = null
 export function oldSite(): OldSite {
   if (cached) return cached

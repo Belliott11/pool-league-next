@@ -2,6 +2,7 @@ import { attendance } from "@/lib/attendance"
 import { awardRace } from "@/lib/awardRace"
 import { playerLine, scoreOf, type PlayerLine } from "@/lib/nightRecap"
 import { seasonState } from "@/lib/offseason"
+import { oldPairs } from "@/lib/oldSite"
 import { RECORD_LABEL, recordBook } from "@/lib/records"
 import type { PooleanState } from "@/lib/types"
 
@@ -82,11 +83,16 @@ export function wrappedFor(full: PooleanState, id: string): Slide[] {
 
   // Best teammate: best record together over at least 3 games, pulled toward even by 5 phantom games (as the duo award).
   const mate = [...mates.entries()].filter(([, r]) => r.w + r.l >= 3).sort((x, y) => shrunk(y[1]) - shrunk(x[1]) || y[1].w + y[1].l - (x[1].w + x[1].l))[0]
+  // With no partner played 3 times in the app's own games, fall back to the old site's records, which cover unfilmed games.
+  const oldMate = mate ? null : oldPairs(id).mate
   if (mate) slides.push({ kind: "teammate", id: mate[0], ...mate[1] })
+  else if (oldMate) slides.push({ kind: "teammate", id: oldMate.id, w: oldMate.w, l: oldMate.l })
 
   // Rival: the opponent faced most, closest record breaking ties.
   const rival = [...opps.entries()].filter(([, r]) => r.w + r.l >= 2).sort((x, y) => y[1].w + y[1].l - (x[1].w + x[1].l) || Math.abs(x[1].w - x[1].l) - Math.abs(y[1].w - y[1].l))[0]
+  const oldRival = rival ? null : oldPairs(id).rival
   if (rival) slides.push({ kind: "rival", id: rival[0], ...rival[1] })
+  else if (oldRival) slides.push({ kind: "rival", id: oldRival.id, w: oldRival.w, l: oldRival.l })
 
   const finishes = awardRace(full)
     .map((r) => ({ label: r.label, rank: r.leaders.findIndex((l) => l.ids.includes(id)) + 1 }))
