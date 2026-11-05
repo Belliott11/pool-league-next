@@ -72,8 +72,8 @@ A player's defending value in one game: steals, blocks and stops, minus times be
 **Two-way score**:
 A player's offense and defense in one game, added together. The MVP award adds it up over this season.
 
-**Two-way per 20**:
-The two-way score scaled to 20 minutes of play. Standings rank by it, and so does "Best player".
+**Two-way per 25**:
+The two-way score scaled to 25 combined points scored by both teams (about one game). The 25 lives in `src/lib/per.ts`. Standings rank by it, and so does "Best player".
 _Avoid_: Two-way rating
 
 **Prediction**:

@@ -48,7 +48,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
   // Once anyone has voted, the list is the group's average spot; until then it is last season by the numbers.
   const rows = useMemo(() => {
     const numbersRank = new Map(ranking.map((r, i) => [r.id, i + 1]))
-    if (ballots === 0) return ranking.map((r) => ({ id: r.id, name: playerName(state, r.id), note: r.twoWayPer20 !== undefined ? `two-way ${r.twoWayPer20.toFixed(1)}` : "old site only", value: String(Math.round(r.score)) }))
+    if (ballots === 0) return ranking.map((r) => ({ id: r.id, name: playerName(state, r.id), note: r.twoWayPer25 !== undefined ? `two-way ${r.twoWayPer25.toFixed(1)}` : "old site only", value: String(Math.round(r.score)) }))
     return consensusRanking(p.entries)
       .filter((r) => state.players.some((x) => x.id === r.id))
       .map((r) => {
@@ -156,7 +156,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
           <p className="text-xs text-muted-foreground">
             {ballots > 0
               ? `The group's predictions combined: each player's average predicted spot across ${ballots} ${ballots === 1 ? "prediction" : "predictions"}. Make yours below and it updates.`
-              : "No predictions yet, so this is last season by the numbers out of 100: two-way per 20 (at least 3 games) blended with the old site's power rankings, which cover games that were never filmed. Make your prediction below and it becomes the group's."}
+              : "No predictions yet, so this is last season by the numbers out of 100: two-way per 25 (at least 3 games) blended with the old site's power rankings, which cover games that were never filmed. Make your prediction below and it becomes the group's."}
           </p>
           <ol className="flex flex-col gap-1 text-sm">
             {shown.map((r, i) => (

@@ -146,14 +146,14 @@ function TeamCard({
         </div>
       )}
       {Math.abs(chem.value) >= 0.1 && (
-        <div className="text-xs text-muted-foreground" title="Average Two-Way/20 lift from real past games with these specific teammates, already included in the avg above.">
+        <div className="text-xs text-muted-foreground" title="Average Two-Way/25 lift from real past games with these specific teammates, already included in the avg above.">
           Chemistry: {chem.value >= 0 ? "+" : ""}
           {chem.value.toFixed(1)}
           {chem.minGp !== null ? ` (min ${chem.minGp} game${chem.minGp === 1 ? "" : "s"} together)` : ""}
         </div>
       )}
       {Math.abs(win.value) >= 0.1 && (
-        <div className="text-xs text-muted-foreground" title="Two-Way/20-scale adjustment from this pairing's actual win rate in past games together, already included in the avg above.">
+        <div className="text-xs text-muted-foreground" title="Two-Way/25-scale adjustment from this pairing's actual win rate in past games together, already included in the avg above.">
           Past record: {win.value >= 0 ? "+" : ""}
           {win.value.toFixed(1)}
           {win.minGp !== null ? ` (min ${win.minGp} game${win.minGp === 1 ? "" : "s"} together${win.anyReal ? ", old site record" : ""})` : ""}
@@ -224,7 +224,7 @@ function OptionCard({
         <strong className="font-display">{index === 0 ? "Most Balanced" : `Option ${index + 1}`}</strong>
         <span className="text-sm text-muted-foreground">
           {realPred ? `Predicted ${Math.round(realPred.pA * 100)}% / ${100 - Math.round(realPred.pA * 100)}% · ` : ""}
-          &Delta;{option.spread.toFixed(1)} Two-Way/20 between strongest and weakest team
+          &Delta;{option.spread.toFixed(1)} Two-Way/25 between strongest and weakest team
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -290,7 +290,7 @@ export function BalanceTeams({
       text: q.source === "reputation" ? " *" : "",
       title:
         q.source === "stats"
-          ? `${q.quality.toFixed(1)} season Two-Way/20`
+          ? `${q.quality.toFixed(1)} season Two-Way/25`
           : q.source === "reputation"
             ? `No stats yet: estimated from a ${q.avgPercentile}th percentile power ranking (${q.parties} part${q.parties === 1 ? "y" : "ies"}), not logged film`
             : "No stats or power ranking data: counted as a below-average unknown",
@@ -316,7 +316,7 @@ export function BalanceTeams({
         <CardTitle className="font-display">Balance Teams</CardTitle>
         <p className="text-sm text-muted-foreground">
           Pick who&apos;s here and get the fairest splits. Teams are ranked by the Matchup Predictor&apos;s odds when it has enough real
-          games, otherwise by each team&apos;s average Two-Way/20 (nudged by real chemistry and past record), with height, build, effort
+          games, otherwise by each team&apos;s average Two-Way/25 (nudged by real chemistry and past record), with height, build, effort
           and role only as a tiebreak.
         </p>
       </CardHeader>

@@ -46,11 +46,11 @@ export function awardRace(state: PooleanState): RaceRow[] {
   const byTotal = [...boxed].sort((x, y) => y[1].twoWay - x[1].twoWay)
   if (byTotal.length) rows.push({ key: "mvp", label: "MVP race", basis: "Total two-way score", leaders: top(byTotal.map(([id, t]) => ({ ids: [id], value: `${t.twoWay.toFixed(1)} over ${t.gp} games` }))) })
 
-  // Best all-around: two-way per 20, the same number as the standings.
-  const byTwoWay = board.filter((r) => r.gp >= MIN_GAMES).sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
+  // Best all-around: two-way per 25, the same number as the standings.
+  const byTwoWay = board.filter((r) => r.gp >= MIN_GAMES).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
   if (byTwoWay.length) {
-    const text = distinctNumbers(byTwoWay.map((r) => r.twoWayPer20))
-    rows.push({ key: "best-player", label: "Best player", basis: "Two-way per 20", leaders: top(byTwoWay.map((r, i) => ({ ids: [r.player.id], value: `${text[i]} per 20` }))) })
+    const text = distinctNumbers(byTwoWay.map((r) => r.twoWayPer25))
+    rows.push({ key: "best-player", label: "Best player", basis: "Two-way per 25", leaders: top(byTwoWay.map((r, i) => ({ ids: [r.player.id], value: `${text[i]} per 25` }))) })
   }
 
   // Defender: total defensive score.

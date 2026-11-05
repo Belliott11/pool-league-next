@@ -12,6 +12,7 @@ import { PlayerOldSite } from "@/pages/PlayerOldSite"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
+import { StatLegend } from "@/components/StatLegend"
 import { ChevronRight } from "lucide-react"
 import { IconChip } from "@/components/IconChip"
 import { Section } from "@/components/Section"
@@ -163,7 +164,7 @@ export function PlayerDetailPage({
   const unknownLink = !!playerId && !resolved
   const player = resolved ?? (playerId ? null : (state.players[0] ?? null))
   const pid = player?.id ?? null
-  const row = pid ? (computeLeaderboard() as { player: { id: string }; wins: number; losses: number; ties: number; rate: { pts: number }; offRatingPer20: number; twoWayPer20: number }[]).find((r) => r.player.id === pid) : null
+  const row = pid ? (computeLeaderboard() as { player: { id: string }; wins: number; losses: number; ties: number; rate: { pts: number }; offRatingPer25: number; twoWayPer25: number }[]).find((r) => r.player.id === pid) : null
   // Result of each of the last ten counted games, oldest first, for the form strip in the header.
   const form: ("W" | "L" | "T")[] = pid
     ? [...(qualifyingGamesForPlayer(pid) as { date?: string; teamA: string[]; teamB: string[] }[])]
@@ -205,7 +206,7 @@ export function PlayerDetailPage({
 
   async function share() {
     const url = `${location.origin}${location.pathname}#player=${encodeURIComponent(pid!)}`
-    const text = row ? `${player!.name}: ${record}, ${fmtRate(row.twoWayPer20)} Two-Way/20` : player!.name
+    const text = row ? `${player!.name}: ${record}, ${fmtRate(row.twoWayPer25)} Two-Way/25` : player!.name
     if (navigator.share) {
       try {
         await navigator.share({ title: "Poolean Intel", text, url })
@@ -236,12 +237,17 @@ export function PlayerDetailPage({
         pid={pid}
         name={player.name}
         form={form}
-        stats={row ? { twoWay: fmtRate(row.twoWayPer20), record: record!, pts: fmtRate(row.rate.pts), off: fmtRate(row.offRatingPer20) } : null}
+        stats={row ? { twoWay: fmtRate(row.twoWayPer25), record: record!, pts: fmtRate(row.rate.pts), off: fmtRate(row.offRatingPer25) } : null}
         onShare={share}
         onCard={() => downloadTradingCard(pid)}
       />
 
-      <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as shot chart or tips (press /)" />
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as shot chart or tips (press /)" />
+        </div>
+        <StatLegend />
+      </div>
       <nav className="flex flex-wrap gap-2" aria-label="Player sections">
         {SECTIONS.map((s) => (
           <Button

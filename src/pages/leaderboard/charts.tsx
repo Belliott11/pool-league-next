@@ -66,8 +66,8 @@ export function TwoWayQuadrant({ onOpen }: { onOpen: Open }) {
         <text x={W - PAD - 4} y={PAD + 12} textAnchor="end" className={`${tickText} font-semibold`}>Two-way</text>
         <text x={PAD + 4} y={PAD + 12} className={`${tickText} font-semibold`}>Defender</text>
         <text x={W - PAD - 4} y={H - PAD - 6} textAnchor="end" className={`${tickText} font-semibold`}>Scorer</text>
-        <text x={W / 2} y={H - 4} textAnchor="middle" className={tickText}>Off Rating/20</text>
-        <text transform={`translate(10 ${H / 2}) rotate(-90)`} textAnchor="middle" className={tickText}>Def Rating/20</text>
+        <text x={W / 2} y={H - 4} textAnchor="middle" className={tickText}>Off Rating/25</text>
+        <text transform={`translate(10 ${H / 2}) rotate(-90)`} textAnchor="middle" className={tickText}>Def Rating/25</text>
         {data.map((d) => (
           <g key={d.player.id} className="cursor-pointer" onClick={() => onOpen(d.player.id)}>
             <title>{`${d.player.name}: ${d.offRtg.toFixed(1)} Off, ${d.defRtg.toFixed(1)} Def`}</title>
@@ -114,11 +114,11 @@ export function VolumeEfficiency({ onOpen }: { onOpen: Open }) {
         ))}
         <line x1={L} x2={L} y1={T} y2={H - B} className="stroke-foreground/50" />
         <line x1={L} x2={W - R} y1={H - B} y2={H - B} className="stroke-foreground/50" />
-        <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle" className={tickText}>Field goal attempts per 20</text>
+        <text x={(L + W - R) / 2} y={H - 6} textAnchor="middle" className={tickText}>Field goal attempts per 25</text>
         <text transform={`translate(10 ${(T + H - B) / 2}) rotate(-90)`} textAnchor="middle" className={tickText}>True shooting %</text>
         {data.map((d) => (
           <g key={d.player.id} className="cursor-pointer" onClick={() => onOpen(d.player.id)}>
-            <title>{`${d.player.name}: ${d.volume.toFixed(1)} FGA/20, ${d.ts}% TS`}</title>
+            <title>{`${d.player.name}: ${d.volume.toFixed(1)} FGA/25, ${d.ts}% TS`}</title>
             <PhotoDot id={d.player.id} cx={x(d.volume)} cy={y(d.ts)} />
             <text x={x(d.volume)} y={y(d.ts) - 15} textAnchor="middle" className="fill-foreground text-[10px] font-semibold">
               {d.player.name}

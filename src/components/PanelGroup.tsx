@@ -6,6 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { panelIcon } from "@/lib/panelIcons"
 
+// The stock tab strip is one fixed-height row, so a strip that wraps onto a second line spilled over the text below it.
+// These let it grow with its tabs and keep a clear gap before the content.
+export const TAB_LIST = { variant: "line" as const, className: "w-full flex-wrap justify-start gap-2 pb-2", style: { height: "auto" } }
+// Each tab is a bordered pill so it reads as a control, not loose text; the open one is filled.
+export const TAB_TRIGGER = {
+  className: "flex-none rounded-full border-border! px-3 py-1.5 after:hidden data-active:border-primary! data-active:bg-primary! data-active:text-primary-foreground!",
+  style: { height: "auto" },
+}
+
 export interface GroupTab {
   title: string // the panel's own title, used by search and jump
   label: string // the short tab name
@@ -32,15 +41,15 @@ export function PanelGroup({ title, section, tabs, frame }: { title: string; sec
   }, [tabs])
   const current = tabs.find((t) => t.title === active) ?? tabs[0]
   const body = (
-    <Tabs value={current.title} onValueChange={(v) => setActive(String(v))}>
-      <TabsList variant="line" className="h-auto w-full flex-wrap justify-start gap-1" aria-label={`${title} views`}>
+    <Tabs value={current.title} onValueChange={(v) => setActive(String(v))} className="gap-4">
+      <TabsList {...TAB_LIST} aria-label={`${title} views`}>
         {tabs.map((t) => (
-          <TabsTrigger key={t.title} value={t.title} className="h-auto flex-none px-3 py-1.5">
+          <TabsTrigger key={t.title} value={t.title} {...TAB_TRIGGER}>
             {t.label}
           </TabsTrigger>
         ))}
       </TabsList>
-      <TabsContent key={current.title} value={current.title} className="flex min-w-0 flex-col gap-3">
+      <TabsContent key={current.title} value={current.title} className="flex min-w-0 flex-col gap-4">
         {current.hint && <p className="text-sm text-muted-foreground">{current.hint}</p>}
         {current.tag && <Badge variant="secondary" className="self-start">{current.tag}</Badge>}
         {current.node(opened)}

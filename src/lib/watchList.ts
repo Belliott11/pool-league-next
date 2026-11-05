@@ -5,14 +5,14 @@ import type { PooleanState } from "@/lib/types"
 
 // Who to watch next season, from how each player finished against how they started. Four kinds of evidence, each
 // compared first half against second half of that player's own record:
-//   twoWay   two-way per 20 over box-scored games
-//   scoring  points per 20 over every game, used only when a player has too few box-scored games
+//   twoWay   two-way per 25 over box-scored games
+//   scoring  points per 25 over every game, used only when a player has too few box-scored games
 //   wins     win rate over the old site's results (most games were never filmed)
 //   power    the old site's nightly power ranking percentile
 // With this few games it is a hint, not a forecast.
 export type Kind = "twoWay" | "scoring" | "wins" | "power"
 export const MIN_N: Record<Kind, number> = { twoWay: 4, scoring: 4, wins: 8, power: 4 }
-export const SWING: Record<Kind, number> = { twoWay: 1, scoring: 1.5, wins: 0.25, power: 15 } // how far a half must move to count
+export const SWING: Record<Kind, number> = { twoWay: 1.25, scoring: 2, wins: 0.25, power: 15 } // how far a half must move to count
 
 export interface Signal {
   kind: Kind
@@ -43,7 +43,7 @@ interface Row {
 }
 
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
-const per20 = (rows: Row[]) => {
+const per25 = (rows: Row[]) => {
   const total = rows.reduce((n, r) => n + r.total, 0)
   return total > 0 ? (rows.reduce((n, r) => n + r.v, 0) / total) * 20 : 0
 }
@@ -72,7 +72,7 @@ export function watchList(state: PooleanState, limit = 3, old: OldSite = oldSite
   const fromRows = (kind: Kind, id: string, rows: Row[]) => {
     if (rows.length < MIN_N[kind]) return false
     const [e, l] = halves(rows)
-    add(id, { kind, n: rows.length, early: per20(e), late: per20(l), season: per20(rows) })
+    add(id, { kind, n: rows.length, early: per25(e), late: per25(l), season: per25(rows) })
     return true
   }
   const fromList = (kind: Kind, id: string, xs: number[], season = mean(xs)) => {
@@ -86,7 +86,7 @@ export function watchList(state: PooleanState, limit = 3, old: OldSite = oldSite
     fromList("power", id, old.ranks.get(id) ?? [], old.power.get(id))
   }
 
-  // The middle of the league for the two per-20 kinds; 50% for wins; 50 for power.
+  // The middle of the league for the two per-25 kinds; 50% for wins; 50 for power.
   const mid: Record<Kind, number> = { twoWay: 0, scoring: 0, wins: 0.5, power: 50 }
   for (const k of ["twoWay", "scoring"] as const) mid[k] = median([...raw.values()].flat().filter((r) => r.kind === k).map((r) => r.season))
 

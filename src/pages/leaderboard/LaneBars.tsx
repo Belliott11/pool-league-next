@@ -8,11 +8,11 @@ import { axis } from "./charts"
 
 interface Row {
   player: { id: string; name: string }
-  twoWayPer20: number
+  twoWayPer25: number
   gp: number
 }
 
-// One lane per player, ranked by Two-Way/20. Bars grow from the zero line (aqua above, red
+// One lane per player, ranked by Two-Way/25. Bars grow from the zero line (aqua above, red
 // below), the leader's bar is the screen's one coral mark, and the photo sits at the bar's head.
 export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void }) {
   // One-shot reveal: flips to true the first time the card is on screen and never back, so
@@ -39,7 +39,7 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
 
   const rows = (computeLeaderboard() as Row[])
     .filter((r) => r.gp > 0)
-    .sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
+    .sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
   if (rows.length === 0)
     return (
       <Panel title="Two-Way Ranking">
@@ -48,13 +48,13 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
     )
 
   // Axis ends and grid lines fall on whole steps, so the vertical lines are evenly spaced.
-  const { lo, hi, ticks } = axis(Math.min(0, ...rows.map((r) => r.twoWayPer20)), Math.max(0, ...rows.map((r) => r.twoWayPer20)), 6)
+  const { lo, hi, ticks } = axis(Math.min(0, ...rows.map((r) => r.twoWayPer25)), Math.max(0, ...rows.map((r) => r.twoWayPer25)), 6)
   const span = hi - lo
   const zero = ((0 - lo) / span) * 100
   const pos = (v: number) => ((v - lo) / span) * 100
 
   return (
-    <Panel title="Two-Way Ranking" hint="Offense plus defense per 20 combined points. Click a name for their page.">
+    <Panel title="Two-Way Ranking" hint="Offense plus defense per 25 combined points. Click a name for their page.">
       <div ref={card} className="rounded-xl border bg-card p-3">
         <div className="flex items-center gap-3 pb-1 text-[10px] text-muted-foreground">
           <span className="w-16 shrink-0 sm:w-24" />
@@ -68,7 +68,7 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
           <span className="w-10 shrink-0" />
         </div>
         {rows.map((r, i) => {
-          const v = r.twoWayPer20
+          const v = r.twoWayPer25
           const left = Math.min(pos(v), zero)
           const width = Math.abs(pos(v) - zero)
           const head = pos(v)

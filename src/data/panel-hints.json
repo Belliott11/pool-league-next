@@ -1,6 +1,6 @@
 {
  "Season Rates (Individual)": {
-  "hint": "Each stat is per 20 combined points, so 16- and 21-point games compare fairly. Only fully logged, even-sided games count. Two-Way is offense plus defense in one number. Click a name for their page, or a column to sort. Turning off Outlier Games drops each player's most extreme nights (needs 4+ games)."
+  "hint": "Each stat is per 25 combined points, so 16- and 21-point games compare fairly. Only fully logged, even-sided games count. Two-Way is offense plus defense in one number. Click a name for their page, or a column to sort. Turning off Outlier Games drops each player's most extreme nights (needs 4+ games)."
  },
  "Player Comparison": {
   "hint": "Pick two players to see every stat side by side. Green marks the better number where better is clear, like fewer turnovers. Share stats aren't colored, since they reflect a role, not quality."
@@ -12,10 +12,10 @@
   "hint": "Each party night's real power ranking next to how that player actually played in that night's logged games. Only nights with logged film show up, and games stopped early are left out."
  },
  "Two-Way Quadrant": {
-  "hint": "Off Rating/20 (offense) vs. Def Rating/20 for every player who's played, plotted separately instead of pre-summed into Two-Way Score, so \"who's good\" splits into \"good at what.\" Quadrant lines are drawn at zero on each axis."
+  "hint": "Off Rating/25 (offense) vs. Def Rating/25 for every player who's played, plotted separately instead of pre-summed into Two-Way Score, so \"who's good\" splits into \"good at what.\" Quadrant lines are drawn at zero on each axis."
  },
  "Volume vs. Efficiency": {
-  "hint": "How much each player shoots (attempts per 20) against how efficiently (TS%). High-volume and high-efficiency players end up in opposite corners."
+  "hint": "How much each player shoots (attempts per 25) against how efficiently (TS%). High-volume and high-efficiency players end up in opposite corners."
  },
  "TS% by Shot Distance": {
   "hint": "League-wide scoring efficiency at each shot distance, to see where shooting drops off. Free throws and shots without a marked spot aren't included."
@@ -26,7 +26,7 @@
  "League Shot Heatmap": {
   "hint": "Every marked shot, grouped by court zone. Each zone is tinted against the league average FG%: aqua above it, crimson below, darker with more attempts. The number is attempts. Backfill Shot Locations in Export fills in unmarked shots."
  },
- "Two-Way/20 Rank Over the Season": {
+ "Two-Way/25 Rank Over the Season": {
   "hint": "Where each player would rank if the season had ended on each date, based on every game up to then. A rising line means their standing is improving, not just one good night."
  },
  "Closed Seasons in This App (League)": {
@@ -66,7 +66,7 @@
   "hint": "A shot's real difficulty depends on zone, shot type, AND contest level together -- a heavily-contested drive to the rim and a wide-open catch-and-shoot from the same zone aren't equally hard, but zone alone (Points Over Expected, in the advanced columns above) gives them the same expected value. xPTS is the league average points-per-attempt for that shot's exact zone x shot type x contest level combination, falling back to the zone-only average whenever a specific combination has too few logged shots to trust on its own. Shot-Making Added is actual points minus xPTS, summed across attempts -- separates \"scores a lot because the shots are easy\" from \"scores efficiently on hard shots.\" Sorted by Added per Attempt."
  },
  "Shot-Making Added, Cumulative Over the Season": {
-  "hint": "Same shape as the Two-Way/20 Rank Over the Season chart -- running Shot-Making Added by date, one line per player, showing who's trending toward outperforming their shot difficulty versus drifting the other way."
+  "hint": "Same shape as the Two-Way/25 Rank Over the Season chart -- running Shot-Making Added by date, one line per player, showing who's trending toward outperforming their shot difficulty versus drifting the other way."
  },
  "Rivalries": {
   "hint": "League-wide superlatives from the real Poolean site's full pairwise history: the most-played pairing, the best real record together, the tightest real head-to-head, and the most lopsided one, each needing at least 5 real games to count.",
@@ -99,7 +99,7 @@
   "hint": "Each player's contested-rebound win rate against each other player. Fainter cells have fewer battles, and blank means they've never battled. Only players with 5+ contests appear."
  },
  "Teammate Lift Matrix": {
-  "hint": "How much each player (row) lifts or drags each teammate's (column) Two-Way/20. Aqua helps, crimson hurts. Blank means not enough games with and without each other. Row and column aren't mirror images."
+  "hint": "How much each player (row) lifts or drags each teammate's (column) Two-Way/25. Aqua helps, crimson hurts. Blank means not enough games with and without each other. Row and column aren't mirror images."
  },
  "Teammate Context": {
   "hint": "For each player: how good their teammates are, how tough the defenders they shoot over are, and how tough the scorers they guard are. Helps tell someone carried by good teammates from someone doing it alone."
@@ -157,7 +157,7 @@
   "hint": "Who scored the last basket in wins. In a race to a score the winner always scores last, so this counts who tends to close games, not rare heroics. Needs a video time on that shot."
  },
  "Stat Strengths": {
-  "hint": "Where each player sits against the league average on offense, defense, assists, rebounds, and steals plus blocks, per 20. A stat is called out only when it is well above or below average (0.75 standard deviations or more). Needs at least 4 players with 2 or more games."
+  "hint": "Where each player sits against the league average on offense, defense, assists, rebounds, and steals plus blocks, per 25. A stat is called out only when it is well above or below average (0.75 standard deviations or more). Needs at least 4 players with 2 or more games."
  },
  "Defensive Load": {
   "hint": "How much of their team's defending each player does: 1.0 is an even share, and above is more. Opp FG% is now Real Contested Opp FG% -- restricted to shots with a medium or heavy contest level, since a nominally-tagged defender and one who actually challenged the shot aren't the same thing. The old any-tag number is shown alongside it for comparison this first time it ships. Read it with Pts Allowed Under Exp (how they did against what they faced), not on its own."

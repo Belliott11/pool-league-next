@@ -98,7 +98,7 @@ export function LeagueHeatmap({ state }: { state: PooleanState }) {
   )
 }
 
-/* ---------- Two-Way/20 Rank Over the Season: rank 1 on top, every night on an even grid ---------- */
+/* ---------- Two-Way/25 Rank Over the Season: rank 1 on top, every night on an even grid ---------- */
 export function TwoWayRankChart({ state }: { state: PooleanState }) {
   const [ref, W] = useWidth()
   const { dates, series } = computeTwoWayRankOverSeason() as { dates: string[]; series: Record<string, { date: string; rank: number; twoWay: number }[]> }
@@ -156,7 +156,7 @@ export function TwoWayRankChart({ state }: { state: PooleanState }) {
                 <path d={d} className={`fill-none ${stroke[role]}`} strokeWidth={role === "rest" ? 1.5 : 2.5} strokeLinejoin="round" />
                 {pts.map((p) => (
                   <circle key={p.date} cx={x(idx[p.date])} cy={y(p.rank)} r={role === "rest" ? 2.5 : 3.5} className={`${fill[role]} stroke-card`} strokeWidth={1.5}>
-                    <title>{`${nameOf(id)}: #${p.rank} on ${formatDateDisplay(p.date)} (${p.twoWay.toFixed(1)} Two-Way/20)`}</title>
+                    <title>{`${nameOf(id)}: #${p.rank} on ${formatDateDisplay(p.date)} (${p.twoWay.toFixed(1)} Two-Way/25)`}</title>
                   </circle>
                 ))}
                 <text x={x(idx[end.date]) + 9} y={y(end.rank) + 3} className={`text-[10px] ${role === "rest" ? "fill-muted-foreground" : "fill-foreground font-bold"}`}>

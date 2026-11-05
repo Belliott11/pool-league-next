@@ -207,7 +207,7 @@ export function PredictionsCard({ state, p }: { state: PooleanState; p: Predicti
       {open ? (
         <>
           <p className="text-sm text-muted-foreground">
-            Call the award winners and the top three by two-way per 20 (the Standings order, at least 3 games) before opening night. Awards are worth 2 points, a top three spot 3 if exact and 1 if in the wrong spot. {entries.filter((e) => e.picks.mvp || (e.picks.top3 ?? []).length).length} in so far.
+            Call the award winners and the top three by two-way per 25 (the Standings order, at least 3 games) before opening night. Awards are worth 2 points, a top three spot 3 if exact and 1 if in the wrong spot. {entries.filter((e) => e.picks.mvp || (e.picks.top3 ?? []).length).length} in so far.
           </p>
           {!me ? (
             <IdentityPrompt state={state} text="Who are you? Pick yourself to make your picks." />
@@ -219,7 +219,7 @@ export function PredictionsCard({ state, p }: { state: PooleanState; p: Predicti
               <PlayerSelect state={state} value={duo[0] || undefined} onChange={(v) => setDuo([v, duo[1]])} label="Best duo" taken={[duo[1]]} />
               <PlayerSelect state={state} value={duo[1] || undefined} onChange={(v) => setDuo([duo[0], v])} label="and" taken={[duo[0]]} />
               {[0, 1, 2].map((i) => (
-                <PlayerSelect key={i} state={state} value={top[i] || undefined} onChange={(v) => setTop(i, v)} label={`Top 3 by two-way/20, ${ordinalOf(i + 1)}`} taken={top} />
+                <PlayerSelect key={i} state={state} value={top[i] || undefined} onChange={(v) => setTop(i, v)} label={`Top 3 by two-way/25, ${ordinalOf(i + 1)}`} taken={top} />
               ))}
               <Button className="self-start" onClick={() => void submit()}>
                 {mine?.picks.mvp || (mine?.picks.top3 ?? []).length ? "Update my picks" : "Save my picks"}

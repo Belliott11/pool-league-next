@@ -2221,7 +2221,7 @@
   margin: 0 0 6px;
 }
 
-/* Two-Way Quadrant — Off Rating/20 vs. Def Rating/20 scatter, axes crossing at zero on both stats
+/* Two-Way Quadrant — Off Rating/25 vs. Def Rating/25 scatter, axes crossing at zero on both stats
    rather than at the data's own midpoint (see the comment above computeQuadrantData() in
    app.js for why zero is the meaningful line here). */
 .legacy .quadrant-svg {

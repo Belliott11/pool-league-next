@@ -27,8 +27,8 @@ export function Sidebar({
   onOpenGame: (g: Game) => void
 }) {
   const board = computeLeaderboard(state)
-  const rows = board.filter((r) => r.gp > 0).sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
-  const twoWayText = distinctNumbers(rows.map((r) => r.twoWayPer20))
+  const rows = board.filter((r) => r.gp > 0).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
+  const twoWayText = distinctNumbers(rows.map((r) => r.twoWayPer25))
   // Everyone else is still listed, just not ranked until they have a box-scored game.
   const unranked = board.filter((r) => r.gp === 0)
   const recent = [...state.games].sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5)
@@ -45,7 +45,7 @@ export function Sidebar({
           {rows.length > 0 && (
             <>
               <p className="mb-2 text-xs text-muted-foreground">
-                Ranked by two-way per 20: offense plus defense per 20 points played. Only games with a box score and even teams count, so W-L here can be lower than in the season stories, which count every finished game. When two players show the same number, the exact value decides.
+                Ranked by two-way per 25: offense plus defense per 25 points played. Only games with a box score and even teams count, so W-L here can be lower than in the season stories, which count every finished game. When two players show the same number, the exact value decides.
               </p>
               <details className="mb-3 text-xs text-muted-foreground">
                 <summary className="cursor-pointer font-medium text-foreground">What do these numbers mean?</summary>
@@ -59,8 +59,8 @@ export function Sidebar({
                     <dd className="inline">steals, blocks and stops, minus times beaten and points allowed.</dd>
                   </div>
                   <div>
-                    <dt className="inline font-semibold text-foreground">Per 20: </dt>
-                    <dd className="inline">scaled to 20 points of play, so a short game and a long one compare fairly.</dd>
+                    <dt className="inline font-semibold text-foreground">Per 25: </dt>
+                    <dd className="inline">scaled to 25 combined points of play, so a short game and a long one compare fairly.</dd>
                   </div>
                   <div>
                     <dt className="inline font-semibold text-foreground">Uneven teams: </dt>
@@ -79,13 +79,13 @@ export function Sidebar({
                   <TableHead>#</TableHead>
                   <TableHead>Player</TableHead>
                   <TableHead>W-L</TableHead>
-                  <TableHead>Two-Way/20</TableHead>
+                  <TableHead>Two-Way/25</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((r, i) => (
                   <TableRow key={r.player.id}>
-                    <TableCell>{rows.filter((x) => x.twoWayPer20 > r.twoWayPer20).length + 1}{rows.filter((x) => x.twoWayPer20 === r.twoWayPer20).length > 1 ? " (tie)" : ""}</TableCell>
+                    <TableCell>{rows.filter((x) => x.twoWayPer25 > r.twoWayPer25).length + 1}{rows.filter((x) => x.twoWayPer25 === r.twoWayPer25).length > 1 ? " (tie)" : ""}</TableCell>
                     <TableCell>
                       <button
                         type="button"

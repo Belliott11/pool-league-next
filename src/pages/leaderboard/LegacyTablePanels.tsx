@@ -124,7 +124,7 @@ function nativePanel(title: string, state: PooleanState, open: (id: string) => v
     case "Volume vs. Efficiency": return <VolumeEfficiency onOpen={open} />
     case "League TS% Over Time": return <LeagueTsOverTime />
     case "League Shot Heatmap": return <LeagueHeatmap state={state} />
-    case "Two-Way/20 Rank Over the Season": return <TwoWayRankChart state={state} />
+    case "Two-Way/25 Rank Over the Season": return <TwoWayRankChart state={state} />
     case "League Passing Chemistry Grid": return <PassingChemistryGrid onOpen={open} />
     case "Shot-Making Added, Cumulative Over the Season": return <ShotMakingAddedChart state={state} />
     case "Stat Strengths": return <PlayStyleClusters onOpen={open} />

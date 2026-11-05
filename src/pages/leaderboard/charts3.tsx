@@ -150,7 +150,7 @@ export function PlayStyleClusters({ onOpen }: { onOpen: (id: string) => void }) 
           </div>
         )
       })}
-      <p className="text-xs text-muted-foreground">Compared with the league average per 20. Only stats at least 0.75 standard deviations from average are listed, and with few games a player's list can change quickly.</p>
+      <p className="text-xs text-muted-foreground">Compared with the league average per 25. Only stats at least 0.75 standard deviations from average are listed, and with few games a player's list can change quickly.</p>
     </div>
   )
 }

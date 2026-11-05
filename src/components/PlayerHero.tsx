@@ -29,14 +29,14 @@ export function PlayerHero({ pid, name, stats, form = [], onShare, onCard }: { p
           {stats ? (
             <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
               <div className="flex flex-col items-center">
-                <JerseyStat value={stats.twoWay} label="Two-Way/20" />
-                <div className="mt-1 text-sm text-muted-foreground">Two-Way/20</div>
+                <JerseyStat value={stats.twoWay} label="Two-Way/25" />
+                <div className="mt-1 text-sm text-muted-foreground">Two-Way/25</div>
               </div>
               <dl className="flex gap-6 sm:border-l sm:border-dashed sm:pl-6">
                 {[
                   ["Record", stats.record],
-                  ["PTS/20", stats.pts],
-                  ["Off/20", stats.off],
+                  ["PTS/25", stats.pts],
+                  ["Off/25", stats.off],
                 ].map(([k, v]) => (
                   <div key={k}>
                     <dd className="font-display text-xl font-bold tabular-nums">{v}</dd>

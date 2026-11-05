@@ -90,9 +90,9 @@ export function getPlayerPhysicalData(state: PooleanState, id: string): Physical
   return overrides?.[id] || PLAYER_PHYSICAL_DATA[id]
 }
 
-const CLEAN_SWEEP_BONUS = 1.2
+const CLEAN_SWEEP_BONUS = 1.5 // was 1.2 when rates were per 20; scaled by 25/20
 export function estimatedQualityFromReputation(avgPercentile: number, parties: number): number {
-  const base = (avgPercentile - 50) / 10
+  const base = (avgPercentile - 50) / 8 // a 10-point percentile gap was 1 per-20 point; per 25 it is 1.25
   return avgPercentile === 100 && parties >= 2 ? base + CLEAN_SWEEP_BONUS : base
 }
 
@@ -115,7 +115,7 @@ export function computeBalanceQualityMap(state: PooleanState): Record<string, Qu
   const map: Record<string, QualityEntry> = {}
   computeLeaderboard(state).forEach((r) => {
     if (r.gp > 0) {
-      map[r.player.id] = { quality: r.twoWayPer20, source: "stats" }
+      map[r.player.id] = { quality: r.twoWayPer25, source: "stats" }
     } else {
       const rep = computePooleanReputation(r.player.id)
       map[r.player.id] = rep
@@ -186,14 +186,14 @@ function teamSetSignature(teams: string[][]): string {
 type LiftMap = Record<string, { value: number; gp: number }>
 type WinRateMap = Record<string, { value: number; gp: number; real: boolean }>
 
-// How each attendee's own Two-Way/20 actually changed with each other attendee on their team.
+// How each attendee's own Two-Way/25 actually changed with each other attendee on their team.
 export function computeChemistryLiftMap(state: PooleanState, attendeeIds: string[]): LiftMap {
   const map: LiftMap = {}
   attendeeIds.forEach((playerId) => {
     computeTeammateSynergy(state, playerId).forEach((r) => {
       if (!attendeeIds.includes(r.teammate.id)) return
       if (r.with.gp === 0 || r.without.gp === 0) return
-      const lift = r.with.twoWayPer20 - r.without.twoWayPer20
+      const lift = r.with.twoWayPer25 - r.without.twoWayPer25
       const confidence = Math.min(1, r.with.gp / 3)
       map[`${playerId}|${r.teammate.id}`] = { value: lift * confidence, gp: r.with.gp }
     })
@@ -220,7 +220,7 @@ export function teamChemistryAdjustment(team: string[], liftMap: LiftMap) {
   return { value: count > 0 ? sum / count : 0, minGp }
 }
 
-// Win rate of every attendee pair that shared a team, converted to a Two-Way/20-scale adjustment.
+// Win rate of every attendee pair that shared a team, converted to a Two-Way/25-scale adjustment.
 // Prefers the real site's full pairwise history over this app's own logged subset.
 export function computeTeamWinRateMap(state: PooleanState, attendeeIds: string[]): WinRateMap {
   const map: WinRateMap = {}
@@ -253,7 +253,7 @@ export function computeTeamWinRateMap(state: PooleanState, attendeeIds: string[]
         winPct = ((wins + ties * 0.5) / gp) * 100
       }
       const confidence = Math.min(1, gp / 3)
-      map[`${a}|${b}`] = { value: ((winPct - 50) / 10) * confidence, gp, real: !!real }
+      map[`${a}|${b}`] = { value: ((winPct - 50) / 8) * confidence, gp, real: !!real }
     }
   }
   return map

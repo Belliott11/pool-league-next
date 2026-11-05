@@ -1,7 +1,7 @@
 import { headToHead } from "@/lib/headToHead"
 import { injuryBoard, statusInfo } from "@/lib/injuries"
 import { gameDays, playerLine } from "@/lib/nightRecap"
-import { adder, rank, say, streaks, twoWayPer20Of, type Item } from "@/lib/storylines"
+import { adder, rank, say, streaks, twoWayPer25Of, type Item } from "@/lib/storylines"
 import type { PooleanState, Rsvp } from "@/lib/types"
 
 type Name = (id: string) => string
@@ -82,11 +82,11 @@ export function previewStoriesFor(state: PooleanState, coming: string[], name: N
     .filter((x) => x.n >= 3)
     .sort((x, y) => y.avg - x.avg)
   if (tw.length >= 3) {
-    const per20 = twoWayPer20Of(state)
+    const per25 = twoWayPer25Of(state)
     const top = tw[0]
     const low = tw[tw.length - 1]
-    add(2, top.id, say("pv-top" + top.id, `${name(top.id)} is the best all-around player on the list, ${per20(top.id)} two-way per 20. Everyone else is playing for second.`, `Who is the best on tonight's list? ${name(top.id)}, ${per20(top.id)} two-way per 20, and they know.`))
-    if (low.avg < 0) add(1.6, low.id, say("pv-low" + low.id, `${name(low.id)} is on the list at ${per20(low.id)} two-way per 20, so whichever team gets them has a plan to make.`, `Whoever gets ${name(low.id)} tonight should know the average is ${per20(low.id)} two-way. Plan accordingly.`))
+    add(2, top.id, say("pv-top" + top.id, `${name(top.id)} is the best all-around player on the list, ${per25(top.id)} two-way per 25. Everyone else is playing for second.`, `Who is the best on tonight's list? ${name(top.id)}, ${per25(top.id)} two-way per 25, and they know.`))
+    if (low.avg < 0) add(1.6, low.id, say("pv-low" + low.id, `${name(low.id)} is on the list at ${per25(low.id)} two-way per 25, so whichever team gets them has a plan to make.`, `Whoever gets ${name(low.id)} tonight should know the average is ${per25(low.id)} two-way. Plan accordingly.`))
   }
 
   return rank(items, 6)

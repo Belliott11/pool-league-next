@@ -22,7 +22,7 @@ function Form({ results }: { results: Result[] }) {
   )
 }
 
-// Both sides as a lineup: name, recent form and two-way per 20, with each side's key player marked and compared.
+// Both sides as a lineup: name, recent form and two-way per 25, with each side's key player marked and compared.
 export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; game: Game; onOpenGame?: (g: Game) => void }) {
   const rows = useMemo(() => boardOf(state), [state])
   const byId = useMemo(() => new Map(rows.map((r) => [r.player.id, r])), [rows])
@@ -52,11 +52,11 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
                       {isKey && <Star aria-label="Key player" className="ml-1 inline size-3.5 fill-gold text-gold" />}
                     </span>
                     <Form results={recentForm(state, id, game)} />
-                    <span className="w-10 text-right tabular-nums text-muted-foreground">{r && r.gp > 0 ? r.twoWayPer20.toFixed(1) : "-"}</span>
+                    <span className="w-10 text-right tabular-nums text-muted-foreground">{r && r.gp > 0 ? r.twoWayPer25.toFixed(1) : "-"}</span>
                   </div>
                 )
               })}
-              <p className="text-xs text-muted-foreground">Last 5 games before this one, then two-way per 20.</p>
+              <p className="text-xs text-muted-foreground">Last 5 games before this one, then two-way per 25.</p>
             </CardContent>
           </Card>
         ))}
@@ -74,8 +74,8 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
               <span className={cn("text-right font-semibold", TEAM.B.text)}>{kb.player.name}</span>
               {(
                 [
-                  ["Two-way per 20", ka.twoWayPer20.toFixed(1), kb.twoWayPer20.toFixed(1)],
-                  ["Points per 20", ka.ptsPer20.toFixed(1), kb.ptsPer20.toFixed(1)],
+                  ["Two-way per 25", ka.twoWayPer25.toFixed(1), kb.twoWayPer25.toFixed(1)],
+                  ["Points per 25", ka.ptsPer25.toFixed(1), kb.ptsPer25.toFixed(1)],
                   ["Games", String(ka.gp), String(kb.gp)],
                   ["Record", `${ka.wins}-${ka.losses}`, `${kb.wins}-${kb.losses}`],
                 ] as const

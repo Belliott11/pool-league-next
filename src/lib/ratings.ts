@@ -1,3 +1,4 @@
+import { PER } from "@/lib/per"
 import { defensiveRating, gameDefenseStats, gameTotalPoints, getGameStats, offensiveRating, qualifyingGamesForPlayer, shootingStats, trueShootingPct } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 
@@ -28,7 +29,7 @@ interface Inputs {
   defense: number
 }
 
-// Everything per 20 combined points, the same pace adjustment as the standings.
+// Everything per 25 combined points, the same pace adjustment as the standings.
 function inputsFor(state: PooleanState, id: string, before?: string): Inputs {
   const games = qualifyingGamesForPlayer(state, id)
     .filter((g) => before === undefined || g.date < before)
@@ -50,15 +51,15 @@ function inputsFor(state: PooleanState, id: string, before?: string): Inputs {
     t.off += offensiveRating(s, sh)
     t.def += defensiveRating(s, d)
   }
-  const per20 = (v: number) => (total > 0 ? (v / total) * 20 : 0)
+  const per25 = (v: number) => (total > 0 ? (v / total) * PER : 0)
   return {
     games: games.length,
-    twoWay: per20(t.off + t.def),
-    scoring: per20(t.pts),
+    twoWay: per25(t.off + t.def),
+    scoring: per25(t.pts),
     shooting: t.fga >= MIN_SHOTS ? trueShootingPct(t.pts, t.fga, t.fta) : null,
-    playmaking: per20(t.ast - 0.5 * t.tov),
-    rebounding: per20(t.reb),
-    defense: per20(t.def),
+    playmaking: per25(t.ast - 0.5 * t.tov),
+    rebounding: per25(t.reb),
+    defense: per25(t.def),
   }
 }
 

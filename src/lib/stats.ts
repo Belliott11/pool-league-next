@@ -10,6 +10,7 @@
 //     calibration state this slice doesn't load) -- fgm/fga/tpm/tpa/ftm/fta are unaffected.
 // Every formula that IS included is unchanged from app.js, not reimplemented from memory.
 
+import { PER } from "@/lib/per"
 import type { Game, Player, PlayerGameStats, PooleanState } from "./types"
 
 export function isBalancedGame(game: Game): boolean {
@@ -174,14 +175,14 @@ export interface LeaderboardRow {
   winPct: number | null
   totals: PlayerGameStats
   shooting: ShootingStats
-  ptsPer20: number
-  astPer20: number
+  ptsPer25: number
+  astPer25: number
   tovSplit: TovSplit
   tovPct: number | null
   astTov: string
   tsPct: number | null
-  offRatingPer20: number
-  twoWayPer20: number
+  offRatingPer25: number
+  twoWayPer25: number
 }
 
 // Mirrors computeLeaderboardUncached() in app.js, trimmed to the columns this slice's Season
@@ -227,7 +228,7 @@ export function computeLeaderboard(state: PooleanState): LeaderboardRow[] {
     const gp = gamesPlayed.length
     const totalOffRating = offensiveRating(totals, shooting)
     const totalTwoWay = totalOffRating + defensiveRating(totals, defense)
-    const per20 = (value: number) => (combinedPoints > 0 ? (value / combinedPoints) * 20 : 0)
+    const per25 = (value: number) => (combinedPoints > 0 ? (value / combinedPoints) * PER : 0)
     const tovSplit = computeTovSplit(state, p.id)
 
     return {
@@ -239,14 +240,14 @@ export function computeLeaderboard(state: PooleanState): LeaderboardRow[] {
       winPct: wins + losses > 0 ? pct(wins, wins + losses) : null,
       totals,
       shooting,
-      ptsPer20: per20(totals.pts),
-      astPer20: per20(totals.ast),
+      ptsPer25: per25(totals.pts),
+      astPer25: per25(totals.ast),
       tovSplit,
       tovPct: turnoverPct(tovSplit.liveBall, shooting.fga, shooting.fta),
       astTov: formatAstTov(totals.ast, tovSplit.liveBall),
       tsPct: trueShootingPct(totals.pts, shooting.fga, shooting.fta),
-      offRatingPer20: per20(totalOffRating),
-      twoWayPer20: per20(totalTwoWay),
+      offRatingPer25: per25(totalOffRating),
+      twoWayPer25: per25(totalTwoWay),
     }
   })
 }
@@ -299,7 +300,7 @@ export function formatVideoTime(t: number | null | undefined): string {
 
 // ---- Planner helpers (ported from app.js) ----
 
-// Same per-20 math as computeLeaderboard(), scoped to a specific subset of one player's games.
+// Same per-25 math as computeLeaderboard(), scoped to a specific subset of one player's games.
 export function computeRateSummaryForGames(playerId: string, games: Game[]) {
   const totals: PlayerGameStats = { playerId, pts: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 }
   const shooting: ShootingStats = { fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0 }
@@ -319,12 +320,12 @@ export function computeRateSummaryForGames(playerId: string, games: Game[]) {
   })
   const totalOffRating = offensiveRating(totals, shooting)
   const totalTwoWay = totalOffRating + defensiveRating(totals, defense)
-  const per20 = (value: number) => (combinedPoints > 0 ? (value / combinedPoints) * 20 : 0)
-  return { gp: games.length, offRatingPer20: per20(totalOffRating), twoWayPer20: per20(totalTwoWay) }
+  const per25 = (value: number) => (combinedPoints > 0 ? (value / combinedPoints) * PER : 0)
+  return { gp: games.length, offRatingPer25: per25(totalOffRating), twoWayPer25: per25(totalTwoWay) }
 }
 
 // For each teammate this player has shared a team with, split their own games into "with" and
-// "without" that teammate and compare per-20 output across the split.
+// "without" that teammate and compare per-25 output across the split.
 export function computeTeammateSynergy(state: PooleanState, playerId: string) {
   const qualifyingGames = qualifyingGamesForPlayer(state, playerId)
   const teammateIds = new Set<string>()

@@ -5,7 +5,7 @@ import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
 import { watchList, type Kind, type Signal, type Watch } from "@/lib/watchList"
 
-const LABEL: Record<Kind, string> = { twoWay: "Two-way per 20", scoring: "Points per 20", wins: "Win rate", power: "Old site power rank" }
+const LABEL: Record<Kind, string> = { twoWay: "Two-way per 25", scoring: "Points per 25", wins: "Win rate", power: "Old site power rank" }
 const show = (s: Signal, v: number) => (s.kind === "wins" ? `${Math.round(v * 100)}%` : s.kind === "power" ? String(Math.round(v)) : v.toFixed(1))
 
 function Row({ state, w, onOpenPlayer }: { state: PooleanState; w: Watch; onOpenPlayer: (id: string) => void }) {

@@ -9,6 +9,7 @@ import hints from "@/data/panel-hints.json"
 import { MOUNT_PANELS, TABLE_PANELS } from "@/lib/legacy-core"
 import { LEADERBOARD_DROP, LEADERBOARD_GROUPS, placeOf } from "@/lib/panelGroups"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
+import { StatLegend } from "@/components/StatLegend"
 import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
 import { LaneBars } from "./leaderboard/LaneBars"
 import { SeasonRates } from "./leaderboard/SeasonRates"
@@ -27,7 +28,7 @@ const SECTIONS: { key: string; title: string }[] = [
 const HINTS = hints as Record<string, { hint: string }>
 const sectionTitle = (key: string) => SECTIONS.find((s) => s.key === key)?.title ?? key
 const JUMP_ITEMS: JumpItem[] = [
-  { title: "Two-Way Ranking", group: "Top of the page", sectionId: null, hint: "Every player ranked by Two-Way/20" },
+  { title: "Two-Way Ranking", group: "Top of the page", sectionId: null, hint: "Every player ranked by Two-Way/25" },
   { title: "Season Rates (Individual)", group: "Top of the page", sectionId: null, hint: "The full stat table" },
   ...[...(TABLE_PANELS as { title: string; section: string }[]), ...(MOUNT_PANELS as { title: string; section: string }[])]
     .filter((p) => !LEADERBOARD_DROP.has(p.title) && !placeOf(p.title, LEADERBOARD_GROUPS)?.editorOnly)
@@ -82,7 +83,12 @@ export function LeaderboardPage({
   const teasers = computeLeaderboardSectionTeasers() as Record<string, string>
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as heatmap or turnovers (press /)" />
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as heatmap or turnovers (press /)" />
+        </div>
+        <StatLegend />
+      </div>
       <QuickNav />
       <div id="lb-ranking" className="anim-rise scroll-mt-28" style={{ "--i": 0 } as React.CSSProperties}>
         <LaneBars onOpenPlayer={onOpenPlayer} />

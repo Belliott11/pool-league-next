@@ -21,9 +21,9 @@ export function recentForm(state: PooleanState, id: string, game: Game, n = 5): 
     .slice(-n)
 }
 
-// The best all-around player of a side: highest two-way per 20 among those with a box score.
+// The best all-around player of a side: highest two-way per 25 among those with a box score.
 export function keyPlayer(rows: LeaderboardRow[], ids: string[]): LeaderboardRow | null {
-  return rows.filter((r) => ids.includes(r.player.id) && r.gp > 0).sort((a, b) => b.twoWayPer20 - a.twoWayPer20)[0] ?? null
+  return rows.filter((r) => ids.includes(r.player.id) && r.gp > 0).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)[0] ?? null
 }
 
 export const boardOf = (state: PooleanState) => computeLeaderboard(state)

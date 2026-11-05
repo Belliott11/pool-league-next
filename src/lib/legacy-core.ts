@@ -1,6 +1,7 @@
 // @ts-nocheck
 // The classic site's compute layer, column definitions and dependencies, taken verbatim so the numbers match the
 // classic site exactly. It started as generated output; the generator is gone, so edit this file directly.
+import { PER } from "@/lib/per";
 let state = { players: [], games: [], masterVideos: [], rsvps: [], seasonHistory: [], currentSeasonStartedAt: null, playerPhysicalOverrides: {} };
 function saveState() { window.dispatchEvent(new CustomEvent("legacy-state-changed")); }
 export function setLegacyState(s) { state = s; invalidateComputedCaches(); }
@@ -199,7 +200,7 @@ const OUTLIER_MIN_GAMES = 4;
 function qualifyingGamesForPlayer(playerId) {
   const base = state.games.filter(g => isQualifyingGame(g) && (g.teamA.includes(playerId) || g.teamB.includes(playerId)));
   if (includeOutlierGames || base.length < OUTLIER_MIN_GAMES) return base;
-  const withTwoWay = base.map(g => ({ game: g, twoWay: computeRateSummaryForGames(playerId, [g]).twoWayPer20 }));
+  const withTwoWay = base.map(g => ({ game: g, twoWay: computeRateSummaryForGames(playerId, [g]).twoWayPer25 }));
   const sorted = [...withTwoWay.map(x => x.twoWay)].sort((a, b) => a - b);
   const q1 = quantile(sorted, 0.25);
   const q3 = quantile(sorted, 0.75);
@@ -405,21 +406,21 @@ function formatDateDisplay(dateStr) {
 function renderStandingsSidebar(containerId) {
   const wrap = document.getElementById(containerId);
   if (!wrap) return;
-  const rows = computeLeaderboard().filter(r => r.gp > 0).sort((a, b) => b.twoWayPer20 - a.twoWayPer20);
+  const rows = computeLeaderboard().filter(r => r.gp > 0).sort((a, b) => b.twoWayPer25 - a.twoWayPer25);
   if (rows.length === 0) {
     wrap.innerHTML = '<p class="empty-state">No games with players yet.</p>';
     return;
   }
   wrap.innerHTML = `
     <table class="standings-mini-table">
-      <thead><tr><th>#</th><th>Player</th><th>W-L</th><th>Two-Way/20</th></tr></thead>
+      <thead><tr><th>#</th><th>Player</th><th>W-L</th><th>Two-Way/25</th></tr></thead>
       <tbody>
         ${rows.map((r, i) => `
           <tr>
             <td>${i + 1}</td>
             <td class="standings-mini-name"><button type="button" class="icon-btn standings-mini-player-btn" data-player-id="${r.player.id}">${renderPlayerAvatar(r.player)}${escapeHtml(r.player.name)}</button></td>
             <td>${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}</td>
-            <td class="num-cell">${r.twoWayPer20.toFixed(1)}</td>
+            <td class="num-cell">${r.twoWayPer25.toFixed(1)}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -465,25 +466,25 @@ function renderLeaderboardHighlights() {
   const board = computeLeaderboard().filter(r => r.gp > 0);
   const cards = [];
 
-  // Biggest positive Last 5 vs. season Two-Way/20 gap, not just the highest raw Last 5 number —
+  // Biggest positive Last 5 vs. season Two-Way/25 gap, not just the highest raw Last 5 number —
   // a great player having a normal week shouldn't outrank someone actually trending up. Needs at
   // least 3 of their last 5 games logged to count as a real trend, and a real ▲ (same >0.5
   // threshold the Last 5 column itself uses), not just noise around a flat week.
   const hotStreak = board
     .filter(r => r.last5Gp >= 3)
-    .map(r => ({ player: r.player, delta: r.last5TwoWayPer20 - r.twoWayPer20, last5: r.last5TwoWayPer20, season: r.twoWayPer20 }))
+    .map(r => ({ player: r.player, delta: r.last5TwoWayPer25 - r.twoWayPer25, last5: r.last5TwoWayPer25, season: r.twoWayPer25 }))
     .filter(r => r.delta > 0.5)
     .sort((a, b) => b.delta - a.delta)[0];
   if (hotStreak) {
     cards.push({ icon: icon("flame"), label: "Hot Streak", player: hotStreak.player,
-      detail: `${hotStreak.last5.toFixed(1)} Two-Way/20 over their last 5, up from ${hotStreak.season.toFixed(1)} on the season` });
+      detail: `${hotStreak.last5.toFixed(1)} Two-Way/25 over their last 5, up from ${hotStreak.season.toFixed(1)} on the season` });
   }
 
   // Same ranking as the full Consistency panel, just the #1 surfaced here.
   const consistent = computeConsistencyStandings()[0];
   if (consistent) {
     cards.push({ icon: icon("target"), label: "Most Consistent", player: consistent.player,
-      detail: `±${consistent.stdDev.toFixed(1)} Two-Way/20 std dev across ${consistent.gp} games` });
+      detail: `±${consistent.stdDev.toFixed(1)} Two-Way/25 std dev across ${consistent.gp} games` });
   }
 
   // Best TS% in games decided by the calibrated close-game margin or fewer — needs at least 5
@@ -502,15 +503,15 @@ function renderLeaderboardHighlights() {
       detail: `${topDuo.count} assist${topDuo.count === 1 ? "" : "s"} to ${playerLink(topDuo.scorer.id, topDuo.scorer.name)}` });
   }
 
-  // League's top Def Rating/20 — every other card here leans offense/situational, so this rounds
+  // League's top Def Rating/25 — every other card here leans offense/situational, so this rounds
   // things out with a defense-focused one. Same formula and column as the main table's own
-  // Def Rating/20, just the #1 surfaced here instead of requiring a sort click.
+  // Def Rating/25, just the #1 surfaced here instead of requiring a sort click.
   const bestDefender = [...board]
     .map(r => ({ player: r.player, defRating: defensiveRating(r.rate, r.rateDefense) }))
     .sort((a, b) => b.defRating - a.defRating)[0];
   if (bestDefender) {
     cards.push({ icon: icon("shield"), label: "Best Defender", player: bestDefender.player,
-      detail: `${bestDefender.defRating.toFixed(1)} Def Rating/20` });
+      detail: `${bestDefender.defRating.toFixed(1)} Def Rating/25` });
   }
 
   if (cards.length === 0) {
@@ -944,7 +945,7 @@ function renderGames() {
       ? ` <span class="badge badge-lowlight" title="This game ended early. Not comparable to a complete game -- excluded from Best/Worst Games, Power Ranking vs. Performance, Shot Attempt Differential, Pace/PPP, and Win Shares. Season-total rates still include it.">${icon("stop")} Stopped Early</span>`
       : "";
     // Best/worst-of-the-game badge — same Two-Way score Best & Worst Individual Games ranks by
-    // (Off Rating + Def Rating for that one game, not a per-20 rate or season number), just
+    // (Off Rating + Def Rating for that one game, not a per-25 rate or season number), just
     // scoped to this specific game's own roster instead of pooled across the whole season. Only
     // meaningful once there's real data to rank and at least two players to compare, so an
     // unreviewed game or a lone-player roster gets neither badge rather than a trivial or
@@ -1105,10 +1106,10 @@ function getPlayerPhysicalData(id) {
   return state.playerPhysicalOverrides?.[id] || PLAYER_PHYSICAL_DATA[id];
 }
 
-const CLEAN_SWEEP_BONUS = 1.2;
+const CLEAN_SWEEP_BONUS = 1.5;
 
 function estimatedQualityFromReputation(avgPercentile, parties) {
-  const base = (avgPercentile - 50) / 10;
+  const base = (avgPercentile - 50) / 8;
   return avgPercentile === 100 && parties >= 2 ? base + CLEAN_SWEEP_BONUS : base;
 }
 
@@ -1126,7 +1127,7 @@ function computeBalanceQualityMap() {
   const map = {};
   board.forEach(r => {
     if (r.gp > 0) {
-      map[r.player.id] = { quality: r.twoWayPer20, source: "stats" };
+      map[r.player.id] = { quality: r.twoWayPer25, source: "stats" };
     } else {
       const rep = computePooleanReputation(r.player.id);
       map[r.player.id] = rep
@@ -1159,7 +1160,7 @@ function computeChemistryLiftMap(attendeeIds) {
     computeTeammateSynergy(playerId).forEach(r => {
       if (!attendeeIds.includes(r.teammate.id)) return;
       if (r.with.gp === 0 || r.without.gp === 0) return;
-      const lift = r.with.twoWayPer20 - r.without.twoWayPer20;
+      const lift = r.with.twoWayPer25 - r.without.twoWayPer25;
       const confidence = Math.min(1, r.with.gp / 3);
       map[`${playerId}|${r.teammate.id}`] = { value: lift * confidence, gp: r.with.gp };
     });
@@ -1194,7 +1195,7 @@ function computeTeamWinRateMap(attendeeIds) {
         winPct = ((wins + ties * 0.5) / gp) * 100;
       }
       const confidence = Math.min(1, gp / 3);
-      map[`${a}|${b}`] = { value: ((winPct - 50) / 10) * confidence, gp, real: !!real };
+      map[`${a}|${b}`] = { value: ((winPct - 50) / 8) * confidence, gp, real: !!real };
     }
   }
   return map;
@@ -2490,42 +2491,42 @@ function computeLeaderboardUncached() {
     // per-game numbers would.
     const totalOffRating = offensiveRating(totals, shooting);
     const totalTwoWay = totalOffRating + defensiveRating(totals, defense);
-    // Every counting stat on the Leaderboard is a rate per 20 combined points scored in the
+    // Every counting stat on the Leaderboard is a rate per 25 combined points scored in the
     // game, not a per-game average — games are capped at different totals (16 or 21), so a
     // player who mostly plays 16-point games isn't fairly compared to one who mostly plays
     // 21s by a plain per-game average. The combined final score stands in for "how much game
-    // happened," since possessions aren't tracked. This is the same reasoning PTS/20 and
-    // Off Rating/20 always used, just applied uniformly instead of singling those two out.
-    const per20 = value => combinedPoints > 0 ? (value / combinedPoints) * 20 : 0;
+    // happened," since possessions aren't tracked. This is the same reasoning PTS/25 and
+    // Off Rating/25 always used, just applied uniformly instead of singling those two out.
+    const per25 = value => combinedPoints > 0 ? (value / combinedPoints) * PER : 0;
     const rate = {};
-    STAT_FIELDS.forEach(f => { rate[f] = per20(totals[f]); });
+    STAT_FIELDS.forEach(f => { rate[f] = per25(totals[f]); });
     const rateShooting = {};
-    Object.keys(shooting).forEach(k => { rateShooting[k] = per20(shooting[k]); });
+    Object.keys(shooting).forEach(k => { rateShooting[k] = per25(shooting[k]); });
     const rateDefense = {
-      ptsAllowed: per20(defense.ptsAllowed),
-      timesBeaten: per20(defense.timesBeaten),
-      stops: per20(defense.stops),
-      blocksNotAlreadyStopped: per20(defense.blocksNotAlreadyStopped)
+      ptsAllowed: per25(defense.ptsAllowed),
+      timesBeaten: per25(defense.timesBeaten),
+      stops: per25(defense.stops),
+      blocksNotAlreadyStopped: per25(defense.blocksNotAlreadyStopped)
     };
-    // Last 5 games (by date, not insertion order), same per-20 math as the season — a quick
+    // Last 5 games (by date, not insertion order), same per-25 math as the season — a quick
     // "how are they trending lately" read next to the season number, not a separate stat family.
     // Fewer than 5 games played just means fewer games in the window, not a blank/"—" — the
     // comparison still means something with 2-3 games, just noisier.
     const last5Games = [...gamesPlayed].sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5);
     const last5 = computeRateSummaryForGames(p.id, last5Games);
-    const seasonOffRatingPer20 = per20(totalOffRating);
-    const last5Delta = last5.gp > 0 ? last5.offRatingPer20 - seasonOffRatingPer20 : null;
+    const seasonOffRatingPer25 = per25(totalOffRating);
+    const last5Delta = last5.gp > 0 ? last5.offRatingPer25 - seasonOffRatingPer25 : null;
     // ±0.5 counts as flat rather than a real trend — otherwise a 0.1 wobble reads as a signal.
     // "●" for flat, not "-"/"–" — a dash next to a number reads as a minus sign, not "no change."
-    const last5Trend = last5Delta === null ? "" : last5Delta > 0.5 ? "▲" : last5Delta < -0.5 ? "▼" : "●";
+    const last5Trend = last5Delta === null ? "" : last5Delta > 0.6 ? "▲" : last5Delta < -0.6 ? "▼" : "●";
     const tovSplit = computeTovSplit(p.id);
     return {
       player: p, gp, totals, shooting, defense, rate, rateShooting, rateDefense,
       wins, losses, ties,
       winPct: (wins + losses) > 0 ? pct(wins, wins + losses) : null,
-      offRatingPer20: seasonOffRatingPer20,
-      twoWayPer20: per20(totalTwoWay),
-      // Season-long sums, not per-20 rates — for the rare comparison (MVP) where "played a lot
+      offRatingPer25: seasonOffRatingPer25,
+      twoWayPer25: per25(totalTwoWay),
+      // Season-long sums, not per-25 rates — for the rare comparison (MVP) where "played a lot
       // and contributed a lot" should outweigh a slightly higher rate over fewer games.
       offRatingTotal: totalOffRating,
       twoWayTotal: totalTwoWay,
@@ -2556,7 +2557,7 @@ function computeLeaderboardUncached() {
       // since that's what actually happened in the game, not a rate stat.
       tovPct: turnoverPct(tovSplit.liveBall, shooting.fga, shooting.fta),
       astTov: formatAstTov(totals.ast, tovSplit.liveBall),
-      last5Gp: last5.gp, last5OffRatingPer20: last5.offRatingPer20, last5TwoWayPer20: last5.twoWayPer20, last5Trend
+      last5Gp: last5.gp, last5OffRatingPer25: last5.offRatingPer25, last5TwoWayPer25: last5.twoWayPer25, last5Trend
     };
   });
 }
@@ -2567,7 +2568,7 @@ function computeConsistencyStandings() {
     const values = computeTwoWayTrend(r.player.id).points.map(p => p.value);
     const mean = values.reduce((a, b) => a + b, 0) / values.length;
     const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
-    return { player: r.player, gp: r.gp, twoWayPer20: r.twoWayPer20, stdDev: Math.sqrt(variance) };
+    return { player: r.player, gp: r.gp, twoWayPer25: r.twoWayPer25, stdDev: Math.sqrt(variance) };
   }).sort((a, b) => a.stdDev - b.stdDev);
 }
 
@@ -2583,13 +2584,13 @@ function renderConsistencyStandings() {
     <td>${i + 1}</td>
     <td><button type="button" class="icon-btn consistency-player-btn" style="color:var(--accent);font-weight:700" data-player-id="${r.player.id}">${escapeHtml(r.player.name)}</button></td>
     <td>${r.stdDev.toFixed(1)}</td>
-    <td>${r.twoWayPer20.toFixed(1)}</td>
+    <td>${r.twoWayPer25.toFixed(1)}</td>
     <td>${r.gp}</td>
   </tr>`).join("");
   wrap.innerHTML = `
     <div class="table-scroll">
       <table class="matchup-table">
-        <thead><tr><th>#</th><th>Player</th><th>Two-Way Std Dev</th><th>Two-Way/20</th><th>GP</th></tr></thead>
+        <thead><tr><th>#</th><th>Player</th><th>Two-Way Std Dev</th><th>Two-Way/25</th><th>GP</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>
@@ -2688,7 +2689,7 @@ const DEFENSIVE_LOAD_COLUMNS = [
       ? `Not enough contested volume yet<br><span class="hint" style="margin:0">was ${formatPct(r.oppFgPct)} any-tag</span>`
       : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${r.realContested.made}/${r.realContested.attempts} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`,
   },
-  { key: "defrtg", label: "Def Rating/20", accessor: r => r.defRtg, display: r => r.defRtg.toFixed(1) },
+  { key: "defrtg", label: "Def Rating/25", accessor: r => r.defRtg, display: r => r.defRtg.toFixed(1) },
   {
     key: "xpa", label: "Pts Allowed Under Exp",
     accessor: r => r.pointsAllowedUnderExpected,
@@ -3157,26 +3158,26 @@ function computeAwardStandings() {
     state.players.forEach(other => {
       if (other.id === p.id) return;
       const synergy = computeTeammateSynergy(other.id).find(s => s.teammate.id === p.id);
-      if (synergy && synergy.with.gp > 0 && synergy.without.gp > 0) lifts.push(synergy.with.twoWayPer20 - synergy.without.twoWayPer20);
+      if (synergy && synergy.with.gp > 0 && synergy.without.gp > 0) lifts.push(synergy.with.twoWayPer25 - synergy.without.twoWayPer25);
     });
     if (lifts.length === 0) return null;
     const avg = lifts.reduce((a, b) => a + b, 0) / lifts.length;
-    return { player: p, value: avg, display: `${avg >= 0 ? "+" : ""}${avg.toFixed(1)} Two-Way/20 avg lift (${lifts.length} teammate${lifts.length === 1 ? "" : "s"})` };
+    return { player: p, value: avg, display: `${avg >= 0 ? "+" : ""}${avg.toFixed(1)} Two-Way/25 avg lift (${lifts.length} teammate${lifts.length === 1 ? "" : "s"})` };
   }).filter(Boolean).sort((a, b) => b.value - a.value);
 
   return {
-    twoWay: [...board].sort((a, b) => b.twoWayPer20 - a.twoWayPer20)
-      .map(r => ({ player: r.player, value: r.twoWayPer20, display: `${r.twoWayPer20.toFixed(1)} Two-Way/20` })),
+    twoWay: [...board].sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
+      .map(r => ({ player: r.player, value: r.twoWayPer25, display: `${r.twoWayPer25.toFixed(1)} Two-Way/25` })),
     twoWayTotal: [...board].sort((a, b) => b.twoWayTotal - a.twoWayTotal)
       .map(r => ({ player: r.player, value: r.twoWayTotal, display: `${r.twoWayTotal.toFixed(1)} Two-Way (season)` })),
     defRating: [...board].sort((a, b) => defensiveRating(b.rate, b.rateDefense) - defensiveRating(a.rate, a.rateDefense))
-      .map(r => ({ player: r.player, value: defensiveRating(r.rate, r.rateDefense), display: `${defensiveRating(r.rate, r.rateDefense).toFixed(1)} Def Rating/20` })),
+      .map(r => ({ player: r.player, value: defensiveRating(r.rate, r.rateDefense), display: `${defensiveRating(r.rate, r.rateDefense).toFixed(1)} Def Rating/25` })),
     gwb: computeGameWinningBuckets()
       .map(r => ({ player: r.player, value: r.count, display: `${r.count} game-winning bucket${r.count === 1 ? "" : "s"}` })),
     closeGameTs: [...computeCloseGameShooting()].sort((a, b) => b.ts - a.ts)
       .map(r => ({ player: r.player, value: r.ts, display: `${r.ts}% TS in close games (${r.gp} game${r.gp === 1 ? "" : "s"}, ${r.attempts} att)` })),
-    trend: [...board].sort((a, b) => b.last5TwoWayPer20 - a.last5TwoWayPer20)
-      .map(r => ({ player: r.player, value: r.last5TwoWayPer20, display: `Last 5: ${r.last5Trend} ${r.last5TwoWayPer20.toFixed(1)} vs. season ${r.twoWayPer20.toFixed(1)} Two-Way/20` })),
+    trend: [...board].sort((a, b) => b.last5TwoWayPer25 - a.last5TwoWayPer25)
+      .map(r => ({ player: r.player, value: r.last5TwoWayPer25, display: `Last 5: ${r.last5Trend} ${r.last5TwoWayPer25.toFixed(1)} vs. season ${r.twoWayPer25.toFixed(1)} Two-Way/25` })),
     teammateLift
   };
 }
@@ -3767,7 +3768,7 @@ function computeAwardRace() {
   }
   const standings = computeAwardStandings();
   const local = (key, statKey, basis) => rows.push({ key, basis, local: true, empty: "No logged games for this yet.", leaders: (standings[statKey] || []).slice(0, 3).map(r => ({ ids: [r.player.id], value: r.display })) });
-  local("dpoy", "defRating", "Defensive rating per 20");
+  local("dpoy", "defRating", "Defensive rating per 25");
   local("clutch", "closeGameTs", "Shooting in close games");
   // Best Teammate from real games when there are any: how much more often a player's teammates
   // win with them than those same teammates do without them, pulled toward 0 by 30 phantom
@@ -4197,12 +4198,12 @@ async function generateTradingCardCanvas(playerId) {
   if (real) { ctx.fillText(`Real Record: ${real.w}-${real.l}`, W / 2, y); y += 42; }
   if (power) { ctx.fillText(`Power Ranking: ${Math.round(power.avgPct)}%`, W / 2, y); y += 42; }
   y += 10;
-  // Statline: the same per-20 core numbers shown on the profile header itself, so the card
+  // Statline: the same per-25 core numbers shown on the profile header itself, so the card
   // carries this app's own local read alongside the real site's data above it.
   if (row) {
     const tsPct = trueShootingPct(row.totals.pts, row.shooting.fga, row.shooting.fta);
     ctx.font = "22px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.fillText(`${row.rate.pts.toFixed(1)} PTS/20 · ${row.rate.ast.toFixed(1)} AST/20${tsPct !== null ? ` · ${tsPct}% TS` : ""} · ${row.twoWayPer20.toFixed(1)} Two-Way/20`, W / 2, y);
+    ctx.fillText(`${row.rate.pts.toFixed(1)} PTS/25 · ${row.rate.ast.toFixed(1)} AST/25${tsPct !== null ? ` · ${tsPct}% TS` : ""} · ${row.twoWayPer25.toFixed(1)} Two-Way/25`, W / 2, y);
     y += 40;
   }
   y += 12;
@@ -4492,7 +4493,7 @@ function poolRealRecord(playerId) {
 
 function computePowerRankingVsPerformance() {
   return PARTY_RANKINGS.map(party => {
-    // Excludes stoppedEarly games: "that night's Two-Way/20" is exactly the single-game case a
+    // Excludes stoppedEarly games: "that night's Two-Way/25" is exactly the single-game case a
     // partial game would distort undiluted (see poolean-stopped-early-spec.md).
     const gamesThatNight = state.games.filter(g => g.date === party.date && isQualifyingGame(g) && !g.stoppedEarly);
     const rows = party.players.map(pr => {
@@ -4522,14 +4523,14 @@ function renderPowerRankingVsPerformance() {
         <td>${r.rank} <span class="hint" style="margin:0">(of ${r.fieldSize})</span></td>
         <td>${r.player ? playerLink(r.player.id, r.player.name) : `${escapeHtml(r.slug)} (not in current roster)`}</td>
         <td>${r.pct}%</td>
-        <td>${r.perf ? `${r.perf.twoWayPer20.toFixed(1)} <span class="hint" style="margin:0">(${r.perf.gp} game${r.perf.gp === 1 ? "" : "s"})</span>` : "—"}</td>
+        <td>${r.perf ? `${r.perf.twoWayPer25.toFixed(1)} <span class="hint" style="margin:0">(${r.perf.gp} game${r.perf.gp === 1 ? "" : "s"})</span>` : "—"}</td>
       </tr>
     `).join("");
     section.innerHTML = `
       <h4>${escapeHtml(formatDateDisplay(party.date))}</h4>
       <div class="table-scroll">
         <table class="matchup-table">
-          <thead><tr><th>Power Rank</th><th>Player</th><th>Power %</th><th>Two-Way/20 That Night</th></tr></thead>
+          <thead><tr><th>Power Rank</th><th>Player</th><th>Power %</th><th>Two-Way/25 That Night</th></tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       </div>
@@ -4564,7 +4565,7 @@ function svgAvatarDot(player, cx, cy, r = 9, label = null) {
 function computeQuadrantData() {
   return computeLeaderboard()
     .filter(r => r.gp > 0)
-    .map(r => ({ player: r.player, offRtg: r.offRatingPer20, defRtg: defensiveRating(r.rate, r.rateDefense) }));
+    .map(r => ({ player: r.player, offRtg: r.offRatingPer25, defRtg: defensiveRating(r.rate, r.rateDefense) }));
 }
 
 function renderQuadrantChart() {
@@ -4587,7 +4588,7 @@ function renderQuadrantChart() {
     const cx = xScale(d.offRtg), cy = yScale(d.defRtg);
     return `
       <g>
-        <title>${escapeHtml(d.player.name)}: ${d.offRtg.toFixed(1)} Off Rating/20, ${d.defRtg.toFixed(1)} Def Rating/20</title>
+        <title>${escapeHtml(d.player.name)}: ${d.offRtg.toFixed(1)} Off Rating/25, ${d.defRtg.toFixed(1)} Def Rating/25</title>
         ${svgAvatarDot(d.player, cx, cy)}
       </g>
       <text x="${cx}" y="${cy - 12}" text-anchor="middle" class="quadrant-label">${escapeHtml(d.player.name)}</text>
@@ -4603,8 +4604,8 @@ function renderQuadrantChart() {
       <line x1="${PAD}" y1="${zeroY}" x2="${W - PAD}" y2="${zeroY}" class="quadrant-axis" />
       <line x1="${zeroX}" y1="${PAD}" x2="${zeroX}" y2="${H - PAD}" class="quadrant-axis" />
       ${dotsSvg}
-      <text x="${W - PAD}" y="${H - PAD + 16}" text-anchor="end" class="quadrant-axis-label">Off Rating/20 &#8594;</text>
-      <text x="4" y="${PAD - 10}" text-anchor="start" class="quadrant-axis-label">&#8593; Def Rating/20</text>
+      <text x="${W - PAD}" y="${H - PAD + 16}" text-anchor="end" class="quadrant-axis-label">Off Rating/25 &#8594;</text>
+      <text x="4" y="${PAD - 10}" text-anchor="start" class="quadrant-axis-label">&#8593; Def Rating/25</text>
     </svg>
   `;
 }
@@ -4637,7 +4638,7 @@ function renderVolumeEfficiencyChart() {
     const cx = xScale(d.volume), cy = yScale(d.ts);
     return `
       <g>
-        <title>${escapeHtml(d.player.name)}: ${d.volume.toFixed(1)} FGA/20, ${d.ts}% TS</title>
+        <title>${escapeHtml(d.player.name)}: ${d.volume.toFixed(1)} FGA/25, ${d.ts}% TS</title>
         ${svgAvatarDot(d.player, cx, cy)}
       </g>
       <text x="${cx}" y="${cy - 12}" text-anchor="middle" class="quadrant-label">${escapeHtml(d.player.name)}</text>
@@ -4649,18 +4650,18 @@ function renderVolumeEfficiencyChart() {
       <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H - PAD_B}" class="quadrant-axis" />
       <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" class="quadrant-axis" />
       ${dotsSvg}
-      <text x="${W - PAD_R}" y="${H - PAD_B + 16}" text-anchor="end" class="quadrant-axis-label">FGA/20 &#8594;</text>
+      <text x="${W - PAD_R}" y="${H - PAD_B + 16}" text-anchor="end" class="quadrant-axis-label">FGA/25 &#8594;</text>
       <text x="${PAD_L - 10}" y="${PAD_T + 4}" text-anchor="end" class="quadrant-axis-label">&#8593; TS%</text>
     </svg>
   `;
 }
 
 const PLAY_STYLE_FEATURES = [
-  { key: "off", label: "Off Rating/20", accessor: r => r.offRatingPer20 },
-  { key: "def", label: "Def Rating/20", accessor: r => defensiveRating(r.rate, r.rateDefense) },
-  { key: "ast", label: "Assists/20", accessor: r => r.rate.ast },
-  { key: "reb", label: "Rebounds/20", accessor: r => r.rate.oreb + r.rate.dreb },
-  { key: "stocks", label: "Stocks/20", accessor: r => r.rate.stl + r.rate.blk }
+  { key: "off", label: "Off Rating/25", accessor: r => r.offRatingPer25 },
+  { key: "def", label: "Def Rating/25", accessor: r => defensiveRating(r.rate, r.rateDefense) },
+  { key: "ast", label: "Assists/25", accessor: r => r.rate.ast },
+  { key: "reb", label: "Rebounds/25", accessor: r => r.rate.oreb + r.rate.dreb },
+  { key: "stocks", label: "Stocks/25", accessor: r => r.rate.stl + r.rate.blk }
 ];
 
 const PLAY_STYLE_MIN_PLAYERS = 4;
@@ -4829,7 +4830,7 @@ function computeTwoWayRankOverSeason() {
     const snapshot = state.players.map(p => {
       const playerGames = gamesSoFar.filter(g => g.teamA.includes(p.id) || g.teamB.includes(p.id));
       if (playerGames.length === 0) return null;
-      return { player: p, twoWay: computeRateSummaryForGames(p.id, playerGames).twoWayPer20 };
+      return { player: p, twoWay: computeRateSummaryForGames(p.id, playerGames).twoWayPer25 };
     }).filter(Boolean);
     snapshot.sort((a, b) => b.twoWay - a.twoWay);
     snapshot.forEach((s, i) => {
@@ -4927,7 +4928,7 @@ function renderTwoWayRankChart() {
     const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${xScale(dateIndex[p.date])},${yScale(p.rank)}`).join(" ");
     const dotsSvg = points.map(p => `
       <g>
-        <title>${escapeHtml(player.name)}: #${p.rank} as of ${escapeHtml(formatDateDisplay(p.date))} (${p.twoWay.toFixed(1)} Two-Way/20)</title>
+        <title>${escapeHtml(player.name)}: #${p.rank} as of ${escapeHtml(formatDateDisplay(p.date))} (${p.twoWay.toFixed(1)} Two-Way/25)</title>
         ${svgAvatarDot(player, xScale(dateIndex[p.date]), yScale(p.rank), 8, p.rank)}
       </g>
     `).join("");
@@ -5214,7 +5215,7 @@ function computeTeammateLiftMatrix() {
   state.players.forEach(colP => {
     (synergyByPlayer[colP.id] || []).forEach(s => {
       if (s.with.gp === 0 || s.without.gp === 0) return;
-      const lift = s.with.twoWayPer20 - s.without.twoWayPer20;
+      const lift = s.with.twoWayPer25 - s.without.twoWayPer25;
       cells[`${s.teammate.id}|${colP.id}`] = { lift, withGp: s.with.gp, withoutGp: s.without.gp };
       involvedIds.add(s.teammate.id);
       involvedIds.add(colP.id);
@@ -5247,7 +5248,7 @@ function renderTeammateLiftMatrix() {
       const opacity = 0.18 + magnitude * 0.62;
       const hue = cell.lift >= 0 ? 120 : 0;
       const sign = cell.lift >= 0 ? "+" : "";
-      return `<td class="matchup-grid-cell" style="background: color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)" title="With ${escapeHtml(rowP.name)} on their team, ${escapeHtml(colP.name)}'s Two-Way/20 is ${sign}${cell.lift.toFixed(1)} (${cell.withGp} with / ${cell.withoutGp} without)">${sign}${cell.lift.toFixed(1)}</td>`;
+      return `<td class="matchup-grid-cell" style="background: color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)" title="With ${escapeHtml(rowP.name)} on their team, ${escapeHtml(colP.name)}'s Two-Way/25 is ${sign}${cell.lift.toFixed(1)} (${cell.withGp} with / ${cell.withoutGp} without)">${sign}${cell.lift.toFixed(1)}</td>`;
     }).join("");
     return `<tr><td class="sticky-col">${playerLink(rowP.id, rowP.name)}</td>${cellsHtml}</tr>`;
   }).join("");
@@ -5264,7 +5265,7 @@ function renderTeammateLiftMatrix() {
 const TEAMMATE_CONTEXT_COLUMNS = [
   { key: "player", label: "Player", accessor: r => r.player.name },
   { key: "gp", label: "GP", accessor: r => r.gp },
-  { key: "offRtg", label: "Off Rating/20", accessor: r => r.offRatingPer20 },
+  { key: "offRtg", label: "Off Rating/25", accessor: r => r.offRatingPer25 },
   { key: "teammateQuality", label: "Teammate Quality", accessor: r => r.teammateQuality },
   { key: "offMatchupDifficulty", label: "Off Matchup Difficulty", accessor: r => r.offMatchupDifficulty },
   { key: "defMatchupDifficulty", label: "Def Matchup Difficulty", accessor: r => r.defMatchupDifficulty },
@@ -5281,7 +5282,7 @@ function computeTeammateContext() {
     const dmd = computeDefensiveMatchupDifficultyTrend(r.player.id);
     const ab = computeAssistedByBreakdown(r.player.id);
     return {
-      player: r.player, gp: r.gp, offRatingPer20: r.offRatingPer20,
+      player: r.player, gp: r.gp, offRatingPer25: r.offRatingPer25,
       teammateQuality: tq.seasonAvg, offMatchupDifficulty: omd.seasonAvg, defMatchupDifficulty: dmd.seasonAvg,
       assistedPct: ab.assistedPct, avgAssisterQuality: ab.avgAssisterQuality
     };
@@ -5301,7 +5302,7 @@ function renderTeammateContextPanel() {
     : rows.map(r => `<tr>
         <td>${playerLink(r.player.id, r.player.name)}</td>
         <td>${r.gp}</td>
-        <td>${r.offRatingPer20.toFixed(1)}</td>
+        <td>${r.offRatingPer25.toFixed(1)}</td>
         <td>${r.teammateQuality !== null ? r.teammateQuality.toFixed(1) : "—"}</td>
         <td>${r.offMatchupDifficulty !== null ? r.offMatchupDifficulty.toFixed(1) : "—"}</td>
         <td>${r.defMatchupDifficulty !== null ? r.defMatchupDifficulty.toFixed(1) : "—"}</td>
@@ -5973,11 +5974,11 @@ function computeRealPlaymakingVolume(playerId) {
       if (ev.made !== false) pointsGenerated += ev.points;
     });
   });
-  const per20 = value => combinedPoints > 0 ? (value / combinedPoints) * 20 : 0;
+  const per25 = value => combinedPoints > 0 ? (value / combinedPoints) * PER : 0;
   if (shotsCreated < REAL_PLAYMAKING_MIN) return null;
   return {
     shotsCreated, pointsGenerated, oldAssists,
-    shotsCreatedPer20: per20(shotsCreated), pointsGeneratedPer20: per20(pointsGenerated), oldAssistsPer20: per20(oldAssists),
+    shotsCreatedPer25: per25(shotsCreated), pointsGeneratedPer25: per25(pointsGenerated), oldAssistsPer25: per25(oldAssists),
   };
 }
 
@@ -6763,8 +6764,8 @@ function computeRateSummaryForGames(playerId, games) {
   });
   const totalOffRating = offensiveRating(totals, shooting);
   const totalTwoWay = totalOffRating + defensiveRating(totals, defense);
-  const per20 = value => combinedPoints > 0 ? (value / combinedPoints) * 20 : 0;
-  return { gp: games.length, offRatingPer20: per20(totalOffRating), twoWayPer20: per20(totalTwoWay) };
+  const per25 = value => combinedPoints > 0 ? (value / combinedPoints) * PER : 0;
+  return { gp: games.length, offRatingPer25: per25(totalOffRating), twoWayPer25: per25(totalTwoWay) };
 }
 
 function computeSeasonHistoryForPlayer(playerId) {
@@ -6787,9 +6788,9 @@ function computeSeasonHistoryForPlayer(playerId) {
     const summary = computeRateSummaryForGames(playerId, seasonGames);
     return {
       label: season.label, endedAt: season.endedAt, gp: seasonGames.length, wins, losses, ties,
-      offRatingPer20: summary.offRatingPer20,
-      defRatingPer20: summary.twoWayPer20 - summary.offRatingPer20,
-      twoWayPer20: summary.twoWayPer20
+      offRatingPer25: summary.offRatingPer25,
+      defRatingPer25: summary.twoWayPer25 - summary.offRatingPer25,
+      twoWayPer25: summary.twoWayPer25
     };
   }).filter(Boolean);
 }
@@ -6806,14 +6807,14 @@ function renderSeasonHistoryPanel(playerId) {
     <td>${escapeHtml(r.label)}</td>
     <td>${r.gp}</td>
     <td>${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}</td>
-    <td>${r.offRatingPer20.toFixed(1)}</td>
-    <td>${r.defRatingPer20.toFixed(1)}</td>
-    <td>${r.twoWayPer20.toFixed(1)}</td>
+    <td>${r.offRatingPer25.toFixed(1)}</td>
+    <td>${r.defRatingPer25.toFixed(1)}</td>
+    <td>${r.twoWayPer25.toFixed(1)}</td>
   </tr>`).join("");
   wrap.innerHTML = `
     <div class="table-scroll">
       <table class="matchup-table">
-        <thead><tr><th>Season</th><th>GP</th><th>Record</th><th>Off Rating/20</th><th>Def Rating/20</th><th>Two-Way/20</th></tr></thead>
+        <thead><tr><th>Season</th><th>GP</th><th>Record</th><th>Off Rating/25</th><th>Def Rating/25</th><th>Two-Way/25</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>
@@ -6840,11 +6841,11 @@ function computeLeagueSeasonStandings(season) {
     const summary = computeRateSummaryForGames(p.id, seasonGames);
     return {
       player: p, gp: seasonGames.length, wins, losses, ties,
-      offRatingPer20: summary.offRatingPer20,
-      defRatingPer20: summary.twoWayPer20 - summary.offRatingPer20,
-      twoWayPer20: summary.twoWayPer20
+      offRatingPer25: summary.offRatingPer25,
+      defRatingPer25: summary.twoWayPer25 - summary.offRatingPer25,
+      twoWayPer25: summary.twoWayPer25
     };
-  }).filter(Boolean).sort((a, b) => b.twoWayPer20 - a.twoWayPer20);
+  }).filter(Boolean).sort((a, b) => b.twoWayPer25 - a.twoWayPer25);
 }
 
 function renderLeagueSeasonSelect() {
@@ -6884,14 +6885,14 @@ function renderLeagueSeasonStandings() {
     <td><button type="button" class="icon-btn league-season-player-btn" style="color:var(--accent);font-weight:700" data-player-id="${r.player.id}">${escapeHtml(r.player.name)}</button></td>
     <td>${r.gp}</td>
     <td>${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}</td>
-    <td>${r.offRatingPer20.toFixed(1)}</td>
-    <td>${r.defRatingPer20.toFixed(1)}</td>
-    <td>${r.twoWayPer20.toFixed(1)}</td>
+    <td>${r.offRatingPer25.toFixed(1)}</td>
+    <td>${r.defRatingPer25.toFixed(1)}</td>
+    <td>${r.twoWayPer25.toFixed(1)}</td>
   </tr>`).join("");
   wrap.innerHTML = `
     <div class="table-scroll">
       <table class="matchup-table">
-        <thead><tr><th>#</th><th>Player</th><th>GP</th><th>Record</th><th>Off Rating/20</th><th>Def Rating/20</th><th>Two-Way/20</th></tr></thead>
+        <thead><tr><th>#</th><th>Player</th><th>GP</th><th>Record</th><th>Off Rating/25</th><th>Def Rating/25</th><th>Two-Way/25</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>
@@ -7020,10 +7021,10 @@ function computePlayerTips(playerId) {
   const avgFga = leagueAvg(r => r.rateShooting.fga);
   const ownTs = trueShootingPct(row.totals.pts, row.shooting.fga, row.shooting.fta);
   if (avgTs !== null && avgFga !== null && ownTs !== null) {
-    if (row.rateShooting.fga - avgFga >= 2 && avgTs - ownTs >= 8) {
-      candidates.push({ diff: (avgTs - ownTs) + (row.rateShooting.fga - avgFga), icon: icon("target"), text: `Shot selection: you're taking more shots per 20 than most (${row.rateShooting.fga.toFixed(1)} vs. ${avgFga.toFixed(1)} average) at a below-average TS% (${formatPct(ownTs)} vs. ${formatPct(avgTs)}). A more selective diet could raise the efficiency without giving up much volume.` });
-    } else if (avgFga - row.rateShooting.fga >= 2 && ownTs - avgTs >= 8) {
-      candidates.push({ diff: (ownTs - avgTs) + (avgFga - row.rateShooting.fga), icon: icon("target"), text: `Shot selection: you're shooting ${formatPct(ownTs)} TS%, well above the ${formatPct(avgTs)} average, on fewer attempts than most (${row.rateShooting.fga.toFixed(1)} vs. ${avgFga.toFixed(1)} per 20). There's real room to take (and make) more without your efficiency needing to hold up on its own; it already has.` });
+    if (row.rateShooting.fga - avgFga >= 2.5 && avgTs - ownTs >= 8) {
+      candidates.push({ diff: (avgTs - ownTs) + (row.rateShooting.fga - avgFga), icon: icon("target"), text: `Shot selection: you're taking more shots per 25 than most (${row.rateShooting.fga.toFixed(1)} vs. ${avgFga.toFixed(1)} average) at a below-average TS% (${formatPct(ownTs)} vs. ${formatPct(avgTs)}). A more selective diet could raise the efficiency without giving up much volume.` });
+    } else if (avgFga - row.rateShooting.fga >= 2.5 && ownTs - avgTs >= 8) {
+      candidates.push({ diff: (ownTs - avgTs) + (avgFga - row.rateShooting.fga), icon: icon("target"), text: `Shot selection: you're shooting ${formatPct(ownTs)} TS%, well above the ${formatPct(avgTs)} average, on fewer attempts than most (${row.rateShooting.fga.toFixed(1)} vs. ${avgFga.toFixed(1)} per 25). There's real room to take (and make) more without your efficiency needing to hold up on its own; it already has.` });
     }
   }
 
@@ -7356,9 +7357,9 @@ function computePlayerPassingPanel(playerId) {
   if (volume && quality) {
     const leagueQualities = state.players.map(p => computeWeightedPassQuality(p.id, zonePpa)).filter(Boolean).map(q => q.avgQuality);
     const medQuality = median(leagueQualities);
-    const leagueVolumes = state.players.map(p => computeRealPlaymakingVolume(p.id)).filter(Boolean).map(v => v.shotsCreatedPer20);
+    const leagueVolumes = state.players.map(p => computeRealPlaymakingVolume(p.id)).filter(Boolean).map(v => v.shotsCreatedPer25);
     const medVolume = median(leagueVolumes);
-    const highVolume = medVolume !== null && volume.shotsCreatedPer20 >= medVolume;
+    const highVolume = medVolume !== null && volume.shotsCreatedPer25 >= medVolume;
     const highQuality = medQuality !== null && quality.avgQuality >= medQuality;
     if (highVolume && highQuality) read = "Passes often, and the shots those passes create are genuinely good -- real, high-value playmaking volume.";
     else if (highVolume && !highQuality) read = "Passes often, but the shots created tend to be lower-value or more contested than average -- volume is there, the shot quality created isn't yet.";
@@ -7377,7 +7378,7 @@ function renderPlayerPassingPanel(playerId) {
   if (!d) { wrap.innerHTML = '<p class="empty-state">Not enough passing volume yet.</p>'; return; }
   wrap.innerHTML = `
     <div class="profile-stat-pair">
-      <div class="profile-stat-tile"><div class="profile-stat-label">Real Playmaking Volume/20</div><div class="profile-stat-value">${d.volume ? d.volume.shotsCreatedPer20.toFixed(1) : "—"}</div></div>
+      <div class="profile-stat-tile"><div class="profile-stat-label">Real Playmaking Volume/25</div><div class="profile-stat-value">${d.volume ? d.volume.shotsCreatedPer25.toFixed(1) : "—"}</div></div>
       <div class="profile-stat-tile"><div class="profile-stat-label">Weighted Pass Quality</div><div class="profile-stat-value">${d.quality ? d.quality.avgQuality.toFixed(2) : "—"}</div></div>
     </div>
     <p class="hint">${escapeHtml(d.read)}</p>
@@ -7522,7 +7523,7 @@ function computeAreasToWorkOn(playerId) {
     }
   }
 
-  // Def Rating/20 and Opp FG% together, min 10 shots defended for either to count — two views of
+  // Def Rating/25 and Opp FG% together, min 10 shots defended for either to count — two views of
   // the same defensive-difficulty question, shown together either way, flagged on whichever one
   // actually clears its own threshold.
   {
@@ -7551,7 +7552,7 @@ function computeAreasToWorkOn(playerId) {
           const trend = trendNote(seasonRate, recentRate, false);
           results.push({
             key: "defense", isWeak,
-            text: `Your defense: opponents shoot ${formatPct(ownFg)} ${useReal ? `on shots you contested medium or heavy (${ownReal.made}/${ownReal.attempts}, league median ${formatPct(medFg)})` : `against you on any tagged shot (league median ${formatPct(medFg)}, not contested-only)`}${engagement !== null ? `, with an engagement rate of ${formatPct(engagement)}` : ""}, and your Def Rating/20 is ${ownDefRtg.toFixed(1)} (league median ${medDefRtg.toFixed(1)}).${isWeak ? " Tighter closeouts or a different defensive matchup could close that gap." : " Real defensive strength, not a fluke at this sample size."}${trend}`
+            text: `Your defense: opponents shoot ${formatPct(ownFg)} ${useReal ? `on shots you contested medium or heavy (${ownReal.made}/${ownReal.attempts}, league median ${formatPct(medFg)})` : `against you on any tagged shot (league median ${formatPct(medFg)}, not contested-only)`}${engagement !== null ? `, with an engagement rate of ${formatPct(engagement)}` : ""}, and your Def Rating/25 is ${ownDefRtg.toFixed(1)} (league median ${medDefRtg.toFixed(1)}).${isWeak ? " Tighter closeouts or a different defensive matchup could close that gap." : " Real defensive strength, not a fluke at this sample size."}${trend}`
           });
         }
       }
@@ -7674,10 +7675,10 @@ const TEAMMATE_SYNERGY_COLUMNS = [
   { key: "teammate", label: "Teammate", accessor: r => r.teammate.name },
   { key: "gpWith", label: "GP With", accessor: r => r.with.gp },
   { key: "gpWithout", label: "GP W/o", accessor: r => r.without.gp },
-  { key: "offRtgWith", label: "Off Rating/20 With", accessor: r => r.with.gp > 0 ? r.with.offRatingPer20 : null },
-  { key: "offRtgWithout", label: "Off Rating/20 W/o", accessor: r => r.without.gp > 0 ? r.without.offRatingPer20 : null },
-  { key: "twoWayWith", label: "Two-Way/20 With", accessor: r => r.with.gp > 0 ? r.with.twoWayPer20 : null },
-  { key: "twoWayWithout", label: "Two-Way/20 W/o", accessor: r => r.without.gp > 0 ? r.without.twoWayPer20 : null }
+  { key: "offRtgWith", label: "Off Rating/25 With", accessor: r => r.with.gp > 0 ? r.with.offRatingPer25 : null },
+  { key: "offRtgWithout", label: "Off Rating/25 W/o", accessor: r => r.without.gp > 0 ? r.without.offRatingPer25 : null },
+  { key: "twoWayWith", label: "Two-Way/25 With", accessor: r => r.with.gp > 0 ? r.with.twoWayPer25 : null },
+  { key: "twoWayWithout", label: "Two-Way/25 W/o", accessor: r => r.without.gp > 0 ? r.without.twoWayPer25 : null }
 ];
 
 let teammateSynergySort = { key: "gpWith", dir: "desc" };
@@ -7692,21 +7693,21 @@ function renderTeammateSynergy(playerId) {
   const fmt = (v, gp) => gp > 0 ? v.toFixed(1) : "—";
   body.innerHTML = rows.length === 0
     ? '<tr><td colspan="7" class="empty-state">No games with teammates and real shots logged yet.</td></tr>'
-    : rows.map(r => `<tr><td>${playerLink(r.teammate.id, r.teammate.name)}</td><td>${r.with.gp}</td><td>${r.without.gp}</td><td>${fmt(r.with.offRatingPer20, r.with.gp)}</td><td>${fmt(r.without.offRatingPer20, r.without.gp)}</td><td>${fmt(r.with.twoWayPer20, r.with.gp)}</td><td>${fmt(r.without.twoWayPer20, r.without.gp)}</td></tr>`).join("");
+    : rows.map(r => `<tr><td>${playerLink(r.teammate.id, r.teammate.name)}</td><td>${r.with.gp}</td><td>${r.without.gp}</td><td>${fmt(r.with.offRatingPer25, r.with.gp)}</td><td>${fmt(r.without.offRatingPer25, r.without.gp)}</td><td>${fmt(r.with.twoWayPer25, r.with.gp)}</td><td>${fmt(r.without.twoWayPer25, r.without.gp)}</td></tr>`).join("");
 }
 
 function computeTwoWayTrend(playerId) {
   const qualifyingGames = qualifyingGamesForPlayer(playerId);
   const sorted = [...qualifyingGames].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-  const points = sorted.map(g => ({ date: g.date, value: computeRateSummaryForGames(playerId, [g]).twoWayPer20 }));
-  const seasonAvg = computeRateSummaryForGames(playerId, qualifyingGames).twoWayPer20;
+  const points = sorted.map(g => ({ date: g.date, value: computeRateSummaryForGames(playerId, [g]).twoWayPer25 }));
+  const seasonAvg = computeRateSummaryForGames(playerId, qualifyingGames).twoWayPer25;
   return { points, seasonAvg };
 }
 
 function renderTwoWayTrendChart(playerId) {
   const { points, seasonAvg } = computeTwoWayTrend(playerId);
   const leagueAvg = leagueAvgOfPlayerTrend(computeTwoWayTrend);
-  renderTrendLineChart("playerTwoWayTrend", points, seasonAvg, "Two-Way/20", leagueAvg);
+  renderTrendLineChart("playerTwoWayTrend", points, seasonAvg, "Two-Way/25", leagueAvg);
 }
 
 const TREND_MIN_POINTS = 5;
@@ -7794,18 +7795,18 @@ const PLAYER_TREND_STATS = [
       const den = 2 * (fga + 0.44 * fta);
       return { value: den > 0 ? (pts / den) * 100 : null, n: fga };
     } },
-  { key: "twoWay", label: "Two-Way/20", unit: "/20", decimals: 1, minN: 0,
-    about: "Offense plus defense rating per 20 combined points, the same number as the Two-Way Trend above.",
-    compute: (pid, games) => ({ value: games.length ? computeRateSummaryForGames(pid, games).twoWayPer20 : null, n: games.length }) },
-  { key: "offRating", label: "Off Rating/20", unit: "/20", decimals: 1, minN: 0,
-    about: "Offense-only rating per 20 combined points.",
-    compute: (pid, games) => ({ value: games.length ? computeRateSummaryForGames(pid, games).offRatingPer20 : null, n: games.length }) },
-  { key: "defRating", label: "Def Rating/20", unit: "/20", decimals: 1, minN: 0,
-    about: "Defense-only rating per 20 combined points.",
+  { key: "twoWay", label: "Two-Way/25", unit: "/25", decimals: 1, minN: 0,
+    about: "Offense plus defense rating per 25 combined points, the same number as the Two-Way Trend above.",
+    compute: (pid, games) => ({ value: games.length ? computeRateSummaryForGames(pid, games).twoWayPer25 : null, n: games.length }) },
+  { key: "offRating", label: "Off Rating/25", unit: "/25", decimals: 1, minN: 0,
+    about: "Offense-only rating per 25 combined points.",
+    compute: (pid, games) => ({ value: games.length ? computeRateSummaryForGames(pid, games).offRatingPer25 : null, n: games.length }) },
+  { key: "defRating", label: "Def Rating/25", unit: "/25", decimals: 1, minN: 0,
+    about: "Defense-only rating per 25 combined points.",
     compute: (pid, games) => {
       if (!games.length) return { value: null, n: 0 };
       const r = computeRateSummaryForGames(pid, games);
-      return { value: r.twoWayPer20 - r.offRatingPer20, n: games.length };
+      return { value: r.twoWayPer25 - r.offRatingPer25, n: games.length };
     } },
   { key: "realContestedOppFg", label: "Real Contested Opp FG%", unit: "%", decimals: 0, minN: 2, lowerIsBetter: true,
     about: "Opp FG% restricted to shots with a medium or heavy contest level -- a nominally-tagged defender and one who actually challenged the shot aren't the same thing. Needs at least 2 real-contested shots defended in a game.",
@@ -7925,7 +7926,7 @@ function leagueAvgOfPlayerTrend(trendFn) {
 function computeTeammateQualityTrend(playerId) {
   const board = computeLeaderboard();
   const offRtgById = {};
-  board.forEach(r => { offRtgById[r.player.id] = r.gp > 0 ? r.offRatingPer20 : null; });
+  board.forEach(r => { offRtgById[r.player.id] = r.gp > 0 ? r.offRatingPer25 : null; });
   const qualifyingGames = qualifyingGamesForPlayer(playerId);
   const sorted = [...qualifyingGames].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   const points = [];
@@ -7944,13 +7945,13 @@ function computeTeammateQualityTrend(playerId) {
 function renderTeammateQualityChart(playerId) {
   const { points, seasonAvg } = computeTeammateQualityTrend(playerId);
   const leagueAvg = leagueAvgOfPlayerTrend(computeTeammateQualityTrend);
-  renderTrendLineChart("playerTeammateQuality", points, seasonAvg, "Off Rating/20", leagueAvg);
+  renderTrendLineChart("playerTeammateQuality", points, seasonAvg, "Off Rating/25", leagueAvg);
 }
 
 function computeDefensiveMatchupDifficultyTrend(playerId) {
   const board = computeLeaderboard();
   const offRtgById = {};
-  board.forEach(r => { offRtgById[r.player.id] = r.gp > 0 ? r.offRatingPer20 : null; });
+  board.forEach(r => { offRtgById[r.player.id] = r.gp > 0 ? r.offRatingPer25 : null; });
   const qualifyingGames = qualifyingGamesForPlayer(playerId);
   const sorted = [...qualifyingGames].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   const points = [];
@@ -7971,7 +7972,7 @@ function computeDefensiveMatchupDifficultyTrend(playerId) {
 function renderDefensiveMatchupDifficultyChart(playerId) {
   const { points, seasonAvg } = computeDefensiveMatchupDifficultyTrend(playerId);
   const leagueAvg = leagueAvgOfPlayerTrend(computeDefensiveMatchupDifficultyTrend);
-  renderTrendLineChart("playerDefensiveMatchupDifficulty", points, seasonAvg, "Opp Off Rating/20", leagueAvg);
+  renderTrendLineChart("playerDefensiveMatchupDifficulty", points, seasonAvg, "Opp Off Rating/25", leagueAvg);
 }
 
 function renderPlayerDefensiveLoadPanel(playerId) {
@@ -7992,7 +7993,7 @@ function renderPlayerDefensiveLoadPanel(playerId) {
     ? `, Pts Allowed Under Exp: ${xpa.pointsAllowedUnderExpected >= 0 ? "+" : ""}${xpa.pointsAllowedUnderExpected.toFixed(1)}`
     : "";
   wrap.innerHTML = `
-    <p class="score-display">${load.toFixed(2)}x <span class="hint" style="margin:0">(Opp FG%: ${formatPct(oppFgPct)}, Def Rating/20: ${defRtg.toFixed(1)}${xpaText})</span></p>
+    <p class="score-display">${load.toFixed(2)}x <span class="hint" style="margin:0">(Opp FG%: ${formatPct(oppFgPct)}, Def Rating/25: ${defRtg.toFixed(1)}${xpaText})</span></p>
     <p class="hint" style="margin:8px 0 0">${escapeHtml(describeDefensiveLoad(load, oppFgPct, leagueAvgOppFg))}</p>
   `;
 }
@@ -8026,13 +8027,13 @@ function computeOffensiveMatchupDifficultyTrend(playerId) {
 function renderOffensiveMatchupDifficultyChart(playerId) {
   const { points, seasonAvg } = computeOffensiveMatchupDifficultyTrend(playerId);
   const leagueAvg = leagueAvgOfPlayerTrend(computeOffensiveMatchupDifficultyTrend);
-  renderTrendLineChart("playerOffensiveMatchupDifficulty", points, seasonAvg, "Opp Def Rating/20", leagueAvg);
+  renderTrendLineChart("playerOffensiveMatchupDifficulty", points, seasonAvg, "Opp Def Rating/25", leagueAvg);
 }
 
 function computeAssistedByBreakdown(playerId) {
   const board = computeLeaderboard();
   const offRtgById = {};
-  board.forEach(r => { offRtgById[r.player.id] = r.gp > 0 ? r.offRatingPer20 : null; });
+  board.forEach(r => { offRtgById[r.player.id] = r.gp > 0 ? r.offRatingPer25 : null; });
   let fgm = 0, assistedFgm = 0;
   const byAssister = {};
   state.games.filter(isQualifyingGame).forEach(g => {
@@ -8048,10 +8049,10 @@ function computeAssistedByBreakdown(playerId) {
   });
   const assisters = Object.entries(byAssister).map(([id, assists]) => {
     const player = state.players.find(p => p.id === id);
-    return { player, assists, offRatingPer20: offRtgById[id] ?? null };
+    return { player, assists, offRatingPer25: offRtgById[id] ?? null };
   }).filter(a => a.player).sort((a, b) => b.assists - a.assists);
-  const weightedSum = assisters.reduce((sum, a) => sum + (a.offRatingPer20 !== null ? a.offRatingPer20 * a.assists : 0), 0);
-  const weightedCount = assisters.reduce((sum, a) => sum + (a.offRatingPer20 !== null ? a.assists : 0), 0);
+  const weightedSum = assisters.reduce((sum, a) => sum + (a.offRatingPer25 !== null ? a.offRatingPer25 * a.assists : 0), 0);
+  const weightedCount = assisters.reduce((sum, a) => sum + (a.offRatingPer25 !== null ? a.assists : 0), 0);
   return {
     fgm, assistedFgm, assistedPct: pct(assistedFgm, fgm), assisters,
     avgAssisterQuality: weightedCount > 0 ? weightedSum / weightedCount : null
@@ -8080,16 +8081,16 @@ function renderAssistedByPanel(playerId) {
   })();
   const assistedPctNote = leagueAvgAssistedPct !== null ? ` (league average: ${formatPct(leagueAvgAssistedPct)})` : "";
   const qualityNote = avgAssisterQuality !== null
-    ? `, average assister quality: ${avgAssisterQuality.toFixed(1)} Off Rating/20${leagueAvgAssisterQuality !== null ? ` (league average: ${leagueAvgAssisterQuality.toFixed(1)})` : ""}`
+    ? `, average assister quality: ${avgAssisterQuality.toFixed(1)} Off Rating/25${leagueAvgAssisterQuality !== null ? ` (league average: ${leagueAvgAssisterQuality.toFixed(1)})` : ""}`
     : "";
   const rows = assisters.length === 0
     ? '<tr><td colspan="3" class="empty-state">No assisted makes yet.</td></tr>'
-    : assisters.map(a => `<tr><td>${playerLink(a.player.id, a.player.name)}</td><td>${a.assists}</td><td>${a.offRatingPer20 !== null ? a.offRatingPer20.toFixed(1) : "—"}</td></tr>`).join("");
+    : assisters.map(a => `<tr><td>${playerLink(a.player.id, a.player.name)}</td><td>${a.assists}</td><td>${a.offRatingPer25 !== null ? a.offRatingPer25.toFixed(1) : "—"}</td></tr>`).join("");
   wrap.innerHTML = `
     <p class="hint" style="margin:0 0 10px">${assistedFgm} of ${fgm} makes were assisted (${formatPct(assistedPct)}${assistedPctNote})${qualityNote}.</p>
     <div class="table-scroll">
       <table class="matchup-table">
-        <thead><tr><th>Teammate</th><th>Assists</th><th>Their Off Rating/20</th></tr></thead>
+        <thead><tr><th>Teammate</th><th>Assists</th><th>Their Off Rating/25</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -8102,16 +8103,16 @@ const LEADERBOARD_COLUMNS = [
   { key: "w", label: "W", accessor: r => r.wins, tooltip: "Wins, counted only for games with real shots logged." },
   { key: "l", label: "L", accessor: r => r.losses, tooltip: "Losses, counted only for games with real shots logged." },
   { key: "pct", label: "PCT", accessor: r => r.winPct, display: r => formatPct(r.winPct), tooltip: "Win percentage: wins / (wins + losses)." },
-  { key: "pts", label: "PTS/20", accessor: r => r.rate.pts, display: r => r.rate.pts.toFixed(1), tooltip: "Points, per 20 combined points scored in the game (not per game; see the note above the table)." },
-  { key: "shotpct", label: "Shot%", advanced: true, accessor: r => r.shotPct, display: r => formatPct(r.shotPct), tooltip: "Share of their own team's field goal attempts that were theirs, across games they played: not the league's shots, their team's. A season-long share (their FGA / their team's FGA in those same games), not a per-20 rate." },
-  { key: "astpct", label: "AST%", advanced: true, accessor: r => r.astPct, display: r => formatPct(r.astPct), tooltip: "Share of their own team's assists that were theirs, across games they played: not the league's assists, their team's. A season-long share (their AST / their team's AST in those same games), not a per-20 rate." },
-  { key: "orebpct", label: "OREB%", advanced: true, accessor: r => r.orebPct, display: r => formatPct(r.orebPct), tooltip: "Real Total Rebound %-style share: this player's OREB divided by every offensive rebound available on their team's misses that game (their team's OREB plus the opponent's DREB on those same misses), not just their own team's OREB total like Shot%/AST% above, since a rebound is contested between both teams. Poolean has no substitutions, so a rostered player is on the floor for the whole game; the minutes-played term real rebound rate stats normally need just doesn't apply here. A season-long share, not a per-20 rate." },
-  { key: "drebpct", label: "DREB%", advanced: true, accessor: r => r.drebPct, display: r => formatPct(r.drebPct), tooltip: "Same idea as OREB% for the other side of the ball: this player's DREB divided by every defensive rebound available on the opponent's misses that game (their team's DREB plus the opponent's OREB on those same misses). A season-long share, not a per-20 rate." },
-  { key: "trebpct", label: "TRB%", advanced: true, accessor: r => r.trebPct, display: r => formatPct(r.trebPct), tooltip: "OREB and DREB combined: this player's total rebounds divided by every rebound actually available across the games they played (OREB% and DREB%'s two pools added together). Same no-substitutions reasoning as OREB%/DREB% above; a season-long share, not a per-20 rate." },
+  { key: "pts", label: "PTS/25", accessor: r => r.rate.pts, display: r => r.rate.pts.toFixed(1), tooltip: "Points, per 25 combined points scored in the game (not per game; see the note above the table)." },
+  { key: "shotpct", label: "Shot%", advanced: true, accessor: r => r.shotPct, display: r => formatPct(r.shotPct), tooltip: "Share of their own team's field goal attempts that were theirs, across games they played: not the league's shots, their team's. A season-long share (their FGA / their team's FGA in those same games), not a per-25 rate." },
+  { key: "astpct", label: "AST%", advanced: true, accessor: r => r.astPct, display: r => formatPct(r.astPct), tooltip: "Share of their own team's assists that were theirs, across games they played: not the league's assists, their team's. A season-long share (their AST / their team's AST in those same games), not a per-25 rate." },
+  { key: "orebpct", label: "OREB%", advanced: true, accessor: r => r.orebPct, display: r => formatPct(r.orebPct), tooltip: "Real Total Rebound %-style share: this player's OREB divided by every offensive rebound available on their team's misses that game (their team's OREB plus the opponent's DREB on those same misses), not just their own team's OREB total like Shot%/AST% above, since a rebound is contested between both teams. Poolean has no substitutions, so a rostered player is on the floor for the whole game; the minutes-played term real rebound rate stats normally need just doesn't apply here. A season-long share, not a per-25 rate." },
+  { key: "drebpct", label: "DREB%", advanced: true, accessor: r => r.drebPct, display: r => formatPct(r.drebPct), tooltip: "Same idea as OREB% for the other side of the ball: this player's DREB divided by every defensive rebound available on the opponent's misses that game (their team's DREB plus the opponent's OREB on those same misses). A season-long share, not a per-25 rate." },
+  { key: "trebpct", label: "TRB%", advanced: true, accessor: r => r.trebPct, display: r => formatPct(r.trebPct), tooltip: "OREB and DREB combined: this player's total rebounds divided by every rebound actually available across the games they played (OREB% and DREB%'s two pools added together). Same no-substitutions reasoning as OREB%/DREB% above; a season-long share, not a per-25 rate." },
   { key: "tovpct", label: "TOV%", advanced: true, accessor: r => r.tovPct, display: r => formatPct(r.tovPct), tooltip: "How often this player turned it over relative to their own scoring opportunities: TOV ÷ (FGA + 0.44×FTA + TOV), the same FTA-equivalent scaling True Shooting % uses. Not a share of the team's turnovers like Shot%/AST% above; a turnover isn't a shared resource the way a shot or an assist is, so this measures usage instead: of the times this player had the ball in a position to score or give it away, how often it was the latter." },
-  { key: "fg", label: "FG", accessor: r => pct(r.shooting.fgm, r.shooting.fga), display: r => formatShootingSplit(r.rateShooting.fgm, r.rateShooting.fga, true), tooltip: "Field goals made/attempted (2s and 3s combined), per 20 combined points, with FG%." },
-  { key: "tpt", label: "3PT", accessor: r => pct(r.shooting.tpm, r.shooting.tpa), display: r => formatShootingSplit(r.rateShooting.tpm, r.rateShooting.tpa, true), tooltip: "3-pointers made/attempted, per 20 combined points, with 3PT%. See the 3PT Shot Distance panel below for the Arc/Deep breakdown." },
-  { key: "ft", label: "FT", accessor: r => pct(r.shooting.ftm, r.shooting.fta), display: r => formatShootingSplit(r.rateShooting.ftm, r.rateShooting.fta, true), tooltip: "Free throws made/attempted, per 20 combined points, with FT%." },
+  { key: "fg", label: "FG", accessor: r => pct(r.shooting.fgm, r.shooting.fga), display: r => formatShootingSplit(r.rateShooting.fgm, r.rateShooting.fga, true), tooltip: "Field goals made/attempted (2s and 3s combined), per 25 combined points, with FG%." },
+  { key: "tpt", label: "3PT", accessor: r => pct(r.shooting.tpm, r.shooting.tpa), display: r => formatShootingSplit(r.rateShooting.tpm, r.rateShooting.tpa, true), tooltip: "3-pointers made/attempted, per 25 combined points, with 3PT%. See the 3PT Shot Distance panel below for the Arc/Deep breakdown." },
+  { key: "ft", label: "FT", accessor: r => pct(r.shooting.ftm, r.shooting.fta), display: r => formatShootingSplit(r.rateShooting.ftm, r.rateShooting.fta, true), tooltip: "Free throws made/attempted, per 25 combined points, with FT%." },
   { key: "efg", label: "eFG%", accessor: r => effectiveFgPct(r.shooting.fgm, r.shooting.tpm, r.shooting.fga), display: r => formatPct(effectiveFgPct(r.shooting.fgm, r.shooting.tpm, r.shooting.fga)), tooltip: "Effective FG%: field goal percentage weighted so a made 3 counts as 1.5 made 2s." },
   { key: "ts", label: "TS%", accessor: r => trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta), display: r => formatPct(trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta)), tooltip: "True Shooting %: overall scoring efficiency across field goals and free throws combined." },
   { key: "ptsoverxp", label: "Pts +/- Exp", advanced: true,
@@ -8121,7 +8122,7 @@ const LEADERBOARD_COLUMNS = [
       const v = r.expectedPoints.pointsOverExpected;
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
-    tooltip: "Points Over Expected: every field goal attempt gets an expected value from its own zone's real, empirical league-average points-per-attempt (this season's own League TS% by Shot Distance, expressed as points instead of a percentage) -- an unmarked shot location falls back to the league's overall average rather than being dropped. This player's actual points scored on those same attempts, minus that sum, across the whole season (a total, not a per-20 rate). Positive means outscoring what an average shooter would on the exact same shot selection: real shooting skill on those specific shots, not just an easier shot diet. Free throws excluded entirely (no shot location, no zone, uncontested by rule)." },
+    tooltip: "Points Over Expected: every field goal attempt gets an expected value from its own zone's real, empirical league-average points-per-attempt (this season's own League TS% by Shot Distance, expressed as points instead of a percentage) -- an unmarked shot location falls back to the league's overall average rather than being dropped. This player's actual points scored on those same attempts, minus that sum, across the whole season (a total, not a per-25 rate). Positive means outscoring what an average shooter would on the exact same shot selection: real shooting skill on those specific shots, not just an easier shot diet. Free throws excluded entirely (no shot location, no zone, uncontested by rule)." },
   { key: "shotdiff", label: "Shot Diff/G", advanced: true,
     accessor: r => r.shotAttemptDiff ? r.shotAttemptDiff.diffPerGame : null,
     display: r => {
@@ -8129,7 +8130,7 @@ const LEADERBOARD_COLUMNS = [
       const v = r.shotAttemptDiff.diffPerGame;
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
-    tooltip: "Shot Attempt Differential, per game: this player's own team's total field goal attempts (made or missed, regardless of outcome) minus the opponent's, averaged across the games they played. A real, separate signal from shooting efficiency (TS%/eFG% already cover that) -- closer to shot creation and tempo control, whether this player's side tends to generate (or allow) more total looks. Deliberately a plain per-game differential, not a normalized /20 rate, matching the real stat's own simplicity: count every attempt equally, don't weight by quality. Excludes any game flagged Stopped Early (Export, Review Stopped-Early Games): a partial game's shot count isn't comparable to a complete one." },
+    tooltip: "Shot Attempt Differential, per game: this player's own team's total field goal attempts (made or missed, regardless of outcome) minus the opponent's, averaged across the games they played. A real, separate signal from shooting efficiency (TS%/eFG% already cover that) -- closer to shot creation and tempo control, whether this player's side tends to generate (or allow) more total looks. Deliberately a plain per-game differential, not a normalized /25 rate, matching the real stat's own simplicity: count every attempt equally, don't weight by quality. Excludes any game flagged Stopped Early (Export, Review Stopped-Early Games): a partial game's shot count isn't comparable to a complete one." },
   { key: "rebdiff", label: "Reb Diff/G", advanced: true,
     accessor: r => r.reboundDiff ? r.reboundDiff.diffPerGame : null,
     display: r => {
@@ -8150,7 +8151,7 @@ const LEADERBOARD_COLUMNS = [
     accessor: r => r.winShares ? r.winShares.winShares : null,
     display: r => r.winShares ? r.winShares.winShares.toFixed(2) : "—",
     tooltip: "Experimental, provisional: this season's share of actual team wins credited to this player, from a regression fit fresh against real game margins (not an assumed points scale like GmSc/Two-Way), sign-constrained so each stat can only push in its basketball-plausible direction. See the Win Shares Model panel below for this fit's current sample size, alpha, and leave-one-out validation numbers. Not enough data yet to trust for anything with real stakes. Excludes any game flagged Stopped Early: a margin from an incomplete game isn't a real outcome to fit against." },
-  { key: "dunks", label: "Dunks", advanced: true, accessor: r => r.dunks, tooltip: "Made dunks, season total (not per-20: a counting stat, not a rate). Only counts shots tagged as a dunk in Stat Entry; games logged before that field existed need a manual pass (Export, Review Possible Dunks) before they count here." },
+  { key: "dunks", label: "Dunks", advanced: true, accessor: r => r.dunks, tooltip: "Made dunks, season total (not per-25: a counting stat, not a rate). Only counts shots tagged as a dunk in Stat Entry; games logged before that field existed need a manual pass (Export, Review Possible Dunks) before they count here." },
   { key: "dunkpct", label: "Dunk%", advanced: true, accessor: r => r.dunkPct, display: r => formatPct(r.dunkPct), tooltip: "Share of this player's own field goal attempts (2s and 3s combined) that were tagged as a dunk, make or miss: how much of their offense is above the rim. Same Review Possible Dunks caveat as Dunks: undercounts until older games are backfilled." },
   { key: "selfcreated", label: "Self-Created %", advanced: true,
     accessor: r => r.shotCreation ? r.shotCreation.noHeaves.selfCreatedPct : null,
@@ -8160,10 +8161,10 @@ const LEADERBOARD_COLUMNS = [
       return `${formatPct(r.shotCreation.noHeaves.selfCreatedPct)}${raw !== null ? ` (${formatPct(raw)} incl. heaves)` : ""}`;
     },
     tooltip: `Share of this player's own ATTEMPTS (makes and misses, 2s and 3s) with no passer credited, deep heaves excluded from both sides of the rate entirely (a grabbed rebound immediately heaved up reflects no real shot-creation skill, so it's dropped rather than counted as a failure to self-create). The raw rate including heaves is shown underneath for reference. Needs ${SHOT_CREATION_MIN_FGA}+ qualifying attempts before showing.` },
-  { key: "realplaymaking", label: "Real Playmaking Volume/20", advanced: true,
-    accessor: r => r.realPlaymaking ? r.realPlaymaking.shotsCreatedPer20 : null,
-    display: r => r.realPlaymaking ? `${r.realPlaymaking.shotsCreatedPer20.toFixed(1)} (${r.realPlaymaking.shotsCreated} shots, ${r.realPlaymaking.pointsGenerated} pts, ${r.realPlaymaking.oldAssists} old assists)` : "—",
-    tooltip: `Every pass that led to ANY attempt, make or miss (passerId), per 20 combined points -- same rate convention as every other /20 column here, so this compares fairly across different games-played totals instead of just rewarding volume. Replaces raw assist count as the primary passing-volume stat, since assists alone silently hide every good pass that led to a miss. Season totals and the old assist count are shown underneath for reference. Needs ${REAL_PLAYMAKING_MIN}+ shots created before showing.` },
+  { key: "realplaymaking", label: "Real Playmaking Volume/25", advanced: true,
+    accessor: r => r.realPlaymaking ? r.realPlaymaking.shotsCreatedPer25 : null,
+    display: r => r.realPlaymaking ? `${r.realPlaymaking.shotsCreatedPer25.toFixed(1)} (${r.realPlaymaking.shotsCreated} shots, ${r.realPlaymaking.pointsGenerated} pts, ${r.realPlaymaking.oldAssists} old assists)` : "—",
+    tooltip: `Every pass that led to ANY attempt, make or miss (passerId), per 25 combined points -- same rate convention as every other /25 column here, so this compares fairly across different games-played totals instead of just rewarding volume. Replaces raw assist count as the primary passing-volume stat, since assists alone silently hide every good pass that led to a miss. Season totals and the old assist count are shown underneath for reference. Needs ${REAL_PLAYMAKING_MIN}+ shots created before showing.` },
   { key: "passquality", label: "Weighted Pass Quality", advanced: true,
     accessor: r => r.passQuality ? r.passQuality.avgQuality : null,
     display: r => r.passQuality ? `${r.passQuality.avgQuality.toFixed(2)} (${r.passQuality.volume} passes)` : "—",
@@ -8180,27 +8181,27 @@ const LEADERBOARD_COLUMNS = [
       return total > 0 ? formatPct(pct(money, total)) : "—";
     },
     tooltip: "Share of this player's own zone-marked field goal attempts from the two real-positive-value zones (Close, 3PT Line) rather than the two weak ones (Midrange, 3PT Deep) -- see the Shot Distance panel below for the four-way split this collapses into one number. How much of this diet is good shots, at a glance, not a read on whether they're making them." },
-  { key: "oreb", label: "OREB/20", accessor: r => r.rate.oreb, display: r => r.rate.oreb.toFixed(1), tooltip: "Offensive rebounds (grabbed by a teammate of the shooter), per 20 combined points." },
-  { key: "dreb", label: "DREB/20", accessor: r => r.rate.dreb, display: r => r.rate.dreb.toFixed(1), tooltip: "Defensive rebounds (grabbed by an opponent of the shooter), per 20 combined points." },
-  { key: "ast", label: "AST/20", accessor: r => r.rate.ast, display: r => r.rate.ast.toFixed(1), tooltip: "Assists (credited on a made shot when a teammate is tagged as the passer), per 20 combined points." },
-  { key: "stl", label: "STL/20", accessor: r => r.rate.stl, display: r => r.rate.stl.toFixed(1), tooltip: "Steals, per 20 combined points. Feeds Def Rating below." },
+  { key: "oreb", label: "OREB/25", accessor: r => r.rate.oreb, display: r => r.rate.oreb.toFixed(1), tooltip: "Offensive rebounds (grabbed by a teammate of the shooter), per 25 combined points." },
+  { key: "dreb", label: "DREB/25", accessor: r => r.rate.dreb, display: r => r.rate.dreb.toFixed(1), tooltip: "Defensive rebounds (grabbed by an opponent of the shooter), per 25 combined points." },
+  { key: "ast", label: "AST/25", accessor: r => r.rate.ast, display: r => r.rate.ast.toFixed(1), tooltip: "Assists (credited on a made shot when a teammate is tagged as the passer), per 25 combined points." },
+  { key: "stl", label: "STL/25", accessor: r => r.rate.stl, display: r => r.rate.stl.toFixed(1), tooltip: "Steals, per 25 combined points. Feeds Def Rating below." },
   { key: "tovcredit", label: "TOV Credit %", advanced: true,
     accessor: r => r.turnoverCredit ? r.turnoverCredit.rate : null,
     display: r => r.turnoverCredit ? formatPct(r.turnoverCredit.rate) : "—",
     tooltip: `Of every turnover the opponent committed in games this player's own team was on defense (credited or not -- the whole pool a credited one could come from), what share did this player individually get credited for forcing (a real steal, or being named on a standalone turnover)? A turnover with no one credited has no defender tag at all, so it can't honestly be pinned on one specific teammate over another; this only compares against the real, checkable pool. Separates active disruption from benefiting off sloppy opposing possessions without causing them. Needs ${TURNOVER_CREDIT_MIN_POOL}+ team turnovers forced.` },
-  { key: "blk", label: "BLK/20", accessor: r => r.rate.blk, display: r => r.rate.blk.toFixed(1), tooltip: "Blocks (credited on a missed shot when this player is tagged as the blocker), per 20 combined points. Feeds Def Rating below, except when the block is already one of this player's own Stops (the usual case); see Def Rating's own tooltip." },
-  { key: "tov", label: "TOV/20", accessor: r => r.rate.tov, display: r => r.rate.tov.toFixed(1), tooltip: "Turnovers (including ones forced by a steal, or a miss ruled out of bounds), per 20 combined points." },
+  { key: "blk", label: "BLK/25", accessor: r => r.rate.blk, display: r => r.rate.blk.toFixed(1), tooltip: "Blocks (credited on a missed shot when this player is tagged as the blocker), per 25 combined points. Feeds Def Rating below, except when the block is already one of this player's own Stops (the usual case); see Def Rating's own tooltip." },
+  { key: "tov", label: "TOV/25", accessor: r => r.rate.tov, display: r => r.rate.tov.toFixed(1), tooltip: "Turnovers (including ones forced by a steal, or a miss ruled out of bounds), per 25 combined points." },
   { key: "atov", label: "A/TO", accessor: r => r.tovSplit.liveBall === 0 ? (r.totals.ast === 0 ? 0 : Infinity) : r.totals.ast / r.tovSplit.liveBall, display: r => r.astTov, tooltip: "Assist-to-turnover ratio, counting live-ball turnovers only -- a missed shot ruled out of bounds isn't charged against it (see TOV Recomputed below)." },
-  { key: "pf", label: "PF/20", accessor: r => r.rate.pf, display: r => r.rate.pf.toFixed(1), tooltip: "Personal fouls, per 20 combined points." },
-  { key: "ptsAllowed", label: "Pts Allowed/20", accessor: r => r.rateDefense.ptsAllowed, display: r => r.rateDefense.ptsAllowed.toFixed(1), tooltip: "Points scored by opponents on shots where this player was the tagged defender, per 20 combined points." },
+  { key: "pf", label: "PF/25", accessor: r => r.rate.pf, display: r => r.rate.pf.toFixed(1), tooltip: "Personal fouls, per 25 combined points." },
+  { key: "ptsAllowed", label: "Pts Allowed/25", accessor: r => r.rateDefense.ptsAllowed, display: r => r.rateDefense.ptsAllowed.toFixed(1), tooltip: "Points scored by opponents on shots where this player was the tagged defender, per 25 combined points." },
   { key: "oppfg", label: "Opp FG%", accessor: r => pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops), display: r => formatPct(pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops)), tooltip: "Shooting percentage of everyone this player was tagged defending, make or miss: a real 'shooting percentage allowed.'" },
   { key: "oppefg", label: "Opp eFG%", advanced: true,
     accessor: r => effectiveFgPct(r.defense.timesBeaten, r.defense.tpmAgainst, r.defense.timesBeaten + r.defense.stops),
     display: r => formatPct(effectiveFgPct(r.defense.timesBeaten, r.defense.tpmAgainst, r.defense.timesBeaten + r.defense.stops)),
     tooltip: "Opp FG%'s value-weighted counterpart, the exact same formula offensive eFG% uses just applied to shots allowed: a made 3 counts as 1.5x a made 2. Separates a defender who allows a lot of made 3s from one allowing the same raw FG% but mostly on 2s, who currently look identical on plain Opp FG% alone." },
-  { key: "beaten", label: "Beaten/20", accessor: r => r.rateDefense.timesBeaten, display: r => r.rateDefense.timesBeaten.toFixed(1), tooltip: "Times scored on while tagged as the defender on a made shot, per 20 combined points." },
-  { key: "stops", label: "Stops/20", accessor: r => r.rateDefense.stops, display: r => r.rateDefense.stops.toFixed(1), tooltip: "Times tagged as the defender on a missed shot, per 20 combined points." },
-  { key: "defrtg20", label: "Def Rating/20", accessor: r => defensiveRating(r.rate, r.rateDefense), display: r => defensiveRating(r.rate, r.rateDefense).toFixed(1), tooltip: "This tool's Defensive Rating: STL, plus BLK (only when it isn't already one of this player's own Stops, so a blocked-and-tagged shot isn't credited twice), plus Stops minus Beaten minus 0.4×Pts Allowed, all per 20 combined points. Not points-allowed-per-100-possessions like the NBA stat of the same name; possessions aren't tracked here, so combined points stands in as the pace proxy, same as every other per-20 rate on this board. 0 for anyone never tagged as a defender with no steals or blocks, not a penalty for conservative tagging." },
+  { key: "beaten", label: "Beaten/25", accessor: r => r.rateDefense.timesBeaten, display: r => r.rateDefense.timesBeaten.toFixed(1), tooltip: "Times scored on while tagged as the defender on a made shot, per 25 combined points." },
+  { key: "stops", label: "Stops/25", accessor: r => r.rateDefense.stops, display: r => r.rateDefense.stops.toFixed(1), tooltip: "Times tagged as the defender on a missed shot, per 25 combined points." },
+  { key: "defrtg25", label: "Def Rating/25", accessor: r => defensiveRating(r.rate, r.rateDefense), display: r => defensiveRating(r.rate, r.rateDefense).toFixed(1), tooltip: "This tool's Defensive Rating: STL, plus BLK (only when it isn't already one of this player's own Stops, so a blocked-and-tagged shot isn't credited twice), plus Stops minus Beaten minus 0.4×Pts Allowed, all per 25 combined points. Not points-allowed-per-100-possessions like the NBA stat of the same name; possessions aren't tracked here, so combined points stands in as the pace proxy, same as every other per-25 rate on this board. 0 for anyone never tagged as a defender with no steals or blocks, not a penalty for conservative tagging." },
   { key: "ptsallowedunderxp", label: "Pts Allowed Under Exp", advanced: true,
     accessor: r => r.expectedPointsAgainst ? r.expectedPointsAgainst.pointsAllowedUnderExpected : null,
     display: r => {
@@ -8209,12 +8210,12 @@ const LEADERBOARD_COLUMNS = [
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
     tooltip: "Expected Points' defensive counterpart, using the same zone rates: every shot this player is tagged defending gets that shot zone's league-average points-per-attempt as its expected value (Close/Midrange/Line/Deep), summed and compared to what was actually scored on them. Positive means allowing fewer points than the shot difficulty they actually faced would predict, the good outcome for defense (opposite sign convention from offensive Pts +/- Exp, where scoring more than expected is good). Separates 'suppresses shooting below what's normal for the shots faced' from 'happens to face an easier or harder mix of shots than average' -- Opp FG% alone can't tell those apart. Needs 10+ tagged defended shots to show at all; inherits the same still-early zone-rate caveat as offensive Expected Points, and doesn't touch the separate, still-open question of whether a 'beaten' shot was genuinely well-defended or not." },
-  { key: "offrtg20", label: "Off Rating/20", accessor: r => r.offRatingPer20, display: r => r.offRatingPer20.toFixed(1), tooltip: "Offense-only Game Score: PTS, shooting efficiency, rebounds, assists, TOV, and fouls, adapted from the standard basketball Game Score formula, minus its STL and BLK terms, which live in Def Rating instead, per 20 combined points." },
-  { key: "twoway20", label: "Two-Way/20", accessor: r => r.twoWayPer20, display: r => r.twoWayPer20.toFixed(1), tooltip: "Off Rating plus Def Rating, per 20 combined points." },
-  { key: "last5", label: "Last 5", accessor: r => r.last5OffRatingPer20, display: r => r.last5Gp > 0 ? `${r.last5Trend} ${r.last5OffRatingPer20.toFixed(1)}` : "—", tooltip: "Off Rating/20 over their last 5 games with real shots logged (fewer if they haven't played 5 yet). ▲/▼ shows whether that's above or below their season Off Rating/20; within ±0.5 counts as flat (–)." }
+  { key: "offrtg25", label: "Off Rating/25", accessor: r => r.offRatingPer25, display: r => r.offRatingPer25.toFixed(1), tooltip: "Offense-only Game Score: PTS, shooting efficiency, rebounds, assists, TOV, and fouls, adapted from the standard basketball Game Score formula, minus its STL and BLK terms, which live in Def Rating instead, per 25 combined points." },
+  { key: "twoway25", label: "Two-Way/25", accessor: r => r.twoWayPer25, display: r => r.twoWayPer25.toFixed(1), tooltip: "Off Rating plus Def Rating, per 25 combined points." },
+  { key: "last5", label: "Last 5", accessor: r => r.last5OffRatingPer25, display: r => r.last5Gp > 0 ? `${r.last5Trend} ${r.last5OffRatingPer25.toFixed(1)}` : "—", tooltip: "Off Rating/25 over their last 5 games with real shots logged (fewer if they haven't played 5 yet). ▲/▼ shows whether that's above or below their season Off Rating/25; within ±0.5 counts as flat (–)." }
 ];
 
-let leaderboardSort = { key: "twoway20", dir: "desc" };
+let leaderboardSort = { key: "twoway25", dir: "desc" };
 
 const SHOW_ADVANCED_COLS_KEY = "poolLeagueShowAdvancedCols";
 
@@ -8533,13 +8534,13 @@ function renderPlayerDetail() {
   document.getElementById("playerDetailTitle").innerHTML = `${renderPlayerAvatar(player, "large", playerAvatarRingClass(player.id))}<span>${escapeHtml(player.name)}</span>`;
   renderPlayerRankPill(player.id);
   document.getElementById("playerDetailSummary").textContent = row
-    ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""} · ${row.rate.pts.toFixed(1)} PTS/20 · ${row.offRatingPer20.toFixed(1)} Off Rating/20 · ${row.twoWayPer20.toFixed(1)} Two-Way/20`
+    ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""} · ${row.rate.pts.toFixed(1)} PTS/25 · ${row.offRatingPer25.toFixed(1)} Off Rating/25 · ${row.twoWayPer25.toFixed(1)} Two-Way/25`
     : "No games yet";
   const shareBtn = document.getElementById("sharePlayerBtn");
   shareBtn.onclick = () => shareOrCopy({
     title: "Poolean Intel",
     text: row
-      ? `${player.name}: ${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}, ${row.twoWayPer20.toFixed(1)} Two-Way/20`
+      ? `${player.name}: ${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}, ${row.twoWayPer25.toFixed(1)} Two-Way/25`
       : player.name,
     url: `${location.origin}${location.pathname}#player=${encodeURIComponent(player.id)}`
   }, shareBtn);
@@ -9872,13 +9873,13 @@ function computeForcedTurnoverCredit(playerId) {
     });
   });
   if (strips === 0) return null;
-  return { strips, stripsPer20: combinedPoints > 0 ? (strips / combinedPoints) * 20 : 0 };
+  return { strips, stripsPer25: combinedPoints > 0 ? (strips / combinedPoints) * PER : 0 };
 }
 
 const FORCED_TURNOVER_CREDIT_COLUMNS = [
   { key: "player", label: "Defender", accessor: r => r.player.name },
   { key: "strips", label: "Strips Forced", accessor: r => r.credit.strips },
-  { key: "per20", label: "Strips per 20", accessor: r => r.credit.stripsPer20, display: r => r.credit.stripsPer20.toFixed(2) },
+  { key: "per25", label: "Strips per 25", accessor: r => r.credit.stripsPer25, display: r => r.credit.stripsPer25.toFixed(2) },
 ];
 
 let forcedTurnoverCreditSort = { key: "strips", dir: "desc" };
@@ -9907,7 +9908,7 @@ function renderForcedTurnoverCreditPanel() {
   body.innerHTML = rows.map(r => `<tr>
     <td>${playerLink(r.player.id, r.player.name)}</td>
     <td>${r.credit.strips}</td>
-    <td>${r.credit.stripsPer20.toFixed(2)}</td>
+    <td>${r.credit.stripsPer25.toFixed(2)}</td>
   </tr>`).join("");
 }
 
@@ -10527,14 +10528,14 @@ function renderPlayerShotArc(playerId) {
 const LEAGUE_RANK_MIN_GP = 2;
 
 const LEAGUE_RANK_STATS = [
-  { key: "pts", label: "PTS/20", higherBetter: true, value: r => r.rate.pts },
-  { key: "ast", label: "AST/20", higherBetter: true, value: r => r.rate.ast },
-  { key: "stocks", label: "STL+BLK/20", higherBetter: true, value: r => r.rate.stl + r.rate.blk },
+  { key: "pts", label: "PTS/25", higherBetter: true, value: r => r.rate.pts },
+  { key: "ast", label: "AST/25", higherBetter: true, value: r => r.rate.ast },
+  { key: "stocks", label: "STL+BLK/25", higherBetter: true, value: r => r.rate.stl + r.rate.blk },
   { key: "ts", label: "TS%", higherBetter: true, value: r => trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta) },
-  { key: "tov", label: "TOV/20", higherBetter: false, value: r => r.rate.tov },
-  { key: "offRating", label: "Off Rating/20", higherBetter: true, value: r => r.offRatingPer20 },
-  { key: "defRating", label: "Def Rating/20", higherBetter: true, value: r => r.twoWayPer20 - r.offRatingPer20 },
-  { key: "twoWay", label: "Two-Way/20", higherBetter: true, value: r => r.twoWayPer20 },
+  { key: "tov", label: "TOV/25", higherBetter: false, value: r => r.rate.tov },
+  { key: "offRating", label: "Off Rating/25", higherBetter: true, value: r => r.offRatingPer25 },
+  { key: "defRating", label: "Def Rating/25", higherBetter: true, value: r => r.twoWayPer25 - r.offRatingPer25 },
+  { key: "twoWay", label: "Two-Way/25", higherBetter: true, value: r => r.twoWayPer25 },
   { key: "winShares", label: "Win Shares", higherBetter: true, value: r => r.winShares ? r.winShares.winShares : null }
 ];
 
@@ -10579,12 +10580,12 @@ function computePlayerSectionTeasers(playerId) {
   const defAttempts = row.defense.timesBeaten + row.defense.stops;
   const record = `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}`;
   return {
-    shooting: tsPct !== null ? `${tsPct}% TS, ${row.rate.pts.toFixed(1)} PTS/20` : "Not enough field goals yet",
-    passing: `${row.rate.ast.toFixed(1)} AST/20 · ${formatPct(row.tovPct)} turnover rate`,
+    shooting: tsPct !== null ? `${tsPct}% TS, ${row.rate.pts.toFixed(1)} PTS/25` : "Not enough field goals yet",
+    passing: `${row.rate.ast.toFixed(1)} AST/25 · ${formatPct(row.tovPct)} turnover rate`,
     defense: defAttempts >= 5 ? `Opponents shooting ${formatPct(pct(row.defense.timesBeaten, defAttempts))} against` : "Not enough tagged defensive plays yet",
     matchups: "Individual matchup history, as scorer and as defender",
     team: "How this player's own numbers shift with and without each teammate",
-    trends: `${record} · ${row.twoWayPer20.toFixed(1)} Two-Way/20`,
+    trends: `${record} · ${row.twoWayPer25.toFixed(1)} Two-Way/25`,
     media: "Every logged game, plus any clipped highlights and lowlights"
   };
 }
@@ -11593,7 +11594,7 @@ export const TABLE_PANELS = [
     empty: () => `No field goals without a tagged defender yet.`,
     extra: [] },
   { section: "matchups", order: 33, fn: "renderTeammateContextPanel", title: "Teammate Context", bodyId: "teammateContextBody", headerId: "teammateContextHeaderRow",
-    columns: __withDisplay(TEAMMATE_CONTEXT_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.gp}`, (r) => `${r.offRatingPer20.toFixed(1)}`, (r) => `${r.teammateQuality !== null ? r.teammateQuality.toFixed(1) : "—"}`, (r) => `${r.offMatchupDifficulty !== null ? r.offMatchupDifficulty.toFixed(1) : "—"}`, (r) => `${r.defMatchupDifficulty !== null ? r.defMatchupDifficulty.toFixed(1) : "—"}`, (r) => `${r.assistedPct !== null ? formatPct(r.assistedPct) : "—"}`, (r) => `${r.avgAssisterQuality !== null ? r.avgAssisterQuality.toFixed(1) : "—"}`]),
+    columns: __withDisplay(TEAMMATE_CONTEXT_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.gp}`, (r) => `${r.offRatingPer25.toFixed(1)}`, (r) => `${r.teammateQuality !== null ? r.teammateQuality.toFixed(1) : "—"}`, (r) => `${r.offMatchupDifficulty !== null ? r.offMatchupDifficulty.toFixed(1) : "—"}`, (r) => `${r.defMatchupDifficulty !== null ? r.defMatchupDifficulty.toFixed(1) : "—"}`, (r) => `${r.assistedPct !== null ? formatPct(r.assistedPct) : "—"}`, (r) => `${r.avgAssisterQuality !== null ? r.avgAssisterQuality.toFixed(1) : "—"}`]),
     rows: () => (computeTeammateContext()),
     sort: { key: "teammateQuality", dir: "desc" },
     empty: () => `No games with players yet.`,
@@ -11695,7 +11696,7 @@ const mix = TURNOVER_TYPES.map(t => {
     empty: () => `No live-ball turnovers with a type tagged yet.`,
     extra: [{"id":"turnoverTypeMixSummary","tag":"p","cls":"hint"}] },
   { section: "situational", order: 42, fn: "renderForcedTurnoverCreditPanel", title: "Forced Turnover Credit", bodyId: "forcedTurnoverCreditBody", headerId: "forcedTurnoverCreditHeaderRow",
-    columns: __withDisplay(FORCED_TURNOVER_CREDIT_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.credit.strips}`, (r) => `${r.credit.stripsPer20.toFixed(2)}`]),
+    columns: __withDisplay(FORCED_TURNOVER_CREDIT_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.credit.strips}`, (r) => `${r.credit.stripsPer25.toFixed(2)}`]),
     rows: () => (computeForcedTurnoverCreditRows()),
     sort: { key: "strips", dir: "desc" },
     empty: () => `No strips with a defender credited yet.`,
@@ -11730,7 +11731,7 @@ export const MOUNT_PANELS = [
   { title: "TS% by Shot Distance", section: "comparison", order: 6, html: "\r\n        <div id=\"leagueTsByZoneChart\"></div>\r\n      ", render: () => { renderLeagueTsByZoneChart(); }, wires: [] },
   { title: "League TS% Over Time", section: "comparison", order: 7, html: "\r\n        <div id=\"leagueTsChart\"></div>\r\n      ", render: () => { renderLeagueTsChart(); }, wires: [] },
   { title: "League Shot Heatmap", section: "comparison", order: 8, html: "\r\n        <div id=\"leagueHeatmap\"></div>\r\n      ", render: () => { renderLeagueHeatmap(); }, wires: [] },
-  { title: "Two-Way/20 Rank Over the Season", section: "comparison", order: 9, html: "\r\n        <div id=\"twoWayRankChart\"></div>\r\n      ", render: () => { renderTwoWayRankChart(); }, wires: [] },
+  { title: "Two-Way/25 Rank Over the Season", section: "comparison", order: 9, html: "\r\n        <div id=\"twoWayRankChart\"></div>\r\n      ", render: () => { renderTwoWayRankChart(); }, wires: [] },
   { title: "Closed Seasons in This App (League)", section: "comparison", order: 10, html: "\r\n        <select id=\"leagueSeasonSelect\" style=\"margin-bottom:10px\"></select>\r\n        <div class=\"table-scroll\">\r\n          <div id=\"leagueSeasonStandings\"></div>\r\n        </div>\r\n      ", render: () => { renderLeagueSeasonSelect(); renderLeagueSeasonStandings(); }, wires: [{ id: "leagueSeasonSelect", evt: "change", handler: renderLeagueSeasonStandings }] },
   { title: "Consistency", section: "comparison", order: 11, html: "\r\n        <div class=\"table-scroll\">\r\n          <div id=\"consistencyStandings\"></div>\r\n        </div>\r\n      ", render: () => { renderConsistencyStandings(); }, wires: [] },
   { title: "Shot Distance", section: "shooting", order: 12, html: "\r\n      <div class=\"shot-selection-legend\">\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-close\"></span>Close</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-mid\"></span>Midrange</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-line\"></span>3PT Line</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-deep\"></span>3PT Deep</span>\r\n      </div>\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"shotZoneTable\">\r\n          <thead><tr id=\"shotZoneHeaderRow\"></tr></thead>\r\n          <tbody id=\"shotZoneBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderShotZonePanel(); }, wires: [] },
@@ -11807,7 +11808,7 @@ export const PLAYER_PANELS = [
   { title: "Defensive Matchup Difficulty", hint: "How good the scorers this player guarded have been, game by game, to show whether they get the tough assignments. The dashed line is the season average.", tag: null, open: false, section: "matchups", order: 25, html: "\r\n      <div id=\"playerDefensiveMatchupDifficulty\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderDefensiveMatchupDifficultyChart(pid); }, wires: [] },
   { title: "Teammate Synergy (With/Without)", hint: "This player's numbers in games with each teammate versus without them. A dash means no games in that group yet, and a few games means it's noisy.", tag: null, open: true, section: "team", order: 26, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"teammateSynergyTable\">\r\n          <thead><tr id=\"teammateSynergyHeaderRow\"></tr></thead>\r\n          <tbody id=\"teammateSynergyBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTeammateSynergy(pid); }, wires: [] },
   { title: "Teammate Quality", hint: "How good this player's teammates are on offense, game by game. The dashed line is the season average.", tag: null, open: false, section: "team", order: 27, html: "\r\n      <div id=\"playerTeammateQuality\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTeammateQualityChart(pid); }, wires: [] },
-  { title: "Two-Way Trend", hint: "This player's Two-Way/20 game by game. The dashed line is their season average; recent games above it mean they're trending up.", tag: null, open: true, section: "trends", order: 28, html: "\r\n      <div id=\"playerTwoWayTrend\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTwoWayTrendChart(pid); }, wires: [] },
+  { title: "Two-Way Trend", hint: "This player's Two-Way/25 game by game. The dashed line is their season average; recent games above it mean they're trending up.", tag: null, open: true, section: "trends", order: 28, html: "\r\n      <div id=\"playerTwoWayTrend\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTwoWayTrendChart(pid); }, wires: [] },
   { title: "Flake %", hint: "Of the dates this player said they were coming (and games were played), how many they missed.", tag: null, open: false, section: "trends", order: 29, html: "\r\n      <div id=\"playerFlakeStats\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderFlakeStatsPanel(pid); }, wires: [] },
   { title: "Closed Seasons in This App", hint: "This player's final numbers from each season closed in this app (Start New Season in Export), from logged games. Real Site Seasons above has the real site's numbers. Turn on Include Past Seasons to blend them into the current numbers instead.", tag: null, open: false, section: "trends", order: 30, html: "\r\n      <label class=\"ios-switch-row\" style=\"margin-bottom:10px\">\r\n        <span>Include Past Seasons</span>\r\n        <span class=\"ios-switch\"><input type=\"checkbox\" id=\"togglePastSeasonsBtnPlayer\"><span class=\"ios-switch-track\"><span class=\"ios-switch-knob\"></span></span></span>\r\n      </label>\r\n      <div id=\"playerSeasonHistory\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderSeasonHistoryPanel(pid); }, wires: [{ id: "togglePastSeasonsBtnPlayer", evt: "change", handler: togglePastSeasonsInclusion }] },
   { title: "Real Game Record", hint: "This player's win-loss from every real game, next to the smaller set logged in detail from film in this app.", tag: "Old site data", open: false, section: "trends", order: 31, html: "\r\n      <div id=\"playerRealRecord\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerRealRecord(pid); }, wires: [] },
@@ -11892,7 +11893,7 @@ export const EXPORT_PANELS = [
 } }, { id: "exportLeaderboardCsvBtn", evt: "click", handler: () => {
   const rows = [["player", "games_played", ...STAT_FIELDS,
     "fgm", "fga", "tpm", "tpa", "close_m", "close_a", "mid_m", "mid_a", "tp_arc_m", "tp_arc_a", "tp_deep_m", "tp_deep_a", "ftm", "fta", "shot_pct", "ast_pct", "oreb_pct", "dreb_pct", "treb_pct", "tov_pct", "efg_pct", "ts_pct", "stocks", "ast_tov",
-    "pts_allowed", "opp_fg_pct", "times_beaten", "stops", "pts_per_20", "off_rating_per_20", "def_rating_per_20", "two_way_per_20"]];
+    "pts_allowed", "opp_fg_pct", "times_beaten", "stops", "pts_per_25", "off_rating_per_25", "def_rating_per_25", "two_way_per_25"]];
   computeLeaderboard().forEach(r => {
     rows.push([
       r.player.name, r.gp, ...STAT_FIELDS.map(f => r.totals[f]),
@@ -11900,8 +11901,8 @@ export const EXPORT_PANELS = [
       r.shotPct, r.astPct, r.orebPct, r.drebPct, r.trebPct, r.tovPct, effectiveFgPct(r.shooting.fgm, r.shooting.tpm, r.shooting.fga), trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta),
       r.stocks, r.astTov, r.defense.ptsAllowed,
       pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops),
-      r.defense.timesBeaten, r.defense.stops, r.rate.pts.toFixed(1), r.offRatingPer20.toFixed(1),
-      defensiveRating(r.rate, r.rateDefense).toFixed(1), r.twoWayPer20.toFixed(1)
+      r.defense.timesBeaten, r.defense.stops, r.rate.pts.toFixed(1), r.offRatingPer25.toFixed(1),
+      defensiveRating(r.rate, r.rateDefense).toFixed(1), r.twoWayPer25.toFixed(1)
     ]);
   });
   download("leaderboard.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
@@ -11912,15 +11913,15 @@ export const EXPORT_PANELS = [
   });
   download("assist-connections.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
 } }, { id: "exportTeammateSynergyCsvBtn", evt: "click", handler: () => {
-  const rows = [["player", "teammate", "gp_with", "gp_without", "off_rating_per20_with", "off_rating_per20_without", "two_way_per20_with", "two_way_per20_without"]];
+  const rows = [["player", "teammate", "gp_with", "gp_without", "off_rating_per25_with", "off_rating_per25_without", "two_way_per25_with", "two_way_per25_without"]];
   state.players.forEach(p => {
     computeTeammateSynergy(p.id).forEach(r => {
       rows.push([
         p.name, r.teammate.name, r.with.gp, r.without.gp,
-        r.with.gp > 0 ? r.with.offRatingPer20.toFixed(1) : "",
-        r.without.gp > 0 ? r.without.offRatingPer20.toFixed(1) : "",
-        r.with.gp > 0 ? r.with.twoWayPer20.toFixed(1) : "",
-        r.without.gp > 0 ? r.without.twoWayPer20.toFixed(1) : ""
+        r.with.gp > 0 ? r.with.offRatingPer25.toFixed(1) : "",
+        r.without.gp > 0 ? r.without.offRatingPer25.toFixed(1) : "",
+        r.with.gp > 0 ? r.with.twoWayPer25.toFixed(1) : "",
+        r.without.gp > 0 ? r.without.twoWayPer25.toFixed(1) : ""
       ]);
     });
   });

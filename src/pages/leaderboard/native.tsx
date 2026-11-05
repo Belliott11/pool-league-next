@@ -201,10 +201,10 @@ export function PowerRankingVsPerformance({ onOpen }: { onOpen: Open }) {
                 <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">{r.pct}%</span>
               </span>
               <span
-                className={`font-display text-right font-bold tabular-nums ${r.perf && r.perf.twoWayPer20 < 0 ? "text-neg" : ""}`}
+                className={`font-display text-right font-bold tabular-nums ${r.perf && r.perf.twoWayPer25 < 0 ? "text-neg" : ""}`}
                 title={r.perf ? `${r.perf.gp} game${r.perf.gp === 1 ? "" : "s"}` : undefined}
               >
-                {r.perf ? r.perf.twoWayPer20.toFixed(1) : "-"}
+                {r.perf ? r.perf.twoWayPer25.toFixed(1) : "-"}
               </span>
             </div>
           ))}
