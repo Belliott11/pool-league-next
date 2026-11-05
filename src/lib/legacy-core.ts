@@ -965,7 +965,7 @@ function renderGames() {
         const worst = performances.reduce((a, b) => b.twoWay < a.twoWay ? b : a);
         starBadge = ` <span class="badge badge-highlight" title="Best individual performance this game by Two-Way score.">${icon('flame')} ${playerLink(best.player.id, best.player.name)} ${best.twoWay >= 0 ? "+" : ""}${best.twoWay.toFixed(1)}</span>`;
         if (worst.player.id !== best.player.id) {
-          coldBadge = ` <span class="badge badge-lowlight" title="Worst individual performance this game by Two-Way score.">${icon('lowlight')} ${playerLink(worst.player.id, worst.player.name)} ${worst.twoWay >= 0 ? "+" : ""}${worst.twoWay.toFixed(1)}</span>`;
+          coldBadge = ` <span class="badge" title="Lowest Two-Way score of the game. Every game has one, and it is usually a close call.">${playerLink(worst.player.id, worst.player.name)} ${worst.twoWay >= 0 ? "+" : ""}${worst.twoWay.toFixed(1)}</span>`;
         }
       }
     }
@@ -3027,7 +3027,7 @@ function renderIndividualGamePerformances() {
         <ol class="award-standings">${best.map(li).join("")}</ol>
       </div>
       <div class="award-standings-col">
-        <h4 class="award-standings-heading">Worst</h4>
+        <h4 class="award-standings-heading">Roughest</h4>
         <ol class="award-standings">${worst.map(li).join("")}</ol>
       </div>
     </div>
@@ -3787,7 +3787,7 @@ function computeAwardRace() {
     const fmt = d => ({ ids: d.ids, value: `${d.v.w}-${d.v.l} together` });
     const duoNote = "Duo votes can be about more than results: the 2026 Best Duo never shared a team in a real game.";
     rows.push({ key: "best-duo", basis: `Best record together (${AWARD_RACE_DUO_MIN_GP}+ games)`, note: duoNote, leaders: [...duos].sort((a, b) => b.rate - a.rate || b.v.gp - a.v.gp).slice(0, 3).map(fmt) });
-    rows.push({ key: "worst-duo", basis: `Worst record together (${AWARD_RACE_DUO_MIN_GP}+ games)`, note: duoNote, leaders: [...duos].sort((a, b) => a.rate - b.rate || b.v.gp - a.v.gp).slice(0, 3).map(fmt) });
+    rows.push({ key: "worst-duo", basis: `Lowest record together (${AWARD_RACE_DUO_MIN_GP}+ games)`, note: duoNote, leaders: [...duos].sort((a, b) => a.rate - b.rate || b.v.gp - a.v.gp).slice(0, 3).map(fmt) });
   }
   const order = Object.keys(AWARD_TIER);
   rows.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
@@ -4354,8 +4354,8 @@ function renderPlayerRealPartners(playerId) {
       <span class="real-partner-pct">${Math.round(entry.pct * 100)}%</span>
     </div>`;
   wrap.innerHTML = `<div class="real-partner-grid">
-    ${tile("Best with", p.bestWith)}${tile("Worst with", p.worstWith)}
-    ${tile("Best against", p.bestAgainst)}${tile("Worst against", p.worstAgainst)}
+    ${tile("Best with", p.bestWith)}${tile("Roughest with", p.worstWith)}
+    ${tile("Best against", p.bestAgainst)}${tile("Roughest against", p.worstAgainst)}
   </div>
   <p class="hint" style="margin:10px 0 0">Needs at least ${REAL_PARTNER_MIN_GP} real games together (or against) to count.</p>`;
 }
@@ -4737,11 +4737,11 @@ function kMeans(points, k, seed) {
 }
 
 const PLAY_STYLE_DESCRIPTORS = {
-  off: { high: "Scorer", low: "Cold" },
-  def: { high: "Lockdown Defender", low: "Turnstile" },
-  ast: { high: "Playmaker", low: "Black Hole" },
-  reb: { high: "Glass-Cleaner", low: "Allergic to the Glass" },
-  stocks: { high: "Disruptor", low: "Ghost" }
+  off: { high: "Scorer", low: "Still warming up" },
+  def: { high: "Lockdown Defender", low: "Defense to grow" },
+  ast: { high: "Playmaker", low: "Shoot-first" },
+  reb: { high: "Glass-Cleaner", low: "Perimeter-minded" },
+  stocks: { high: "Disruptor", low: "Quiet on D" }
 };
 
 function describePlayStyleCluster(center) {
@@ -6961,7 +6961,7 @@ function computePlayerTips(playerId) {
   // Turnovers: how often they turn it over relative to their own scoring opportunities.
   const avgTov = leagueAvg(r => r.tovPct);
   if (avgTov !== null && row.tovPct - avgTov >= 4) {
-    candidates.push({ diff: row.tovPct - avgTov, icon: icon("target"), text: `Ball security: your turnover rate (${formatPct(row.tovPct)}) is running ${(row.tovPct - avgTov).toFixed(0)} points above the league average (${formatPct(avgTov)}). Tightening decisions with the ball is probably the single fastest way to add value right now.` });
+    candidates.push({ diff: row.tovPct - avgTov, icon: icon("target"), text: `Ball security: your turnover rate (${formatPct(row.tovPct)}) is ${(row.tovPct - avgTov).toFixed(0)} points above the league average (${formatPct(avgTov)}). Holding onto the ball a little more is probably the quickest way to add value.` });
   }
 
   // Defense: opponent shooting % against them, only once they've actually been tagged enough to
@@ -6992,7 +6992,7 @@ function computePlayerTips(playerId) {
     const worstPct = pct(worst.fgm, worst.fga);
     if (ownFgPct - worstPct >= 15) {
       const name = state.players.find(p => p.id === worst.defenderId)?.name || "?";
-      candidates.push({ diff: ownFgPct - worstPct, icon: icon("warning"), text: `Matchup to watch: ${name} has held you to ${formatPct(worstPct)} shooting (${worst.fga} attempts), well under your own ${formatPct(ownFgPct)} overall. Worth a different look (a different spot on the floor, a screen, anything) when they're the one on you.`, games: gamesForMatchup(playerId, worst.defenderId) });
+      candidates.push({ diff: ownFgPct - worstPct, icon: icon("target"), text: `Matchup to know: ${name} has held you to ${formatPct(worstPct)} shooting (${worst.fga} attempts), well under your own ${formatPct(ownFgPct)} overall. A fresh look (a different spot on the floor, a screen, anything) could be fun when they're the one on you.`, games: gamesForMatchup(playerId, worst.defenderId) });
     }
     const best = scorerMatchups.reduce((a, b) => pct(b.fgm, b.fga) > pct(a.fgm, a.fga) ? b : a);
     const bestPct = pct(best.fgm, best.fga);
@@ -7010,7 +7010,7 @@ function computePlayerTips(playerId) {
     const worstAllowed = pct(worst.fgm, worst.fga);
     if (worstAllowed - avgOppFg >= 15) {
       const name = state.players.find(p => p.id === worst.scorerId)?.name || "?";
-      candidates.push({ diff: worstAllowed - avgOppFg, icon: icon("warning"), text: `Defensive matchup to watch: ${name} is shooting ${formatPct(worstAllowed)} against you specifically (${worst.fga} attempts), well above what you allow overall. Extra help on that matchup, or a different defender entirely, might be worth it.`, games: gamesForMatchup(worst.scorerId, playerId) });
+      candidates.push({ diff: worstAllowed - avgOppFg, icon: icon("target"), text: `Defensive matchup to know: ${name} is shooting ${formatPct(worstAllowed)} against you specifically (${worst.fga} attempts), well above what you allow overall. A bit of extra help on that matchup, or a different defender, could be a fun change.`, games: gamesForMatchup(worst.scorerId, playerId) });
     }
   }
 
@@ -7055,7 +7055,7 @@ function computePlayerTips(playerId) {
       }
       const worst = meaningfulZones.reduce((a, b) => (a.fgPct - a.leagueZoneFg) > (b.fgPct - b.leagueZoneFg) ? b : a);
       if (worst.leagueZoneFg - worst.fgPct >= 12) {
-        candidates.push({ diff: worst.leagueZoneFg - worst.fgPct, icon: icon("snowflake"), text: `Weakness: just ${formatPct(worst.fgPct)} from ${worst.zone.label} (${worst.attempts} attempts), well under the ${formatPct(worst.leagueZoneFg)} league average from there. Sagging off there and daring that shot is a defensible bet.`, games: gamesForZoneShots(playerId, worst.zone.key, false) });
+        candidates.push({ diff: worst.leagueZoneFg - worst.fgPct, icon: icon("target"), text: `Room to grow: ${formatPct(worst.fgPct)} from ${worst.zone.label} (${worst.attempts} attempts), under the ${formatPct(worst.leagueZoneFg)} league average from there. The easiest place to find a better shot.`, games: gamesForZoneShots(playerId, worst.zone.key, false) });
       }
     }
   }
@@ -7252,8 +7252,8 @@ function computePlayerContestQualityEngagement(playerId) {
     const highEngagement = dist.engagementRate >= 50;
     if (highQuality && highEngagement) read = "Engages hard on most of your defensive assignments, and shoots down real contests well -- a complete, reliable defensive profile.";
     else if (highQuality && !highEngagement) read = "Rarely engages hard when tagged, but very effective the few times you do -- the quality is real, it just doesn't show up often enough to carry a full workload.";
-    else if (!highQuality && highEngagement) read = "Engages hard on most of your assignments, but the shots you allow on those real contests are going in more than the league average -- real effort, room to improve the results.";
-    else read = "Rarely engages hard when tagged, and the results on the contests you do bring aren't ahead of the league average either -- worth a closer look at defensive engagement specifically.";
+    else if (!highQuality && highEngagement) read = "Engages hard on most of your assignments, but the shots you allow on those real contests are going in more than the league average -- real effort, and the results have room to catch up.";
+    else read = "Rarely engages hard when tagged, and the results on the contests you do bring aren't ahead of the league average yet -- defense is the easiest place to find extra value.";
   } else if (realContested) {
     read = "Not enough tagged assignments yet to read engagement alongside contest quality.";
   } else {
@@ -8453,8 +8453,7 @@ function renderLeaderboard() {
           td.classList.add("leaderboard-leader-cell");
           td.title = "Season leader in this column";
         } else if (columnWorst[col.key] !== undefined && value === columnWorst[col.key]) {
-          td.classList.add("leaderboard-worst-cell");
-          td.title = "Season worst in this column";
+          // Lowest value in the column: left unmarked on purpose, only the leader is called out.
         }
       }
       tr.appendChild(td);
@@ -9138,7 +9137,7 @@ function renderPlayerGameLog(playerId) {
     const twoWayBadge = r.game.id === bestGameId
       ? ` <span class="badge badge-highlight" title="Best individual game this season by Two-Way score.">${icon("flame")}</span>`
       : r.game.id === worstGameId
-        ? ` <span class="badge badge-lowlight" title="Worst individual game this season by Two-Way score.">${icon("lowlight")}</span>`
+        ? ` <span class="badge" title="Lowest Two-Way score of any game this season. Every season has one.">Rough one</span>`
         : "";
     const stoppedEarlyBadge = r.game.stoppedEarly
       ? ` <span class="badge badge-lowlight" title="This game ended early. Not comparable to a complete game -- excluded from Best/Worst Games, Power Ranking vs. Performance, Shot Attempt Differential, Pace/PPP, and Win Shares.">${icon("stop")}</span>`
@@ -10408,7 +10407,7 @@ function shotTypeTipCandidates(playerId) {
     if (gap >= 15) {
       out.push({ diff: gap, icon: icon("flame"), text: `Shot type: your ${t.label.toLowerCase()} shots are going ${formatPct(Math.round(ts(b)))} TS (${b.a} attempts), well above the league's ${formatPct(Math.round(ts(l)))} on that kind of shot. Worth creating more of them.`, games: gamesForShotType(playerId, t.key, true) });
     } else if (gap <= -15) {
-      out.push({ diff: -gap, icon: icon("snowflake"), text: `Shot type: your ${t.label.toLowerCase()} shots are only ${formatPct(Math.round(ts(b)))} TS (${b.a} attempts), well under the league's ${formatPct(Math.round(ts(l)))} on that kind of shot. Worth practicing, or taking fewer of them until it improves.`, games: gamesForShotType(playerId, t.key, false) });
+      out.push({ diff: -gap, icon: icon("target"), text: `Room to grow: your ${t.label.toLowerCase()} shots are at ${formatPct(Math.round(ts(b)))} TS (${b.a} attempts), under the league's ${formatPct(Math.round(ts(l)))} on that kind of shot. A good one to practice, or mix in fewer of until it clicks.`, games: gamesForShotType(playerId, t.key, false) });
     }
   });
   const heave = mine.types.deepHeave;

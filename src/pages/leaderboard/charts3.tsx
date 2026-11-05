@@ -142,7 +142,7 @@ export function PlayStyleClusters({ onOpen }: { onOpen: (id: string) => void }) 
                 ))}
                 {down.map((s) => (
                   <span key={s.label} className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
-                    Weaker: {s.label}
+                    Room to grow: {s.label}
                   </span>
                 ))}
               </div>

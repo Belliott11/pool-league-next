@@ -152,7 +152,7 @@ function GameCard({
               </Badge>
             )}
             {perf?.worst && (
-              <Badge variant="destructive" title="Worst individual performance this game by Two-Way score.">
+              <Badge variant="secondary" title="Lowest Two-Way score of the game. Every game has one, and it is usually a close call.">
                 {playerName(state, perf.worst.id)} {signed(perf.worst.twoWay)}
               </Badge>
             )}

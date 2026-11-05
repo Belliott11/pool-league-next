@@ -174,12 +174,11 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                   }
                   const v = col.accessor(r)
                   const isBest = marks.best[col.key] !== undefined && v === marks.best[col.key]
-                  const isWorst = marks.worst[col.key] !== undefined && v === marks.worst[col.key]
                   return (
                     <TableCell
                       key={col.key}
-                      title={isBest ? "Season leader in this column" : isWorst ? "Season worst in this column" : undefined}
-                      className={`relative tabular-nums ${isBest ? "bg-pos/15 text-pos font-semibold" : ""} ${isWorst ? "bg-neg/15 text-neg" : ""}`}
+                      title={isBest ? "Season leader in this column" : undefined}
+                      className={`relative tabular-nums ${isBest ? "bg-pos/15 text-pos font-semibold" : ""}`}
                     >
                       {ranges[col.key] && typeof v === "number" && Number.isFinite(v) && (
                         <span

@@ -120,13 +120,13 @@
   "hint": "Bad Pass, Lost Handle, and Possession/Decision Error are self-inflicted -- the player's own execution or decision caused it. Stripped is the one genuinely defense-forced category: credit belongs at least partly to the defender, not solely a mark against the offensive player. Only live-ball turnovers with a type tagged count here (Export, Review Turnover Types) -- a turnover that's really just a missed shot going out of bounds is excluded entirely. Sorted by Self-Inflicted % (worst ball security first). Needs 5+ tagged turnovers to show a row."
  },
  "TOV Recomputed": {
-  "hint": "A missed shot ruled out of bounds isn't a ball-security failure the way giving the ball away live is, so TOV% and A/TO now count only live-ball turnovers (bad pass, lost handle, stripped, decision/drive error, or untyped). The old blended number (which counted both) is kept here alongside the new one so the change is visible, not silent."
+  "hint": "A missed shot ruled out of bounds isn't the same as giving the ball away live, so TOV% and A/TO now count only live-ball turnovers (bad pass, lost handle, stripped, decision/drive error, or untyped). The old blended number (which counted both) is kept here alongside the new one so the change is visible, not silent."
  },
  "Self-Inflicted vs. Forced Turnover Rate": {
   "hint": "Same self-inflicted/forced split as Turnover Type Breakdown above, as one bar per player instead of a table -- the fastest way to scan the whole roster for whose ball-security problem is really theirs, and whose is partly the defense's doing. Bar length reflects total tagged volume, not just the self-inflicted/forced split, so a player with a handful of turnovers and one with many don't look the same size just because both happen to split the same way. Sorted by total turnovers, most first."
  },
  "Turnover Type Mix": {
-  "hint": "Same shape as Shot Selection's Mix column -- what KIND of mistake a player tends to make, not just how many. Mostly Bad Pass points at a passing/decision problem; mostly Lost Handle points at a ball-security-under-pressure problem. These call for different fixes and shouldn't flatten into one TOV number."
+  "hint": "Same shape as Shot Selection's Mix column -- what KIND of mistake a player tends to make, not just how many. Mostly Bad Pass points at passing and decision-making; mostly Lost Handle points at holding the ball under pressure. They are different habits to work on, so they are kept apart instead of flattened into one TOV number."
  },
  "Forced Turnover Credit": {
   "hint": "Stripped turnovers used to carry no defensive attribution at all -- they counted against the offensive player's TOV but credited no defender. Stat Entry's own turnover-logging flow asks who forced or recovered it, so this is a real, deliberately-entered answer, not a guess: the same treatment Rebound Battle Record already gives contested rebounds. No minimum sample -- this is a counting/credit stat like Game-Winning Buckets, not a rate that needs volume to mean something."
