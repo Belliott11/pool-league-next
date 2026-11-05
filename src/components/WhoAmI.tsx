@@ -70,7 +70,7 @@ export function WhoPrompt({ state }: { state: PooleanState }) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3 text-sm">
       <UserRound aria-hidden className="size-4 text-muted-foreground" />
-      <span className="min-w-0 flex-1">Who are you? The Player tab will open on you.</span>
+      <span className="min-w-[12rem] flex-1">Who are you? The Player tab will open on you.</span>
       <div className="w-44">
         <WhoSelect state={state} />
       </div>

@@ -108,12 +108,13 @@ function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: strin
 function Panels({ section, pid, version }: { section: string; pid: string; version: unknown }) {
   const layout = useMemo(() => arrange(PANELS, PLAYER_GROUPS), [])
   const body = (p: PlayerPanelSpec, opened: number) => (p.title === "League Rank" ? <LeagueRank pid={pid} /> : <PlayerPanelBody spec={p} pid={pid} version={version} opened={opened} />)
+  const entries = layout.get(section) ?? []
   return (
     <>
-      {(layout.get(section) ?? []).map((p) =>
+      {entries.map((p) =>
         p.group ? (
           <PanelBoundary key={p.group.id} title={p.group.title}>
-            <PanelGroup title={p.group.title} section={section} frame="details" tabs={p.members!.map((m) => ({ title: m.title, label: m.label, hint: m.item.hint, tag: m.item.tag, node: (opened) => body(m.item, opened) }))} />
+            <PanelGroup title={p.group.title} section={section} frame={entries.length === 1 ? "flat" : "details"} tabs={p.members!.map((m) => ({ title: m.title, label: m.label, hint: m.item.hint, tag: m.item.tag, node: (opened) => body(m.item, opened) }))} />
           </PanelBoundary>
         ) : (
           <PanelBoundary key={p.item!.title} title={p.item!.title}>

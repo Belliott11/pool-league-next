@@ -25,7 +25,7 @@ export interface GroupTab {
 
 // Related panels as one panel with a tab each. Only the open tab is built, so each panel's own drawing code runs when its
 // tab is shown. A "panel-select" event (from search) switches to the tab for that panel's title.
-export function PanelGroup({ title, section, tabs, frame }: { title: string; section: string; tabs: GroupTab[]; frame: "card" | "details" }) {
+export function PanelGroup({ title, section, tabs, frame }: { title: string; section: string; tabs: GroupTab[]; frame: "card" | "details" | "flat" }) {
   const [active, setActive] = useState(tabs[0].title)
   const [opened, setOpened] = useState(0)
   const ref = useRef<HTMLElement>(null)
@@ -57,6 +57,14 @@ export function PanelGroup({ title, section, tabs, frame }: { title: string; sec
     </Tabs>
   )
   const members = JSON.stringify(tabs.map((t) => t.title))
+  // Alone in its section, the section header already names it: no second card around the tabs.
+  if (frame === "flat") {
+    return (
+      <div ref={ref as React.RefObject<HTMLDivElement>} data-group-members={members} data-group={title} data-player-panel={title}>
+        {body}
+      </div>
+    )
+  }
   if (frame === "card") {
     return (
       <div ref={ref as React.RefObject<HTMLDivElement>} data-group-members={members} data-group={title}>
