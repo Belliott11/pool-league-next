@@ -11,7 +11,7 @@ import { panelIcon } from "@/lib/panelIcons"
 export const TAB_LIST = { variant: "line" as const, className: "w-full flex-wrap justify-start gap-2 pb-2", style: { height: "auto" } }
 // Each tab is a bordered pill so it reads as a control, not loose text; the open one is filled.
 export const TAB_TRIGGER = {
-  className: "flex-none rounded-full border-border! px-3 py-1.5 after:hidden data-active:border-primary! data-active:bg-primary! data-active:text-primary-foreground!",
+  className: "min-h-10 flex-none rounded-full border-border! px-3 py-1.5 after:hidden data-active:border-primary! data-active:bg-primary! data-active:text-primary-foreground!",
   style: { height: "auto" },
 }
 

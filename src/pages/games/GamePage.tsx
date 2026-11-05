@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TAB_LIST, TAB_TRIGGER } from "@/components/PanelGroup"
 import { TeamsTab } from "./TeamsTab"
 import { FlipDigits } from "@/components/FlipDigits"
 import { TEAM } from "@/lib/teamColors"
@@ -431,12 +432,12 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
         <GameVideoPanel state={state} game={game} update={update} readOnly={readOnly} control={control} />
       </div>
 
-      <Tabs defaultValue={reviewed ? "stats" : "teams"}>
-        <TabsList>
-          <TabsTrigger value="teams">Teams</TabsTrigger>
-          <TabsTrigger value="stats">Stats</TabsTrigger>
-          <TabsTrigger value="shots">Shots</TabsTrigger>
-          <TabsTrigger value="reel">Reel</TabsTrigger>
+      <Tabs defaultValue={reviewed ? "stats" : "teams"} className="gap-4">
+        <TabsList {...TAB_LIST}>
+          <TabsTrigger value="teams" {...TAB_TRIGGER}>Teams</TabsTrigger>
+          <TabsTrigger value="stats" {...TAB_TRIGGER}>Stats</TabsTrigger>
+          <TabsTrigger value="shots" {...TAB_TRIGGER}>Shots</TabsTrigger>
+          <TabsTrigger value="reel" {...TAB_TRIGGER}>Reel</TabsTrigger>
         </TabsList>
         <TabsContent value="teams">
           <TeamsTab state={state} game={game} onOpenGame={onOpenGame} />
