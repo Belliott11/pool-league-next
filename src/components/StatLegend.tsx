@@ -66,6 +66,7 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
       ["Roughest", "The lowest value in a list. Someone always is, and it is usually close."],
       ["Steady / Some data / Too early", "How much is behind a number: Steady is 100 or more shots or 15 or more games, Some data is 30 or more shots or 6 or more games. Fainter table rows have fewer than 3 games."],
       ["Win impact", "Points of win chance against an average player, with teammates and opponents held constant."],
+      ["Holds up / Backwards / No sign of it", "Whether a rule from another sport is true in your games. No sign of it needs a real sample; with too few games it reads Too early."],
       ["Likely", "The range the true rate probably sits in, given how few shots are behind it."],
     ],
   },

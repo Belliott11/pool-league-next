@@ -7,6 +7,7 @@ import { pct, playerFlow, type Rate } from "@/lib/gameFlow"
 import { playerName } from "@/lib/players"
 import { ZONES, ZONE_LABEL, playerIdentity } from "@/lib/playerIdentity"
 import { QUICK, sequences } from "@/lib/sequences"
+import { adviceFrom, RULE_LABEL, ruleTests, type RuleVerdict } from "@/lib/ruleTests"
 import { trustOf, wilson } from "@/lib/trust"
 import type { PooleanState } from "@/lib/types"
 import { SIZES, splits, winImpact, type Bucket, type Impact, type WinImpact } from "@/lib/winImpact"
@@ -196,6 +197,46 @@ function BodyTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: O
   )
 }
 
+const RULE_TONE: Record<RuleVerdict, string> = { holds: "border-primary bg-primary/15 text-primary", backwards: "border-gold text-gold", none: "", early: "", suspect: "border-gold text-gold" }
+
+function HoldUpTab({ state }: { state: PooleanState }) {
+  const rules = useMemo(() => ruleTests(state), [state])
+  const advice = adviceFrom(rules)
+  const order: RuleVerdict[] = ["holds", "backwards", "suspect", "none", "early"]
+  const sorted = [...rules].sort((a, b) => order.indexOf(a.verdict) - order.indexOf(b.verdict))
+  return (
+    <>
+      <Title>What to do differently</Title>
+      {advice.length === 0 ? (
+        <Hint>Nothing has enough evidence behind it yet to change how anyone plays.</Hint>
+      ) : (
+        <ul className="flex flex-col gap-2 text-sm">
+          {advice.map((r) => (
+            <li key={r.id} className="rounded-lg bg-muted px-3 py-2">{r.advice}</li>
+          ))}
+        </ul>
+      )}
+      <Title>Rules from other sports</Title>
+      <Hint>Each one tested on your games. Many are checked at once, so the bar for a verdict is high, and "No sign of it" only appears with a real sample behind it. Verdicts update as games are logged.</Hint>
+      <ul className="flex flex-col gap-3">
+        {sorted.map((r) => (
+          <li key={r.id} className="flex flex-col gap-0.5 border-t pt-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium">{r.claim}</span>
+              <span className={`inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground ${RULE_TONE[r.verdict]}`}>
+                {RULE_LABEL[r.verdict]}{r.strength === "hint" ? ", a hint" : ""}
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground">{r.sport}, {r.n}</span>
+            <span className="tabular-nums">{r.numbers}</span>
+            {r.note && <span className="text-xs text-muted-foreground">{r.note}</span>}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
 export function DeepDiveCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: Open }) {
   return (
     <Section id="lb-deep" title="Player deep dive" icon={Telescope} teaser="Win impact with teammates held constant, what shots come after, how free players get, and whether size matters.">
@@ -205,6 +246,7 @@ export function DeepDiveCard({ state, onOpenPlayer }: { state: PooleanState; onO
           { value: "seq", label: "Play sequences", node: <SequenceTab state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "identity", label: "Player identity", node: <IdentityTab state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "body", label: "Body and effort", node: <BodyTab state={state} onOpenPlayer={onOpenPlayer} /> },
+          { value: "rules", label: "Does it hold up?", node: <HoldUpTab state={state} /> },
         ]}
       />
     </Section>

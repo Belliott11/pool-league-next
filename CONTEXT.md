@@ -131,5 +131,11 @@ Leaderboard section and Player page tab. Win impact is a ridge logistic regressi
 **Trust level**:
 How much is behind a number (Steady, Some data, Too early), from `src/lib/trust.ts`. A Verdict (Clear difference, A hint, Too early to tell) says whether a difference is real; a Trust level only says how big the sample is.
 
+**Does it hold up?**:
+Rules from other sports tested on league data (`src/lib/ruleTests.ts`), with a verdict of Holds up, Backwards, No sign of it or Too early. Comparisons of shots hold the court zone constant where the mix of shots would otherwise decide the result. Strategy advice only comes from rules with a real verdict.
+
+**How teams were picked**:
+`teamsPickedBy` on a game (balanced, captains, random, runback), or `oldGamePicks` in the league state for old-site games, keyed by date and teams. Random-team games are the closest thing the league has to an experiment.
+
 **Panel group**:
 Related Leaderboard or Player panels combined into one panel with a tab each, so nothing repeats and the pages are shorter (for example Awards, Shot mix, Turnovers, Old site history). Defined in `src/lib/panelGroups.ts`. A panel that only repeated another (Season Timeline, the self-inflicted turnover bars) was dropped; tuning views (Calibrated Thresholds, Win Shares model) sit in an editor-only Developer views group.

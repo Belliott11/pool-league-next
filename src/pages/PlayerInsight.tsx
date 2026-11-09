@@ -8,6 +8,7 @@ import type { PooleanState } from "@/lib/types"
 import { bodyEffort } from "@/lib/bodyEffort"
 import { pct as ratePct, playerFlow, type Rate } from "@/lib/gameFlow"
 import { ZONES, ZONE_LABEL, playerIdentity } from "@/lib/playerIdentity"
+import { shotValue } from "@/lib/ruleTests"
 import { sequences } from "@/lib/sequences"
 import { trustOf } from "@/lib/trust"
 import { SIZES, splits, winImpact } from "@/lib/winImpact"
@@ -37,6 +38,7 @@ function DeepDive({ state, pid }: { state: PooleanState; pid: string }) {
   const d = useMemo(() => playerIdentity(state).rows.find((r) => r.id === pid), [state, pid])
   const h = useMemo(() => bodyEffort(state, w).rows.find((r) => r.id === pid), [state, w, pid])
   const me = w.rows.find((r) => r.id === pid)
+  const value = useMemo(() => ({ mine: shotValue(state, pid), all: shotValue(state) }), [state, pid])
   return (
     <>
       {me && (
@@ -46,6 +48,8 @@ function DeepDive({ state, pid }: { state: PooleanState; pid: string }) {
           <Hint>Win chance against an average player, with teammates and opponents held constant.</Hint>
         </>
       )}
+      {value.mine.two.perShot !== null && <Line label="Twos" value={`${value.mine.two.perShot.toFixed(2)} a shot`} sub={`${value.mine.two.att} shots, league ${value.all.two.perShot?.toFixed(2)}`} />}
+      {value.mine.three.perShot !== null && <Line label="Threes" value={`${value.mine.three.perShot.toFixed(2)} a shot`} sub={`${value.mine.three.att} shots, league ${value.all.three.perShot?.toFixed(2)}`} />}
       {s && SIZES.map((z) => <Line key={z} label={z} value={`${s.size[z].w}-${s.size[z].l}`} />)}
       {s && s.night.map((b, i) => <Line key={i} label={i === 2 ? "Game 3 or later" : `Game ${i + 1} of a night`} value={`${b.w}-${b.l}`} />)}
       {q && (

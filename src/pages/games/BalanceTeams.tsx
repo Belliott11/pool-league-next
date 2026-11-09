@@ -305,7 +305,7 @@ export function BalanceTeams({
   }
 
   function useTeams(a: string[], b: string[]) {
-    const game = newGame({ id: uid("game"), date, teamA: [...a], teamB: [...b], prediction: pregamePrediction(a, b) })
+    const game = newGame({ id: uid("game"), date, teamA: [...a], teamB: [...b], prediction: pregamePrediction(a, b), teamsPickedBy: "balanced" })
     update((s) => ({ ...s, games: [...s.games, game] }))
     onCreated(game)
   }

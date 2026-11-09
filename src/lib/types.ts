@@ -65,6 +65,9 @@ export interface Game {
   stealEvents: { id: string; playerId: string; opponentId: string; videoTime?: number | null }[]
   foulEvents: { id: string; playerId: string; opponentId?: string | null; videoTime?: number | null }[]
   stoppedEarly?: boolean
+  teamsPickedBy?: "balanced" | "captains" | "random" | "runback"
+  rules?: string // house rules that night
+  liveTarget?: number // the score it was played to
   videoUrl?: string
   videoPath?: string
   // Seconds into the video where this game begins, for one recording shared by several games.

@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { uid } from "@/lib/format"
+import { PickChips, type PickMethodKey } from "@/components/GameTags"
 import {
   DEFAULT_TARGET, addLiveScore, discardLive, finishLive, findLiveGame, liveTargetOf, liveTotals, startLive, undoLiveScore,
 } from "@/lib/live"
@@ -22,6 +23,7 @@ function Setup({ state, update, onClose }: { state: PooleanState; update: Update
   const [teamA, setA] = useState<string[]>([])
   const [teamB, setB] = useState<string[]>([])
   const [target, setTarget] = useState(DEFAULT_TARGET)
+  const [picked, setPicked] = useState<PickMethodKey | undefined>()
   const [name, setName] = useState("")
 
   // Tapping a team button moves the player there; tapping it again takes them off.
@@ -90,10 +92,14 @@ function Setup({ state, update, onClose }: { state: PooleanState; update: Update
           </Button>
         </div>
       </div>
+      <div className="flex flex-col gap-1.5 rounded-lg border p-2">
+        <span className="font-medium">How teams were picked</span>
+        <PickChips value={picked} onChange={setPicked} />
+      </div>
       <Button
         className="h-14 text-lg"
         disabled={!ok}
-        onClick={() => update((s) => startLive(s, uid("game"), new Date().toISOString().slice(0, 10), teamA, teamB, target))}
+        onClick={() => update((s) => startLive(s, uid("game"), new Date().toISOString().slice(0, 10), teamA, teamB, target, picked))}
       >
         Start game
       </Button>

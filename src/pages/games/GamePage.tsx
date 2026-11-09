@@ -21,6 +21,7 @@ import { predictionNote } from "@/lib/scorecard"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
+import { GameTagsEditor } from "@/components/GameTags"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import {
@@ -418,6 +419,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
         )}
       </div>
 
+      {!readOnly && <GameTagsEditor key={game.id} game={game} update={update} />}
       <Card>
         <CardContent className="flex items-center justify-around gap-4">
           <TeamScore state={state} game={game} ids={game.teamA} label="Team A" score={scoreA} />

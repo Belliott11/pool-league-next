@@ -19,8 +19,8 @@ export function liveTotals(game: Game): [number, number] {
   return [liveScoreOf(game, game.teamA), liveScoreOf(game, game.teamB)]
 }
 
-export function startLive(state: PooleanState, id: string, date: string, teamA: string[], teamB: string[], target: number): PooleanState {
-  const g = newGame({ id, date, teamA, teamB, liveInProgress: true, liveScores: [], liveTarget: target, prediction: pregamePrediction(teamA, teamB) })
+export function startLive(state: PooleanState, id: string, date: string, teamA: string[], teamB: string[], target: number, teamsPickedBy?: Game["teamsPickedBy"]): PooleanState {
+  const g = newGame({ id, date, teamA, teamB, liveInProgress: true, liveScores: [], liveTarget: target, teamsPickedBy, prediction: pregamePrediction(teamA, teamB) })
   return { ...state, games: [...state.games, g] }
 }
 
