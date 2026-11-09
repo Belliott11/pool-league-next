@@ -5,11 +5,20 @@ import { Section } from "@/components/Section"
 import { marginBreakdown, shotsCreated, turnoverCost, winProbAdded } from "@/lib/insight"
 import { PER } from "@/lib/per"
 import type { PooleanState } from "@/lib/types"
+import { bodyEffort } from "@/lib/bodyEffort"
+import { pct as ratePct, playerFlow, type Rate } from "@/lib/gameFlow"
+import { ZONES, ZONE_LABEL, playerIdentity } from "@/lib/playerIdentity"
+import { sequences } from "@/lib/sequences"
+import { trustOf } from "@/lib/trust"
+import { SIZES, splits, winImpact } from "@/lib/winImpact"
 import { FactorBars } from "@/pages/leaderboard/InsightCard"
-import { Hint } from "@/pages/leaderboard/parts"
+import { Hint, SureChip, TrustChip } from "@/pages/leaderboard/parts"
 
 const sign = (v: number, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}`
 const pct = (v: number | null) => (v === null ? "-" : `${Math.round(v * 100)}%`)
+
+const rate = (r: Rate) => (r.att >= 5 ? `${Math.round(ratePct(r)!)}%` : r.att ? `${r.made}/${r.att}` : "-")
+const shots = (r: Rate) => `${r.att} shots`
 
 const Line = ({ label, value, sub }: { label: string; value: string; sub?: string }) => (
   <div className="flex items-baseline gap-2 text-sm">
@@ -18,6 +27,45 @@ const Line = ({ label, value, sub }: { label: string; value: string; sub?: strin
     {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
   </div>
 )
+
+// Their row from each Player deep dive view. Built only when the tab is opened.
+function DeepDive({ state, pid }: { state: PooleanState; pid: string }) {
+  const w = useMemo(() => winImpact(state), [state])
+  const s = useMemo(() => splits(state).find((r) => r.id === pid), [state, pid])
+  const q = useMemo(() => sequences(state).rows.find((r) => r.id === pid), [state, pid])
+  const hot = useMemo(() => playerFlow(state, pid).hot, [state, pid])
+  const d = useMemo(() => playerIdentity(state).rows.find((r) => r.id === pid), [state, pid])
+  const h = useMemo(() => bodyEffort(state, w).rows.find((r) => r.id === pid), [state, w, pid])
+  const me = w.rows.find((r) => r.id === pid)
+  return (
+    <>
+      {me && (
+        <>
+          <Line label="Win impact" value={`${sign(me.impact, 0)} pts`} sub={`could be ${sign(me.lo, 0)} to ${sign(me.hi, 0)}, ${me.games} games`} />
+          <SureChip v={me.sure} />
+          <Hint>Win chance against an average player, with teammates and opponents held constant.</Hint>
+        </>
+      )}
+      {s && SIZES.map((z) => <Line key={z} label={z} value={`${s.size[z].w}-${s.size[z].l}`} />)}
+      {s && s.night.map((b, i) => <Line key={i} label={i === 2 ? "Game 3 or later" : `Game ${i + 1} of a night`} value={`${b.w}-${b.l}`} />)}
+      {q && (
+        <>
+          <TrustChip t={trustOf(q.all.att, "shots")} />
+          {([["Putbacks", q.putback], ["Off a turnover", q.offTurnover], ["Quick shots", q.quick], ["Settled shots", q.settled], ["Answering a basket", q.answer], ["After a miss", hot.afterMiss]] as const).map(([l, r]) => <Line key={l} label={l} value={rate(r)} sub={shots(r)} />)}
+        </>
+      )}
+      {d && (
+        <>
+          <Line label="Open shots" value={`${Math.round(d.open * 100)}%`} sub={`${d.shots} shots`} />
+          <Line label="Defenders on a shot" value={d.defenders.toFixed(2)} />
+          <Line label="Shot choice" value={sign(d.qualityVsLeague, 2)} sub="points per shot against the league" />
+          {ZONES.map((z) => d.zones[z].vsLeague !== null && <Line key={z} label={ZONE_LABEL[z]} value={sign(d.zones[z].vsLeague!, 2)} sub={`${d.zones[z].att} shots, against the league`} />)}
+        </>
+      )}
+      {h && ([["Over shorter", h.shooterTaller], ["About even", h.even], ["Over taller", h.shooterShorter]] as const).map(([l, r]) => <Line key={l} label={l} value={rate(r)} sub={shots(r)} />)}
+    </>
+  )
+}
 
 // One player's four insight views beside the league's. A collapsed section like Game flow.
 export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string }) {
@@ -79,6 +127,11 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
                 )}
               </>
             ),
+          },
+          {
+            value: "deep",
+            label: "Deep dive",
+            node: <DeepDive state={state} pid={pid} />,
           },
           {
             value: "cost",

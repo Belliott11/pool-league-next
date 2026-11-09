@@ -28,11 +28,11 @@ function score(g: Game): [number, number] {
   }
   return s
 }
-const games = (state: PooleanState) => state.games.filter(usable)
+export const games = (state: PooleanState) => state.games.filter(usable)
 const total = (g: Game) => score(g)[0] + score(g)[1]
 
 // League points per shot for each kind of shot (type and how closely it was guarded), the yardstick for shot quality.
-function yardstick(gs: Game[]) {
+export function yardstick(gs: Game[]) {
   const by = new Map<string, [number, number]>()
   const key = (e: ScoringEvent) => `${e.shotType ?? "?"}|${e.contestLevel ?? "?"}`
   let sum = 0

@@ -15,6 +15,7 @@ import { LaneBars } from "./leaderboard/LaneBars"
 import { SeasonRates } from "./leaderboard/SeasonRates"
 import { GameFlowCard } from "./leaderboard/GameFlowCard"
 import { InsightCard } from "./leaderboard/InsightCard"
+import { DeepDiveCard } from "./leaderboard/DeepDiveCard"
 
 // Same six groups, in the same order, as the classic Leaderboard tab.
 const SECTIONS: { key: string; title: string }[] = [
@@ -45,6 +46,7 @@ const NAV = [
   { id: "lb-rates", label: "Season rates" },
   ...SECTIONS.map((s) => ({ id: `lb-section-${s.key}`, label: s.title })),
   { id: "lb-insight", label: "What decided games" },
+  { id: "lb-deep", label: "Player deep dive" },
   { id: "lb-flow", label: "Game flow" },
 ]
 
@@ -109,6 +111,9 @@ export function LeaderboardPage({
         <InsightCard state={state} onOpenPlayer={onOpenPlayer} />
       </div>
       <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 3 } as React.CSSProperties}>
+        <DeepDiveCard state={state} onOpenPlayer={onOpenPlayer} />
+      </div>
+      <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 4 } as React.CSSProperties}>
         <GameFlowCard state={state} onOpenPlayer={onOpenPlayer} />
       </div>
     </div>
