@@ -5,7 +5,8 @@ import { Section } from "@/components/Section"
 import { marginBreakdown, shotsCreated, turnoverCost, winProbAdded } from "@/lib/insight"
 import { PER } from "@/lib/per"
 import type { PooleanState } from "@/lib/types"
-import { FactorBars, Hint } from "@/pages/leaderboard/InsightCard"
+import { FactorBars } from "@/pages/leaderboard/InsightCard"
+import { Hint } from "@/pages/leaderboard/parts"
 
 const sign = (v: number, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}`
 const pct = (v: number | null) => (v === null ? "-" : `${Math.round(v * 100)}%`)

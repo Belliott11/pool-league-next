@@ -354,3 +354,32 @@ export function turnoverCost(state: PooleanState): TovCost {
     .sort((a, b) => b.net25 - a.net25)
   return { games: gs.length, possessions: poss, perPossession: pp, turnovers: tovs, perTurnover: followed ? off / followed : null, followed, rows }
 }
+
+// Every player's games from their own team's side, for a table. `margin` is their team's average margin (negative when
+// they lost by more than they won by), and `edge` the average points each factor gave their team.
+export interface PlayerParts {
+  id: string
+  games: number
+  margin: number
+  edge: Record<Factor, number>
+}
+
+export function playerBreakdowns(state: PooleanState): PlayerParts[] {
+  const gs = games(state)
+  const expect = yardstick(gs)
+  const by = new Map<string, PlayerParts>()
+  for (const g of gs) {
+    const p = partsOf(g, expect)
+    if (!p) continue
+    for (const id of members(g)) {
+      const view = side(g, id) === 0 ? 1 : -1
+      const r = by.get(id) ?? by.set(id, { id, games: 0, margin: 0, edge: { quality: 0, making: 0, turnovers: 0, rebounds: 0, other: 0 } }).get(id)!
+      r.games++
+      r.margin += p.margin * view
+      for (const f of FACTORS) r.edge[f] += p.parts[f] * view
+    }
+  }
+  return [...by.values()]
+    .map((r) => ({ ...r, margin: r.margin / r.games, edge: Object.fromEntries(FACTORS.map((f) => [f, r.edge[f] / r.games])) as Record<Factor, number> }))
+    .sort((a, b) => b.margin - a.margin)
+}

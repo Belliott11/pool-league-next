@@ -1,21 +1,18 @@
 import { Lightbulb } from "lucide-react"
-import { useMemo, type ReactNode } from "react"
+import { useMemo } from "react"
 import { ViewTabs } from "@/components/PanelGroup"
-import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Section } from "@/components/Section"
 import { FACTORS, FACTOR_HINT, FACTOR_LABEL, marginBreakdown, shotsCreated, turnoverCost, winProbAdded, type Breakdown } from "@/lib/insight"
 import { PER } from "@/lib/per"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
 import { formatDateDisplay } from "@/lib/format"
+import { DecidedPlayers } from "./PlayerTables"
+import { Grid, Hint, Who } from "./parts"
 
 const sign = (v: number, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}`
 const pct = (v: number | null) => (v === null ? "-" : `${Math.round(v * 100)}%`)
 const EARLY = 5 // games before a split of the margin is more than a handful of cases
-
-export function Hint({ children }: { children: ReactNode }) {
-  return <p className="text-xs text-muted-foreground">{children}</p>
-}
 
 // Each factor's average points toward one side, as bars either side of zero, with how many games it went that way.
 export function FactorBars({ b, side }: { b: Breakdown; side: string }) {
@@ -44,41 +41,7 @@ export function FactorBars({ b, side }: { b: Breakdown; side: string }) {
   )
 }
 
-function Who({ state, id, onOpenPlayer }: { state: PooleanState; id: string; onOpenPlayer: (id: string) => void }) {
-  return (
-    <button type="button" className="flex min-w-0 items-center gap-2 text-left hover:underline" onClick={() => onOpenPlayer(id)}>
-      <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
-      <span className="truncate font-medium">{playerName(state, id)}</span>
-    </button>
-  )
-}
-
-export function Grid({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[22rem] text-sm tabular-nums">
-        <thead>
-          <tr className="text-left text-xs text-muted-foreground">
-            {head.map((h, i) => (
-              <th key={h} className={i === 0 ? "py-1 pr-2 font-medium" : "px-2 py-1 text-right font-medium"}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-t">
-              {r.map((c, j) => (
-                <td key={j} className={j === 0 ? "py-1.5 pr-2" : "px-2 py-1.5 text-right"}>{c}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function Decided({ state }: { state: PooleanState }) {
+function Decided({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const b = useMemo(() => marginBreakdown(state), [state])
   if (b.games === 0) return <p className="text-sm text-muted-foreground">Shows up once finished games are logged shot by shot.</p>
   return (
@@ -86,6 +49,7 @@ function Decided({ state }: { state: PooleanState }) {
       <Hint>Every finished game from the winner's side: the margin split into the parts that made it. The parts always add back to the margin. Games won by {b.margin.toFixed(1)} points on average, over {b.games} games.</Hint>
       <FactorBars b={b} side="the winner's" />
       {b.games < EARLY && <Hint>Only {b.games} games so far, so one game can swing any of these.</Hint>}
+      <DecidedPlayers state={state} onOpenPlayer={onOpenPlayer} />
     </div>
   )
 }
@@ -102,7 +66,7 @@ function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
       </Hint>
       <Grid
         head={["Player", `Set up/${PER}`, "Went in", `AST/${PER}`, "Shot quality"]}
-        rows={rows.map((r) => [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.created25.toFixed(1), pct(r.made / r.created), r.assists25.toFixed(1), `${r.expected.toFixed(2)} pts`])}
+        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.created25.toFixed(1), pct(r.made / r.created), r.assists25.toFixed(1), `${r.expected.toFixed(2)} pts`] }))}
       />
       <Hint>Shot quality is the league's average points on that kind of shot, so it says how good the looks were, not whether they went in.</Hint>
     </div>
@@ -120,7 +84,7 @@ function Chance({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (i
       </Hint>
       <Grid
         head={["Player", "Added", "Allowed", "Net"]}
-        rows={rows.map((r) => [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, (r.added25 * 100).toFixed(0), (r.allowed25 * 100).toFixed(0), sign(r.net25 * 100, 0)])}
+        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, (r.added25 * 100).toFixed(0), (r.allowed25 * 100).toFixed(0), sign(r.net25 * 100, 0)] }))}
       />
       {w.swings.length > 0 && (
         <div className="flex flex-col gap-1">
@@ -148,7 +112,7 @@ function Cost({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id:
       </Hint>
       <Grid
         head={["Player", "Gave", "Forced", `Net pts/${PER}`]}
-        rows={rows.map((r) => [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, String(r.giveaways), String(r.forced), sign(r.net25, 2)])}
+        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, String(r.giveaways), String(r.forced), sign(r.net25, 2)] }))}
       />
       <Hint>Net is turnovers forced minus turnovers given away, at the league's points per possession.</Hint>
     </div>
@@ -161,7 +125,7 @@ export function InsightCard({ state, onOpenPlayer }: { state: PooleanState; onOp
     <Section id="lb-insight" title="What decided games" icon={Lightbulb} teaser="Why games went the way they did, who sets up shots, win chance and what turnovers cost.">
       <ViewTabs
         tabs={[
-          { value: "decided", label: "What decided games", node: <Decided state={state} /> },
+          { value: "decided", label: "What decided games", node: <Decided state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "created", label: "Shots set up", node: <Created state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "chance", label: "Win chance added", node: <Chance state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "cost", label: "Turnover cost", node: <Cost state={state} onOpenPlayer={onOpenPlayer} /> },

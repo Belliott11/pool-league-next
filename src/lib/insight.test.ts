@@ -91,3 +91,15 @@ describe("turnover cost", () => {
     expect(t.rows.find((r) => r.id === "a1")!.forced).toBe(1)
   })
 })
+
+describe("player breakdowns", () => {
+  it("gives each side of a game opposite signs that add to the same parts", async () => {
+    const { playerBreakdowns } = await import("@/lib/insight")
+    const rows = playerBreakdowns(state)
+    const a1 = rows.find((r) => r.id === "a1")!
+    const b1 = rows.find((r) => r.id === "b1")!
+    expect(a1.margin).toBe(4)
+    expect(b1.margin).toBe(-4)
+    for (const f of FACTORS) expect(a1.edge[f]).toBeCloseTo(-b1.edge[f], 6)
+  })
+})

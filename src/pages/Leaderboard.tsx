@@ -109,7 +109,7 @@ export function LeaderboardPage({
         <InsightCard state={state} onOpenPlayer={onOpenPlayer} />
       </div>
       <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 3 } as React.CSSProperties}>
-        <GameFlowCard state={state} />
+        <GameFlowCard state={state} onOpenPlayer={onOpenPlayer} />
       </div>
     </div>
   )
