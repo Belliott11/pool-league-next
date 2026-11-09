@@ -117,8 +117,8 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
               </button>
               <span className="text-right tabular-nums">{c.gp}</span>
               <span className="text-right tabular-nums">{c.w}</span>
-              <span className="text-right tabular-nums">{c.pts}</span>
-              <span className="text-right tabular-nums">{c.twoWay.toFixed(1)}</span>
+              <span className="text-right tabular-nums">{c.hasPts ? c.pts : "-"}</span>
+              <span className="text-right tabular-nums">{c.hasTwoWay ? c.twoWay.toFixed(1) : "-"}</span>
             </div>
           ))}
         </div>

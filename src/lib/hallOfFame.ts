@@ -11,6 +11,8 @@ export interface Career {
   w: number
   pts: number
   twoWay: number
+  hasPts: boolean // played a game in the app
+  hasTwoWay: boolean // played a box-scored game
 }
 
 const finished = (state: PooleanState): Game[] =>
@@ -31,7 +33,7 @@ export function careers(state: PooleanState, old: RealGame[] = oldGames()): Care
   const seen = new Set(old.map((g) => gameKey(g.date, g.a, g.b)))
   for (const g of old) {
     for (const p of [...g.a, ...g.b]) {
-      const c = m.get(p) ?? { id: p, gp: 0, w: 0, pts: 0, twoWay: 0 }
+      const c = m.get(p) ?? { id: p, gp: 0, w: 0, pts: 0, twoWay: 0, hasPts: false, hasTwoWay: false }
       c.gp++
       if ((g.w === "A" ? g.a : g.b).includes(p)) c.w++
       m.set(p, c)
@@ -41,7 +43,7 @@ export function careers(state: PooleanState, old: RealGame[] = oldGames()): Care
     const [a, b] = scoreOf(g)
     const counted = seen.has(gameKey(g.date, g.teamA, g.teamB))
     for (const p of [...g.teamA, ...g.teamB]) {
-      const c = m.get(p) ?? { id: p, gp: 0, w: 0, pts: 0, twoWay: 0 }
+      const c = m.get(p) ?? { id: p, gp: 0, w: 0, pts: 0, twoWay: 0, hasPts: false, hasTwoWay: false }
       const line = playerLine(g, p)
       if (!counted) {
         c.gp++
@@ -49,6 +51,8 @@ export function careers(state: PooleanState, old: RealGame[] = oldGames()): Care
       }
       c.pts += line.pts
       c.twoWay += line.twoWay ?? 0
+      c.hasPts = true
+      if (line.twoWay !== null) c.hasTwoWay = true
       m.set(p, c)
     }
   }

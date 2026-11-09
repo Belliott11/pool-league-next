@@ -118,7 +118,8 @@ describe("hall of fame", () => {
       { n: 2, date: "2026-06-03", a: ["q"], b: ["r"], w: "B" as const },
     ]
     const s = state([game("dup", "2026-06-03", ["r"], ["q"], 5, 1), game("new", "2026-06-04", ["q"], ["r"], 7, 1)])
-    expect(careerTable(s, 10, old).find((c) => c.id === "q")).toMatchObject({ gp: 3, w: 2, pts: 8 })
+    expect(careerTable(s, 10, old).find((c) => c.id === "q")).toMatchObject({ gp: 3, w: 2, pts: 8, hasPts: true, hasTwoWay: false })
+    expect(careerTable(state([]), 10, old).find((c) => c.id === "q")).toMatchObject({ gp: 2, hasPts: false, hasTwoWay: false })
   })
   it("runs a streak across old-site games and app games, counting a game on both once", () => {
     const old = [
