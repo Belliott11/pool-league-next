@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { resolvePlayer } from "@/lib/players"
@@ -48,8 +48,8 @@ const PANELS = PLAYER_PANELS as PlayerPanelSpec[]
 // Same seven groups, in the same order, as the classic Player tab.
 const SECTIONS: { key: string; title: string }[] = [
   { key: "shooting", title: "Shooting" },
-  { key: "passing", title: "Passing & Ball Security" },
   { key: "defense", title: "Defense" },
+  { key: "passing", title: "Passing & Ball Security" },
   { key: "matchups", title: "Matchups" },
   { key: "team", title: "Team Context" },
   { key: "trends", title: "Trends & History" },
@@ -272,14 +272,21 @@ export function PlayerDetailPage({
       <Panels section="overview" pid={pid} version={version} />
 
       {SECTIONS.map((s) => (
-        <Section key={s.key} id={`section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
-          <Panels section={s.key} pid={pid} version={version} />
-        </Section>
+        <Fragment key={s.key}>
+          <Section id={`section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
+            <Panels section={s.key} pid={pid} version={version} />
+          </Section>
+          {/* The sections built in this app sit where they matter: how their games were decided right after the main stat groups,
+              game flow and the old site's record after trends, and media last. */}
+          {pid && s.key === "passing" && <PlayerInsight state={state} pid={pid} />}
+          {pid && s.key === "trends" && (
+            <>
+              <PlayerGameFlow state={state} pid={pid} />
+              <PlayerOldSite state={state} pid={pid} />
+            </>
+          )}
+        </Fragment>
       ))}
-
-      {pid && <PlayerOldSite state={state} pid={pid} />}
-      {pid && <PlayerInsight state={state} pid={pid} />}
-      {pid && <PlayerGameFlow state={state} pid={pid} />}
     </div>
   )
 }

@@ -22,11 +22,11 @@ import { DeepDiveCard } from "./leaderboard/DeepDiveCard"
 const SECTIONS: { key: string; title: string }[] = [
   { key: "comparison", title: "Comparison & Trends" },
   { key: "shooting", title: "Shooting" },
+  { key: "defense", title: "Defense" },
   { key: "matchups", title: "Matchups & Team" },
   { key: "situational", title: "Situational" },
-  { key: "defense", title: "Defense" },
-  { key: "style", title: "Play Style & Models" },
   { key: "media", title: "History & Media" },
+  { key: "style", title: "Play Style & Models" },
 ]
 
 // Models are developer views, so the section is for editors only.
@@ -46,13 +46,13 @@ const JUMP_ITEMS: JumpItem[] = [
 ]
 
 // Phones only: one row of chips pinned under the header, so the long page is a jump away instead of a scroll.
+// The big dropdowns, most to least important. The first two cards sit above these, always.
+const ORDER = ["comparison", "insight", "shooting", "defense", "matchups", "deep", "situational", "flow", "media", "style"] as const
+const NATIVE = { insight: { id: "lb-insight", label: "What decided games" }, deep: { id: "lb-deep", label: "Player deep dive" }, flow: { id: "lb-flow", label: "Game flow" } } as const
 const NAV = [
   { id: "lb-ranking", label: "Ranking" },
   { id: "lb-rates", label: "Season rates" },
-  ...SECTIONS.map((s) => ({ id: `lb-section-${s.key}`, label: s.title })),
-  { id: "lb-insight", label: "What decided games" },
-  { id: "lb-deep", label: "Player deep dive" },
-  { id: "lb-flow", label: "Game flow" },
+  ...ORDER.map((k) => (k in NATIVE ? NATIVE[k as keyof typeof NATIVE] : { id: `lb-section-${k}`, label: sectionTitle(k) })),
 ]
 
 function QuickNav() {
@@ -107,22 +107,19 @@ export function LeaderboardPage({
       <div id="lb-rates" className="anim-rise scroll-mt-28" style={{ "--i": 1 } as React.CSSProperties}>
         <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
       </div>
-      {SECTIONS.filter((s) => !(readOnly && EDITOR_ONLY.has(s.key))).map((s, i) => (
-        <div key={s.key} className="anim-rise" style={{ "--i": i + 2 } as React.CSSProperties}>
-          <Section id={`lb-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={s.key === "defense" ? DEFENSE_TEASER : (teasers[s.key] ?? "")}>
-            <LegacyPanels state={state} section={s.key} onOpenPlayer={onOpenPlayer} version={version} />
-          </Section>
-        </div>
-      ))}
-      <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 2 } as React.CSSProperties}>
-        <InsightCard state={state} onOpenPlayer={onOpenPlayer} />
-      </div>
-      <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 3 } as React.CSSProperties}>
-        <DeepDiveCard state={state} onOpenPlayer={onOpenPlayer} />
-      </div>
-      <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 4 } as React.CSSProperties}>
-        <GameFlowCard state={state} onOpenPlayer={onOpenPlayer} />
-      </div>
+      {ORDER.filter((k) => !(readOnly && EDITOR_ONLY.has(k))).map((k, i) => {
+        const style = { "--i": i + 2 } as React.CSSProperties
+        if (k === "insight") return <div key={k} className="anim-rise scroll-mt-28" style={style}><InsightCard state={state} onOpenPlayer={onOpenPlayer} /></div>
+        if (k === "deep") return <div key={k} className="anim-rise scroll-mt-28" style={style}><DeepDiveCard state={state} onOpenPlayer={onOpenPlayer} /></div>
+        if (k === "flow") return <div key={k} className="anim-rise scroll-mt-28" style={style}><GameFlowCard state={state} onOpenPlayer={onOpenPlayer} /></div>
+        return (
+          <div key={k} className="anim-rise" style={style}>
+            <Section id={`lb-section-${k}`} title={sectionTitle(k)} icon={sectionIcon(k)} teaser={k === "defense" ? DEFENSE_TEASER : (teasers[k] ?? "")}>
+              <LegacyPanels state={state} section={k} onOpenPlayer={onOpenPlayer} version={version} />
+            </Section>
+          </div>
+        )
+      })}
     </div>
   )
 }
