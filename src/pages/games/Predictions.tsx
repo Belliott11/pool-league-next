@@ -8,7 +8,7 @@ import { myPlayerId, useWho } from "@/lib/identity"
 import { isOffseason } from "@/lib/offseason"
 import { ordinalOf } from "@/lib/ordinal"
 import { playerName } from "@/lib/players"
-import { actualResults, AWARD_PICKS, duoKey, JUMP_POINTS, JUMP_SPOTS, jumpPicks, loadAllPredictions, MAX_JUMPS, priorSeason, savePrediction, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
+import { actualOrder, actualResults, AWARD_PICKS, duoKey, JUMP_POINTS, JUMP_SPOTS, jumpPicks, loadAllPredictions, MAX_JUMPS, priorSeason, savePrediction, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -61,7 +61,13 @@ function PlayerSelect({ state, value, onChange, label, taken = [] }: { state: Po
 
 // Before opening night everyone names up to three players they think will make a jump. The group's picks show in the hub.
 export function JumpPicksCard({ state, p }: { state: PooleanState; p: PredictionsData }) {
-  const { client, season, me, entries, mine, save, open } = p
+  const { client, season, me, all, entries, mine, save, open } = p
+  // The starting point every jump is measured from.
+  const before = useMemo(() => {
+    if (!season) return []
+    const known = new Set(state.players.map((x) => x.id))
+    return actualOrder(state, priorSeason(all.map((e) => e.season), season), season).filter((id) => known.has(id))
+  }, [state, season, all])
   const [picked, setPicked] = useState<string[]>([])
   const [status, setStatus] = useState("")
   // Keyed on the contents: the data refreshes every minute, and that must not undo half-made picks.
@@ -86,8 +92,25 @@ export function JumpPicksCard({ state, p }: { state: PooleanState; p: Prediction
         <Rocket aria-hidden className="size-4 text-accent" /> Who makes a jump?
       </h3>
       <p className="text-sm text-muted-foreground">
-        Pick up to {MAX_JUMPS} players you think will make a jump next season. A pick scores {JUMP_POINTS} points if they finish at least {JUMP_SPOTS} spots higher in the Standings than last season, among players ranked in both. {inSoFar} {inSoFar === 1 ? "person" : "people"} in so far.
+        Pick up to {MAX_JUMPS} players you think will make a jump next season. A pick scores {JUMP_POINTS} points if they finish at least {JUMP_SPOTS} spots higher than last season's order below, counting only players ranked in both. {inSoFar} {inSoFar === 1 ? "person" : "people"} in so far.
       </p>
+      {before.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <h4 className="text-sm font-semibold">Last season's order</h4>
+          <p className="text-xs text-muted-foreground">Two-way per 25 (at least 3 games) blended with the old site's power rankings, so games that were never filmed count. Next season is two-way per 25, so part of any move can come from that change.</p>
+          <ol className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            {before.map((id, i) => (
+              <li key={id} className="flex min-w-0 items-center gap-2">
+                <span className="w-5 shrink-0 font-display font-bold tabular-nums text-muted-foreground">{i + 1}</span>
+                <span className="truncate">{playerName(state, id)}</span>
+              </li>
+            ))}
+          </ol>
+          {roster.some((x) => !before.includes(x.id)) && (
+            <p className="text-xs text-muted-foreground">No spot last season, so they cannot score as a pick: {roster.filter((x) => !before.includes(x.id)).map((x) => x.name).join(", ")}.</p>
+          )}
+        </div>
+      )}
       {!me ? (
         <IdentityPrompt state={state} text="Who are you? Pick yourself to make your picks." />
       ) : (
