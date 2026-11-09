@@ -24,7 +24,7 @@ const finished = (state: PooleanState): Game[] =>
     })
     .sort((a, b) => a.date.localeCompare(b.date))
 
-const oldGames = () => realSeasonsInOrder().flatMap((s) => s.games)
+export const oldGames = () => realSeasonsInOrder().flatMap((s) => s.games)
 
 // Games and wins come from every result, old site included, and a game on both sites counts once. Points and two-way only
 // exist for games played in the app.
@@ -86,20 +86,23 @@ export function bestGames(state: PooleanState, key: "pts" | "twoWay", n = 5): Be
   return out.sort((a, b) => b.value - a.value || a.date.localeCompare(b.date)).slice(0, n)
 }
 
-// Each player's longest run of wins, best first.
-export function longestStreaks(state: PooleanState, n = 5, old: RealGame[] = oldGames()): { id: string; n: number; end: string }[] {
-  const run = new Map<string, number>()
-  const best = new Map<string, { n: number; end: string }>()
-  // Every old-site result, then app games the old site does not have, in date order. A game on both counts once.
+// Every old-site result, then app games the old site does not have, in date order. A game on both counts once.
+export function allResults(state: PooleanState, old: RealGame[]): { date: string; won: string[]; lost: string[] }[] {
   const seen = new Set(old.map((g) => gameKey(g.date, g.a, g.b)))
-  const played = [
+  return [
     ...[...old].sort((x, y) => x.date.localeCompare(y.date) || x.n - y.n).map((g) => ({ date: g.date, won: g.w === "A" ? g.a : g.b, lost: g.w === "A" ? g.b : g.a })),
     ...finished(state).flatMap((g) => {
       const [a, b] = scoreOf(g)
       return a === b || seen.has(gameKey(g.date, g.teamA, g.teamB)) ? [] : [{ date: g.date, won: a > b ? g.teamA : g.teamB, lost: a > b ? g.teamB : g.teamA }]
     }),
   ].sort((x, y) => x.date.localeCompare(y.date))
-  for (const g of played) {
+}
+
+// Each player's longest run of wins, best first.
+export function longestStreaks(state: PooleanState, n = 5, old: RealGame[] = oldGames()): { id: string; n: number; end: string }[] {
+  const run = new Map<string, number>()
+  const best = new Map<string, { n: number; end: string }>()
+  for (const g of allResults(state, old)) {
     for (const p of g.lost) run.set(p, 0)
     for (const p of g.won) {
       const cur = (run.get(p) ?? 0) + 1

@@ -4,7 +4,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
-import { bestGames, careerTable, longestStreaks, pastMvps } from "@/lib/hallOfFame"
+import { bestGames, careerTable, longestStreaks, oldGames, pastMvps } from "@/lib/hallOfFame"
 import { playerName } from "@/lib/players"
 import { poolNameOf } from "@/lib/real"
 import { RECORD_KEYS, RECORD_LABEL, recordBook } from "@/lib/records"
@@ -48,12 +48,12 @@ function Row({ i, state, id, value, sub, onOpenPlayer }: { i: number; state: Poo
 export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state: PooleanState; onBack: () => void; onOpenPlayer: (id: string) => void; onOpenGame: (id: string) => void }) {
   const data = useMemo(
     () => ({
-      career: careerTable(state),
+      career: careerTable(state, Infinity),
       bestPts: bestGames(state, "pts"),
       bestTw: bestGames(state, "twoWay"),
       book: recordBook(state),
       streaks: longestStreaks(state),
-      rivals: rivalries(state, 5),
+      rivals: rivalries(state, 5, oldGames()),
       mvps: pastMvps(),
     }),
     [state],
@@ -167,7 +167,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
             <Row key={s.id} i={i} state={state} id={s.id} value={String(s.n)} sub={`ended ${formatDateDisplay(s.end)}`} onOpenPlayer={onOpenPlayer} />
           ))}
         </Board>
-        <Board title="Biggest rivalries">
+        <Board title="Biggest rivalries" hint="Every result, including games from the old site.">
           {data.rivals.length === 0 && <p className="text-muted-foreground">Pairs need 4 meetings to count.</p>}
           {data.rivals.map((r) => (
             <div key={r.a + r.b} className="flex items-center justify-between gap-2">

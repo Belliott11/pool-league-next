@@ -8,6 +8,11 @@ const game = (id: string, date: string, xPts: number, yPts: number): Game => ({ 
 const state = (games: Game[]): PooleanState => ({ players: [{ id: "x", name: "X" }, { id: "y", name: "Y" }, { id: "z", name: "Z" }], games })
 
 describe("rivalries", () => {
+  it("adds the old site's results when given them, counting a game on both once", () => {
+    const old = [1, 2, 3, 4].map((n) => ({ n, date: `2026-06-0${n}`, a: ["p"], b: ["q"], w: (n === 4 ? "B" : "A") as "A" | "B" }))
+    const r = rivalries(state([]), 5, old)[0]
+    expect(r).toMatchObject({ a: "p", b: "q", aWins: 3, bWins: 1, streakBy: "q", streak: 1, last: "2026-06-04" })
+  })
   it("needs 4 meetings, names the leader and the current streak", () => {
     const g = [game("1", "2026-10-01", 5, 3), game("2", "2026-10-08", 3, 5), game("3", "2026-10-15", 3, 5), game("4", "2026-10-22", 3, 5)]
     expect(rivalries(state(g.slice(0, 3)))).toEqual([])

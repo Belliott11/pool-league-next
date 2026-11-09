@@ -1,4 +1,5 @@
-import { scoreOf } from "@/lib/nightRecap"
+import { allResults } from "@/lib/hallOfFame"
+import type { RealGame } from "@/lib/real"
 import type { PooleanState } from "@/lib/types"
 
 export interface Rivalry {
@@ -15,18 +16,15 @@ export const MIN_MEETINGS = 4
 
 // Pairs who keep meeting on opposite teams. Ranked by how contested they are: more meetings and a closer record first,
 // so an 8-1 pile-on is not a rivalry. Games with no result are skipped.
-export function rivalries(state: PooleanState, limit = 5): Rivalry[] {
+// Pass the old site's games to count its results too.
+export function rivalries(state: PooleanState, limit = 5, old: RealGame[] = []): Rivalry[] {
   const pairs = new Map<string, { a: string; b: string; wins: Record<string, number>; seq: string[]; last: string }>()
-  const games = state.games.filter((g) => !g.liveInProgress && g.date).sort((x, y) => x.date.localeCompare(y.date))
-  for (const g of games) {
-    const [sa, sb] = scoreOf(g)
-    if (sa === sb) continue
-    const winners = sa > sb ? g.teamA : g.teamB
-    for (const x of g.teamA) {
-      for (const y of g.teamB) {
+  for (const g of allResults(state, old)) {
+    for (const x of g.won) {
+      for (const y of g.lost) {
         const [a, b] = x < y ? [x, y] : [y, x]
         const p = pairs.get(`${a}|${b}`) ?? { a, b, wins: { [a]: 0, [b]: 0 }, seq: [], last: "" }
-        const w = winners.includes(a) ? a : b
+        const w = x
         p.wins[w]++
         p.seq.push(w)
         p.last = g.date
