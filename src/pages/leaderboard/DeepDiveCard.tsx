@@ -197,12 +197,12 @@ function BodyTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: O
   )
 }
 
-const RULE_TONE: Record<RuleVerdict, string> = { holds: "border-primary bg-primary/15 text-primary", backwards: "border-gold text-gold", none: "", early: "", suspect: "border-gold text-gold" }
+const RULE_TONE: Record<RuleVerdict, string> = { holds: "border-primary bg-primary/15 text-primary", backwards: "border-gold text-gold", none: "", early: "" }
 
 function HoldUpTab({ state }: { state: PooleanState }) {
   const rules = useMemo(() => ruleTests(state), [state])
   const advice = adviceFrom(rules)
-  const order: RuleVerdict[] = ["holds", "backwards", "suspect", "none", "early"]
+  const order: RuleVerdict[] = ["holds", "backwards", "none", "early"]
   const sorted = [...rules].sort((a, b) => order.indexOf(a.verdict) - order.indexOf(b.verdict))
   return (
     <>

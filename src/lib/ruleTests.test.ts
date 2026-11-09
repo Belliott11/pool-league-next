@@ -69,15 +69,18 @@ describe("rules on games", () => {
   })
 })
 
-describe("tagging", () => {
-  it("flags the open-shot rule when defenders are tagged more on makes than misses", () => {
-    const ev: ScoringEvent[] = []
-    for (let i = 0; i < 30; i++) ev.push(shot(`m${i}`, "a", true, i, { contestLevel: "light", defenderIds: ["b"] }))
-    for (let i = 0; i < 30; i++) ev.push(shot(`x${i}`, "a", false, 100 + i, { rebounderId: "b" }))
-    const r = rule(ruleTests(state([game("g", "2026-08-01", ev)]), []), "open-shots")
-    expect(r.verdict).toBe("suspect")
-    expect(r.note).toContain("100%")
-    expect(r.advice).toBeUndefined()
+describe("contest levels", () => {
+  const ev: ScoringEvent[] = []
+  for (let i = 0; i < 30; i++) ev.push(shot(`l${i}`, "a", i < 25, i, { contestLevel: "light", defenderIds: ["b"] }))
+  for (let i = 0; i < 30; i++) ev.push(shot(`h${i}`, "a", i < 5, 100 + i, { contestLevel: "heavy", defenderIds: ["b"], rebounderId: "b" }))
+  for (let i = 0; i < 30; i++) ev.push(shot(`o${i}`, "a", i < 15, 200 + i, { rebounderId: "b" }))
+  const rs = ruleTests(state([game("g", "2026-08-01", ev)]), [])
+  it("keeps light contests out of the open-shot test", () => {
+    expect(rule(rs, "open-shots").numbers).toContain("Open 50%, medium or heavy contest 17%")
+  })
+  it("tests beating your defender on its own, for the same shooter and zone", () => {
+    expect(rule(rs, "beat-your-man").verdict).toBe("holds")
+    expect(rule(rs, "beat-your-man").numbers).toContain("Light contest 83%")
   })
 })
 

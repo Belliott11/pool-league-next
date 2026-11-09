@@ -9,8 +9,8 @@ import { fit, gameKey, results } from "@/lib/winImpact"
 
 // Well-known rules from other sports, checked against this league. About 15 are tested at once, so the bar for a verdict
 // is high, and a rule needs a real sample before it can even be called "no sign of it".
-export type RuleVerdict = "holds" | "backwards" | "none" | "early" | "suspect"
-export const RULE_LABEL: Record<RuleVerdict, string> = { holds: "Holds up", backwards: "Backwards", none: "No sign of it", early: "Too early", suspect: "Data problem" }
+export type RuleVerdict = "holds" | "backwards" | "none" | "early"
+export const RULE_LABEL: Record<RuleVerdict, string> = { holds: "Holds up", backwards: "Backwards", none: "No sign of it", early: "Too early" }
 export interface Rule {
   id: string
   sport: string
@@ -42,6 +42,7 @@ const addRate = (r: Rate, made: boolean) => {
   if (made) r.made++
 }
 const madeOf = (e: ScoringEvent) => e.made !== false
+const signed = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v)}`
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
 
 // Two-sided exact test against a coin flip.
@@ -97,13 +98,13 @@ function zoneOf(e: ScoringEvent): string {
 }
 const passed = (e: ScoringEvent) => !!e.passerId && e.passerId !== "none" && e.passerId !== e.scorerId
 
-function splitByZone(shots: ScoringEvent[], isA: (e: ScoringEvent) => boolean) {
+function splitByZone(shots: ScoringEvent[], isA: (e: ScoringEvent) => boolean, groupOf: (e: ScoringEvent) => string = zoneOf) {
   const by = new Map<string, [Rate, Rate]>()
   const a = rate()
   const b = rate()
   for (const e of shots) {
     if (zoneOf(e) === "?") continue
-    const g = by.get(zoneOf(e)) ?? by.set(zoneOf(e), [rate(), rate()]).get(zoneOf(e))!
+    const g = by.get(groupOf(e)) ?? by.set(groupOf(e), [rate(), rate()]).get(groupOf(e))!
     addRate(g[isA(e) ? 0 : 1], madeOf(e))
     addRate(isA(e) ? a : b, madeOf(e))
   }
@@ -276,14 +277,14 @@ function shotRules(state: PooleanState): Rule[] {
   const breakEven = twos.n ? Math.round(((twos.sum / twos.n) / 3) * 100) : 0
   const threeRate = threes.n ? Math.round(((threes.sum / threes.n) / 3) * 100) : 0
 
-  const open = splitByZone(shots, (e) => e.contestLevel === "none")
+  // Same shooter, same zone, because defenses leave weak shooters open. Light contests are kept out of the open-shot test:
+  // they include defenders who just got beat, which is a different thing from being guarded.
+  const sameSpot = (e: ScoringEvent) => `${e.scorerId}|${zoneOf(e)}`
+  const tight = (e: ScoringEvent) => e.contestLevel === "medium" || e.contestLevel === "heavy"
+  const open = splitByZone(shots.filter((e) => e.contestLevel === "none" || tight(e)), (e) => e.contestLevel === "none", sameSpot)
   const openS = stratified(open.groups)
-  // If defenders get tagged more often on makes than misses, "guarded" partly means "went in", and this comparison says
-  // nothing about being open.
-  const guardedWhenMade: Rate = { made: shots.filter((e) => madeOf(e) && e.contestLevel !== "none").length, att: shots.filter(madeOf).length }
-  const guardedWhenMissed: Rate = { made: shots.filter((e) => !madeOf(e) && e.contestLevel !== "none").length, att: shots.filter((e) => !madeOf(e)).length }
-  const taggingBias = compareRates(guardedWhenMissed, guardedWhenMade)
-  const suspect = taggingBias.verdict !== "early"
+  const beat = splitByZone(shots.filter((e) => e.contestLevel === "light" || tight(e)), (e) => e.contestLevel === "light", sameSpot)
+  const beatS = stratified(beat.groups)
   const pass = splitByZone(shots, passed)
   const passS = stratified(pass.groups)
 
@@ -328,12 +329,21 @@ function shotRules(state: PooleanState): Rule[] {
     {
       id: "open-shots",
       sport: "Every sport",
-      claim: "An open shot beats a guarded one from the same spot",
-      numbers: `Open ${pc(open.a)}, guarded ${pc(open.b)}${openS.diff !== null ? `, ${openS.diff > 0 ? "+" : ""}${Math.round(openS.diff)} points from the same zone` : ""}`,
+      claim: "An open shot beats a tightly guarded one",
+      numbers: `Open ${pc(open.a)}, medium or heavy contest ${pc(open.b)}${openS.diff !== null ? `, ${signed(openS.diff)} points for the same shooter from the same zone` : ""}`,
       n: `${open.a.att + open.b.att} shots`,
-      ...(suspect ? { verdict: "suspect" as const, strength: null } : fromCompare(openS.verdict, openS.diff, Math.min(open.a.att, open.b.att))),
-      note: suspect ? `A defender is tagged on ${pc(guardedWhenMade)} of makes but ${pc(guardedWhenMissed)} of misses, so the tag may depend on whether the shot went in.` : undefined,
-      advice: openS.diff !== null && openS.diff > 0 ? "Getting open is worth it from the same spot. Move without the ball." : undefined,
+      ...fromCompare(openS.verdict, openS.diff, Math.min(open.a.att, open.b.att)),
+      advice: "Getting open is worth it, for the same shooter from the same spot. Move without the ball.",
+    },
+    {
+      id: "beat-your-man",
+      sport: "Basketball",
+      claim: "Beating your defender gives the best look",
+      numbers: `Light contest ${pc(beat.a)}, medium or heavy ${pc(beat.b)}${beatS.diff !== null ? `, ${signed(beatS.diff)} points for the same shooter from the same zone` : ""}`,
+      n: `${beat.a.att + beat.b.att} shots`,
+      ...fromCompare(beatS.verdict, beatS.diff, Math.min(beat.a.att, beat.b.att)),
+      note: "Light contests include defenders tagged because they got beat right before the shot.",
+      advice: beatS.diff !== null ? `A defender left trailing is the best thing that happens on offense: ${pc(beat.a)} against ${pc(beat.b)} when someone is really on the shot. Attack your man.` : undefined,
     },
     {
       id: "extra-pass",
