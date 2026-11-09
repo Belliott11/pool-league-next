@@ -8,6 +8,7 @@ import type { PooleanState } from "@/lib/types"
 import { bodyEffort } from "@/lib/bodyEffort"
 import { pct as ratePct, playerFlow, type Rate } from "@/lib/gameFlow"
 import { ZONES, ZONE_LABEL, playerIdentity } from "@/lib/playerIdentity"
+import { useReadOnly } from "@/lib/mode"
 import { shotValue } from "@/lib/ruleTests"
 import { sequences } from "@/lib/sequences"
 import { trustOf } from "@/lib/trust"
@@ -31,6 +32,7 @@ const Line = ({ label, value, sub }: { label: string; value: string; sub?: strin
 
 // Their row from each Player deep dive view. Built only when the tab is opened.
 function DeepDive({ state, pid }: { state: PooleanState; pid: string }) {
+  const readOnly = useReadOnly()
   const w = useMemo(() => winImpact(state), [state])
   const s = useMemo(() => splits(state).find((r) => r.id === pid), [state, pid])
   const q = useMemo(() => sequences(state).rows.find((r) => r.id === pid), [state, pid])
@@ -66,7 +68,7 @@ function DeepDive({ state, pid }: { state: PooleanState; pid: string }) {
           {ZONES.map((z) => d.zones[z].vsLeague !== null && <Line key={z} label={ZONE_LABEL[z]} value={sign(d.zones[z].vsLeague!, 2)} sub={`${d.zones[z].att} shots, against the league`} />)}
         </>
       )}
-      {h && ([["Over shorter", h.shooterTaller], ["About even", h.even], ["Over taller", h.shooterShorter]] as const).map(([l, r]) => <Line key={l} label={l} value={rate(r)} sub={shots(r)} />)}
+      {h && !readOnly && ([["Over shorter", h.shooterTaller], ["About even", h.even], ["Over taller", h.shooterShorter]] as const).map(([l, r]) => <Line key={l} label={l} value={rate(r)} sub={shots(r)} />)}
     </>
   )
 }

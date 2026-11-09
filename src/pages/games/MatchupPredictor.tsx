@@ -11,15 +11,15 @@ import {
   REAL_MATCHUP_MIN_GAMES,
   realMatchupAccuracyText,
 } from "@/lib/matchup"
-import { poolNameOf, realSeasonsInOrder } from "@/lib/real"
+import { poolNameOf, realPlayerIds } from "@/lib/real"
 import type { PooleanState } from "@/lib/types"
 
 type Side = "A" | "B"
 
-// Every player the predictor can use: the local roster plus every real-site player, by name.
+// Every player the predictor can use: the local roster plus everyone who actually appears in the old site's results.
 function playerPool(state: PooleanState) {
   const ids = new Set(state.players.map((p) => p.id))
-  realSeasonsInOrder().forEach((s) => Object.keys(s.names || {}).forEach((id) => ids.add(id)))
+  realPlayerIds().forEach((id) => ids.add(id))
   return [...ids].map((id) => ({ id, name: poolNameOf(state, id) })).sort((a, b) => a.name.localeCompare(b.name))
 }
 

@@ -7,6 +7,7 @@ import { pct, playerFlow, type Rate } from "@/lib/gameFlow"
 import { playerName } from "@/lib/players"
 import { ZONES, ZONE_LABEL, playerIdentity } from "@/lib/playerIdentity"
 import { QUICK, sequences } from "@/lib/sequences"
+import { useReadOnly } from "@/lib/mode"
 import { adviceFrom, RULE_LABEL, ruleTests, type RuleVerdict } from "@/lib/ruleTests"
 import { trustOf, wilson } from "@/lib/trust"
 import type { PooleanState } from "@/lib/types"
@@ -83,7 +84,7 @@ function ImpactTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer:
   return (
     <>
       <Hint>
-        What each player does to a team's win chance with their teammates and opponents held constant, from all {w.check.games} results over {w.nights} nights, including games that were never filmed. Shown in points of win chance against an average player. The line is the range it could plausibly be, from redoing the sums on resampled nights, and the small number is games. {impactNote(w)}
+        Each player's effect on win chance with teammates and opponents held constant, from all {w.check.games} results, including unfilmed games. The line is the plausible range and the small number is games. {impactNote(w)}
       </Hint>
       <Forest rows={rows} state={state} onOpenPlayer={onOpenPlayer} />
       <Title>Record by situation</Title>
@@ -104,7 +105,7 @@ function SequenceTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlaye
   const l = q.league
   return (
     <>
-      <Hint>What each shot came straight after, from the order of plays in {q.games} timed games. The basket that ends a game is left out. Percentages show the shots behind them, and "likely" is the range the true rate probably sits in.</Hint>
+      <Hint>What each shot came straight after, from {q.games} timed games. "Likely" is the range the true rate probably sits in.</Hint>
       <div className="flex flex-col gap-1">
         <Line label="All shots" value={ranged(l.all)} />
         <Line label="Putbacks" value={ranged(l.putback)} />
@@ -132,14 +133,14 @@ function IdentityTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlaye
   const hasBeat = d.rows.some((r) => r.gotBeat > 0 || r.openOffBeat > 0)
   return (
     <>
-      <Hint>How free a player gets and the shots they choose. Open means nobody is on the shot, including a defender who got beat. Got beat counts how often a player was the beaten defender, which is a breakdown on their end. Across the league {pc(d.league.open)} of shots are open and {d.league.defenders.toFixed(2)} defenders are on a shot. Shot choice is the league's average points on the shots they take, against the league's {d.league.quality.toFixed(2)}.</Hint>
+      <Hint>How free a player gets and the shots they choose. Open means nobody is on the shot, including a beaten defender. League: {pc(d.league.open)} open, {d.league.defenders.toFixed(2)} defenders a shot.</Hint>
       <Grid
         min="38rem"
         head={["Player", "Shots", "Open", "Off a pass", "On their own", "Defenders", ...(hasBeat ? ["Got beat (defending)", "Open off a beat defender"] : []), "Shot choice", "Sample"]}
         rows={d.rows.map((r) => ({ key: r.id, cells: [<Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.shots, pc(r.open), pc(r.openPassed), pc(r.openSelf), r.defenders.toFixed(2), ...(hasBeat ? [r.gotBeat, r.openOffBeat] : []), sign(r.qualityVsLeague, 2), <TrustChip key="t" t={trustOf(r.shots, "shots")} />] }))}
       />
       <Title>Points per shot by zone, against the league</Title>
-      <Hint>Small samples are pulled toward the league, so a few lucky shots do not top the column. The number in brackets is shots from there. Darker is further from the league.</Hint>
+      <Hint>Small samples are pulled toward the league. Brackets show shots from there.</Hint>
       <Grid
         min="30rem"
         head={["Player", ...ZONES.map((z) => `${ZONE_LABEL[z]} (${d.league.zones[z]?.toFixed(2) ?? "-"})`)]}
@@ -218,7 +219,7 @@ function HoldUpTab({ state }: { state: PooleanState }) {
         </ul>
       )}
       <Title>Rules from other sports</Title>
-      <Hint>Each one tested on your games. Many are checked at once, so the bar for a verdict is high, and "No sign of it" only appears with a real sample behind it. Verdicts update as games are logged.</Hint>
+      <Hint>Each tested on your games. The bar is high because many are checked at once, and verdicts update as games are logged.</Hint>
       <ul className="flex flex-col gap-3">
         {sorted.map((r) => (
           <li key={r.id} className="flex flex-col gap-0.5 border-t pt-2 text-sm">
@@ -239,14 +240,15 @@ function HoldUpTab({ state }: { state: PooleanState }) {
 }
 
 export function DeepDiveCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: Open }) {
+  const readOnly = useReadOnly()
   return (
-    <Section id="lb-deep" title="Player deep dive" icon={Telescope} teaser="Win impact with teammates held constant, what shots come after, how free players get, and whether size matters.">
+    <Section id="lb-deep" title="Player deep dive" icon={Telescope} teaser="Win impact, play sequences, who gets open, and which sports rules hold up.">
       <ViewTabs
         tabs={[
           { value: "impact", label: "Win impact", node: <ImpactTab state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "seq", label: "Play sequences", node: <SequenceTab state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "identity", label: "Player identity", node: <IdentityTab state={state} onOpenPlayer={onOpenPlayer} /> },
-          { value: "body", label: "Body and effort", node: <BodyTab state={state} onOpenPlayer={onOpenPlayer} /> },
+          ...(readOnly ? [] : [{ value: "body", label: "Body and effort", node: <BodyTab state={state} onOpenPlayer={onOpenPlayer} /> }]),
           { value: "rules", label: "Does it hold up?", node: <HoldUpTab state={state} /> },
         ]}
       />

@@ -8,6 +8,7 @@ export interface GroupDef {
   editorOnly?: boolean // tuning views that visitors do not need
 }
 
+// A panel belongs with the side of the ball it measures: offense next to offense, defense in Defense.
 // A panel that repeats another is dropped. The self-inflicted bars say what Turnover Type Breakdown says in a table, and
 // Season Timeline retells Season Recap and Upset Tracker in order.
 export const LEADERBOARD_DROP = new Set(["Season Timeline", "Self-Inflicted vs. Forced Turnover Rate"])
@@ -20,14 +21,14 @@ export const LEADERBOARD_GROUPS: GroupDef[] = [
   { id: "passing", title: "Passing", home: "matchups", members: [["Assist Connections", "Assists"], ["Passing Chemistry: Pair Detail", "Pair detail"], ["League Passing Chemistry Grid", "Grid"]] },
   { id: "rebounding", title: "Rebounding", home: "matchups", members: [["Rebound Battle Record", "Record"], ["Rebound Battle Head-to-Head", "Head to head"], ["Opportunity-Adjusted Rebounding", "Per chance"]] },
   { id: "grids", title: "Matchups and teammates", home: "matchups", members: [["Head-to-Head Matchup Grid", "Scorer vs defender"], ["Teammate Lift Matrix", "Teammate lift"], ["Teammate Context", "Context"]] },
-  { id: "shot-mix", title: "Shot mix", home: "shooting", members: [["Shot Distance", "Distance"], ["Defensive Shot Distance", "Defended"], ["Shot Type Efficiency", "Shot types"], ["Shot Types: Open vs. Contested", "Open or guarded"], ["Deep Shot Check", "Deep shots"], ["Is the Move Working?", "The move"], ["Wide-Open Shooting", "Wide open"]] },
-  { id: "shooting-trends", title: "Shooting trends", home: "shooting", members: [["TS% by Shot Distance", "TS by distance"], ["League TS% Over Time", "TS over time"], ["Shot-Making Added (xPTS)", "Shot-making"], ["Shot-Making Added, Cumulative Over the Season", "Shot-making over time"], ["Shooting & Wins by Direction", "By direction"], ["League Shot Heatmap", "Heatmap"]] },
+  { id: "shot-mix", title: "Shot mix", home: "shooting", members: [["Shot Distance", "Distance"], ["Shot Type Efficiency", "Shot types"], ["Shot Types: Open vs. Contested", "Open or guarded"], ["Deep Shot Check", "Deep shots"], ["Is the Move Working?", "The move"], ["Wide-Open Shooting", "Wide open"]] },
+  { id: "shooting-trends", title: "Shooting trends", home: "shooting", members: [["TS% by Shot Distance", "TS by distance"], ["League TS% Over Time", "TS over time"], ["Shot-Making Added (xPTS)", "Shot-making"], ["Shot-Making Added, Cumulative Over the Season", "Shot-making over time"], ["Defender-Quality-Adjusted Offense", "Vs defender quality"], ["Shooting & Wins by Direction", "By direction"], ["League Shot Heatmap", "Heatmap"]] },
   { id: "shape", title: "Player shape", home: "comparison", members: [["Two-Way Quadrant", "Offense vs defense"], ["Volume vs. Efficiency", "Volume vs efficiency"], ["Stat Strengths", "Strengths"], ["Consistency", "Consistency"]] },
   { id: "season", title: "Over the season", home: "comparison", members: [["Two-Way/25 Rank Over the Season", "Rank"], ["Power Ranking vs. Performance", "Power vs play"], ["Closed Seasons in This App (League)", "Closed seasons"]] },
   { id: "turnovers", title: "Turnovers", home: "situational", members: [["TOV Recomputed", "TOV%"], ["Turnover Type Breakdown", "Types"], ["Turnover Type Mix", "Mix"], ["Forced Turnover Credit", "Forced credit"], ["Turnover Type vs. Shot Type", "Vs shot type"], ["Self-Creation Full Accounting", "Self-creation"], ["Turnover Type Over Time", "Over time"], ["Out-of-Bounds Misses", "Out of bounds"]] },
   { id: "close", title: "Close games", home: "situational", members: [["Close-Game Shooting", "Shooting"], ["Comeback Tracker", "Comebacks"], ["Game-Winning Buckets", "Game winners"]] },
-  { id: "second", title: "Second chances", home: "situational", members: [["Second-Chance Conversion", "Conversion"], ["Second-Chance Points Allowed", "Allowed"], ["Points off Takeaways", "Takeaways"]] },
-  { id: "defense", title: "Defense", home: "style", members: [["Defensive Load", "Load"], ["Contest Level & Defensive Engagement", "Contests"], ["Shooter-Quality-Adjusted Defense", "Adjusted defense"], ["Defender-Quality-Adjusted Offense", "Adjusted offense"], ["Close-Game Defense", "Close games"]] },
+  { id: "second", title: "Second chances", home: "situational", members: [["Second-Chance Conversion", "Conversion"], ["Points off Takeaways", "Takeaways"]] },
+  { id: "defense", title: "Defense", home: "defense", members: [["Defensive Load", "Load"], ["Contest Level & Defensive Engagement", "Contests"], ["Shooter-Quality-Adjusted Defense", "Adjusted defense"], ["Defensive Shot Distance", "Shots faced"], ["Second-Chance Points Allowed", "Second chances allowed"], ["Close-Game Defense", "Close games"]] },
   { id: "dev", title: "Developer views", home: "style", editorOnly: true, members: [["Calibrated Thresholds", "Thresholds"], ["Win Shares Model (beta)", "Win shares model"]] },
 ]
 

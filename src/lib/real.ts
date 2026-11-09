@@ -34,6 +34,18 @@ export function realSeasonsInOrder(): RealSeason[] {
   return (data.list as string[]).map((y) => seasons[String(y)]).filter(Boolean)
 }
 
+// Everyone who actually shows up in the old site's results: in a game, on a season card or in a ranking. Its name list also
+// keeps stray aliases (a bare "Michael") that nobody ever played as, so the name list alone is not a roster.
+export function realPlayerIds(): string[] {
+  const out = new Set<string>()
+  for (const s of realSeasonsInOrder()) {
+    for (const g of s.games) [...g.a, ...g.b].forEach((id) => out.add(id))
+    Object.keys(s.cards ?? {}).forEach((id) => out.add(id))
+    for (const r of s.rankings ?? []) r.players.forEach((p) => out.add(p.slug))
+  }
+  return [...out]
+}
+
 // The season the classic site's header picker defaults to: the latest one.
 export function currentRealSeason(): RealSeason | null {
   const list = data.list as string[]

@@ -2,6 +2,7 @@
 // The classic site's compute layer, column definitions and dependencies, taken verbatim so the numbers match the
 // classic site exactly. It started as generated output; the generator is gone, so edit this file directly.
 import { PER } from "@/lib/per";
+import { realPlayerIds } from "@/lib/real";
 let state = { players: [], games: [], masterVideos: [], rsvps: [], seasonHistory: [], currentSeasonStartedAt: null, playerPhysicalOverrides: {} };
 function saveState() { window.dispatchEvent(new CustomEvent("legacy-state-changed")); }
 export function setLegacyState(s) { state = s; invalidateComputedCaches(); }
@@ -1337,7 +1338,8 @@ function predictRealMatchup(teamA, teamB) {
 
 function realMatchupPlayerPool() {
   const ids = new Set(state.players.map(p => p.id));
-  if (typeof POOLEAN_SEASONS !== "undefined") realSeasonsInOrder().forEach(s => Object.keys(s.names || {}).forEach(id => ids.add(id)));
+  // Old-site names only count for people who actually appear there; the name list keeps stray aliases like a bare "Michael".
+  if (typeof POOLEAN_SEASONS !== "undefined") realPlayerIds().forEach(id => ids.add(id));
   return [...ids].map(id => ({ id, name: poolNameOf(id) })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -2371,6 +2373,22 @@ const MATCHUP_TABLE_COLUMNS = [
 
 const DEFENSIVE_LOAD_MIN_SHARE = 8;
 
+// How often a player was the tagged defender on a shot and got beat. Shown as its own column on the defense panels; the
+// beaten shots are not real contests, so they stay out of Real Contested Opp FG%.
+function computeGotBeat(playerId) {
+  let beat = 0, tagged = 0;
+  qualifyingGamesForPlayer(playerId).forEach(game => {
+    game.scoringEvents.forEach(ev => {
+      if (ev.points !== 2 && ev.points !== 3) return;
+      if (!(ev.defenderIds || []).includes(playerId)) return;
+      tagged++;
+      if (ev.contestLevel === "beat") beat++;
+    });
+  });
+  return { beat, tagged };
+}
+const gotBeatText = g => g.tagged === 0 ? "-" : `${g.beat} of ${g.tagged}`;
+
 function computeDefensiveLoad(playerId) {
   const games = qualifyingGamesForPlayer(playerId);
   let taggedSum = 0, shareSum = 0;
@@ -2685,6 +2703,7 @@ function computeDefensiveLoadPanelRows() {
         // see computeRealContestedDefense() -- with the old any-tag oppFgPct kept alongside it
         // only as a labeled "vs. old methodology" comparison for this first release.
         realContested: computeRealContestedDefense(r.player.id),
+        gotBeat: computeGotBeat(r.player.id),
         sentence: describeDefensiveLoad(r.defensiveLoad, oppFgPct, leagueAvgOppFg),
         // Own gate (10+ tagged defended shots, see computeExpectedPointsAgainst), separate from
         // Defensive Load's own (8+ expected tagged possessions) -- a player can clear one without
@@ -2710,6 +2729,7 @@ const DEFENSIVE_LOAD_COLUMNS = [
     accessor: r => r.pointsAllowedUnderExpected,
     display: r => r.pointsAllowedUnderExpected === null ? "—" : `${r.pointsAllowedUnderExpected >= 0 ? "+" : ""}${r.pointsAllowedUnderExpected.toFixed(1)}`,
   },
+  { key: "gotbeat", label: "Got Beat", accessor: r => r.gotBeat.tagged ? r.gotBeat.beat / r.gotBeat.tagged : null, display: r => gotBeatText(r.gotBeat) },
   { key: "read", label: "Read", accessor: r => r.sentence },
 ];
 
@@ -2722,7 +2742,7 @@ function renderDefensiveLoadPanel() {
   renderSortableHeader(headerRow, DEFENSIVE_LOAD_COLUMNS, defensiveLoadPanelSort, renderDefensiveLoadPanel);
   const rows = computeDefensiveLoadPanelRows();
   if (rows.length === 0) {
-    body.innerHTML = `<tr><td colspan="6" class="empty-state">Nobody has enough tagged defensive volume yet (needs ${DEFENSIVE_LOAD_MIN_SHARE}+ expected tagged possessions across enough games).</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="empty-state">Nobody has enough tagged defensive volume yet (needs ${DEFENSIVE_LOAD_MIN_SHARE}+ expected tagged possessions across enough games).</td></tr>`;
     return;
   }
   const sortCol = DEFENSIVE_LOAD_COLUMNS.find(c => c.key === defensiveLoadPanelSort.key);
@@ -2736,6 +2756,7 @@ function renderDefensiveLoadPanel() {
     <td>${oppFgCell(r)}</td>
     <td>${r.defRtg.toFixed(1)}</td>
     <td>${r.pointsAllowedUnderExpected === null ? "—" : `${r.pointsAllowedUnderExpected >= 0 ? "+" : ""}${r.pointsAllowedUnderExpected.toFixed(1)}`}</td>
+    <td>${gotBeatText(r.gotBeat)}</td>
     <td>${escapeHtml(r.sentence)}</td>
   </tr>`).join("");
   body.querySelectorAll(".defload-player-btn").forEach(btn => {
@@ -2746,6 +2767,7 @@ function renderDefensiveLoadPanel() {
 const CONTEST_ENGAGEMENT_COLUMNS = [
   { key: "player", label: "Player", accessor: r => r.player.name },
   { key: "engagement", label: "Engagement Rate", accessor: r => r.dist.engagementRate, display: r => r.dist.engagementRate === null ? "—" : formatPct(r.dist.engagementRate) },
+  { key: "beat", label: "Got Beat", accessor: r => r.dist.counts.beat },
   { key: "light", label: "Light", accessor: r => r.dist.counts.light },
   { key: "medium", label: "Medium", accessor: r => r.dist.counts.medium },
   { key: "heavy", label: "Heavy", accessor: r => r.dist.counts.heavy },
@@ -2776,7 +2798,7 @@ function renderContestEngagementPanel() {
   renderSortableHeader(headerRow, CONTEST_ENGAGEMENT_COLUMNS, contestEngagementSort, renderContestEngagementPanel);
   const rows = computeContestEngagementRows();
   if (rows.length === 0) {
-    body.innerHTML = `<tr><td colspan="6" class="empty-state">Nobody has a tagged defensive assignment with a contest level yet.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="empty-state">Nobody has a tagged defensive assignment with a contest level yet.</td></tr>`;
     return;
   }
   const sortCol = CONTEST_ENGAGEMENT_COLUMNS.find(c => c.key === contestEngagementSort.key);
@@ -2784,6 +2806,7 @@ function renderContestEngagementPanel() {
   body.innerHTML = rows.map(r => `<tr>
     <td><button type="button" class="icon-btn" data-contest-eng-player="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button></td>
     <td>${r.dist.engagementRate === null ? `—<br><span class="hint" style="margin:0">needs ${CONTEST_ENGAGEMENT_MIN_TAGGED}+ tagged</span>` : formatPct(r.dist.engagementRate)}</td>
+    <td>${r.dist.counts.beat}</td>
     <td>${r.dist.counts.light}</td>
     <td>${r.dist.counts.medium}</td>
     <td>${r.dist.counts.heavy}</td>
@@ -2800,6 +2823,7 @@ const SHOOTER_QUALITY_DEF_COLUMNS = [
   { key: "shooterq", label: "Shooter Quality Faced (TS%)", accessor: r => r.adj.shooterQualityFaced, display: r => formatPct(r.adj.shooterQualityFaced) },
   { key: "realfg", label: "Real Contested Opp FG%", accessor: r => r.adj.realContestedFgPct, display: r => formatPct(r.adj.realContestedFgPct) },
   { key: "dae", label: "Defense Above Expected", accessor: r => r.adj.defenseAboveExpected, display: r => `${r.adj.defenseAboveExpected >= 0 ? "+" : ""}${r.adj.defenseAboveExpected.toFixed(1)}` },
+  { key: "gotbeat", label: "Got Beat", accessor: r => r.gotBeat.tagged ? r.gotBeat.beat / r.gotBeat.tagged : null, display: r => gotBeatText(r.gotBeat) },
 ];
 
 let shooterQualityDefSort = { key: "dae", dir: "desc" };
@@ -2809,7 +2833,7 @@ function computeShooterQualityDefRows() {
   state.players.forEach(p => { qualityMap[p.id] = computeShooterQualityBaseline(p.id); });
   return state.players.map(player => {
     const adj = computeShooterQualityAdjustedDefense(player.id, qualityMap);
-    return adj ? { player, adj } : null;
+    return adj ? { player, adj, gotBeat: computeGotBeat(player.id) } : null;
   }).filter(Boolean);
 }
 
@@ -2825,7 +2849,7 @@ function renderShooterQualityDefPanel() {
   renderSortableHeader(headerRow, SHOOTER_QUALITY_DEF_COLUMNS, shooterQualityDefSort, renderShooterQualityDefPanel);
   const rows = computeShooterQualityDefRows();
   if (rows.length === 0) {
-    body.innerHTML = `<tr><td colspan="5" class="empty-state">Nobody has enough real-contested defensive volume yet.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6" class="empty-state">Nobody has enough real-contested defensive volume yet.</td></tr>`;
     return;
   }
   const sortCol = SHOOTER_QUALITY_DEF_COLUMNS.find(c => c.key === shooterQualityDefSort.key);
@@ -2836,6 +2860,7 @@ function renderShooterQualityDefPanel() {
     <td>${formatPct(r.adj.shooterQualityFaced)}</td>
     <td>${formatPct(r.adj.realContestedFgPct)}</td>
     <td>${r.adj.defenseAboveExpected >= 0 ? "+" : ""}${r.adj.defenseAboveExpected.toFixed(1)}</td>
+    <td>${gotBeatText(r.gotBeat)}</td>
   </tr>`).join("");
 }
 
@@ -11580,20 +11605,20 @@ export const TABLE_PANELS = [
     ? `Not enough contested volume yet<br><span class="hint" style="margin:0">was ${formatPct(r.oppFgPct)} any-tag</span>`
     : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${r.realContested.made}/${r.realContested.attempts} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`;
     return { section: "style", order: 52, fn: "renderDefensiveLoadPanel", title: "Defensive Load", bodyId: "defensiveLoadPanelBody", headerId: "defensiveLoadPanelHeaderRow",
-    columns: __withDisplay(DEFENSIVE_LOAD_COLUMNS, [(r) => `<button type="button" class="icon-btn defload-player-btn" data-player-id="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button>`, (r) => `${r.load.toFixed(2)}x`, (r) => `${oppFgCell(r)}`, (r) => `${r.defRtg.toFixed(1)}`, (r) => `${r.pointsAllowedUnderExpected === null ? "—" : `${r.pointsAllowedUnderExpected >= 0 ? "+" : ""}${r.pointsAllowedUnderExpected.toFixed(1)}`}`, (r) => `${escapeHtml(r.sentence)}`]),
+    columns: __withDisplay(DEFENSIVE_LOAD_COLUMNS, [(r) => `<button type="button" class="icon-btn defload-player-btn" data-player-id="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button>`, (r) => `${r.load.toFixed(2)}x`, (r) => `${oppFgCell(r)}`, (r) => `${r.defRtg.toFixed(1)}`, (r) => `${r.pointsAllowedUnderExpected === null ? "—" : `${r.pointsAllowedUnderExpected >= 0 ? "+" : ""}${r.pointsAllowedUnderExpected.toFixed(1)}`}`, (r) => `${gotBeatText(r.gotBeat)}`, (r) => `${escapeHtml(r.sentence)}`]),
     rows: () => (computeDefensiveLoadPanelRows()),
     sort: { key: "load", dir: "desc" },
     empty: () => `Nobody has enough tagged defensive volume yet (needs ${DEFENSIVE_LOAD_MIN_SHARE}+ expected tagged possessions across enough games).`,
     extra: [] };
   })(),
   { section: "style", order: 53, fn: "renderContestEngagementPanel", title: "Contest Level & Defensive Engagement", bodyId: "contestEngagementBody", headerId: "contestEngagementHeaderRow",
-    columns: __withDisplay(CONTEST_ENGAGEMENT_COLUMNS, [(r) => `<button type="button" class="icon-btn" data-contest-eng-player="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button>`, (r) => `${r.dist.engagementRate === null ? `—<br><span class="hint" style="margin:0">needs ${CONTEST_ENGAGEMENT_MIN_TAGGED}+ tagged</span>` : formatPct(r.dist.engagementRate)}`, (r) => `${r.dist.counts.light}`, (r) => `${r.dist.counts.medium}`, (r) => `${r.dist.counts.heavy}`, (r) => `${r.realContested === null ? "—" : formatPct(r.realContested.fgPct)}`]),
+    columns: __withDisplay(CONTEST_ENGAGEMENT_COLUMNS, [(r) => `<button type="button" class="icon-btn" data-contest-eng-player="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button>`, (r) => `${r.dist.engagementRate === null ? `—<br><span class="hint" style="margin:0">needs ${CONTEST_ENGAGEMENT_MIN_TAGGED}+ tagged</span>` : formatPct(r.dist.engagementRate)}`, (r) => `${r.dist.counts.beat}`, (r) => `${r.dist.counts.light}`, (r) => `${r.dist.counts.medium}`, (r) => `${r.dist.counts.heavy}`, (r) => `${r.realContested === null ? "—" : formatPct(r.realContested.fgPct)}`]),
     rows: () => (computeContestEngagementRows()),
     sort: { key: "engagement", dir: "desc" },
     empty: () => `Nobody has a tagged defensive assignment with a contest level yet.`,
     extra: [{"id":"contestLevelSanityCheck","tag":"div","cls":"shot-selection-legend"}] },
   { section: "style", order: 54, fn: "renderShooterQualityDefPanel", title: "Shooter-Quality-Adjusted Defense", bodyId: "shooterQualityDefBody", headerId: "shooterQualityDefHeaderRow",
-    columns: __withDisplay(SHOOTER_QUALITY_DEF_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.adj.n}`, (r) => `${formatPct(r.adj.shooterQualityFaced)}`, (r) => `${formatPct(r.adj.realContestedFgPct)}`, (r) => `${r.adj.defenseAboveExpected >= 0 ? "+" : ""}${r.adj.defenseAboveExpected.toFixed(1)}`]),
+    columns: __withDisplay(SHOOTER_QUALITY_DEF_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.adj.n}`, (r) => `${formatPct(r.adj.shooterQualityFaced)}`, (r) => `${formatPct(r.adj.realContestedFgPct)}`, (r) => `${r.adj.defenseAboveExpected >= 0 ? "+" : ""}${r.adj.defenseAboveExpected.toFixed(1)}`, (r) => `${gotBeatText(r.gotBeat)}`]),
     rows: () => (computeShooterQualityDefRows()),
     sort: { key: "dae", dir: "desc" },
     empty: () => `Nobody has enough real-contested defensive volume yet.`,

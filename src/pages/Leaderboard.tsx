@@ -9,6 +9,7 @@ import hints from "@/data/panel-hints.json"
 import { MOUNT_PANELS, TABLE_PANELS } from "@/lib/legacy-core"
 import { LEADERBOARD_DROP, LEADERBOARD_GROUPS, placeOf } from "@/lib/panelGroups"
 import { PanelSearch, type JumpItem } from "@/components/PanelSearch"
+import { useReadOnly } from "@/lib/mode"
 import { StatLegend } from "@/components/StatLegend"
 import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
 import { LaneBars } from "./leaderboard/LaneBars"
@@ -23,10 +24,14 @@ const SECTIONS: { key: string; title: string }[] = [
   { key: "shooting", title: "Shooting" },
   { key: "matchups", title: "Matchups & Team" },
   { key: "situational", title: "Situational" },
+  { key: "defense", title: "Defense" },
   { key: "style", title: "Play Style & Models" },
   { key: "media", title: "History & Media" },
 ]
 
+// Models are developer views, so the section is for editors only.
+const EDITOR_ONLY = new Set(["style"])
+const DEFENSE_TEASER = "Who defends well, who gets beat, and how hard the shots they face are"
 const HINTS = hints as Record<string, { hint: string }>
 const sectionTitle = (key: string) => SECTIONS.find((s) => s.key === key)?.title ?? key
 const JUMP_ITEMS: JumpItem[] = [
@@ -51,6 +56,7 @@ const NAV = [
 ]
 
 function QuickNav() {
+  const readOnly = useReadOnly()
   const go = (id: string) => {
     const el = document.getElementById(id)
     if (!el) return
@@ -59,7 +65,7 @@ function QuickNav() {
   }
   return (
     <nav aria-label="Jump to a part of the leaderboard" data-no-swipe className="sticky top-0 z-20 -mx-4 flex gap-2 overflow-x-auto bg-background/90 px-4 py-2 backdrop-blur sm:hidden">
-      {NAV.map((n, i) => (
+      {NAV.filter((n) => !(readOnly && EDITOR_ONLY.has(n.id.replace("lb-section-", "")))).map((n, i) => (
         <button key={n.id} type="button" onClick={() => go(n.id)} style={{ "--i": i } as React.CSSProperties} className="anim-chip shrink-0 rounded-full border bg-card px-3 py-1.5 text-sm font-medium">
           {n.label}
         </button>
@@ -85,6 +91,7 @@ export function LeaderboardPage({
     return { state, toggles }
   }, [state, toggles])
   const teasers = computeLeaderboardSectionTeasers() as Record<string, string>
+  const readOnly = useReadOnly()
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <div className="flex items-center gap-2">
@@ -100,9 +107,9 @@ export function LeaderboardPage({
       <div id="lb-rates" className="anim-rise scroll-mt-28" style={{ "--i": 1 } as React.CSSProperties}>
         <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
       </div>
-      {SECTIONS.map((s, i) => (
+      {SECTIONS.filter((s) => !(readOnly && EDITOR_ONLY.has(s.key))).map((s, i) => (
         <div key={s.key} className="anim-rise" style={{ "--i": i + 2 } as React.CSSProperties}>
-          <Section id={`lb-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
+          <Section id={`lb-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={s.key === "defense" ? DEFENSE_TEASER : (teasers[s.key] ?? "")}>
             <LegacyPanels state={state} section={s.key} onOpenPlayer={onOpenPlayer} version={version} />
           </Section>
         </div>

@@ -52,7 +52,7 @@ const BY_SECTION: Record<string, LucideIcon> = {
   situational: Flame,
   style: Brain,
   media: Film,
-  // Player
+  // Player (defense is also a Leaderboard section)
   passing: Handshake,
   defense: Shield,
   team: Users,

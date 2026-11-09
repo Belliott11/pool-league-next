@@ -21,3 +21,12 @@ describe("scoring a season with old site nights", () => {
     expect(actualOrder(state, "2027-06-01")).toEqual([])
   })
 })
+
+describe("old site players", () => {
+  it("lists only people who appear in results, not stray name aliases", async () => {
+    const { realPlayerIds } = await import("@/lib/real")
+    const ids = realPlayerIds()
+    expect(ids).toContain("ben")
+    expect(ids).not.toContain("michael")
+  })
+})
