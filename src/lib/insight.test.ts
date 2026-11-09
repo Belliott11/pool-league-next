@@ -92,6 +92,25 @@ describe("turnover cost", () => {
   })
 })
 
+describe("shot-based turnovers", () => {
+  // The same game plus a blocked shot by b1 logged as a miss and a turnover.
+  const blocked: Game = {
+    ...game,
+    scoringEvents: [...events, shot("e8", "b1", 2, false, { passerId: "none", videoTime: 8, turnoverEventId: "t2" })],
+    turnoverEvents: [...game.turnoverEvents, { id: "t2", playerId: "b1", videoTime: 8 }],
+  }
+  const s: PooleanState = { ...state, games: [blocked] }
+  it("are not counted again as possessions or giveaways", () => {
+    const t = turnoverCost(s)
+    expect(t.possessions).toBe(8 - 1 + 1)
+    expect(t.turnovers).toBe(1)
+    expect(t.rows.find((r) => r.id === "b1")!.giveaways).toBe(1)
+  })
+  it("leave the margin parts adding up", () => {
+    expect(FACTORS.reduce((n, f) => n + marginBreakdown(s).edge[f], 0)).toBeCloseTo(4, 6)
+  })
+})
+
 describe("player breakdowns", () => {
   it("gives each side of a game opposite signs that add to the same parts", async () => {
     const { playerBreakdowns } = await import("@/lib/insight")

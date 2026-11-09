@@ -9,6 +9,11 @@ const made = (e: ScoringEvent) => e.made !== false
 const pts = (e: ScoringEvent) => (made(e) ? e.points : 0)
 const side = (g: Game, id: string): 0 | 1 | null => (g.teamA.includes(id) ? 0 : g.teamB.includes(id) ? 1 : null)
 const members = (g: Game) => [...g.teamA, ...g.teamB]
+// A stolen or blocked shot is logged as a miss and a turnover. It is already a shot, so only these end a possession without one.
+const liveTurnovers = (g: Game) => {
+  const shotBased = new Set(g.scoringEvents.map((e) => e.turnoverEventId).filter(Boolean))
+  return g.turnoverEvents.filter((x) => !shotBased.has(x.id))
+}
 
 function usable(g: Game): boolean {
   if (g.liveInProgress || g.stoppedEarly || g.scoringEvents.length === 0 || g.teamA.length === 0 || g.teamB.length === 0) return false
@@ -80,7 +85,7 @@ export function partsOf(g: Game, expect: (e: ScoringEvent) => number): { margin:
     t[i].pts += pts(e)
     t[i].xpts += expect(e)
   }
-  for (const x of g.turnoverEvents) {
+  for (const x of liveTurnovers(g)) {
     const i = side(g, x.playerId)
     if (i !== null) t[i].tov++
   }
@@ -283,7 +288,8 @@ export function winProbAdded(state: PooleanState): Wpa {
 // 4. What a turnover costs ----------------------------------------------------------------------------------------
 // A possession is a shot minus the offensive rebounds that extend it, plus the turnovers that end it with no shot (a shot
 // that is stolen or blocked is already a shot, so it is not counted twice). The league's points per possession is what a
-// giveaway is worth. With video times, the other team's very next shot shows what turnovers actually cost.
+// giveaway is worth. With video times, the other team's very next shot shows what turnovers actually cost. Every count
+// here is live-ball turnovers only.
 export interface TovRow {
   id: string
   games: number
@@ -313,17 +319,16 @@ export function turnoverCost(state: PooleanState): TovCost {
   const by = new Map<string, { games: number; giveaways: number; forced: number; handed: number; taken: number; points: number }>()
   const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, giveaways: 0, forced: 0, handed: 0, taken: 0, points: 0 }).get(id)!
   for (const g of gs) {
-    const shotBased = new Set(g.scoringEvents.map((e) => e.turnoverEventId).filter((x): x is string => !!x))
-    const live = g.turnoverEvents.filter((x) => !shotBased.has(x.id))
+    const live = liveTurnovers(g)
     const oreb = members(g).reduce((n, id) => n + getGameStats(g, id).oreb, 0)
     poss += g.scoringEvents.length - oreb + live.length
     points += total(g)
-    tovs += g.turnoverEvents.length
+    tovs += live.length
     for (const id of members(g)) {
       row(id).games++
       row(id).points += total(g)
     }
-    for (const x of g.turnoverEvents) {
+    for (const x of live) {
       if (side(g, x.playerId) !== null) row(x.playerId).giveaways++
       if (x.opponentId && side(g, x.opponentId) !== null) row(x.opponentId).forced++
     }
@@ -333,7 +338,7 @@ export function turnoverCost(state: PooleanState): TovCost {
     type Play = { t: number; shot: ScoringEvent | null; who: string; tov?: TurnoverEvent }
     const plays: Play[] = [
       ...g.scoringEvents.map((e) => ({ t: e.videoTime as number, shot: e as ScoringEvent | null, who: e.scorerId })),
-      ...g.turnoverEvents.map((x) => ({ t: x.videoTime as number, shot: null, who: x.playerId, tov: x })),
+      ...live.map((x) => ({ t: x.videoTime as number, shot: null, who: x.playerId, tov: x })),
     ].sort((a, b) => a.t - b.t)
     for (const [i, p] of plays.entries()) {
       if (!p.tov) continue

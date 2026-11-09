@@ -31,7 +31,7 @@ describe("players to watch", () => {
     expect(w.rated).toBe(4)
     expect(ids(w.rising)).toEqual(["x"])
     expect(w.rising[0].signals[0]).toMatchObject({ kind: "twoWay", n: 6 })
-    expect(w.rising[0].signals[0].late - w.rising[0].signals[0].early).toBeCloseTo(8, 5)
+    expect(w.rising[0].signals[0].late - w.rising[0].signals[0].early).toBeCloseTo(10, 5)
     expect(ids(w.bounce)).toEqual(["y"])
   })
 

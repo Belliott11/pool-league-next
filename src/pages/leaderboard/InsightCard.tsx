@@ -114,7 +114,7 @@ function Cost({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id:
         head={["Player", "Gave", "Forced", `Net pts/${PER}`]}
         rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, String(r.giveaways), String(r.forced), sign(r.net25, 2)] }))}
       />
-      <Hint>Net is turnovers forced minus turnovers given away, at the league's points per possession.</Hint>
+      <Hint>Live-ball turnovers only: a stolen or blocked shot is already counted as a shot. Net is turnovers forced minus turnovers given away, at the league's points per possession.</Hint>
     </div>
   )
 }

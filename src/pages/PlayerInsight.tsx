@@ -85,7 +85,7 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
             label: "Turnovers",
             node: (
               <>
-                <Hint>Turnovers given away and forced. A possession is worth {t.perPossession.toFixed(2)} points in this league.</Hint>
+                <Hint>Live-ball turnovers given away and forced. A stolen or blocked shot is counted as a shot instead. A possession is worth {t.perPossession.toFixed(2)} points in this league.</Hint>
                 {mt ? (
                   <>
                     <Line label="Gave away" value={String(mt.giveaways)} sub={`${mt.handed} points scored on the next shot`} />

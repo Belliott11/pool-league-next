@@ -1,4 +1,5 @@
 import { oldSite, type OldSite } from "@/lib/oldSite"
+import { PER } from "@/lib/per"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
 import { seasonGames } from "@/lib/offseason"
 import type { PooleanState } from "@/lib/types"
@@ -45,7 +46,7 @@ interface Row {
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
 const per25 = (rows: Row[]) => {
   const total = rows.reduce((n, r) => n + r.total, 0)
-  return total > 0 ? (rows.reduce((n, r) => n + r.v, 0) / total) * 20 : 0
+  return total > 0 ? (rows.reduce((n, r) => n + r.v, 0) / total) * PER : 0
 }
 const median = (xs: number[]) => {
   const s = [...xs].sort((a, b) => a - b)
