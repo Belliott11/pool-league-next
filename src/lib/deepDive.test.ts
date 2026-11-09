@@ -5,6 +5,7 @@ import { playerIdentity } from "@/lib/playerIdentity"
 import { sequences } from "@/lib/sequences"
 import { shrink, trustOf, wilson } from "@/lib/trust"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
+import { defensiveRating, gameDefenseStats, getGameStats } from "@/lib/stats"
 import { fit, results, splits, winImpact, type Result } from "@/lib/winImpact"
 
 const shot = (id: string, scorerId: string, t: number, made: boolean, extra: Partial<ScoringEvent> = {}): ScoringEvent => ({ id, scorerId, points: 2, made, videoTime: t, shotType: "drive", contestLevel: "none", shotLocation: { x: 50, y: 10 }, passerId: "none", ...extra })
@@ -137,6 +138,20 @@ describe("body and effort", () => {
   it("buckets guarded shots by height", () => {
     const b = bodyEffort(state, { rows: [], check: { model: 0, baseline: 0, games: 0 }, nights: 0 })
     expect(b.league.shooterShorter).toEqual({ made: 1, att: 1 })
+  })
+})
+
+describe("got beat and stops", () => {
+  const g: Game = { ...game, scoringEvents: [shot("m1", "a", 1, false, { defenderIds: ["b"], contestLevel: "heavy" }), shot("m2", "a", 2, false, { defenderIds: ["b"], contestLevel: "beat" }), shot("k1", "a", 3, true, { defenderIds: ["b"], contestLevel: "beat" })] }
+  const d = gameDefenseStats(g, "b")
+  it("gives no stop for a missed shot off a beaten defender", () => {
+    expect(d.stops).toBe(2)
+    expect(d.beatMisses).toBe(1)
+    expect(defensiveRating(getGameStats(g, "b"), d) - defensiveRating(getGameStats(g, "b"), { ...d, beatMisses: 0 })).toBe(-1)
+  })
+  it("keeps every miss in Opp FG%, and the made shot still counts against them", () => {
+    expect(d.timesBeaten).toBe(1)
+    expect(d.timesBeaten / (d.timesBeaten + d.stops)).toBeCloseTo(1 / 3, 6)
   })
 })
 

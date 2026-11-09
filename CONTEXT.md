@@ -140,5 +140,8 @@ Captains pick unless the same teams already played that day, which is a runback.
 **Got beat**:
 A contest level for a defender beaten right before the shot. It counts as no resistance, and the shot counts as wide open. It reads as a defensive breakdown, so it is shown against the defender first and the shooter second. Older shots may still be tagged Light Contest; `contestChecked` marks one that has been reviewed.
 
+**Stops**:
+A miss against a tagged defender earns a stop, except when the shot was tagged Got Beat: that defender was out of the play, so it is not credited. Opp FG% and shots faced still count the miss.
+
 **Panel group**:
 Related Leaderboard or Player panels combined into one panel with a tab each, so nothing repeats and the pages are shorter (for example Awards, Shot mix, Turnovers, Old site history). Defined in `src/lib/panelGroups.ts`. A panel that only repeated another (Season Timeline, the self-inflicted turnover bars) was dropped; tuning views (Calibrated Thresholds, Win Shares model) sit in an editor-only Developer views group.

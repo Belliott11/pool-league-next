@@ -2146,6 +2146,8 @@ function gameDefenseStats(game, playerId) {
   const madeAgainst = against.filter(ev => ev.made !== false);
   const timesBeaten = madeAgainst.length;
   const stops = against.filter(ev => ev.made === false).length;
+  // Misses off a shot where this defender got beat earn no Stop credit (Opp FG% still counts them, so `stops` stays every miss).
+  const beatMisses = against.filter(ev => ev.made === false && ev.contestLevel === "beat").length;
   // Made 3s against, specifically -- needed for Opponent eFG% (see poolean-defensive-mirrors-
   // spec.md). Free throws are never tagged with a defender at all (see Stat Entry: the defender
   // picker only shows for a 2/3-point shot).
@@ -2162,6 +2164,7 @@ function gameDefenseStats(game, playerId) {
     ptsAllowed: madeAgainst.reduce((sum, ev) => sum + ev.points, 0),
     timesBeaten,
     stops,
+    beatMisses,
     tpmAgainst,
     oppFgPct: pct(timesBeaten, timesBeaten + stops),
     blocksNotAlreadyStopped
@@ -2191,7 +2194,7 @@ function offensiveRating(s, sh) {
 }
 
 function defensiveRating(s, def) {
-  return s.stl + 0.7 * def.blocksNotAlreadyStopped + def.stops - def.timesBeaten - 0.4 * def.ptsAllowed;
+  return s.stl + 0.7 * def.blocksNotAlreadyStopped + (def.stops - (def.beatMisses || 0)) - def.timesBeaten - 0.4 * def.ptsAllowed;
 }
 
 function twoWayScore(s, sh, def) {
@@ -2226,7 +2229,7 @@ const GAME_STATS_COLUMNS = [
   { key: "ptsAllowed", label: "Pts Allowed", accessor: r => r.def.ptsAllowed },
   { key: "oppfg", label: "Opp FG%", accessor: r => r.def.oppFgPct },
   { key: "beaten", label: "Beaten", accessor: r => r.def.timesBeaten },
-  { key: "stops", label: "Stops", accessor: r => r.def.stops },
+  { key: "stops", label: "Stops", accessor: r => r.def.stops - (r.def.beatMisses || 0) },
   { key: "offrtg", label: "Off Rating", accessor: r => r.offRtg },
   { key: "twoway", label: "Two-Way", accessor: r => r.twoWay }
 ];
@@ -2445,7 +2448,7 @@ function computeLeaderboardUncached() {
     const gamesPlayed = qualifyingGamesForPlayer(p.id);
     const totals = { pts: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 };
     const shooting = { fgm: 0, fga: 0, tpm: 0, tpa: 0, closeM: 0, closeA: 0, midM: 0, midA: 0, tpArcM: 0, tpArcA: 0, tpDeepM: 0, tpDeepA: 0, ftm: 0, fta: 0, dunkM: 0, dunkA: 0 };
-    const defense = { ptsAllowed: 0, timesBeaten: 0, stops: 0, tpmAgainst: 0, blocksNotAlreadyStopped: 0 };
+    const defense = { ptsAllowed: 0, timesBeaten: 0, stops: 0, beatMisses: 0, tpmAgainst: 0, blocksNotAlreadyStopped: 0 };
     let wins = 0, losses = 0, ties = 0, combinedPoints = 0, teamFgaTotal = 0, teamAstTotal = 0, orebPoolTotal = 0, drebPoolTotal = 0, missChances = 0, oppPlays = 0, mateBaskets = 0;
     gamesPlayed.forEach(g => {
       const s = g.stats.find(st => st.playerId === p.id);
@@ -2456,6 +2459,7 @@ function computeLeaderboardUncached() {
       defense.ptsAllowed += def.ptsAllowed;
       defense.timesBeaten += def.timesBeaten;
       defense.stops += def.stops;
+      defense.beatMisses += def.beatMisses;
       defense.tpmAgainst += def.tpmAgainst;
       defense.blocksNotAlreadyStopped += def.blocksNotAlreadyStopped;
       combinedPoints += gameTotalPoints(g);
@@ -2513,6 +2517,7 @@ function computeLeaderboardUncached() {
       ptsAllowed: per25(defense.ptsAllowed),
       timesBeaten: per25(defense.timesBeaten),
       stops: per25(defense.stops),
+      beatMisses: per25(defense.beatMisses),
       blocksNotAlreadyStopped: per25(defense.blocksNotAlreadyStopped)
     };
     // Last 5 games (by date, not insertion order), same per-25 math as the season — a quick
@@ -6286,7 +6291,7 @@ const WIN_SHARES_FEATURES = [
   { key: "dreb", label: "Def Rebounds", sign: 1, extract: (s, sh, def) => s.dreb },
   { key: "ast", label: "Assists", sign: 1, prior: 0.5, extract: (s, sh, def) => s.ast },
   { key: "tov", label: "Turnovers", sign: -1, extract: (s, sh, def) => s.liveBallTov },
-  { key: "stops", label: "Stops", sign: 1, extract: (s, sh, def) => def.stops },
+  { key: "stops", label: "Stops", sign: 1, extract: (s, sh, def) => def.stops - (def.beatMisses || 0) },
   { key: "ptsAllowed", label: "Pts Allowed", sign: -1, extract: (s, sh, def) => def.ptsAllowed },
 ];
 
@@ -6763,7 +6768,7 @@ function renderOutOfBoundsPanel() {
 function computeRateSummaryForGames(playerId, games) {
   const totals = { pts: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 };
   const shooting = { fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0 };
-  const defense = { ptsAllowed: 0, timesBeaten: 0, stops: 0, blocksNotAlreadyStopped: 0 };
+  const defense = { ptsAllowed: 0, timesBeaten: 0, stops: 0, beatMisses: 0, blocksNotAlreadyStopped: 0 };
   let combinedPoints = 0;
   games.forEach(g => {
     const s = g.stats.find(st => st.playerId === playerId);
@@ -6774,6 +6779,7 @@ function computeRateSummaryForGames(playerId, games) {
     defense.ptsAllowed += def.ptsAllowed;
     defense.timesBeaten += def.timesBeaten;
     defense.stops += def.stops;
+    defense.beatMisses += def.beatMisses;
     defense.blocksNotAlreadyStopped += def.blocksNotAlreadyStopped;
     combinedPoints += gameTotalPoints(g);
   });
@@ -8218,7 +8224,7 @@ const LEADERBOARD_COLUMNS = [
     display: r => formatPct(effectiveFgPct(r.defense.timesBeaten, r.defense.tpmAgainst, r.defense.timesBeaten + r.defense.stops)),
     tooltip: "Opp FG%'s value-weighted counterpart, the exact same formula offensive eFG% uses just applied to shots allowed: a made 3 counts as 1.5x a made 2. Separates a defender who allows a lot of made 3s from one allowing the same raw FG% but mostly on 2s, who currently look identical on plain Opp FG% alone." },
   { key: "beaten", label: "Beaten/25", accessor: r => r.rateDefense.timesBeaten, display: r => r.rateDefense.timesBeaten.toFixed(1), tooltip: "Times scored on while tagged as the defender on a made shot, per 25 combined points." },
-  { key: "stops", label: "Stops/25", accessor: r => r.rateDefense.stops, display: r => r.rateDefense.stops.toFixed(1), tooltip: "Times tagged as the defender on a missed shot, per 25 combined points." },
+  { key: "stops", label: "Stops/25", accessor: r => r.rateDefense.stops - (r.rateDefense.beatMisses || 0), display: r => (r.rateDefense.stops - (r.rateDefense.beatMisses || 0)).toFixed(1), tooltip: "Times tagged as the defender on a missed shot, per 25 combined points." },
   { key: "defrtg25", label: "Def Rating/25", accessor: r => defensiveRating(r.rate, r.rateDefense), display: r => defensiveRating(r.rate, r.rateDefense).toFixed(1), tooltip: "This tool's Defensive Rating: STL, plus BLK (only when it isn't already one of this player's own Stops, so a blocked-and-tagged shot isn't credited twice), plus Stops minus Beaten minus 0.4×Pts Allowed, all per 25 combined points. Not points-allowed-per-100-possessions like the NBA stat of the same name; possessions aren't tracked here, so combined points stands in as the pace proxy, same as every other per-25 rate on this board. 0 for anyone never tagged as a defender with no steals or blocks, not a penalty for conservative tagging." },
   { key: "ptsallowedunderxp", label: "Pts Allowed Under Exp", advanced: true,
     accessor: r => r.expectedPointsAgainst ? r.expectedPointsAgainst.pointsAllowedUnderExpected : null,
@@ -9099,7 +9105,7 @@ const PLAYER_GAME_LOG_COLUMNS = [
   { key: "ptsAllowed", label: "Pts Allowed", accessor: r => r.def.ptsAllowed },
   { key: "oppfg", label: "Opp FG%", accessor: r => r.def.oppFgPct },
   { key: "beaten", label: "Beaten", accessor: r => r.def.timesBeaten },
-  { key: "stops", label: "Stops", accessor: r => r.def.stops },
+  { key: "stops", label: "Stops", accessor: r => r.def.stops - (r.def.beatMisses || 0) },
   { key: "offrtg", label: "Off Rating", accessor: r => r.offRtg },
   { key: "twoway", label: "Two-Way", accessor: r => r.twoWay }
 ];
@@ -9182,7 +9188,7 @@ function renderPlayerGameLog(playerId) {
       <td>${r.def.ptsAllowed}</td>
       <td>${formatPct(r.def.oppFgPct)}</td>
       <td>${r.def.timesBeaten}</td>
-      <td>${r.def.stops}</td>
+      <td>${r.def.stops - (r.def.beatMisses || 0)}</td>
       <td>${r.offRtg.toFixed(1)}</td>
       <td>${r.twoWay.toFixed(1)}${twoWayBadge}</td>
     `;
@@ -11860,7 +11866,7 @@ export const EXPORT_PANELS = [
         sh.fgm, sh.fga, sh.tpm, sh.tpa, sh.closeM, sh.closeA, sh.midM, sh.midA, sh.tpArcM, sh.tpArcA, sh.tpDeepM, sh.tpDeepA, sh.ftm, sh.fta,
         effectiveFgPct(sh.fgm, sh.tpm, sh.fga), trueShootingPct(s.pts, sh.fga, sh.fta),
         s.stl + s.blk, formatAstTov(s.ast, s.liveBallTov),
-        def.ptsAllowed, def.oppFgPct, def.timesBeaten, def.stops, offensiveRating(s, sh).toFixed(1), twoWayScore(s, sh, def).toFixed(1)
+        def.ptsAllowed, def.oppFgPct, def.timesBeaten, def.stops - (def.beatMisses || 0), offensiveRating(s, sh).toFixed(1), twoWayScore(s, sh, def).toFixed(1)
       ]);
     });
   });
@@ -11924,7 +11930,7 @@ export const EXPORT_PANELS = [
       r.shotPct, r.astPct, r.orebPct, r.drebPct, r.trebPct, r.tovPct, effectiveFgPct(r.shooting.fgm, r.shooting.tpm, r.shooting.fga), trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta),
       r.stocks, r.astTov, r.defense.ptsAllowed,
       pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops),
-      r.defense.timesBeaten, r.defense.stops, r.rate.pts.toFixed(1), r.offRatingPer25.toFixed(1),
+      r.defense.timesBeaten, r.defense.stops - (r.defense.beatMisses || 0), r.rate.pts.toFixed(1), r.offRatingPer25.toFixed(1),
       defensiveRating(r.rate, r.rateDefense).toFixed(1), r.twoWayPer25.toFixed(1),
       r.rebPerMiss, r.stlPerOppPlay, r.astPerMateFg
     ]);

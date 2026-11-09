@@ -152,7 +152,7 @@ function GameStats({ state, game }: { state: PooleanState; game: Game }) {
               <TableCell>{def.ptsAllowed}</TableCell>
               <TableCell>{fmtPct(pct(def.timesBeaten, def.timesBeaten + def.stops))}</TableCell>
               <TableCell>{def.timesBeaten}</TableCell>
-              <TableCell>{def.stops}</TableCell>
+              <TableCell>{def.stops - def.beatMisses}</TableCell>
               <TableCell className="tabular-nums">{signed(offensiveRating(s, sh))}</TableCell>
               <TableCell className="tabular-nums">{signed(defensiveRating(s, def))}</TableCell>
               <TableCell className="font-semibold tabular-nums">{signed(twoWayScore(s, sh, def))}</TableCell>

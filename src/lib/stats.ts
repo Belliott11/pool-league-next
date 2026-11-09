@@ -87,7 +87,8 @@ export function shootingStats(game: Game, playerId: string): ShootingStats {
 export interface DefenseStats {
   ptsAllowed: number
   timesBeaten: number
-  stops: number
+  stops: number // every miss against this defender, which Opp FG% needs
+  beatMisses: number // of those, misses off a shot where the defender got beat: no stop credit
   blocksNotAlreadyStopped: number
 }
 
@@ -96,6 +97,7 @@ export function gameDefenseStats(game: Game, playerId: string): DefenseStats {
   const madeAgainst = against.filter((ev) => ev.made !== false)
   const timesBeaten = madeAgainst.length
   const stops = against.filter((ev) => ev.made === false).length
+  const beatMisses = against.filter((ev) => ev.made === false && ev.contestLevel === "beat").length
   const blocksNotAlreadyStopped = game.scoringEvents.filter(
     (ev) => ev.blockerId === playerId && ev.made === false && !(ev.defenderIds || []).includes(playerId),
   ).length
@@ -103,6 +105,7 @@ export function gameDefenseStats(game: Game, playerId: string): DefenseStats {
     ptsAllowed: madeAgainst.reduce((sum, ev) => sum + ev.points, 0),
     timesBeaten,
     stops,
+    beatMisses,
     blocksNotAlreadyStopped,
   }
 }
@@ -141,7 +144,7 @@ export function offensiveRating(s: PlayerGameStats, sh: ShootingStats): number {
 }
 
 export function defensiveRating(s: PlayerGameStats, def: DefenseStats): number {
-  return s.stl + 0.7 * def.blocksNotAlreadyStopped + def.stops - def.timesBeaten - 0.4 * def.ptsAllowed
+  return s.stl + 0.7 * def.blocksNotAlreadyStopped + (def.stops - def.beatMisses) - def.timesBeaten - 0.4 * def.ptsAllowed
 }
 
 export interface TovSplit {
@@ -202,7 +205,7 @@ export function computeLeaderboard(state: PooleanState): LeaderboardRow[] {
       pf: 0,
     }
     const shooting: ShootingStats = { fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0 }
-    const defense: DefenseStats = { ptsAllowed: 0, timesBeaten: 0, stops: 0, blocksNotAlreadyStopped: 0 }
+    const defense: DefenseStats = { ptsAllowed: 0, timesBeaten: 0, stops: 0, beatMisses: 0, blocksNotAlreadyStopped: 0 }
     let wins = 0
     let losses = 0
     let ties = 0
@@ -217,6 +220,7 @@ export function computeLeaderboard(state: PooleanState): LeaderboardRow[] {
       defense.ptsAllowed += def.ptsAllowed
       defense.timesBeaten += def.timesBeaten
       defense.stops += def.stops
+      defense.beatMisses += def.beatMisses
       defense.blocksNotAlreadyStopped += def.blocksNotAlreadyStopped
       combinedPoints += gameTotalPoints(g)
       const result = playerGameResult(g, p.id)
@@ -304,7 +308,7 @@ export function formatVideoTime(t: number | null | undefined): string {
 export function computeRateSummaryForGames(playerId: string, games: Game[]) {
   const totals: PlayerGameStats = { playerId, pts: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 }
   const shooting: ShootingStats = { fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0 }
-  const defense: DefenseStats = { ptsAllowed: 0, timesBeaten: 0, stops: 0, blocksNotAlreadyStopped: 0 }
+  const defense: DefenseStats = { ptsAllowed: 0, timesBeaten: 0, stops: 0, beatMisses: 0, blocksNotAlreadyStopped: 0 }
   let combinedPoints = 0
   games.forEach((g) => {
     const s = g.stats.find((st) => st.playerId === playerId)
@@ -315,6 +319,7 @@ export function computeRateSummaryForGames(playerId: string, games: Game[]) {
     defense.ptsAllowed += def.ptsAllowed
     defense.timesBeaten += def.timesBeaten
     defense.stops += def.stops
+    defense.beatMisses += def.beatMisses
     defense.blocksNotAlreadyStopped += def.blocksNotAlreadyStopped
     combinedPoints += gameTotalPoints(g)
   })

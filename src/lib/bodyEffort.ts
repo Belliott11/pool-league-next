@@ -105,7 +105,7 @@ export function bodyEffort(state: PooleanState, impact: WinImpact = winImpact(st
       const on = e.defenderIds ?? []
       for (const d of on) {
         row(d).guarded++
-        if (e.made === false) row(d).stops++
+        if (e.made === false && e.contestLevel !== "beat") row(d).stops++ // a miss off a beaten defender is not a stop
       }
       const mine = phys[e.scorerId]?.heightIn
       const theirs = on.map((d) => phys[d]?.heightIn).filter((h): h is number => typeof h === "number")
