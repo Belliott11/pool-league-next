@@ -1,3 +1,4 @@
+import { joinNames } from "@/lib/format"
 import { gameDefenseStats, getGameStats, isLiveScoreOnly, liveScoreOf, shootingStats, teamScore, twoWayScore } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -81,7 +82,9 @@ export interface NightSummary {
   players: NightPlayer[]
   totalPoints: number
   topScorer: NightPlayer | null
+  topScorers: NightPlayer[] // everyone level on the night's most points
   mostWins: NightPlayer | null
+  mostWinners: NightPlayer[] // everyone level on the night's most wins
   mvp: NightPlayer | null // highest total two-way score, box score games only
   leaders: Record<LeaderKey, NightPlayer[]>
   duos: Lineup[]
@@ -197,7 +200,9 @@ export function summarizeNight(state: PooleanState, date: string): NightSummary 
     players: list,
     totalPoints: games.reduce((n, g) => n + g.scoreA + g.scoreB, 0),
     topScorer,
+    topScorers: topScorer ? list.filter((p) => p.pts === topScorer.pts) : [],
     mostWins: wins && wins.wins > 0 ? wins : null,
+    mostWinners: wins && wins.wins > 0 ? list.filter((p) => p.wins === wins.wins) : [],
     mvp,
     leaders: { pts: top("pts"), reb: top("reb"), ast: top("ast"), stl: top("stl"), blk: top("blk"), tpm: top("tpm") },
     duos: lineups(done, 2),
@@ -213,8 +218,8 @@ export function recapText(s: NightSummary, dateLabel: string, name: (id: string)
   const lines = [`Poolean Intel: ${dateLabel}`, `${s.games.length} game${s.games.length === 1 ? "" : "s"}, ${s.totalPoints} points`, ""]
   s.games.forEach((g, i) => lines.push(`Game ${i + 1}${g.live ? " (live)" : ""}: ${names(g.teamA)} ${g.scoreA} - ${g.scoreB} ${names(g.teamB)}`))
   if (s.mvp) lines.push("", `Night MVP: ${name(s.mvp.id)} (two-way ${s.mvp.twoWay.toFixed(1)})`)
-  if (s.topScorer) lines.push(`Top scorer: ${name(s.topScorer.id)}, ${s.topScorer.pts} pts`)
-  if (s.mostWins) lines.push(`Most wins: ${name(s.mostWins.id)}, ${s.mostWins.wins}-${s.mostWins.losses}`)
+  if (s.topScorer) lines.push(`Top scorer${s.topScorers.length > 1 ? "s (tied)" : ""}: ${joinNames(s.topScorers.map((p) => name(p.id)))}, ${s.topScorer.pts} pts`)
+  if (s.mostWins) lines.push(`Most wins${s.mostWinners.length > 1 ? " (tied)" : ""}: ${joinNames(s.mostWinners.map((p) => name(p.id)))}, ${s.mostWins.wins} wins`)
   if (stories.length) lines.push("", ...stories.slice(0, 4).map((x) => `- ${x}`))
   return lines.join("\n")
 }

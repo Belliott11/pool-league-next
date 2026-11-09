@@ -39,3 +39,14 @@ export function formatTime(t: string): string {
   const h = +m[1]
   return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`
 }
+
+// Rank labels for values already sorted best first: equal values share a rank and are marked, as 1, T2, T2, 4.
+export function tiedRanks(values: number[]): string[] {
+  return values.map((v) => {
+    const first = values.indexOf(v)
+    return `${values.filter((x) => x === v).length > 1 ? "T" : ""}${first + 1}`
+  })
+}
+
+// "A", "A and B", "A, B and C".
+export const joinNames = (xs: string[]) => (xs.length < 2 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`)

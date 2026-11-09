@@ -13,6 +13,7 @@ export interface RecordRow {
   playerId: string
   date: string
   gameId: string
+  tied: { playerId: string; date: string; gameId: string }[] // everyone else who has matched it, oldest first
 }
 
 interface Entry {
@@ -48,12 +49,16 @@ function bookFrom(list: Entry[]): Partial<Record<RecordKey, RecordRow>> {
       const v = valueOf(e.line, key)
       if (v === null || v <= 0) continue
       const cur = book[key]
-      // The first to set a mark keeps it when it is later tied.
-      if (!cur || v > cur.value) book[key] = { key, value: v, playerId: e.playerId, date: e.date, gameId: e.gameId }
+      // The first to set a mark is listed first; anyone who later matches it is a tie.
+      if (!cur || v > cur.value) book[key] = { key, value: v, playerId: e.playerId, date: e.date, gameId: e.gameId, tied: [] }
+      else if (v === cur.value) cur.tied.push({ playerId: e.playerId, date: e.date, gameId: e.gameId })
     }
   }
   return book
 }
+
+// Who holds a record, one name each even if a player matched their own mark.
+export const holders = (r: RecordRow): string[] => [...new Set([r.playerId, ...r.tied.map((t) => t.playerId)])]
 
 // The record book, optionally as it stood before a date.
 export function recordBook(state: PooleanState, before?: string): Partial<Record<RecordKey, RecordRow>> {

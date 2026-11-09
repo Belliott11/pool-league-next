@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDateDisplay } from "@/lib/format"
 import { LEADER_LABEL, gameDays, recapText, summarizeNight, type LeaderKey, type NightPlayer } from "@/lib/nightRecap"
 import { predictRealMatchup } from "@/lib/matchup"
-import { RECORD_KEYS, RECORD_LABEL, nightCallouts, recordBook } from "@/lib/records"
+import { joinNames } from "@/lib/format"
+import { RECORD_KEYS, RECORD_LABEL, holders, nightCallouts, recordBook } from "@/lib/records"
 import { CountUp } from "@/components/CountUp"
 import { StoryList } from "@/components/StoryList"
 import { predictionNote } from "@/lib/scorecard"
@@ -215,12 +216,12 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
       <div className="flex flex-wrap gap-2">
         {s.topScorer && (
           <Badge variant="secondary" className="h-auto gap-1 px-3 py-1.5 text-sm">
-            <Trophy aria-hidden className="size-3.5" /> Top scorer: {name(s.topScorer.id)}, {s.topScorer.pts}
+            <Trophy aria-hidden className="size-3.5" /> Top scorer{s.topScorers.length > 1 ? "s (tied)" : ""}: {joinNames(s.topScorers.map((p) => name(p.id)))}, {s.topScorer.pts}
           </Badge>
         )}
         {s.mostWins && (
           <Badge variant="secondary" className="h-auto px-3 py-1.5 text-sm">
-            Most wins: {name(s.mostWins.id)}, {s.mostWins.wins}-{s.mostWins.losses}
+            Most wins{s.mostWinners.length > 1 ? " (tied)" : ""}: {joinNames(s.mostWinners.map((p) => name(p.id)))}, {s.mostWins.wins} wins
           </Badge>
         )}
         {s.biggestWin && (
@@ -281,7 +282,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
                     {s.leaders[k].map((p, i) => (
                       <li key={p.id} className="flex justify-between gap-2">
                         <span className={cn("truncate", i === 0 && "font-semibold")}>{name(p.id)}</span>
-                        <span className="tabular-nums">{p[k]}</span>
+                        <span className="whitespace-nowrap tabular-nums">{s.leaders[k].filter((x) => x[k] === p[k]).length > 1 && <span className="text-xs text-muted-foreground">tied </span>}{p[k]}</span>
                       </li>
                     ))}
                   </ol>
@@ -329,7 +330,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
                     <tr key={k} className="border-b last:border-b-0">
                       <td className="px-3 py-2 text-muted-foreground">{RECORD_LABEL[k]}</td>
                       <td className="px-3 py-2 font-display font-bold tabular-nums">{Number.isInteger(r.value) ? r.value : r.value.toFixed(1)}</td>
-                      <td className="px-3 py-2">{name(r.playerId)}</td>
+                      <td className="px-3 py-2">{joinNames(holders(r).map(name))}{r.tied.length > 0 && <span className="text-xs text-muted-foreground"> (tied)</span>}</td>
                       <td className="px-3 py-2 text-muted-foreground">{formatDateDisplay(r.date)}</td>
                       <td className="px-3 py-2">{tonight && <Badge>New</Badge>}</td>
                     </tr>

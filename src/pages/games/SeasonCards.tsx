@@ -3,7 +3,7 @@ import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
-import { RECORD_KEYS, RECORD_LABEL, chasers, recordBook } from "@/lib/records"
+import { RECORD_KEYS, RECORD_LABEL, chasers, holders, recordBook } from "@/lib/records"
 import { useLabeledState } from "@/lib/labelsContext"
 import { usePublishedStories } from "@/lib/published"
 import { StoryList } from "@/components/StoryList"
@@ -33,10 +33,15 @@ export function RecordsCard({ state, onOpenPlayer }: { state: PooleanState; onOp
                 <span className="text-muted-foreground">{RECORD_LABEL[k]}</span>
                 <span className="text-right">
                   <span className="font-display font-bold tabular-nums">{Number.isInteger(r.value) ? r.value : r.value.toFixed(1)}</span>{" "}
-                  <button type="button" className="hover:underline" onClick={() => onOpenPlayer(r.playerId)}>
-                    {playerName(state, r.playerId)}
-                  </button>
-                  <span className="block text-xs text-muted-foreground">{formatDateDisplay(r.date)}</span>
+                  {holders(r).map((id, i, all) => (
+                    <span key={id}>
+                      {i > 0 && (i === all.length - 1 ? " and " : ", ")}
+                      <button type="button" className="hover:underline" onClick={() => onOpenPlayer(id)}>
+                        {playerName(state, id)}
+                      </button>
+                    </span>
+                  ))}
+                  <span className="block text-xs text-muted-foreground">{r.tied.length > 0 ? "tied, first set " : ""}{formatDateDisplay(r.date)}</span>
                 </span>
               </li>
             )

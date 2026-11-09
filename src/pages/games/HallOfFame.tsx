@@ -7,7 +7,8 @@ import { formatDateDisplay } from "@/lib/format"
 import { bestGames, careerTable, longestStreaks, oldGames, pastMvps } from "@/lib/hallOfFame"
 import { playerName } from "@/lib/players"
 import { poolNameOf } from "@/lib/real"
-import { RECORD_KEYS, RECORD_LABEL, recordBook } from "@/lib/records"
+import { joinNames, tiedRanks } from "@/lib/format"
+import { RECORD_KEYS, RECORD_LABEL, holders, recordBook } from "@/lib/records"
 import { rivalries } from "@/lib/rivalries"
 import { getClient } from "@/lib/cloud"
 import { loadAllPredictions, pastSeasons, type PastSeason } from "@/lib/predictions"
@@ -30,10 +31,10 @@ function Board({ title, hint, children }: { title: string; hint?: string; childr
 }
 
 // One ranked row: place, avatar and name, and the value.
-function Row({ i, state, id, value, sub, onOpenPlayer }: { i: number; state: PooleanState; id: string; value: string; sub?: string; onOpenPlayer: (id: string) => void }) {
+function Row({ i, rank, state, id, value, sub, onOpenPlayer }: { i: number; rank?: string; state: PooleanState; id: string; value: string; sub?: string; onOpenPlayer: (id: string) => void }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-5 tabular-nums text-muted-foreground">{i + 1}</span>
+      <span className="w-6 tabular-nums text-muted-foreground">{rank ?? i + 1}</span>
       <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left hover:underline" onClick={() => onOpenPlayer(id)}>
         <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
         <span className="truncate font-medium">{playerName(state, id)}</span>
@@ -133,7 +134,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
           <Board key={b.title} title={b.title}>
             {b.rows.map((g, i) => (
               <div key={`${g.gameId}-${g.id}`} className="flex items-center gap-2">
-                <span className="w-5 tabular-nums text-muted-foreground">{i + 1}</span>
+                <span className="w-6 tabular-nums text-muted-foreground">{tiedRanks(b.rows.map((x) => x.value))[i]}</span>
                 <button type="button" className="min-w-0 flex-1 truncate text-left font-medium hover:underline" onClick={() => onOpenGame(g.gameId)}>
                   {playerName(state, g.id)} <span className="text-xs font-normal text-muted-foreground">{formatDateDisplay(g.date)}</span>
                 </button>
@@ -153,7 +154,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
             <div key={k} className="flex items-center justify-between gap-2">
               <span className="text-muted-foreground">{RECORD_LABEL[k]}</span>
               <button type="button" className="min-w-0 flex-1 truncate text-right font-medium hover:underline" onClick={() => onOpenGame(r.gameId)}>
-                {playerName(state, r.playerId)} <span className="text-xs font-normal text-muted-foreground">{formatDateDisplay(r.date)}</span>
+                {joinNames(holders(r).map((id) => playerName(state, id)))} <span className="text-xs font-normal text-muted-foreground">{r.tied.length > 0 ? "tied, first set " : ""}{formatDateDisplay(r.date)}</span>
               </button>
               <span className="w-12 text-right font-display font-bold tabular-nums">{fmt(r.value)}</span>
             </div>
@@ -164,7 +165,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
       <div className="grid gap-4 sm:grid-cols-2">
         <Board title="Longest win streaks" hint="Every result, including the old site's games that were never filmed.">
           {data.streaks.map((s, i) => (
-            <Row key={s.id} i={i} state={state} id={s.id} value={String(s.n)} sub={`ended ${formatDateDisplay(s.end)}`} onOpenPlayer={onOpenPlayer} />
+            <Row key={s.id} i={i} rank={tiedRanks(data.streaks.map((x) => x.n))[i]} state={state} id={s.id} value={String(s.n)} sub={`ended ${formatDateDisplay(s.end)}`} onOpenPlayer={onOpenPlayer} />
           ))}
         </Board>
         <Board title="Biggest rivalries" hint="Every result, including games from the old site.">

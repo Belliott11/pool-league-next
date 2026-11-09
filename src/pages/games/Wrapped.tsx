@@ -10,6 +10,7 @@ import { playerName, resolvePlayer } from "@/lib/players"
 import { shareWrappedCard } from "@/lib/shareCard"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { joinNames } from "@/lib/format"
 import { wrappedFor, wrappedPlayers, type Slide } from "@/lib/wrapped"
 
 const pct = (w: number, l: number) => (w + l ? Math.round((w / (w + l)) * 100) : 0)
@@ -85,16 +86,16 @@ function SlideBody({ s, state, name }: { s: Slide; state: PooleanState; name: st
       )
     case "awards":
       return frame(
-        "Award race finishes",
+        "Award finishes",
         <ul className="flex flex-col gap-2">
           {s.finishes.map((f) => (
             <li key={f.label} className="flex items-baseline gap-3">
-              <span className="font-display text-4xl font-extrabold text-accent">{ordinalOf(f.rank)}</span>
+              <span className="font-display text-4xl font-extrabold text-accent">{f.place}</span>
               <span className="text-xl">{f.label}</span>
             </li>
           ))}
         </ul>,
-        <>Where you finished in each race this season.</>,
+        <>Where you finished in the season's voted awards.</>,
       )
     case "records":
       return frame(
@@ -103,7 +104,7 @@ function SlideBody({ s, state, name }: { s: Slide; state: PooleanState; name: st
           {s.rows.map((r) => (
             <li key={r.label} className="flex items-baseline gap-3">
               <span className="font-display text-4xl font-extrabold text-accent">{Number.isInteger(r.value) ? r.value : r.value.toFixed(1)}</span>
-              <span className="text-xl">{r.label}</span>
+              <span className="text-xl">{r.label}{r.tiedWith.length > 0 && <span className="text-base text-muted-foreground"> tied with {joinNames(r.tiedWith.map(nm))}</span>}</span>
             </li>
           ))}
         </ul>,
@@ -114,7 +115,7 @@ function SlideBody({ s, state, name }: { s: Slide; state: PooleanState; name: st
         "That was your season",
         <span className="font-display text-5xl font-extrabold">{name}</span>,
         <>
-          {s.w}-{s.l}, {s.pts} points{s.bestDate && <>, best night {formatDateDisplay(s.bestDate)}</>}. See you on opening night.
+          {s.w}-{s.l}{s.pts !== null && `, ${s.pts} points`}{s.bestDate && <>, best night {formatDateDisplay(s.bestDate)}</>}. See you on opening night.
         </>,
       )
   }

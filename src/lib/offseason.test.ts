@@ -3,7 +3,9 @@ import { bestGames, careerTable, longestStreaks } from "@/lib/hallOfFame"
 import { isOffseason, isOpeningNight } from "@/lib/offseason"
 import { duoKey, jumpers, jumpPicks, priorSeason, scorePredictions } from "@/lib/predictions"
 import type { Game, PooleanState } from "@/lib/types"
-import { wrappedFor } from "@/lib/wrapped"
+import { tiedRanks } from "@/lib/format"
+import { holders, recordBook } from "@/lib/records"
+import { ballotFinishes, wrappedFor, wrappedPlayers } from "@/lib/wrapped"
 
 const base = { stats: [], scoringEvents: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
 // A live-scored game: each side's points come from one basket list.
@@ -48,7 +50,7 @@ describe("wrapped", () => {
     game("4", "2026-08-22", ["x", "z"], ["y", "w"], 4, 1),
   ]
   it("picks the best game, best teammate and the most-faced rival", () => {
-    const s = wrappedFor(state(games), "x")
+    const s = wrappedFor(state(games), "x", [])
     expect(s[0]).toMatchObject({ kind: "intro", gp: 4, w: 3, l: 1 })
     expect(s.find((x) => x.kind === "best")).toMatchObject({ gameId: "2" })
     expect(s.find((x) => x.kind === "teammate")).toMatchObject({ id: "y", w: 2, l: 1 })
@@ -56,10 +58,38 @@ describe("wrapped", () => {
     expect(s.at(-1)?.kind).toBe("summary")
   })
   it("leaves out slides with nothing to say", () => {
-    const s = wrappedFor(state([game("1", "2026-08-01", ["x"], ["z"], 2, 1)]), "x")
+    const s = wrappedFor(state([game("1", "2026-08-01", ["x"], ["z"], 2, 1)]), "x", [])
     expect(s.map((x) => x.kind)).not.toContain("teammate")
     expect(s.map((x) => x.kind)).not.toContain("rival")
-    expect(wrappedFor(state([]), "x")).toEqual([])
+    expect(wrappedFor(state([]), "x", [])).toEqual([])
+  })
+  it("uses the voted awards, marks level votes and tied places, and skips the Worst Duo", () => {
+    const awards = [
+      { key: "clutch", winners: ["p"], votedStandings: [{ slug: "p", points: 7 }, { slug: "z", points: 7 }, { slug: "a", points: 5 }, { slug: "b", points: 5 }] },
+      { key: "first-team", winners: ["p", "z"], votedStandings: [{ slug: "p", points: 9 }, { slug: "a", points: 8 }] },
+      { key: "worst-duo", winners: ["p", "q"], votedStandings: [{ slug: "p|q", points: 4 }] },
+      { key: "best-duo", winners: ["p", "z"], votedStandings: [{ slug: "p|z", points: 3 }, { slug: "a|b", points: 1 }] },
+    ]
+    expect(ballotFinishes(awards, "p").map((f) => f.place)).toEqual(["1st", "Made it", "1st"])
+    expect(ballotFinishes(awards, "z")).toContainEqual({ label: "Clutch (tied on votes)", place: "2nd" })
+    expect(ballotFinishes(awards, "a")).toContainEqual({ label: "Clutch (tied on votes)", place: "T3rd" })
+    expect(ballotFinishes(awards, "a")).toContainEqual({ label: "Best Duo", place: "2nd" })
+  })
+  it("marks ties", () => {
+    expect(tiedRanks([9, 7, 7, 5])).toEqual(["1", "T2", "T2", "4"])
+    const s = state([game("1", "2026-08-01", ["x"], ["z"], 5, 1), game("2", "2026-08-02", ["y"], ["z"], 5, 1)])
+    const r = recordBook(s).pts!
+    expect(holders(r)).toEqual(["x", "y"])
+  })
+  it("counts old-site games in the record, nights, teammate and rival, and skips stats it does not have", () => {
+    const old = [1, 2, 3].map((n) => ({ n, date: `2026-07-0${n}`, a: ["x", "y"], b: ["z"], w: "A" as const }))
+    const s = wrappedFor(state([]), "x", old)
+    expect(s[0]).toMatchObject({ kind: "intro", gp: 3, nights: 3, totalNights: 3, w: 3, l: 0 })
+    expect(s.find((x) => x.kind === "teammate")).toMatchObject({ id: "y", w: 3 })
+    expect(s.find((x) => x.kind === "rival")).toMatchObject({ id: "z", w: 3 })
+    expect(s.map((x) => x.kind)).not.toContain("totals")
+    expect(s.at(-1)).toMatchObject({ kind: "summary", pts: null })
+    expect(wrappedPlayers(state([]), old)).toContain("x")
   })
 })
 
