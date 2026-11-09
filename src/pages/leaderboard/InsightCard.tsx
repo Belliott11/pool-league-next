@@ -1,6 +1,7 @@
 import { Lightbulb } from "lucide-react"
-import { useMemo, type ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { ViewTabs } from "@/components/PanelGroup"
+import { PlayerPick } from "@/components/PlayerPick"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Section } from "@/components/Section"
 import { FACTORS, FACTOR_HINT, FACTOR_LABEL, marginBreakdown, shotsCreated, turnoverCost, winProbAdded, type Breakdown } from "@/lib/insight"
@@ -53,7 +54,7 @@ function Who({ state, id, onOpenPlayer }: { state: PooleanState; id: string; onO
   )
 }
 
-export function Grid({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
+export function Grid({ head, rows, mark }: { head: string[]; rows: ReactNode[][]; mark?: number }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[22rem] text-sm tabular-nums">
@@ -66,7 +67,7 @@ export function Grid({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i} className="border-t">
+            <tr key={i} className={i === mark ? "border-t bg-muted/60" : "border-t"}>
               {r.map((c, j) => (
                 <td key={j} className={j === 0 ? "py-1.5 pr-2" : "px-2 py-1.5 text-right"}>{c}</td>
               ))}
@@ -78,19 +79,19 @@ export function Grid({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
   )
 }
 
-function Decided({ state }: { state: PooleanState }) {
-  const b = useMemo(() => marginBreakdown(state), [state])
-  if (b.games === 0) return <p className="text-sm text-muted-foreground">Shows up once finished games are logged shot by shot.</p>
+function Decided({ state, pid }: { state: PooleanState; pid: string }) {
+  const b = useMemo(() => marginBreakdown(state, pid || undefined), [state, pid])
+  if (b.games === 0) return <p className="text-sm text-muted-foreground">{pid ? `${playerName(state, pid)} has no finished games with a shot log yet.` : "Shows up once finished games are logged shot by shot."}</p>
   return (
     <div className="flex flex-col gap-3">
-      <Hint>Every finished game from the winner's side: the margin split into the parts that made it. The parts always add back to the margin. Games won by {b.margin.toFixed(1)} points on average, over {b.games} games.</Hint>
-      <FactorBars b={b} side="the winner's" />
+      <Hint>{pid ? `Every finished game ${playerName(state, pid)} was in, from their own team's side: the margin split into the parts that made it. A bar to the right helped their team.` : "Every finished game from the winner's side: the margin split into the parts that made it."} The parts always add back to the margin. Games decided by {b.margin.toFixed(1)} points on average, over {b.games} games.</Hint>
+      <FactorBars b={b} side={pid ? "their team's" : "the winner's"} />
       {b.games < EARLY && <Hint>Only {b.games} games so far, so one game can swing any of these.</Hint>}
     </div>
   )
 }
 
-function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+function Created({ state, pid, onOpenPlayer }: { state: PooleanState; pid: string; onOpenPlayer: (id: string) => void }) {
   const c = useMemo(() => shotsCreated(state), [state])
   const rows = c.rows.filter((r) => r.created >= 5)
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">Shows up once passes are tagged on shots.</p>
@@ -101,6 +102,7 @@ function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
         {c.league.passedFg !== null && c.league.otherFg !== null && ` Shots off a pass went in ${pct(c.league.passedFg)} of the time, against ${pct(c.league.otherFg)} for the rest.`}
       </Hint>
       <Grid
+        mark={rows.findIndex((r) => r.id === pid)}
         head={["Player", `Set up/${PER}`, "Went in", `AST/${PER}`, "Shot quality"]}
         rows={rows.map((r) => [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.created25.toFixed(1), pct(r.made / r.created), r.assists25.toFixed(1), `${r.expected.toFixed(2)} pts`])}
       />
@@ -109,7 +111,7 @@ function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
   )
 }
 
-function Chance({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+function Chance({ state, pid, onOpenPlayer }: { state: PooleanState; pid: string; onOpenPlayer: (id: string) => void }) {
   const w = useMemo(() => winProbAdded(state), [state])
   const rows = w.rows.filter((r) => r.games >= 2)
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">Shows up once finished games are logged shot by shot.</p>
@@ -119,6 +121,7 @@ function Chance({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (i
         Each made basket moves the scoring team's chance of winning, more late and in close games. The scorer gets the credit (65% of it when a pass led to the basket, 35% to the passer), and defenders on that shot share what was allowed. Games usually end near {w.expectedTotal} points. Shown in points of win chance per {PER} points, so +10 is ten percentage points of win chance.
       </Hint>
       <Grid
+        mark={rows.findIndex((r) => r.id === pid)}
         head={["Player", "Added", "Allowed", "Net"]}
         rows={rows.map((r) => [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, (r.added25 * 100).toFixed(0), (r.allowed25 * 100).toFixed(0), sign(r.net25 * 100, 0)])}
       />
@@ -136,7 +139,7 @@ function Chance({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (i
   )
 }
 
-function Cost({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+function Cost({ state, pid, onOpenPlayer }: { state: PooleanState; pid: string; onOpenPlayer: (id: string) => void }) {
   const t = useMemo(() => turnoverCost(state), [state])
   const rows = t.rows.filter((r) => r.games >= 2)
   if (t.turnovers === 0) return <p className="text-sm text-muted-foreground">Shows up once turnovers are tagged.</p>
@@ -147,6 +150,7 @@ function Cost({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id:
         {t.perTurnover !== null && ` The other team's next shot after a turnover scored ${t.perTurnover.toFixed(2)} points on average (${t.followed} cases), so ${t.perTurnover > t.perPossession ? "a giveaway costs a little more than a typical possession" : "a giveaway costs about a typical possession"}.`}
       </Hint>
       <Grid
+        mark={rows.findIndex((r) => r.id === pid)}
         head={["Player", "Gave", "Forced", `Net pts/${PER}`]}
         rows={rows.map((r) => [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, String(r.giveaways), String(r.forced), sign(r.net25, 2)])}
       />
@@ -157,14 +161,16 @@ function Cost({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id:
 
 // League view: four tabs from the same logged games. A collapsed section like Game flow, built only when opened.
 export function InsightCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+  const [pid, setPid] = useState("")
   return (
     <Section id="lb-insight" title="What decided games" icon={Lightbulb} teaser="Why games went the way they did, who sets up shots, win chance and what turnovers cost.">
+      <PlayerPick state={state} value={pid} onChange={setPid} />
       <ViewTabs
         tabs={[
-          { value: "decided", label: "What decided games", node: <Decided state={state} /> },
-          { value: "created", label: "Shots set up", node: <Created state={state} onOpenPlayer={onOpenPlayer} /> },
-          { value: "chance", label: "Win chance added", node: <Chance state={state} onOpenPlayer={onOpenPlayer} /> },
-          { value: "cost", label: "Turnover cost", node: <Cost state={state} onOpenPlayer={onOpenPlayer} /> },
+          { value: "decided", label: "What decided games", node: <Decided state={state} pid={pid} /> },
+          { value: "created", label: "Shots set up", node: <Created state={state} pid={pid} onOpenPlayer={onOpenPlayer} /> },
+          { value: "chance", label: "Win chance added", node: <Chance state={state} pid={pid} onOpenPlayer={onOpenPlayer} /> },
+          { value: "cost", label: "Turnover cost", node: <Cost state={state} pid={pid} onOpenPlayer={onOpenPlayer} /> },
         ]}
       />
     </Section>
