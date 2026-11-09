@@ -5823,11 +5823,12 @@ function computeXptsCombos() {
       if (ev.points !== 2 && ev.points !== 3) return;
       if (!ev.shotLocation) return;
       const zone = shotBand(ev.shotLocation, ev.points);
-      const key = `${zone}|${effShotType(ev) || "untyped"}|${ev.contestLevel || "unreviewed"}`;
-      // A shot off a beaten defender is its own kind of look, far easier than the zone average. There are too few of them to
-      // split by shot type, so they also pool by zone and overall, which xptsForShot falls back to.
-      const keys = ev.contestLevel === "beat" ? [key, `${zone}|*|beat`, "*|*|beat"] : [key];
-      keys.forEach(k => {
+      const level = ev.contestLevel || "unreviewed";
+      const key = `${zone}|${effShotType(ev) || "untyped"}|${level}`;
+      // Each contest level is its own kind of look: a beaten defender gives an easy shot and a heavy contest a hard one, both far
+      // from the zone average. Most zone x type x level groups are too small, so shots also pool by zone and level, then by level
+      // alone, which xptsForShot falls back to before it ever uses the zone average.
+      [key, `${zone}|*|${level}`, `*|*|${level}`].forEach(k => {
         const b = combos[k] = combos[k] || { pts: 0, fga: 0 };
         b.fga++;
         if (ev.made !== false) b.pts += ev.points;
@@ -5840,15 +5841,11 @@ function computeXptsCombos() {
 function xptsForShot(ev, combos, zonePpa) {
   if (ev.points !== 2 && ev.points !== 3) return null;
   const enough = k => combos[k] && combos[k].fga >= XPTS_MIN_COMBO_FGA ? combos[k].pts / combos[k].fga : null;
-  if (!ev.shotLocation) return (ev.contestLevel === "beat" ? enough("*|*|beat") : null) ?? zonePpa.overall;
+  const level = ev.contestLevel || "unreviewed";
+  if (!ev.shotLocation) return enough(`*|*|${level}`) ?? zonePpa.overall;
   const zone = shotBand(ev.shotLocation, ev.points);
-  const key = `${zone}|${effShotType(ev) || "untyped"}|${ev.contestLevel || "unreviewed"}`;
-  const own = enough(key);
-  if (own !== null) return own;
-  if (ev.contestLevel === "beat") {
-    const pooled = enough(`${zone}|*|beat`) ?? enough("*|*|beat");
-    if (pooled !== null) return pooled;
-  }
+  const pooled = enough(`${zone}|${effShotType(ev) || "untyped"}|${level}`) ?? enough(`${zone}|*|${level}`) ?? enough(`*|*|${level}`);
+  if (pooled !== null) return pooled;
   const zoneVal = zonePpa.byZone[zone];
   return zoneVal !== null && zoneVal !== undefined ? zoneVal : zonePpa.overall;
 }
