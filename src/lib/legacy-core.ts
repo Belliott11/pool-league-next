@@ -2446,7 +2446,7 @@ function computeLeaderboardUncached() {
     const totals = { pts: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 };
     const shooting = { fgm: 0, fga: 0, tpm: 0, tpa: 0, closeM: 0, closeA: 0, midM: 0, midA: 0, tpArcM: 0, tpArcA: 0, tpDeepM: 0, tpDeepA: 0, ftm: 0, fta: 0, dunkM: 0, dunkA: 0 };
     const defense = { ptsAllowed: 0, timesBeaten: 0, stops: 0, tpmAgainst: 0, blocksNotAlreadyStopped: 0 };
-    let wins = 0, losses = 0, ties = 0, combinedPoints = 0, teamFgaTotal = 0, teamAstTotal = 0, orebPoolTotal = 0, drebPoolTotal = 0;
+    let wins = 0, losses = 0, ties = 0, combinedPoints = 0, teamFgaTotal = 0, teamAstTotal = 0, orebPoolTotal = 0, drebPoolTotal = 0, missChances = 0, oppPlays = 0, mateBaskets = 0;
     gamesPlayed.forEach(g => {
       const s = g.stats.find(st => st.playerId === p.id);
       if (s) STAT_FIELDS.forEach(f => totals[f] += s[f]);
@@ -2479,6 +2479,13 @@ function computeLeaderboardUncached() {
       const oppOreb = oppTeam.reduce((sum, id) => { const ts = g.stats.find(st => st.playerId === id); return sum + (ts ? ts.oreb : 0); }, 0);
       const oppDreb = oppTeam.reduce((sum, id) => { const ts = g.stats.find(st => st.playerId === id); return sum + (ts ? ts.dreb : 0); }, 0);
       orebPoolTotal += teamOreb + oppDreb;
+      // Chance-based denominators, so a stat is measured against the chances to produce it rather than against how many
+      // points were scored: missed shots by either team (rebounds), the other team's plays, meaning its shots and
+      // turnovers (steals), and teammates' made field goals (assists). Free throws are not plays here.
+      const fieldShot = ev => ev.points === 2 || ev.points === 3;
+      missChances += g.scoringEvents.filter(ev => fieldShot(ev) && ev.made === false).length;
+      oppPlays += g.scoringEvents.filter(ev => fieldShot(ev) && oppTeam.includes(ev.scorerId)).length + g.turnoverEvents.filter(t => oppTeam.includes(t.playerId)).length;
+      mateBaskets += g.scoringEvents.filter(ev => fieldShot(ev) && ev.made !== false && ev.scorerId !== p.id && myTeam.includes(ev.scorerId)).length;
       drebPoolTotal += teamDreb + oppOreb;
       const result = playerGameResult(g, p.id);
       if (result === "W") wins++;
@@ -2550,6 +2557,9 @@ function computeLeaderboardUncached() {
       orebPct: pct(totals.oreb, orebPoolTotal),
       drebPct: pct(totals.dreb, drebPoolTotal),
       trebPct: pct(totals.oreb + totals.dreb, orebPoolTotal + drebPoolTotal),
+      rebPerMiss: pct(totals.oreb + totals.dreb, missChances),
+      stlPerOppPlay: pct(totals.stl, oppPlays),
+      astPerMateFg: pct(totals.ast, mateBaskets),
       tovSplit,
       // Both now driven by live-ball TOV only, not the blended total that includes shot-based
       // (OOB-miss) turnovers -- see computeTovSplit above and Section 0 of
@@ -8109,6 +8119,9 @@ const LEADERBOARD_COLUMNS = [
   { key: "orebpct", label: "OREB%", advanced: true, accessor: r => r.orebPct, display: r => formatPct(r.orebPct), tooltip: "Real Total Rebound %-style share: this player's OREB divided by every offensive rebound available on their team's misses that game (their team's OREB plus the opponent's DREB on those same misses), not just their own team's OREB total like Shot%/AST% above, since a rebound is contested between both teams. Poolean has no substitutions, so a rostered player is on the floor for the whole game; the minutes-played term real rebound rate stats normally need just doesn't apply here. A season-long share, not a per-25 rate." },
   { key: "drebpct", label: "DREB%", advanced: true, accessor: r => r.drebPct, display: r => formatPct(r.drebPct), tooltip: "Same idea as OREB% for the other side of the ball: this player's DREB divided by every defensive rebound available on the opponent's misses that game (their team's DREB plus the opponent's OREB on those same misses). A season-long share, not a per-25 rate." },
   { key: "trebpct", label: "TRB%", advanced: true, accessor: r => r.trebPct, display: r => formatPct(r.trebPct), tooltip: "OREB and DREB combined: this player's total rebounds divided by every rebound actually available across the games they played (OREB% and DREB%'s two pools added together). Same no-substitutions reasoning as OREB%/DREB% above; a season-long share, not a per-25 rate." },
+  { key: "rebpermiss", label: "REB/Miss", advanced: true, accessor: r => r.rebPerMiss, display: r => formatPct(r.rebPerMiss), tooltip: "Rebounds per missed shot by either team in games they played: how often they came away with the ball when one was available. Unlike TRB%, it does not depend on how many rebounds the teams grabbed." },
+  { key: "stlperplay", label: "STL/Opp Play", advanced: true, accessor: r => r.stlPerOppPlay, display: r => formatPct(r.stlPerOppPlay), tooltip: "Steals per opponent play, counting the other team's shots and turnovers in games they played. Per 25 steals rise when a game has more turnovers; this holds the number of chances steady." },
+  { key: "astpermate", label: "AST/Mate FG", advanced: true, accessor: r => r.astPerMateFg, display: r => formatPct(r.astPerMateFg), tooltip: "Assists per teammate made field goal in games they played: how often a teammate's basket came off their pass. Unlike AST%, it does not depend on how many assists the team had in all." },
   { key: "tovpct", label: "TOV%", advanced: true, accessor: r => r.tovPct, display: r => formatPct(r.tovPct), tooltip: "How often this player turned it over relative to their own scoring opportunities: TOV ÷ (FGA + 0.44×FTA + TOV), the same FTA-equivalent scaling True Shooting % uses. Not a share of the team's turnovers like Shot%/AST% above; a turnover isn't a shared resource the way a shot or an assist is, so this measures usage instead: of the times this player had the ball in a position to score or give it away, how often it was the latter." },
   { key: "fg", label: "FG", accessor: r => pct(r.shooting.fgm, r.shooting.fga), display: r => formatShootingSplit(r.rateShooting.fgm, r.rateShooting.fga, true), tooltip: "Field goals made/attempted (2s and 3s combined), per 25 combined points, with FG%." },
   { key: "tpt", label: "3PT", accessor: r => pct(r.shooting.tpm, r.shooting.tpa), display: r => formatShootingSplit(r.rateShooting.tpm, r.rateShooting.tpa, true), tooltip: "3-pointers made/attempted, per 25 combined points, with 3PT%. See the 3PT Shot Distance panel below for the Arc/Deep breakdown." },
