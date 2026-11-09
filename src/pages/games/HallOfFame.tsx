@@ -162,7 +162,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
       </Board>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Board title="Longest win streaks">
+        <Board title="Longest win streaks" hint="Every result, including the old site's games that were never filmed.">
           {data.streaks.map((s, i) => (
             <Row key={s.id} i={i} state={state} id={s.id} value={String(s.n)} sub={`ended ${formatDateDisplay(s.end)}`} onOpenPlayer={onOpenPlayer} />
           ))}

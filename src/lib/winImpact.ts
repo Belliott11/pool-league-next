@@ -18,14 +18,14 @@ const ITERS = 300
 const RATE = 0.8
 const sig = (z: number) => 1 / (1 + Math.exp(-z))
 const finished = (g: Game) => !g.liveInProgress && !g.stoppedEarly && (g.winner === "A" || g.winner === "B")
-const key = (date: string, a: string[], b: string[]) => `${date}|${[[...a].sort().join(), [...b].sort().join()].sort().join("|")}`
+export const gameKey = (date: string, a: string[], b: string[]) => `${date}|${[[...a].sort().join(), [...b].sort().join()].sort().join("|")}`
 
 // Every old-site result, then finished app games the old site does not already have. Date order, then play order.
 export function results(state: PooleanState, old = currentRealSeason()?.games ?? []): Result[] {
   const sorted = [...old].sort((x, y) => x.date.localeCompare(y.date) || x.n - y.n)
-  const seen = new Set(sorted.map((g) => key(g.date, g.a, g.b)))
+  const seen = new Set(sorted.map((g) => gameKey(g.date, g.a, g.b)))
   const out: Result[] = sorted.map((g) => ({ a: g.a, b: g.b, aWon: g.w === "A", night: g.date }))
-  for (const g of state.games) if (finished(g) && !seen.has(key(g.date, g.teamA, g.teamB))) out.push({ a: g.teamA, b: g.teamB, aWon: g.winner === "A", night: g.date })
+  for (const g of state.games) if (finished(g) && !seen.has(gameKey(g.date, g.teamA, g.teamB))) out.push({ a: g.teamA, b: g.teamB, aWon: g.winner === "A", night: g.date })
   return out
 }
 

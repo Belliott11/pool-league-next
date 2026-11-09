@@ -1,5 +1,7 @@
 import data from "@/data/poolean-seasons.json"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
+import { realSeasonsInOrder, type RealGame } from "@/lib/real"
+import { gameKey } from "@/lib/winImpact"
 import type { Game, PooleanState } from "@/lib/types"
 
 // All-time marks across every game in the app, plus the voted MVPs of the imported past seasons.
@@ -65,15 +67,22 @@ export function bestGames(state: PooleanState, key: "pts" | "twoWay", n = 5): Be
 }
 
 // Each player's longest run of wins, best first.
-export function longestStreaks(state: PooleanState, n = 5): { id: string; n: number; end: string }[] {
+export function longestStreaks(state: PooleanState, n = 5, old: RealGame[] = realSeasonsInOrder().flatMap((s) => s.games)): { id: string; n: number; end: string }[] {
   const run = new Map<string, number>()
   const best = new Map<string, { n: number; end: string }>()
-  for (const g of finished(state)) {
-    const [a, b] = scoreOf(g)
-    if (a === b) continue
-    for (const p of [...g.teamA, ...g.teamB]) {
-      const won = g.teamA.includes(p) ? a > b : b > a
-      const cur = won ? (run.get(p) ?? 0) + 1 : 0
+  // Every old-site result, then app games the old site does not have, in date order. A game on both counts once.
+  const seen = new Set(old.map((g) => gameKey(g.date, g.a, g.b)))
+  const played = [
+    ...[...old].sort((x, y) => x.date.localeCompare(y.date) || x.n - y.n).map((g) => ({ date: g.date, won: g.w === "A" ? g.a : g.b, lost: g.w === "A" ? g.b : g.a })),
+    ...finished(state).flatMap((g) => {
+      const [a, b] = scoreOf(g)
+      return a === b || seen.has(gameKey(g.date, g.teamA, g.teamB)) ? [] : [{ date: g.date, won: a > b ? g.teamA : g.teamB, lost: a > b ? g.teamB : g.teamA }]
+    }),
+  ].sort((x, y) => x.date.localeCompare(y.date))
+  for (const g of played) {
+    for (const p of g.lost) run.set(p, 0)
+    for (const p of g.won) {
+      const cur = (run.get(p) ?? 0) + 1
       run.set(p, cur)
       if (cur > (best.get(p)?.n ?? 0)) best.set(p, { n: cur, end: g.date })
     }

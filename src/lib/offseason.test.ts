@@ -110,6 +110,15 @@ describe("hall of fame", () => {
       { id: "z", gp: 10, w: 3, pts: 34 },
     ])
     expect(bestGames(s, "pts")[0]).toMatchObject({ id: "y", value: 20 })
-    expect(longestStreaks(s)[0]).toMatchObject({ id: "x", n: 7 })
+    expect(longestStreaks(s, 5, [])[0]).toMatchObject({ id: "x", n: 7 })
+  })
+  it("runs a streak across old-site games and app games, counting a game on both once", () => {
+    const old = [
+      { n: 1, date: "2026-06-01", a: ["q"], b: ["r"], w: "A" as const },
+      { n: 2, date: "2026-06-02", a: ["r"], b: ["q"], w: "B" as const },
+      { n: 1, date: "2026-06-03", a: ["q"], b: ["r"], w: "A" as const },
+    ]
+    const s = state([game("dup", "2026-06-03", ["r"], ["q"], 1, 5), game("new", "2026-06-04", ["q"], ["r"], 5, 1)])
+    expect(longestStreaks(s, 5, old)[0]).toMatchObject({ id: "q", n: 4, end: "2026-06-04" })
   })
 })
