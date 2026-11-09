@@ -287,7 +287,8 @@ export function winProbAdded(state: PooleanState): Wpa {
 
 // 4. What a turnover costs ----------------------------------------------------------------------------------------
 // A possession is a shot minus the offensive rebounds that extend it, plus the turnovers that end it with no shot (a shot
-// that is stolen or blocked is already a shot, so it is not counted twice). The league's points per possession is what a
+// that is stolen or blocked is already a shot, so it is not counted twice). A blocked shot that goes out with no rebounder
+// stays with the shooter's team, so like an offensive rebound it does not end the possession. The league's points per possession is what a
 // giveaway is worth. With video times, the other team's very next shot shows what turnovers actually cost. Every count
 // here is live-ball turnovers only.
 export interface TovRow {
@@ -321,7 +322,8 @@ export function turnoverCost(state: PooleanState): TovCost {
   for (const g of gs) {
     const live = liveTurnovers(g)
     const oreb = members(g).reduce((n, id) => n + getGameStats(g, id).oreb, 0)
-    poss += g.scoringEvents.length - oreb + live.length
+    const kept = g.scoringEvents.filter((e) => e.made === false && e.blockerId && !e.rebounderId && !e.turnoverEventId).length
+    poss += g.scoringEvents.length - oreb - kept + live.length
     points += total(g)
     tovs += live.length
     for (const id of members(g)) {

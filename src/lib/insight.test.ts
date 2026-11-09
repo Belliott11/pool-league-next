@@ -92,6 +92,13 @@ describe("turnover cost", () => {
   })
 })
 
+describe("a blocked shot that goes out with the ball kept", () => {
+  it("extends the possession like an offensive rebound", () => {
+    const out: Game = { ...game, scoringEvents: [...events, shot("e9", "a1", 3, false, { blockerId: "b1", passerId: "none", videoTime: 9 })] }
+    expect(turnoverCost({ ...state, games: [out] }).possessions).toBe(turnoverCost(state).possessions)
+  })
+})
+
 describe("shot-based turnovers", () => {
   // The same game plus a blocked shot by b1 logged as a miss and a turnover.
   const blocked: Game = {
