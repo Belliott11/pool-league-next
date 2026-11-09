@@ -11906,7 +11906,7 @@ export const EXPORT_PANELS = [
 } }, { id: "exportLeaderboardCsvBtn", evt: "click", handler: () => {
   const rows = [["player", "games_played", ...STAT_FIELDS,
     "fgm", "fga", "tpm", "tpa", "close_m", "close_a", "mid_m", "mid_a", "tp_arc_m", "tp_arc_a", "tp_deep_m", "tp_deep_a", "ftm", "fta", "shot_pct", "ast_pct", "oreb_pct", "dreb_pct", "treb_pct", "tov_pct", "efg_pct", "ts_pct", "stocks", "ast_tov",
-    "pts_allowed", "opp_fg_pct", "times_beaten", "stops", "pts_per_25", "off_rating_per_25", "def_rating_per_25", "two_way_per_25"]];
+    "pts_allowed", "opp_fg_pct", "times_beaten", "stops", "pts_per_25", "off_rating_per_25", "def_rating_per_25", "two_way_per_25", "reb_per_miss", "stl_per_opp_play", "ast_per_mate_fg"]];
   computeLeaderboard().forEach(r => {
     rows.push([
       r.player.name, r.gp, ...STAT_FIELDS.map(f => r.totals[f]),
@@ -11915,7 +11915,8 @@ export const EXPORT_PANELS = [
       r.stocks, r.astTov, r.defense.ptsAllowed,
       pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops),
       r.defense.timesBeaten, r.defense.stops, r.rate.pts.toFixed(1), r.offRatingPer25.toFixed(1),
-      defensiveRating(r.rate, r.rateDefense).toFixed(1), r.twoWayPer25.toFixed(1)
+      defensiveRating(r.rate, r.rateDefense).toFixed(1), r.twoWayPer25.toFixed(1),
+      r.rebPerMiss, r.stlPerOppPlay, r.astPerMateFg
     ]);
   });
   download("leaderboard.csv", rows.map(r => r.map(csvEscape).join(",")).join("\n"), "text/csv");
