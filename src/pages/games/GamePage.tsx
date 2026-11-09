@@ -419,7 +419,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
         )}
       </div>
 
-      {!readOnly && <GameTagsEditor key={game.id} game={game} update={update} />}
+      {!readOnly && <GameTagsEditor key={game.id} game={game} update={update} state={state} />}
       <Card>
         <CardContent className="flex items-center justify-around gap-4">
           <TeamScore state={state} game={game} ids={game.teamA} label="Team A" score={scoreA} />

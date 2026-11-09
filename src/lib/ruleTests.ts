@@ -381,6 +381,14 @@ export function picksFor(state: PooleanState, all: Result[]): PickMethod[] {
   })
 }
 
+// What counts for one game: its tag, else a runback if the same teams already played earlier that day, else captains.
+export function pickOf(state: PooleanState, game: Game): { method: PickMethod; tagged: boolean } {
+  if (game.teamsPickedBy) return { method: game.teamsPickedBy, tagged: true }
+  const key = gameKey(game.date, game.teamA, game.teamB)
+  const earlier = state.games.slice(0, state.games.findIndex((g) => g.id === game.id)).some((g) => gameKey(g.date, g.teamA, g.teamB) === key)
+  return { method: earlier ? "runback" : "captains", tagged: false }
+}
+
 function pickRules(state: PooleanState, old: RealGame[]): Rule[] {
   const all = results(state, old)
   const methods = picksFor(state, all)

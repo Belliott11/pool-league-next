@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input"
 import type { Update } from "@/lib/store"
-import type { Game } from "@/lib/types"
+import { pickOf } from "@/lib/ruleTests"
+import type { Game, PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 export const PICK_METHODS = [
@@ -25,12 +26,14 @@ export function PickChips({ value, onChange }: { value?: string; onChange: (v: P
 }
 
 // Editors only, on a game's page: how teams were picked, what it was played to, and any house rules that night.
-export function GameTagsEditor({ game, update }: { game: Game; update: Update }) {
+export function GameTagsEditor({ game, update, state }: { game: Game; update: Update; state: PooleanState }) {
+  const { method, tagged } = pickOf(state, game)
   const patch = (fields: Partial<Game>) => update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, ...fields } : g)) }))
   return (
     <section className="flex flex-col gap-2 rounded-xl border bg-card p-3 text-sm" aria-label="Game setup">
       <span className="font-medium">How teams were picked</span>
-      <PickChips value={game.teamsPickedBy} onChange={(v) => patch({ teamsPickedBy: v })} />
+      <PickChips value={method} onChange={(v) => patch({ teamsPickedBy: v ?? (tagged ? undefined : method) })} />
+      <span className="text-xs text-muted-foreground">{tagged ? "Tap the chosen one again to go back to the default." : `Not set, so it counts as ${PICK_METHODS.find((m) => m.key === method)!.label.toLowerCase()}. Tap one to change it.`}</span>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-2">
           <span className="font-medium">Played to</span>

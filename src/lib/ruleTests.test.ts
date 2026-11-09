@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { adviceFrom, coinP, picksFor, ruleTests, stratified, verdictFromWins, type Rule } from "@/lib/ruleTests"
+import { adviceFrom, coinP, pickOf, picksFor, ruleTests, stratified, verdictFromWins, type Rule } from "@/lib/ruleTests"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 const base = { stats: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
@@ -97,6 +97,19 @@ describe("results rules", () => {
       { n: 2, date: "2026-06-01", a: ["b"], b: ["a"], w: "B" as const },
     ]
     expect(rule(ruleTests(state([]), old), "rematch").numbers).toBe("Same winner 1 of 1")
+  })
+})
+
+describe("a game's pick", () => {
+  const g1 = game("g1", "2026-08-01", [shot("1", "a", true, 0)])
+  const g2 = game("g2", "2026-08-01", [shot("2", "a", true, 0)])
+  const s = state([g1, g2])
+  it("is captains by default, and a runback when the same teams already played that day", () => {
+    expect(pickOf(s, g1)).toEqual({ method: "captains", tagged: false })
+    expect(pickOf(s, g2)).toEqual({ method: "runback", tagged: false })
+  })
+  it("uses the tag when there is one", () => {
+    expect(pickOf(s, { ...g2, teamsPickedBy: "random" })).toEqual({ method: "random", tagged: true })
   })
 })
 
