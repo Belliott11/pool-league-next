@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { FixBlanks } from "@/pages/games/FixBlanks"
+import { LightRecheck } from "@/pages/games/LightRecheck"
 import { TeamPicksBackfill } from "@/pages/games/TeamPicksBackfill"
 import type { Update } from "@/lib/store"
 import { useEffect, useMemo, useState } from "react"
@@ -131,6 +132,9 @@ export function ExportPage({ state, toggles, update }: { state: PooleanState; to
               </BackfillPanel>
               <BackfillPanel title="How teams were picked" hint="Fill in past games from memory, for the Does it hold up board.">
                 <TeamPicksBackfill state={state} update={update} />
+              </BackfillPanel>
+              <BackfillPanel title="Light contests to re-check" hint="Tagged Light Contest before Got Beat existed. Say which each one really was.">
+                <LightRecheck state={state} update={update} />
               </BackfillPanel>
             </>
           )}

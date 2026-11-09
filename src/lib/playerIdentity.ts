@@ -25,6 +25,8 @@ export interface IdentityRow {
   openPassed: number | null // the same, on shots off a pass
   openSelf: number | null // the same, on shots they got themselves
   defenders: number // average defenders on a shot
+  beatTheirMan: number // their shots tagged Got Beat
+  gotBeat: number // shots they were tagged Got Beat on, as the defender
   quality: number // average league points on the shots they take
   qualityVsLeague: number
   zones: Record<Zone, ZoneValue>
@@ -75,6 +77,8 @@ export function playerIdentity(state: PooleanState): PlayerIdentity {
       openPassed: share(xs.filter(passed), isOpen),
       openSelf: share(xs.filter((e) => !passed(e)), isOpen),
       defenders: mean(xs, defenders),
+      beatTheirMan: xs.filter((e) => e.contestLevel === "beat").length,
+      gotBeat: all.filter((e) => e.contestLevel === "beat" && (e.defenderIds ?? []).includes(id)).length,
       quality: mean(xs, expect),
       qualityVsLeague: mean(xs, expect) - league.quality,
       zones,

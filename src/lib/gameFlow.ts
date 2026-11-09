@@ -71,7 +71,7 @@ export interface Flow {
   hot: { afterMake: Rate; afterMiss: Rate }
 }
 
-const CONTEST: Record<string, number> = { none: 0, light: 1, medium: 2, heavy: 3 }
+const CONTEST: Record<string, number> = { none: 0, beat: 0, light: 1, medium: 2, heavy: 3 }
 const made = (e: ScoringEvent) => e.made !== false
 const addMean = (m: Mean, v: number) => {
   m.sum += v

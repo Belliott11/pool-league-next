@@ -80,7 +80,7 @@ describe("contest levels", () => {
   })
   it("tests beating your defender on its own, for the same shooter and zone", () => {
     expect(rule(rs, "beat-your-man").verdict).toBe("holds")
-    expect(rule(rs, "beat-your-man").numbers).toContain("Light contest 83%")
+    expect(rule(rs, "beat-your-man").numbers).toContain("Light contest or got beat 83%")
   })
 })
 

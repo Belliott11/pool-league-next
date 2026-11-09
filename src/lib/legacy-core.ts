@@ -2764,7 +2764,7 @@ function renderContestEngagementPanel() {
   if (!body) return;
   if (sanityWrap) {
     const split = computeContestLevelFgSplit();
-    sanityWrap.innerHTML = ["none", "light", "medium", "heavy"].map(k =>
+    sanityWrap.innerHTML = ["none", "beat", "light", "medium", "heavy"].map(k =>
       `<span class="legend-item">${contestLevelLabel(k)}: ${formatPct(split[k].fgPct)}<span class="hint" style="margin:0"> (${split[k].m}/${split[k].a})</span></span>`
     ).join("");
   }
@@ -5045,7 +5045,7 @@ function computePassingChemistryPair(passerId, scorerId, combos, zonePpa) {
       shots++;
       actualPts += ev.made !== false ? ev.points : 0;
       xpts += x;
-      if (ev.contestLevel === "none" || ev.contestLevel === "light") openCount++;
+      if (ev.contestLevel === "none" || ev.contestLevel === "beat" || ev.contestLevel === "light") openCount++;
       const type = effShotType(ev);
       if (type) typeCounts[type] = (typeCounts[type] || 0) + 1;
     });
@@ -5664,7 +5664,7 @@ function computeRealContestedDefense(playerId) {
 }
 
 function computeContestLevelFgSplit() {
-  const buckets = { none: { m: 0, a: 0 }, light: { m: 0, a: 0 }, medium: { m: 0, a: 0 }, heavy: { m: 0, a: 0 } };
+  const buckets = { none: { m: 0, a: 0 }, beat: { m: 0, a: 0 }, light: { m: 0, a: 0 }, medium: { m: 0, a: 0 }, heavy: { m: 0, a: 0 } };
   state.games.filter(isQualifyingGame).forEach(game => {
     game.scoringEvents.forEach(ev => {
       if (ev.points !== 2 && ev.points !== 3) return;
@@ -5680,7 +5680,7 @@ function computeContestLevelFgSplit() {
 const CONTEST_ENGAGEMENT_MIN_TAGGED = 5;
 
 function computeContestLevelDistribution(playerId) {
-  const counts = { light: 0, medium: 0, heavy: 0 };
+  const counts = { beat: 0, light: 0, medium: 0, heavy: 0 };
   qualifyingGamesForPlayer(playerId).forEach(game => {
     game.scoringEvents.forEach(ev => {
       if (ev.points !== 2 && ev.points !== 3) return;
@@ -5688,7 +5688,7 @@ function computeContestLevelDistribution(playerId) {
       if (counts[ev.contestLevel] !== undefined) counts[ev.contestLevel]++;
     });
   });
-  const tagged = counts.light + counts.medium + counts.heavy;
+  const tagged = counts.beat + counts.light + counts.medium + counts.heavy;
   const engaged = counts.medium + counts.heavy;
   return { counts, tagged, engagementRate: tagged >= CONTEST_ENGAGEMENT_MIN_TAGGED ? pct(engaged, tagged) : null };
 }
@@ -5992,7 +5992,7 @@ function computeRealPlaymakingVolume(playerId) {
   };
 }
 
-const PASS_OPENNESS_WEIGHT = { none: 1.3, light: 1.1, medium: 0.9, heavy: 0.7 };
+const PASS_OPENNESS_WEIGHT = { none: 1.3, beat: 1.3, light: 1.1, medium: 0.9, heavy: 0.7 };
 
 const PASS_QUALITY_MIN_VOLUME = 3;
 
@@ -7208,7 +7208,7 @@ function computeCategoryClipGroups(playerId, categoryKey) {
       return ev.scorerId === playerId && (ev.points === 2 || ev.points === 3) && ev.passerId === "none" && effShotType(ev) === "drive";
     }
     if (categoryKey === "pass_openlook") {
-      return ev.passerId === playerId && (ev.points === 2 || ev.points === 3) && (ev.contestLevel === "none" || ev.contestLevel === "light");
+      return ev.passerId === playerId && (ev.points === 2 || ev.points === 3) && (ev.contestLevel === "none" || ev.contestLevel === "beat" || ev.contestLevel === "light");
     }
     return false;
   };
@@ -7838,7 +7838,7 @@ const PLAYER_TREND_STATS = [
         if (ev.points !== 2 && ev.points !== 3) return;
         if (!(ev.defenderIds || []).includes(pid)) return;
         if (ev.contestLevel === "medium" || ev.contestLevel === "heavy") { engaged++; tagged++; }
-        else if (ev.contestLevel === "light") tagged++;
+        else if (ev.contestLevel === "light" || ev.contestLevel === "beat") tagged++;
       }));
       return { value: pctOrNull(engaged, tagged), n: tagged };
     } },
@@ -10176,6 +10176,7 @@ function renderOppAdjReboundPanel() {
 }
 
 const CONTEST_LEVELS = [
+  { key: "beat", label: "Got Beat", about: "The tagged defender was beaten right before the shot and is chasing the play." },
   { key: "light", label: "Light Contest", about: "A defender is credited nearby but didn't meaningfully affect the shot -- a late closeout, trailing the play, a hand up from a step away." },
   { key: "medium", label: "Medium Contest", about: "A real, in-position defender with a hand up, but not draped on the shooter or altering the release." },
   { key: "heavy", label: "Heavy Contest", about: "A hand in their face, verticality, or real physical pressure that could plausibly alter the shot." }
@@ -10191,7 +10192,7 @@ function contestLevelButtonsHtml(current, attr) {
   return CONTEST_LEVELS.map(t => `<button type="button" class="secondary-btn${current === t.key ? " selected" : ""}" data-${attr}="${t.key}" title="${escapeHtml(t.about)}">${escapeHtml(t.label)}</button>`).join("");
 }
 
-const RESISTANCE_LEVEL_SCORE = { none: 0, light: 1, medium: 2, heavy: 3 };
+const RESISTANCE_LEVEL_SCORE = { none: 0, beat: 0, light: 1, medium: 2, heavy: 3 };
 
 const AVG_RESISTANCE_MIN_FGA = 5;
 

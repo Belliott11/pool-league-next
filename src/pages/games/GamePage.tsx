@@ -51,7 +51,7 @@ const SHOT_TYPE_LABELS: Record<string, string> = {
   move: "Move",
   dunk: "Dunk",
 }
-const CONTEST_LABELS: Record<string, string> = { none: "No contest", light: "Light", medium: "Medium", heavy: "Heavy" }
+const CONTEST_LABELS: Record<string, string> = { beat: "Got beat", none: "No contest", light: "Light", medium: "Medium", heavy: "Heavy" }
 const TURNOVER_TYPE_LABELS: Record<string, string> = {
   badPass: "Bad Pass",
   lostHandle: "Lost Handle",

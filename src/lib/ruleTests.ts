@@ -33,6 +33,7 @@ const CLOSE = 30 // same band edges as playerIdentity
 const DEEP = 80
 const SEQ_MIN_GAMES = 100 // games before a rating system can be compared, as in scripts/compare-models.mjs
 const RANDOM_MIN = 15
+const BEAT_MIN = 30
 
 const pc = (r: Rate) => (r.att ? `${Math.round(pct(r)!)}%` : "-")
 const count = (r: Rate) => `${r.made}/${r.att}`
@@ -283,7 +284,10 @@ function shotRules(state: PooleanState): Rule[] {
   const tight = (e: ScoringEvent) => e.contestLevel === "medium" || e.contestLevel === "heavy"
   const open = splitByZone(shots.filter((e) => e.contestLevel === "none" || tight(e)), (e) => e.contestLevel === "none", sameSpot)
   const openS = stratified(open.groups)
-  const beat = splitByZone(shots.filter((e) => e.contestLevel === "light" || tight(e)), (e) => e.contestLevel === "light", sameSpot)
+  // Old shots only have Light Contest, which mixes the two. Once enough are tagged Got Beat, it gets tested on its own.
+  const beatTags = shots.filter((e) => e.contestLevel === "beat").length >= BEAT_MIN
+  const beaten = (e: ScoringEvent) => e.contestLevel === "beat" || (!beatTags && e.contestLevel === "light")
+  const beat = splitByZone(shots.filter((e) => beaten(e) || tight(e)), beaten, sameSpot)
   const beatS = stratified(beat.groups)
   const pass = splitByZone(shots, passed)
   const passS = stratified(pass.groups)
@@ -339,10 +343,10 @@ function shotRules(state: PooleanState): Rule[] {
       id: "beat-your-man",
       sport: "Basketball",
       claim: "Beating your defender gives the best look",
-      numbers: `Light contest ${pc(beat.a)}, medium or heavy ${pc(beat.b)}${beatS.diff !== null ? `, ${signed(beatS.diff)} points for the same shooter from the same zone` : ""}`,
+      numbers: `${beatTags ? "Got beat" : "Light contest or got beat"} ${pc(beat.a)}, medium or heavy ${pc(beat.b)}${beatS.diff !== null ? `, ${signed(beatS.diff)} points for the same shooter from the same zone` : ""}`,
       n: `${beat.a.att + beat.b.att} shots`,
       ...fromCompare(beatS.verdict, beatS.diff, Math.min(beat.a.att, beat.b.att)),
-      note: "Light contests include defenders tagged because they got beat right before the shot.",
+      note: beatTags ? undefined : `Light contests still count here until ${BEAT_MIN} shots are tagged Got Beat.`,
       advice: beatS.diff !== null ? `A defender left trailing is the best thing that happens on offense: ${pc(beat.a)} against ${pc(beat.b)} when someone is really on the shot. Attack your man.` : undefined,
     },
     {

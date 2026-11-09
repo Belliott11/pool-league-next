@@ -35,7 +35,8 @@ export interface ScoringEvent {
   videoTime?: number | null
   shotType?: string | null
   dunk?: boolean
-  contestLevel?: "none" | "light" | "medium" | "heavy" | null
+  contestLevel?: "none" | "beat" | "light" | "medium" | "heavy" | null
+  contestChecked?: boolean // an old Light Contest tag someone has looked at again
   passerId?: string | null
   // Rebound battles: who was matched up on the rebounder, or reboundNoContest when nobody was.
   reboundContesterIds?: string[]

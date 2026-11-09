@@ -137,5 +137,8 @@ Rules from other sports tested on league data (`src/lib/ruleTests.ts`), with a v
 **How teams were picked**:
 `teamsPickedBy` on a game (balanced, captains, random, runback), or `oldGamePicks` in the league state for old-site games, keyed by date and teams. Random-team games are the closest thing the league has to an experiment.
 
+**Got beat**:
+A contest level for a defender beaten right before the shot. It counts as no resistance. Older shots may still be tagged Light Contest; `contestChecked` marks one that has been reviewed.
+
 **Panel group**:
 Related Leaderboard or Player panels combined into one panel with a tab each, so nothing repeats and the pages are shorter (for example Awards, Shot mix, Turnovers, Old site history). Defined in `src/lib/panelGroups.ts`. A panel that only repeated another (Season Timeline, the self-inflicted turnover bars) was dropped; tuning views (Calibrated Thresholds, Win Shares model) sit in an editor-only Developer views group.
