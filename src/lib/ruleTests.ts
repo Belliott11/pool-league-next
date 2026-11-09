@@ -5,7 +5,7 @@ import { correlate } from "@/lib/bodyEffort"
 import type { RealGame } from "@/lib/real"
 import { sequences } from "@/lib/sequences"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
-import { fit, gameKey, results } from "@/lib/winImpact"
+import { fit, gameKey, results, type Result } from "@/lib/winImpact"
 
 // Well-known rules from other sports, checked against this league. About 15 are tested at once, so the bar for a verdict
 // is high, and a rule needs a real sample before it can even be called "no sign of it".
@@ -368,21 +368,28 @@ function shotRules(state: PooleanState): Rule[] {
   ]
 }
 
-// How each game's teams were picked: what was logged on the game, or the backfill for old-site games. A rematch of the
-// previous game counts as a runback without anyone saying so.
-export function picksByResult(state: PooleanState): Map<string, PickMethod> {
-  const out = new Map<string, PickMethod>()
-  for (const [k, v] of Object.entries((state.oldGamePicks ?? {}) as Record<string, PickMethod>)) out.set(k, v)
-  for (const g of state.games) if (g.teamsPickedBy) out.set(gameKey(g.date, g.teamA, g.teamB), g.teamsPickedBy)
-  return out
+// How each result's teams were picked. Captains pick unless the same teams already played that day, which is a runback.
+// A game can say otherwise when it is set up (say, balanced by the app or drawn at random).
+export function picksFor(state: PooleanState, all: Result[]): PickMethod[] {
+  const tagged = new Map(state.games.filter((g) => g.teamsPickedBy).map((g) => [gameKey(g.date, g.teamA, g.teamB), g.teamsPickedBy as PickMethod]))
+  const seen = new Set<string>()
+  return all.map((r) => {
+    const key = gameKey(r.night, r.a, r.b)
+    if (seen.has(key)) return "runback"
+    seen.add(key)
+    return tagged.get(key) ?? "captains"
+  })
 }
 
 function pickRules(state: PooleanState, old: RealGame[]): Rule[] {
-  const picks = picksByResult(state)
   const all = results(state, old)
+  const methods = picksFor(state, all)
+  // Same teams on the same day share a key, so each game takes the next pick for its key, in order.
+  const queue = new Map<string, PickMethod[]>()
+  all.forEach((r, i) => queue.set(gameKey(r.night, r.a, r.b), [...(queue.get(gameKey(r.night, r.a, r.b)) ?? []), methods[i]]))
   const margins: Record<"balanced" | "other", Mean> = { balanced: { sum: 0, sq: 0, n: 0 }, other: { sum: 0, sq: 0, n: 0 } }
-  for (const g of games(state)) {
-    const p = picks.get(gameKey(g.date, g.teamA, g.teamB))
+  for (const g of [...games(state)].sort((a, b) => a.date.localeCompare(b.date))) {
+    const p = queue.get(gameKey(g.date, g.teamA, g.teamB))?.shift()
     if (!p) continue
     const v = Math.abs(partsOf(g, () => 0)?.margin ?? 0)
     const m = margins[p === "balanced" ? "balanced" : "other"]
@@ -391,21 +398,19 @@ function pickRules(state: PooleanState, old: RealGame[]): Rule[] {
     m.n++
   }
   const c = compareMeans(margins.balanced, margins.other)
-  // A rematch shares its key with the game before, but it was not a fresh random draw.
-  const isRematch = (i: number) => i > 0 && all[i - 1].night === all[i].night && gameKey(all[i - 1].night, all[i - 1].a, all[i - 1].b) === gameKey(all[i].night, all[i].a, all[i].b)
-  const random = all.filter((r, i) => !isRematch(i) && picks.get(gameKey(r.night, r.a, r.b)) === "random")
+  const random = all.filter((_, i) => methods[i] === "random")
   const rows: Rule[] = [
     {
       id: "balance",
       sport: "Fantasy drafts",
       claim: "Balanced teams play closer games",
-      numbers: margins.balanced.n && margins.other.n ? `Balanced games decided by ${(margins.balanced.sum / margins.balanced.n).toFixed(1)}, others by ${(margins.other.sum / margins.other.n).toFixed(1)}` : "Needs games tagged with how teams were picked",
-      n: `${margins.balanced.n + margins.other.n} tagged games`,
+      numbers: margins.balanced.n && margins.other.n ? `Balanced games decided by ${(margins.balanced.sum / margins.balanced.n).toFixed(1)}, others by ${(margins.other.sum / margins.other.n).toFixed(1)}` : "Needs games with teams balanced by the app to compare against captains",
+      n: `${margins.balanced.n} balanced games`,
       ...fromCompare(c.verdict, c.diff, Math.min(margins.balanced.n, margins.other.n)),
     },
   ]
   // Random teams are the nearest thing to an experiment: nobody chose who plays with whom.
-  let numbers = `${random.length} of ${RANDOM_MIN} random-team games tagged`
+  let numbers = `${random.length} of ${RANDOM_MIN} random-team games played`
   let verdict: Pick<Rule, "verdict" | "strength"> = { verdict: "early", strength: null }
   if (random.length >= RANDOM_MIN) {
     const [f, r] = [fit(all), fit(random)]

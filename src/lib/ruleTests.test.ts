@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { adviceFrom, coinP, picksByResult, ruleTests, stratified, verdictFromWins, type Rule } from "@/lib/ruleTests"
+import { adviceFrom, coinP, picksFor, ruleTests, stratified, verdictFromWins, type Rule } from "@/lib/ruleTests"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
-import { gameKey } from "@/lib/winImpact"
 
 const base = { stats: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
 const close = { x: 50, y: 10 }
@@ -102,11 +101,13 @@ describe("results rules", () => {
 })
 
 describe("team picks", () => {
-  it("reads both logged games and backfilled old-site games", () => {
-    const g = { ...game("g", "2026-08-01", [shot("1", "a", true, 0)]), teamsPickedBy: "random" as const }
-    const s: PooleanState = { ...state([g]), oldGamePicks: { [gameKey("2026-06-01", ["x"], ["y"])]: "captains" } }
-    const p = picksByResult(s)
-    expect(p.get(gameKey("2026-08-01", ["b"], ["a"]))).toBe("random")
-    expect(p.get(gameKey("2026-06-01", ["y"], ["x"]))).toBe("captains")
+  const r = (night: string, a: string[], b: string[]) => ({ a, b, aWon: true, night })
+  it("is captains, unless the same teams already played that day", () => {
+    const all = [r("d1", ["a"], ["b"]), r("d1", ["c"], ["b"]), r("d1", ["b"], ["a"]), r("d2", ["a"], ["b"])]
+    expect(picksFor(state([]), all)).toEqual(["captains", "captains", "runback", "captains"])
+  })
+  it("uses what a game was tagged with", () => {
+    const g = { ...game("g", "d1", [shot("1", "a", true, 0)]), teamsPickedBy: "random" as const }
+    expect(picksFor(state([g]), [r("d1", ["b"], ["a"])])).toEqual(["random"])
   })
 })

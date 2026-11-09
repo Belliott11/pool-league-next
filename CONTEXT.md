@@ -135,7 +135,7 @@ How much is behind a number (Steady, Some data, Too early), from `src/lib/trust.
 Rules from other sports tested on league data (`src/lib/ruleTests.ts`), with a verdict of Holds up, Backwards, No sign of it or Too early. Comparisons of shots hold the court zone constant where the mix of shots would otherwise decide the result. Strategy advice only comes from rules with a real verdict.
 
 **How teams were picked**:
-`teamsPickedBy` on a game (balanced, captains, random, runback), or `oldGamePicks` in the league state for old-site games, keyed by date and teams. Random-team games are the closest thing the league has to an experiment.
+Captains pick unless the same teams already played that day, which is a runback. `teamsPickedBy` on a game records anything else (balanced, random). Random-team games are the closest thing the league has to an experiment.
 
 **Got beat**:
 A contest level for a defender beaten right before the shot. It counts as no resistance. Older shots may still be tagged Light Contest; `contestChecked` marks one that has been reviewed.
