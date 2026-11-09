@@ -105,12 +105,20 @@ describe("hall of fame", () => {
   const many = Array.from({ length: 10 }, (_, i) => game(String(i), `2026-07-${String(i + 1).padStart(2, "0")}`, ["x"], ["z"], 5, i < 7 ? 1 : 9))
   it("lists careers by games played, and finds the best game and the longest streak", () => {
     const s = state([...many, game("short", "2026-07-20", ["y"], ["w"], 20, 0)])
-    expect(careerTable(s).slice(0, 2)).toMatchObject([
+    expect(careerTable(s, 10, []).slice(0, 2)).toMatchObject([
       { id: "x", gp: 10, w: 7, pts: 50 },
       { id: "z", gp: 10, w: 3, pts: 34 },
     ])
     expect(bestGames(s, "pts")[0]).toMatchObject({ id: "y", value: 20 })
     expect(longestStreaks(s, 5, [])[0]).toMatchObject({ id: "x", n: 7 })
+  })
+  it("adds old-site games and wins to careers, counting a game on both once and keeping its points", () => {
+    const old = [
+      { n: 1, date: "2026-06-01", a: ["q"], b: ["r"], w: "A" as const },
+      { n: 2, date: "2026-06-03", a: ["q"], b: ["r"], w: "B" as const },
+    ]
+    const s = state([game("dup", "2026-06-03", ["r"], ["q"], 5, 1), game("new", "2026-06-04", ["q"], ["r"], 7, 1)])
+    expect(careerTable(s, 10, old).find((c) => c.id === "q")).toMatchObject({ gp: 3, w: 2, pts: 8 })
   })
   it("runs a streak across old-site games and app games, counting a game on both once", () => {
     const old = [

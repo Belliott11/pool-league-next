@@ -22,15 +22,31 @@ const finished = (state: PooleanState): Game[] =>
     })
     .sort((a, b) => a.date.localeCompare(b.date))
 
-export function careers(state: PooleanState): Career[] {
+const oldGames = () => realSeasonsInOrder().flatMap((s) => s.games)
+
+// Games and wins come from every result, old site included, and a game on both sites counts once. Points and two-way only
+// exist for games played in the app.
+export function careers(state: PooleanState, old: RealGame[] = oldGames()): Career[] {
   const m = new Map<string, Career>()
+  const seen = new Set(old.map((g) => gameKey(g.date, g.a, g.b)))
+  for (const g of old) {
+    for (const p of [...g.a, ...g.b]) {
+      const c = m.get(p) ?? { id: p, gp: 0, w: 0, pts: 0, twoWay: 0 }
+      c.gp++
+      if ((g.w === "A" ? g.a : g.b).includes(p)) c.w++
+      m.set(p, c)
+    }
+  }
   for (const g of finished(state)) {
     const [a, b] = scoreOf(g)
+    const counted = seen.has(gameKey(g.date, g.teamA, g.teamB))
     for (const p of [...g.teamA, ...g.teamB]) {
       const c = m.get(p) ?? { id: p, gp: 0, w: 0, pts: 0, twoWay: 0 }
       const line = playerLine(g, p)
-      c.gp++
-      if ((g.teamA.includes(p) && a > b) || (g.teamB.includes(p) && b > a)) c.w++
+      if (!counted) {
+        c.gp++
+        if ((g.teamA.includes(p) && a > b) || (g.teamB.includes(p) && b > a)) c.w++
+      }
       c.pts += line.pts
       c.twoWay += line.twoWay ?? 0
       m.set(p, c)
@@ -40,8 +56,8 @@ export function careers(state: PooleanState): Career[] {
 }
 
 // Everyone's career line, most games first (wins break ties). Sorting by games needs no minimum, so it is never empty.
-export function careerTable(state: PooleanState, n = 10): Career[] {
-  return careers(state)
+export function careerTable(state: PooleanState, n = 10, old: RealGame[] = oldGames()): Career[] {
+  return careers(state, old)
     .sort((x, y) => y.gp - x.gp || y.w - x.w)
     .slice(0, n)
 }
@@ -67,7 +83,7 @@ export function bestGames(state: PooleanState, key: "pts" | "twoWay", n = 5): Be
 }
 
 // Each player's longest run of wins, best first.
-export function longestStreaks(state: PooleanState, n = 5, old: RealGame[] = realSeasonsInOrder().flatMap((s) => s.games)): { id: string; n: number; end: string }[] {
+export function longestStreaks(state: PooleanState, n = 5, old: RealGame[] = oldGames()): { id: string; n: number; end: string }[] {
   const run = new Map<string, number>()
   const best = new Map<string, { n: number; end: string }>()
   // Every old-site result, then app games the old site does not have, in date order. A game on both counts once.

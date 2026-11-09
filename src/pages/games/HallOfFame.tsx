@@ -101,7 +101,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
         </Board>
       )}
 
-      <Board title="Careers" hint="Every game in the app, most games first.">
+      <Board title="Careers" hint="Most games first. Games and wins count every result, including games from the old site. Points and two-way only exist for games played in the app.">
         <div className="grid grid-cols-[1fr_repeat(4,2.75rem)] items-center gap-x-2 gap-y-1.5">
           <span />
           {["GP", "W", "PTS", "2W"].map((h) => (
