@@ -98,25 +98,6 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
             ),
           },
           {
-            value: "created",
-            label: "Shots set up",
-            node: (
-              <>
-                <Hint>Shots they passed to a teammate, made or missed, per {PER} points.</Hint>
-                {mc ? (
-                  <>
-                    <Line label={`Set up per ${PER}`} value={mc.created25.toFixed(1)} sub={`${mc.created} shots in ${mc.games} games`} />
-                    <Line label="Went in" value={pct(mc.created ? mc.made / mc.created : null)} sub={`league ${pct(c.league.passedFg)} on passed shots`} />
-                    <Line label={`Assists per ${PER}`} value={mc.assists25.toFixed(1)} />
-                    <Line label="Shot quality" value={`${mc.expected.toFixed(2)} pts`} sub="the league's average on that kind of shot" />
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No passes tagged on shots yet.</p>
-                )}
-              </>
-            ),
-          },
-          {
             value: "chance",
             label: "Win chance added",
             node: (
@@ -138,6 +119,25 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
             value: "deep",
             label: "Deep dive",
             node: <DeepDive state={state} pid={pid} />,
+          },
+          {
+            value: "created",
+            label: "Shots set up",
+            node: (
+              <>
+                <Hint>Shots they passed to a teammate, made or missed, per {PER} points.</Hint>
+                {mc ? (
+                  <>
+                    <Line label={`Set up per ${PER}`} value={mc.created25.toFixed(1)} sub={`${mc.created} shots in ${mc.games} games`} />
+                    <Line label="Went in" value={pct(mc.created ? mc.made / mc.created : null)} sub={`league ${pct(c.league.passedFg)} on passed shots`} />
+                    <Line label={`Assists per ${PER}`} value={mc.assists25.toFixed(1)} />
+                    <Line label="Shot quality" value={`${mc.expected.toFixed(2)} pts`} sub="the league's average on that kind of shot" />
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No passes tagged on shots yet.</p>
+                )}
+              </>
+            ),
           },
           {
             value: "cost",

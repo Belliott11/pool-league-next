@@ -127,9 +127,9 @@ export function InsightCard({ state, onOpenPlayer }: { state: PooleanState; onOp
       <ViewTabs
         tabs={[
           { value: "decided", label: "What decided games", node: <Decided state={state} onOpenPlayer={onOpenPlayer} /> },
-          { value: "created", label: "Shots set up", node: <Created state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "chance", label: "Win chance added", node: <Chance state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "cost", label: "Turnover cost", node: <Cost state={state} onOpenPlayer={onOpenPlayer} /> },
+          { value: "created", label: "Shots set up", node: <Created state={state} onOpenPlayer={onOpenPlayer} /> },
         ]}
       />
     </Section>

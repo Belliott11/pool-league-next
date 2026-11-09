@@ -246,10 +246,10 @@ export function DeepDiveCard({ state, onOpenPlayer }: { state: PooleanState; onO
       <ViewTabs
         tabs={[
           { value: "impact", label: "Win impact", node: <ImpactTab state={state} onOpenPlayer={onOpenPlayer} /> },
-          { value: "seq", label: "Play sequences", node: <SequenceTab state={state} onOpenPlayer={onOpenPlayer} /> },
-          { value: "identity", label: "Player identity", node: <IdentityTab state={state} onOpenPlayer={onOpenPlayer} /> },
-          ...(readOnly ? [] : [{ value: "body", label: "Body and effort", node: <BodyTab state={state} onOpenPlayer={onOpenPlayer} /> }]),
           { value: "rules", label: "Does it hold up?", node: <HoldUpTab state={state} /> },
+          { value: "identity", label: "Player identity", node: <IdentityTab state={state} onOpenPlayer={onOpenPlayer} /> },
+          { value: "seq", label: "Play sequences", node: <SequenceTab state={state} onOpenPlayer={onOpenPlayer} /> },
+          ...(readOnly ? [] : [{ value: "body", label: "Body and effort", node: <BodyTab state={state} onOpenPlayer={onOpenPlayer} /> }]),
         ]}
       />
     </Section>
