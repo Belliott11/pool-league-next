@@ -4,7 +4,8 @@ import { FACTORS, FACTOR_LABEL, playerBreakdowns } from "@/lib/insight"
 import { playerScoreState, tempo } from "@/lib/tempo"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Grid, Heat, Hint, Who } from "./parts"
+import { trustOf } from "@/lib/trust"
+import { Grid, Heat, Hint, TrustChip, Who } from "./parts"
 
 type Open = (id: string) => void
 const sign = (v: number, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}`
@@ -21,11 +22,11 @@ export function DecidedPlayers({ state, onOpenPlayer }: { state: PooleanState; o
       <h4 className="text-sm font-semibold">Each player's games</h4>
       <Hint>Average points a game from each part, from the player's own team's side, so their team's margin is the sum of the five. Darker is bigger. Everyone is in the same games as their teammates, so players on one team move together.</Hint>
       <Grid
-        min="38rem"
-        head={["Player", "Games", "Margin", ...FACTORS.map((f) => FACTOR_LABEL[f])]}
+        min="44rem"
+        head={["Player", "Games", "Margin", ...FACTORS.map((f) => FACTOR_LABEL[f]), "Sample"]}
         rows={rows.map((r) => ({
           key: r.id,
-          cells: [<Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.games, sign(r.margin), ...FACTORS.map((f) => <Heat key={f} v={r.edge[f]} max={max} text={sign(r.edge[f])} />)],
+          cells: [<Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.games, sign(r.margin), ...FACTORS.map((f) => <Heat key={f} v={r.edge[f]} max={max} text={sign(r.edge[f])} />), <TrustChip key="t" t={trustOf(r.games, "games")} />],
         }))}
       />
     </section>
@@ -75,8 +76,8 @@ export function FlowPlayers({ state, onOpenPlayer }: { state: PooleanState; onOp
       <Hint>Field goal percentage by third of the game, from timed shots. A player needs {PLAYER_PHASE_MIN} shots in a third before it shows. In the chart the hollow dot is the first third and the solid dot the last. With a few dozen shots a player, most gaps are inside the noise, and the label says so.</Hint>
       {dumb.length > 0 && <Dumbbell rows={dumb} state={state} onOpenPlayer={onOpenPlayer} />}
       <Grid
-        min="34rem"
-        head={["Player", "Shots", ...PHASES.map((p) => PHASE_LABEL[p]), "Last vs first"]}
+        min="40rem"
+        head={["Player", "Shots", ...PHASES.map((p) => PHASE_LABEL[p]), "Last vs first", "Sample"]}
         rows={rows.map((r) => {
           const c = ok(r.f.phases[0].shots) && ok(r.f.phases[2].shots) ? compareRates(r.f.phases[0].shots, r.f.phases[2].shots) : null
           return {
@@ -92,6 +93,7 @@ export function FlowPlayers({ state, onOpenPlayer }: { state: PooleanState; onOp
               ) : (
                 "-"
               ),
+              <TrustChip key="t" t={trustOf(r.f.shots, "shots")} />,
             ],
           }
         })}
@@ -120,11 +122,11 @@ export function TempoPlayers({ state, onOpenPlayer }: { state: PooleanState; onO
       <h4 className="text-sm font-semibold">Each player</h4>
       <Hint>Plays per minute is the pace of the timed games a player was in, so teammates share it. Shooting is by the team's margin just before each shot (trailing or leading by 3 or more). A player needs {PLAYER_PHASE_MIN} shots in a state before it shows.</Hint>
       <Grid
-        min="34rem"
-        head={["Player", "Games", "Plays/min", "Trailing", "Close", "Leading"]}
+        min="38rem"
+        head={["Player", "Games", "Plays/min", "Trailing", "Close", "Leading", "Sample"]}
         rows={rows.map((r) => ({
           key: r.id,
-          cells: [<Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.games, r.ppm === null ? "-" : r.ppm.toFixed(1), pctText(r.st.trailing), pctText(r.st.close), pctText(r.st.leading)],
+          cells: [<Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.games, r.ppm === null ? "-" : r.ppm.toFixed(1), pctText(r.st.trailing), pctText(r.st.close), pctText(r.st.leading), <TrustChip key="t" t={trustOf(r.games, "games")} />],
         }))}
       />
     </section>

@@ -1,12 +1,24 @@
 import type { ReactNode } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
+import { VERDICT_LABEL, type Verdict } from "@/lib/gameFlow"
 import { playerName } from "@/lib/players"
+import { TRUST_LABEL, type Trust } from "@/lib/trust"
 import type { PooleanState } from "@/lib/types"
 
 // Small pieces the league cards share: a hint line, a player cell that opens the player, and a table that scrolls
 // sideways inside its own box on a phone.
 export function Hint({ children }: { children: ReactNode }) {
   return <p className="text-xs text-muted-foreground">{children}</p>
+}
+
+const chip = "inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground"
+// How much is behind a number.
+export function TrustChip({ t }: { t: Trust }) {
+  return <span className={`${chip} ${t === "steady" ? "border-primary bg-primary/15 text-primary" : t === "some" ? "border-gold text-gold" : ""}`}>{TRUST_LABEL[t]}</span>
+}
+// Whether a difference or link is real.
+export function SureChip({ v }: { v: Verdict }) {
+  return <span className={`${chip} self-start ${v === "clear" ? "border-primary bg-primary/15 text-primary" : v === "hint" ? "border-gold text-gold" : ""}`}>{VERDICT_LABEL[v]}</span>
 }
 
 export function Who({ state, id, onOpenPlayer }: { state: PooleanState; id: string; onOpenPlayer: (id: string) => void }) {

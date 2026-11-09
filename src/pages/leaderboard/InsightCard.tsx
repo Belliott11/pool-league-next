@@ -8,7 +8,8 @@ import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
 import { formatDateDisplay } from "@/lib/format"
 import { DecidedPlayers } from "./PlayerTables"
-import { Grid, Hint, Who } from "./parts"
+import { trustOf } from "@/lib/trust"
+import { Grid, Hint, TrustChip, Who } from "./parts"
 
 const sign = (v: number, d = 1) => `${v > 0 ? "+" : ""}${v.toFixed(d)}`
 const pct = (v: number | null) => (v === null ? "-" : `${Math.round(v * 100)}%`)
@@ -65,8 +66,8 @@ function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
         {c.league.passedFg !== null && c.league.otherFg !== null && ` Shots off a pass went in ${pct(c.league.passedFg)} of the time, against ${pct(c.league.otherFg)} for the rest.`}
       </Hint>
       <Grid
-        head={["Player", `Set up/${PER}`, "Went in", `AST/${PER}`, "Shot quality"]}
-        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.created25.toFixed(1), pct(r.made / r.created), r.assists25.toFixed(1), `${r.expected.toFixed(2)} pts`] }))}
+        head={["Player", `Set up/${PER}`, "Went in", `AST/${PER}`, "Shot quality", "Sample"]}
+        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.created25.toFixed(1), pct(r.made / r.created), r.assists25.toFixed(1), `${r.expected.toFixed(2)} pts`, <TrustChip key="t" t={trustOf(r.created, "shots")} />] }))}
       />
       <Hint>Shot quality is the league's average points on that kind of shot, so it says how good the looks were, not whether they went in.</Hint>
     </div>
@@ -83,8 +84,8 @@ function Chance({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (i
         Each made basket moves the scoring team's chance of winning, more late and in close games. The scorer gets the credit (65% of it when a pass led to the basket, 35% to the passer), and defenders on that shot share what was allowed. Games usually end near {w.expectedTotal} points. Shown in points of win chance per {PER} points, so +10 is ten percentage points of win chance.
       </Hint>
       <Grid
-        head={["Player", "Added", "Allowed", "Net"]}
-        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, (r.added25 * 100).toFixed(0), (r.allowed25 * 100).toFixed(0), sign(r.net25 * 100, 0)] }))}
+        head={["Player", "Added", "Allowed", "Net", "Sample"]}
+        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, (r.added25 * 100).toFixed(0), (r.allowed25 * 100).toFixed(0), sign(r.net25 * 100, 0), <TrustChip key="t" t={trustOf(r.games, "games")} />] }))}
       />
       {w.swings.length > 0 && (
         <div className="flex flex-col gap-1">
@@ -111,8 +112,8 @@ function Cost({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id:
         {t.perTurnover !== null && ` The other team's next shot after a turnover scored ${t.perTurnover.toFixed(2)} points on average (${t.followed} cases), so ${t.perTurnover > t.perPossession ? "a giveaway costs a little more than a typical possession" : "a giveaway costs about a typical possession"}.`}
       </Hint>
       <Grid
-        head={["Player", "Gave", "Forced", `Net pts/${PER}`]}
-        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, String(r.giveaways), String(r.forced), sign(r.net25, 2)] }))}
+        head={["Player", "Gave", "Forced", `Net pts/${PER}`, "Sample"]}
+        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, String(r.giveaways), String(r.forced), sign(r.net25, 2), <TrustChip key="t" t={trustOf(r.games, "games")} />] }))}
       />
       <Hint>Live-ball turnovers only: a stolen or blocked shot is already counted as a shot. Net is turnovers forced minus turnovers given away, at the league's points per possession.</Hint>
     </div>

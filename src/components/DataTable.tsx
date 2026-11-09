@@ -36,6 +36,14 @@ interface Props<R> {
   emptyHint?: string
 }
 
+// A row built on very few games is shown fainter, in every table that carries a games-played count.
+const THIN_GAMES = 3
+const THIN_NOTE = `Fewer than ${THIN_GAMES} games, so this can change a lot`
+const thin = (r: unknown) => {
+  const gp = (r as { gp?: unknown }).gp
+  return typeof gp === "number" && gp > 0 && gp < THIN_GAMES
+}
+
 // Where a value sits in its column: bars grow from zero, so a column with negatives draws aqua to the
 // right of the zero line and crimson to the left, and an all-positive column is a plain neutral bar.
 interface Range {
@@ -163,7 +171,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
           </TableHeader>
           <TableBody>
             {sorted.map((r, i) => (
-              <TableRow key={rowKey(r, i)}>
+              <TableRow key={rowKey(r, i)} className={thin(r) ? "opacity-60" : undefined} title={thin(r) ? THIN_NOTE : undefined}>
                 {columns.map((col, i) => {
                   if (i === 0) {
                     return (
@@ -201,7 +209,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
 
       <div className="flex flex-col gap-3 md:hidden">
         {(allCards ? sorted : sorted.slice(0, PHONE_CARDS)).map((r, i) => (
-          <Card key={rowKey(r, i)}>
+          <Card key={rowKey(r, i)} className={thin(r) ? "opacity-70" : undefined} title={thin(r) ? THIN_NOTE : undefined}>
             <CardContent className="flex flex-col gap-2">
               <div className="font-medium">{renderFirst ? renderFirst(r) : <Cell col={first} r={r} />}</div>
               {hero && hero.key !== first.key && (
