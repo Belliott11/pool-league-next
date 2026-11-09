@@ -50,6 +50,9 @@ begin
 end;
 $$;
 
+-- A trigger function: the trigger fires without this grant, and nobody needs to call it through the API.
+revoke execute on function public.snapshot_league_state() from public, anon, authenticated;
+
 drop trigger if exists league_state_snapshot on public.league_state;
 create trigger league_state_snapshot
   before update on public.league_state
