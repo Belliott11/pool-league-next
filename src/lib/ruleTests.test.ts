@@ -75,11 +75,11 @@ describe("contest levels", () => {
   for (let i = 0; i < 30; i++) ev.push(shot(`o${i}`, "a", i < 15, 200 + i, { rebounderId: "b" }))
   const rs = ruleTests(state([game("g", "2026-08-01", ev)]), [])
   it("keeps light contests out of the open-shot test", () => {
-    expect(rule(rs, "open-shots").numbers).toContain("Open 50%, medium or heavy contest 17%")
+    expect(rule(rs, "open-shots").numbers).toContain("Wide open 50%, medium or heavy contest 17%")
   })
   it("tests beating your defender on its own, for the same shooter and zone", () => {
-    expect(rule(rs, "beat-your-man").verdict).toBe("holds")
-    expect(rule(rs, "beat-your-man").numbers).toContain("Light contest or got beat 83%")
+    expect(rule(rs, "defensive-breakdown").verdict).toBe("holds")
+    expect(rule(rs, "defensive-breakdown").numbers).toContain("Light contest or got beat 83%")
   })
 })
 

@@ -5162,14 +5162,17 @@ function renderPassingChemistryGrid() {
 }
 
 function computeWideOpenShooting() {
-  const totals = {}; // playerId -> { pts, fga, totalFga }
+  const totals = {}; // playerId -> { pts, fga, totalFga, beat }
   state.games.filter(isQualifyingGame).forEach(game => {
     game.scoringEvents.forEach(ev => {
       if (ev.points !== 2 && ev.points !== 3) return;
-      const t = totals[ev.scorerId] = totals[ev.scorerId] || { pts: 0, fga: 0, totalFga: 0 };
+      const t = totals[ev.scorerId] = totals[ev.scorerId] || { pts: 0, fga: 0, totalFga: 0, beat: 0 };
       t.totalFga++;
-      if (!ev.defenderIds || ev.defenderIds.length === 0) {
+      // Wide open means nobody is on the shot: no defender tagged, or the tagged defender got beat and is out of the play.
+      const gotBeat = ev.contestLevel === "beat";
+      if (!ev.defenderIds || ev.defenderIds.length === 0 || gotBeat) {
         t.fga++;
+        if (gotBeat) t.beat++;
         if (ev.made !== false) t.pts += ev.points;
       }
     });
@@ -5178,6 +5181,7 @@ function computeWideOpenShooting() {
     .map(([playerId, v]) => ({
       player: state.players.find(p => p.id === playerId),
       wideOpenFga: v.fga,
+      beatFga: v.beat,
       totalFga: v.totalFga,
       share: pct(v.fga, v.totalFga),
       ts: v.fga > 0 ? trueShootingPct(v.pts, v.fga, 0) : null
@@ -5188,6 +5192,7 @@ function computeWideOpenShooting() {
 const WIDE_OPEN_COLUMNS = [
   { key: "player", label: "Player", accessor: r => r.player.name },
   { key: "wideOpenFga", label: "Wide-Open FGA", accessor: r => r.wideOpenFga },
+  { key: "beatFga", label: "Of Those, Defender Got Beat", accessor: r => r.beatFga },
   { key: "share", label: "Share of FGA", accessor: r => r.share },
   { key: "ts", label: "TS%", accessor: r => r.ts }
 ];
@@ -5203,8 +5208,8 @@ function renderWideOpenShootingPanel() {
   const sortCol = WIDE_OPEN_COLUMNS.find(c => c.key === wideOpenSort.key);
   rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), wideOpenSort.dir));
   body.innerHTML = rows.length === 0
-    ? '<tr><td colspan="4" class="empty-state">No field goals without a tagged defender yet.</td></tr>'
-    : rows.map(r => `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.wideOpenFga}</td><td>${formatPct(r.share)}</td><td>${formatPct(r.ts)}</td></tr>`).join("");
+    ? '<tr><td colspan="5" class="empty-state">No wide-open field goals yet.</td></tr>'
+    : rows.map(r => `<tr><td>${playerLink(r.player.id, r.player.name)}</td><td>${r.wideOpenFga}</td><td>${r.beatFga}</td><td>${formatPct(r.share)}</td><td>${formatPct(r.ts)}</td></tr>`).join("");
 }
 
 function renderAssistSynergy() {
@@ -7516,7 +7521,7 @@ function computeAreasToWorkOn(playerId) {
       let pts = 0, fga = 0;
       g.scoringEvents.forEach(ev => {
         if (ev.scorerId !== pid || (ev.points !== 2 && ev.points !== 3)) return;
-        if (ev.defenderIds && ev.defenderIds.length > 0) return;
+        if (ev.defenderIds && ev.defenderIds.length > 0 && ev.contestLevel !== "beat") return;
         fga++;
         if (ev.made !== false) pts += ev.points;
       });
@@ -11606,10 +11611,10 @@ export const TABLE_PANELS = [
     empty: () => `No games decided by ${clutchMarginThreshold()} points or fewer yet.`,
     extra: [] },
   { section: "shooting", order: 20, fn: "renderWideOpenShootingPanel", title: "Wide-Open Shooting", bodyId: "wideOpenBody", headerId: "wideOpenHeaderRow",
-    columns: __withDisplay(WIDE_OPEN_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.wideOpenFga}`, (r) => `${formatPct(r.share)}`, (r) => `${formatPct(r.ts)}`]),
+    columns: __withDisplay(WIDE_OPEN_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.wideOpenFga}`, (r) => `${r.beatFga}`, (r) => `${formatPct(r.share)}`, (r) => `${formatPct(r.ts)}`]),
     rows: () => (computeWideOpenShooting()),
     sort: { key: "ts", dir: "desc" },
-    empty: () => `No field goals without a tagged defender yet.`,
+    empty: () => `No wide-open field goals yet.`,
     extra: [] },
   { section: "matchups", order: 33, fn: "renderTeammateContextPanel", title: "Teammate Context", bodyId: "teammateContextBody", headerId: "teammateContextHeaderRow",
     columns: __withDisplay(TEAMMATE_CONTEXT_COLUMNS, [(r) => `${__playerText(r.player.id, r.player.name)}`, (r) => `${r.gp}`, (r) => `${r.offRatingPer25.toFixed(1)}`, (r) => `${r.teammateQuality !== null ? r.teammateQuality.toFixed(1) : "—"}`, (r) => `${r.offMatchupDifficulty !== null ? r.offMatchupDifficulty.toFixed(1) : "—"}`, (r) => `${r.defMatchupDifficulty !== null ? r.defMatchupDifficulty.toFixed(1) : "—"}`, (r) => `${r.assistedPct !== null ? formatPct(r.assistedPct) : "—"}`, (r) => `${r.avgAssisterQuality !== null ? r.avgAssisterQuality.toFixed(1) : "—"}`]),

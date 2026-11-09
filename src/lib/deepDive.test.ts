@@ -110,6 +110,14 @@ describe("identity", () => {
     expect(b.open).toBe(3 / 4)
     expect(b.defenders).toBe(1 / 4)
   })
+  it("counts a beaten defender as wide open, and counts it on both players", () => {
+    const beat: PooleanState = { ...state, games: [{ ...game, scoringEvents: [...events, shot("bt", "b", 3, true, { contestLevel: "beat", defenderIds: ["a"] })] }] }
+    const rows = playerIdentity(beat).rows
+    expect(rows.find((x) => x.id === "b")!.openOffBeat).toBe(1)
+    expect(rows.find((x) => x.id === "a")!.gotBeat).toBe(1)
+    const before = playerIdentity({ ...state, games: [{ ...game, scoringEvents: [...events, shot("bt", "b", 3, true, { contestLevel: "heavy", defenderIds: ["a"] })] }] }).rows.find((x) => x.id === "b")!.open
+    expect(rows.find((x) => x.id === "b")!.open).toBeGreaterThan(before)
+  })
   it("pulls a zone toward the league", () => {
     const b = r.rows.find((x) => x.id === "b")!
     expect(b.zones.close.att).toBe(4)

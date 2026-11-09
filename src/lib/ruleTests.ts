@@ -282,7 +282,8 @@ function shotRules(state: PooleanState): Rule[] {
   // they include defenders who just got beat, which is a different thing from being guarded.
   const sameSpot = (e: ScoringEvent) => `${e.scorerId}|${zoneOf(e)}`
   const tight = (e: ScoringEvent) => e.contestLevel === "medium" || e.contestLevel === "heavy"
-  const open = splitByZone(shots.filter((e) => e.contestLevel === "none" || tight(e)), (e) => e.contestLevel === "none", sameSpot)
+  const isOpen = (e: ScoringEvent) => e.contestLevel === "none" || e.contestLevel === "beat"
+  const open = splitByZone(shots.filter((e) => isOpen(e) || tight(e)), isOpen, sameSpot)
   const openS = stratified(open.groups)
   // Old shots only have Light Contest, which mixes the two. Once enough are tagged Got Beat, it gets tested on its own.
   const beatTags = shots.filter((e) => e.contestLevel === "beat").length >= BEAT_MIN
@@ -333,21 +334,21 @@ function shotRules(state: PooleanState): Rule[] {
     {
       id: "open-shots",
       sport: "Every sport",
-      claim: "An open shot beats a tightly guarded one",
-      numbers: `Open ${pc(open.a)}, medium or heavy contest ${pc(open.b)}${openS.diff !== null ? `, ${signed(openS.diff)} points for the same shooter from the same zone` : ""}`,
+      claim: "A wide-open shot beats a tightly guarded one",
+      numbers: `Wide open ${pc(open.a)}, medium or heavy contest ${pc(open.b)}${openS.diff !== null ? `, ${signed(openS.diff)} points for the same shooter from the same zone` : ""}`,
       n: `${open.a.att + open.b.att} shots`,
       ...fromCompare(openS.verdict, openS.diff, Math.min(open.a.att, open.b.att)),
       advice: "Getting open is worth it, for the same shooter from the same spot. Move without the ball.",
     },
     {
-      id: "beat-your-man",
+      id: "defensive-breakdown",
       sport: "Basketball",
-      claim: "Beating your defender gives the best look",
+      claim: "A beaten defender gives up the best look",
       numbers: `${beatTags ? "Got beat" : "Light contest or got beat"} ${pc(beat.a)}, medium or heavy ${pc(beat.b)}${beatS.diff !== null ? `, ${signed(beatS.diff)} points for the same shooter from the same zone` : ""}`,
       n: `${beat.a.att + beat.b.att} shots`,
       ...fromCompare(beatS.verdict, beatS.diff, Math.min(beat.a.att, beat.b.att)),
-      note: beatTags ? undefined : `Light contests still count here until ${BEAT_MIN} shots are tagged Got Beat.`,
-      advice: beatS.diff !== null ? `A defender left trailing is the best thing that happens on offense: ${pc(beat.a)} against ${pc(beat.b)} when someone is really on the shot. Attack your man.` : undefined,
+      note: beatTags ? "A defensive breakdown, not a measure of the shooter." : `A defensive breakdown, not a measure of the shooter. Light contests still count here until ${BEAT_MIN} shots are tagged Got Beat.`,
+      advice: beatS.diff !== null ? `A beaten defender gives up the best look: ${pc(beat.a)} against ${pc(beat.b)} when someone is really on the shot. This is a defensive breakdown more than offensive skill, so stay in front of your man and have teammates ready to help.` : undefined,
     },
     {
       id: "extra-pass",

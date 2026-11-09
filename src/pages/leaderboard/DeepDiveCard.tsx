@@ -129,14 +129,14 @@ function IdentityTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlaye
   const d = useMemo(() => playerIdentity(state), [state])
   if (d.rows.length === 0) return <Hint>Shows up once games are logged shot by shot.</Hint>
   const max = Math.max(...d.rows.flatMap((r) => ZONES.map((z) => Math.abs(r.zones[z].vsLeague ?? 0))), 0.1)
-  const hasBeat = d.rows.some((r) => r.beatTheirMan > 0)
+  const hasBeat = d.rows.some((r) => r.gotBeat > 0 || r.openOffBeat > 0)
   return (
     <>
-      <Hint>How free a player gets and the shots they choose. Across the league {pc(d.league.open)} of shots are open and {d.league.defenders.toFixed(2)} defenders are on a shot. Shot choice is the league's average points on the shots they take, against the league's {d.league.quality.toFixed(2)}.</Hint>
+      <Hint>How free a player gets and the shots they choose. Open means nobody is on the shot, including a defender who got beat. Got beat counts how often a player was the beaten defender, which is a breakdown on their end. Across the league {pc(d.league.open)} of shots are open and {d.league.defenders.toFixed(2)} defenders are on a shot. Shot choice is the league's average points on the shots they take, against the league's {d.league.quality.toFixed(2)}.</Hint>
       <Grid
         min="38rem"
-        head={["Player", "Shots", "Open", "Off a pass", "On their own", "Defenders", ...(hasBeat ? ["Beat their man", "Got beat"] : []), "Shot choice", "Sample"]}
-        rows={d.rows.map((r) => ({ key: r.id, cells: [<Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.shots, pc(r.open), pc(r.openPassed), pc(r.openSelf), r.defenders.toFixed(2), ...(hasBeat ? [r.beatTheirMan, r.gotBeat] : []), sign(r.qualityVsLeague, 2), <TrustChip key="t" t={trustOf(r.shots, "shots")} />] }))}
+        head={["Player", "Shots", "Open", "Off a pass", "On their own", "Defenders", ...(hasBeat ? ["Got beat (defending)", "Open off a beat defender"] : []), "Shot choice", "Sample"]}
+        rows={d.rows.map((r) => ({ key: r.id, cells: [<Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.shots, pc(r.open), pc(r.openPassed), pc(r.openSelf), r.defenders.toFixed(2), ...(hasBeat ? [r.gotBeat, r.openOffBeat] : []), sign(r.qualityVsLeague, 2), <TrustChip key="t" t={trustOf(r.shots, "shots")} />] }))}
       />
       <Title>Points per shot by zone, against the league</Title>
       <Hint>Small samples are pulled toward the league, so a few lucky shots do not top the column. The number in brackets is shots from there. Darker is further from the league.</Hint>

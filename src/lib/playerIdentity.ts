@@ -25,8 +25,8 @@ export interface IdentityRow {
   openPassed: number | null // the same, on shots off a pass
   openSelf: number | null // the same, on shots they got themselves
   defenders: number // average defenders on a shot
-  beatTheirMan: number // their shots tagged Got Beat
-  gotBeat: number // shots they were tagged Got Beat on, as the defender
+  gotBeat: number // times they were the defender tagged Got Beat
+  openOffBeat: number // their wide-open shots that came off a beaten defender
   quality: number // average league points on the shots they take
   qualityVsLeague: number
   zones: Record<Zone, ZoneValue>
@@ -42,7 +42,7 @@ function zoneOf(e: ScoringEvent): Zone | null {
   const d = Math.hypot(e.shotLocation.x - 50, e.shotLocation.y)
   return e.points === 3 ? (d > DEEP_THREE ? "deep" : "arc") : d > CLOSE_RANGE ? "mid" : "close"
 }
-const isOpen = (e: ScoringEvent) => e.contestLevel === "none"
+const isOpen = (e: ScoringEvent) => e.contestLevel === "none" || e.contestLevel === "beat"
 const passed = (e: ScoringEvent) => !!e.passerId && e.passerId !== "none" && e.passerId !== e.scorerId
 const share = (xs: ScoringEvent[], f: (e: ScoringEvent) => boolean) => (xs.length ? xs.filter(f).length / xs.length : null)
 const defenders = (e: ScoringEvent) => e.defenderIds?.length ?? 0
@@ -77,7 +77,7 @@ export function playerIdentity(state: PooleanState): PlayerIdentity {
       openPassed: share(xs.filter(passed), isOpen),
       openSelf: share(xs.filter((e) => !passed(e)), isOpen),
       defenders: mean(xs, defenders),
-      beatTheirMan: xs.filter((e) => e.contestLevel === "beat").length,
+      openOffBeat: xs.filter((e) => e.contestLevel === "beat").length,
       gotBeat: all.filter((e) => e.contestLevel === "beat" && (e.defenderIds ?? []).includes(id)).length,
       quality: mean(xs, expect),
       qualityVsLeague: mean(xs, expect) - league.quality,

@@ -138,7 +138,7 @@ Rules from other sports tested on league data (`src/lib/ruleTests.ts`), with a v
 Captains pick unless the same teams already played that day, which is a runback. `teamsPickedBy` on a game records anything else (balanced, random). Random-team games are the closest thing the league has to an experiment.
 
 **Got beat**:
-A contest level for a defender beaten right before the shot. It counts as no resistance. Older shots may still be tagged Light Contest; `contestChecked` marks one that has been reviewed.
+A contest level for a defender beaten right before the shot. It counts as no resistance, and the shot counts as wide open. It reads as a defensive breakdown, so it is shown against the defender first and the shooter second. Older shots may still be tagged Light Contest; `contestChecked` marks one that has been reviewed.
 
 **Panel group**:
 Related Leaderboard or Player panels combined into one panel with a tab each, so nothing repeats and the pages are shorter (for example Awards, Shot mix, Turnovers, Old site history). Defined in `src/lib/panelGroups.ts`. A panel that only repeated another (Season Timeline, the self-inflicted turnover bars) was dropped; tuning views (Calibrated Thresholds, Win Shares model) sit in an editor-only Developer views group.

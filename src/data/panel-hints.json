@@ -60,7 +60,7 @@
   "hint": "Does the team shooting at one hoop do better? League-wide shooting and win rate by direction, from games where the direction is set in Stat Entry."
  },
  "Wide-Open Shooting": {
-  "hint": "Shots with no defender tagged. Free throws aren't counted. Share of FGA shows how much of each player's shooting was wide open. Click a column to sort."
+  "hint": "Shots with nobody on them: no defender tagged, or the tagged defender got beat and was out of the play. Free throws aren't counted. The Got Beat column says how many of those came off a beaten defender. Share of FGA shows how much of each player's shooting was wide open. Click a column to sort."
  },
  "Shot-Making Added (xPTS)": {
   "hint": "A shot's real difficulty depends on zone, shot type, AND contest level together -- a heavily-contested drive to the rim and a wide-open catch-and-shoot from the same zone aren't equally hard, but zone alone (Points Over Expected, in the advanced columns above) gives them the same expected value. xPTS is the league average points-per-attempt for that shot's exact zone x shot type x contest level combination, falling back to the zone-only average whenever a specific combination has too few logged shots to trust on its own. Shot-Making Added is actual points minus xPTS, summed across attempts -- separates \"scores a lot because the shots are easy\" from \"scores efficiently on hard shots.\" Sorted by Added per Attempt."
