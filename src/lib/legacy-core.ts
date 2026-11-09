@@ -5822,10 +5822,16 @@ function computeXptsCombos() {
     game.scoringEvents.forEach(ev => {
       if (ev.points !== 2 && ev.points !== 3) return;
       if (!ev.shotLocation) return;
-      const key = `${shotBand(ev.shotLocation, ev.points)}|${effShotType(ev) || "untyped"}|${ev.contestLevel || "unreviewed"}`;
-      const b = combos[key] = combos[key] || { pts: 0, fga: 0 };
-      b.fga++;
-      if (ev.made !== false) b.pts += ev.points;
+      const zone = shotBand(ev.shotLocation, ev.points);
+      const key = `${zone}|${effShotType(ev) || "untyped"}|${ev.contestLevel || "unreviewed"}`;
+      // A shot off a beaten defender is its own kind of look, far easier than the zone average. There are too few of them to
+      // split by shot type, so they also pool by zone and overall, which xptsForShot falls back to.
+      const keys = ev.contestLevel === "beat" ? [key, `${zone}|*|beat`, "*|*|beat"] : [key];
+      keys.forEach(k => {
+        const b = combos[k] = combos[k] || { pts: 0, fga: 0 };
+        b.fga++;
+        if (ev.made !== false) b.pts += ev.points;
+      });
     });
   });
   return combos;
@@ -5833,11 +5839,16 @@ function computeXptsCombos() {
 
 function xptsForShot(ev, combos, zonePpa) {
   if (ev.points !== 2 && ev.points !== 3) return null;
-  if (!ev.shotLocation) return zonePpa.overall;
+  const enough = k => combos[k] && combos[k].fga >= XPTS_MIN_COMBO_FGA ? combos[k].pts / combos[k].fga : null;
+  if (!ev.shotLocation) return (ev.contestLevel === "beat" ? enough("*|*|beat") : null) ?? zonePpa.overall;
   const zone = shotBand(ev.shotLocation, ev.points);
   const key = `${zone}|${effShotType(ev) || "untyped"}|${ev.contestLevel || "unreviewed"}`;
-  const combo = combos[key];
-  if (combo && combo.fga >= XPTS_MIN_COMBO_FGA) return combo.pts / combo.fga;
+  const own = enough(key);
+  if (own !== null) return own;
+  if (ev.contestLevel === "beat") {
+    const pooled = enough(`${zone}|*|beat`) ?? enough("*|*|beat");
+    if (pooled !== null) return pooled;
+  }
   const zoneVal = zonePpa.byZone[zone];
   return zoneVal !== null && zoneVal !== undefined ? zoneVal : zonePpa.overall;
 }
