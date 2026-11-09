@@ -2387,7 +2387,9 @@ function computeGotBeat(playerId) {
   });
   return { beat, tagged };
 }
-const gotBeatText = g => g.tagged === 0 ? "-" : `${g.beat} of ${g.tagged}`;
+const GOT_BEAT_MIN = 10; // tagged shots before a rate is shown and ranked
+const gotBeatRate = g => g.tagged >= GOT_BEAT_MIN ? g.beat / g.tagged : null;
+const gotBeatText = g => g.tagged === 0 ? "-" : `${g.beat} of ${g.tagged}${g.tagged >= GOT_BEAT_MIN ? ` (${Math.round(g.beat / g.tagged * 100)}%)` : ""}`;
 
 function computeDefensiveLoad(playerId) {
   const games = qualifyingGamesForPlayer(playerId);
@@ -2729,7 +2731,7 @@ const DEFENSIVE_LOAD_COLUMNS = [
     accessor: r => r.pointsAllowedUnderExpected,
     display: r => r.pointsAllowedUnderExpected === null ? "—" : `${r.pointsAllowedUnderExpected >= 0 ? "+" : ""}${r.pointsAllowedUnderExpected.toFixed(1)}`,
   },
-  { key: "gotbeat", label: "Got Beat", accessor: r => r.gotBeat.tagged ? r.gotBeat.beat / r.gotBeat.tagged : null, display: r => gotBeatText(r.gotBeat) },
+  { key: "gotbeat", label: "Got Beat Rate", accessor: r => gotBeatRate(r.gotBeat), display: r => gotBeatText(r.gotBeat) },
   { key: "read", label: "Read", accessor: r => r.sentence },
 ];
 
@@ -2823,7 +2825,7 @@ const SHOOTER_QUALITY_DEF_COLUMNS = [
   { key: "shooterq", label: "Shooter Quality Faced (TS%)", accessor: r => r.adj.shooterQualityFaced, display: r => formatPct(r.adj.shooterQualityFaced) },
   { key: "realfg", label: "Real Contested Opp FG%", accessor: r => r.adj.realContestedFgPct, display: r => formatPct(r.adj.realContestedFgPct) },
   { key: "dae", label: "Defense Above Expected", accessor: r => r.adj.defenseAboveExpected, display: r => `${r.adj.defenseAboveExpected >= 0 ? "+" : ""}${r.adj.defenseAboveExpected.toFixed(1)}` },
-  { key: "gotbeat", label: "Got Beat", accessor: r => r.gotBeat.tagged ? r.gotBeat.beat / r.gotBeat.tagged : null, display: r => gotBeatText(r.gotBeat) },
+  { key: "gotbeat", label: "Got Beat Rate", accessor: r => gotBeatRate(r.gotBeat), display: r => gotBeatText(r.gotBeat) },
 ];
 
 let shooterQualityDefSort = { key: "dae", dir: "desc" };
