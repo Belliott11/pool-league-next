@@ -1,26 +1,26 @@
-import { ChevronDown, ChevronUp, GripVertical, ListOrdered, Target } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Rocket, Target } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { IdentityPrompt } from "@/components/WhoAmI"
 import { Button } from "@/components/ui/button"
 import { getClient } from "@/lib/cloud"
 import { myPlayerId, useWho } from "@/lib/identity"
-import { ballotPool, isOffseason } from "@/lib/offseason"
+import { isOffseason } from "@/lib/offseason"
 import { ordinalOf } from "@/lib/ordinal"
 import { playerName } from "@/lib/players"
-import { actualOrder, actualResults, AWARD_PICKS, ballotFor, biggestMisses, duoKey, loadAllPredictions, pastSeasons, savePrediction, scoreBallots, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
+import { actualResults, AWARD_PICKS, duoKey, JUMP_POINTS, JUMP_SPOTS, jumpPicks, loadAllPredictions, MAX_JUMPS, priorSeason, savePrediction, scorePredictions, type Entry, type Picks } from "@/lib/predictions"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 // Everyone's preseason entries for the season that starts on opening night. The hub loads them once and hands them to
-// its list and both cards, so a saved ballot shows in the group ranking at once. Both cards write the same row per
+// its list and both cards, so saved picks show in the group's list at once. Both cards write the same row per
 // person, and each save keeps whatever the other card already saved.
 export function usePredictions(state: PooleanState) {
   const client = getClient()
   const season = state.openingNight?.date
   const who = useWho()
   const me = myPlayerId(who, state.players)
-  // One read of every season's rows: this season's entries, plus the past seasons for "last season's best ballot".
+  // One read of every season's rows: this season's entries, plus the past seasons, which scoring needs.
   const [all, setAll] = useState<(Entry & { season: string })[]>([])
   const refresh = useCallback(() => {
     if (client) void loadAllPredictions(client).then(setAll)
@@ -59,47 +59,52 @@ function PlayerSelect({ state, value, onChange, label, taken = [] }: { state: Po
   )
 }
 
-// Before opening night everyone ranks every player in the app. Drag a row (or use its arrows) to move it. The group's
-// combined ranking shows in the hub's predicted power ranking.
-export function PowerVoteCard({ state, p }: { state: PooleanState; p: PredictionsData }) {
-  const { client, season, me, all, entries, mine, save, open } = p
-  const pool = useMemo(() => ballotPool(state), [state])
-  const last = useMemo(() => pastSeasons(state, all)[0], [state, all])
-  const [ballot, setBallot] = useState<string[]>([])
+// Before opening night everyone names up to three players they think will make a jump. The group's picks show in the hub.
+export function JumpPicksCard({ state, p }: { state: PooleanState; p: PredictionsData }) {
+  const { client, season, me, entries, mine, save, open } = p
+  const [picked, setPicked] = useState<string[]>([])
   const [status, setStatus] = useState("")
-  // Keyed on the contents, not the objects: the data refreshes every minute, and that must not undo a half-made ballot.
-  const poolKey = pool.join(",")
-  const savedKey = (mine?.picks.ranking ?? []).join(",")
+  // Keyed on the contents: the data refreshes every minute, and that must not undo half-made picks.
+  const savedKey = (mine?.picks.jumps ?? []).join(",")
   useEffect(() => {
-    setBallot(ballotFor(poolKey.split(","), savedKey ? savedKey.split(",") : undefined, poolKey.split(",")))
-  }, [poolKey, savedKey])
-  const ballots = entries.filter((e) => (e.picks.ranking ?? []).length > 0).length
-  if (!client || !season || !open || pool.length < 2) return null
+    setPicked(savedKey ? savedKey.split(",") : [])
+  }, [savedKey])
+  if (!client || !season || !open) return null
+  const roster = [...state.players].sort((a, b) => a.name.localeCompare(b.name))
+  const toggle = (id: string) => {
+    setStatus("")
+    setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length < MAX_JUMPS ? [...cur, id] : cur))
+  }
   const submit = async () => {
     setStatus("Saving")
-    setStatus((await save({ ranking: ballot })) ? "Saved" : SAVE_FAILED)
+    setStatus((await save({ jumps: picked })) ? "Saved" : SAVE_FAILED)
   }
+  const inSoFar = entries.filter((e) => (e.picks.jumps ?? []).length > 0).length
   return (
-    <section className="flex flex-col gap-3 rounded-xl border bg-card p-4" aria-label="Preseason power ranking prediction">
+    <section className="flex flex-col gap-3 rounded-xl border bg-card p-4" aria-label="Pick who makes a jump">
       <h3 className="flex items-center gap-2 font-display text-lg font-bold">
-        <ListOrdered aria-hidden className="size-4 text-accent" /> Your power ranking prediction
+        <Rocket aria-hidden className="size-4 text-accent" /> Who makes a jump?
       </h3>
       <p className="text-sm text-muted-foreground">
-        Predict how all {pool.length} players will rank next season: drag them into the order you think they will finish. At the end of the season your prediction is scored against the real Standings, and the closest one wins. Everyone's predictions are combined into the predicted ranking above. {ballots} {ballots === 1 ? "prediction" : "predictions"} in.
+        Pick up to {MAX_JUMPS} players you think will make a jump next season. A pick scores {JUMP_POINTS} points if they finish at least {JUMP_SPOTS} spots higher in the Standings than last season, among players ranked in both. {inSoFar} {inSoFar === 1 ? "person" : "people"} in so far.
       </p>
-      {last?.ballot && (
-        <p className="rounded-lg bg-muted px-3 py-2 text-sm">
-          Last season's closest prediction: <span className="font-semibold">{playerName(state, last.ballot.voter)}</span>, off by {last.ballot.miss.toFixed(1)} spots a player.
-        </p>
-      )}
       {!me ? (
-        <IdentityPrompt state={state} text="Who are you? Pick yourself to vote." />
+        <IdentityPrompt state={state} text="Who are you? Pick yourself to make your picks." />
       ) : (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-muted-foreground">Drag a row by its handle, or use the arrows. It starts in last season's order by the numbers.</p>
-          <DragBallot state={state} ballot={ballot} setBallot={setBallot} />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-1.5">
+            {roster.map((x) => {
+              const on = picked.includes(x.id)
+              return (
+                <button key={x.id} type="button" aria-pressed={on} disabled={!on && picked.length >= MAX_JUMPS} onClick={() => toggle(x.id)} className={cn("flex min-h-10 items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-3 text-sm disabled:opacity-40", on && "border-primary bg-primary text-primary-foreground")}>
+                  <PlayerAvatar id={x.id} name={x.name} size="sm" />
+                  {x.name}
+                </button>
+              )
+            })}
+          </div>
           <Button className="self-start" onClick={() => void submit()}>
-            {mine?.picks.ranking ? "Update my prediction" : "Lock in my prediction"}
+            {mine?.picks.jumps?.length ? "Update my picks" : "Lock in my picks"}
           </Button>
           {status && <p className="text-xs text-muted-foreground">{status}</p>}
         </div>
@@ -108,70 +113,9 @@ export function PowerVoteCard({ state, p }: { state: PooleanState; p: Prediction
   )
 }
 
-// The prediction list (the ballot). Press and drag a row's handle (any part of the row with a mouse) and the row follows the pointer,
-// swapping places as it passes the middle of its neighbours. The arrows do the same one step at a time for keyboards.
-function DragBallot({ state, ballot, setBallot }: { state: PooleanState; ballot: string[]; setBallot: (f: (cur: string[]) => string[]) => void }) {
-  const list = useRef<HTMLOListElement>(null)
-  const [dragging, setDragging] = useState<string | null>(null)
-  const move = (from: number, to: number) =>
-    setBallot((cur) => {
-      if (to < 0 || to >= cur.length || from === to) return cur
-      const next = [...cur]
-      const [id] = next.splice(from, 1)
-      next.splice(to, 0, id)
-      return next
-    })
-  const onDown = (e: React.PointerEvent<HTMLLIElement>, id: string) => {
-    const t = e.target as Element
-    if (t.closest("button")) return
-    if (e.pointerType !== "mouse" && !t.closest("[data-handle]")) return
-    e.preventDefault()
-    // Captured on the list, which never moves, so reordering the rows cannot drop the drag.
-    list.current?.setPointerCapture(e.pointerId)
-    setDragging(id)
-  }
-  const onMove = (e: React.PointerEvent<HTMLOListElement>) => {
-    if (!dragging || !list.current) return
-    const rows = [...list.current.children] as HTMLElement[]
-    const from = ballot.indexOf(dragging)
-    let to = rows.findIndex((r) => {
-      const b = r.getBoundingClientRect()
-      return e.clientY < b.top + b.height / 2
-    })
-    if (to === -1) to = rows.length - 1
-    else if (to > from) to -= 1
-    if (to !== from) move(from, to)
-  }
-  const end = () => setDragging(null)
-  return (
-    <ol ref={list} data-no-swipe onPointerMove={onMove} onPointerUp={end} onPointerCancel={end} className="flex select-none flex-col gap-1" aria-label="Your prediction">
-      {ballot.map((id, i) => (
-        <li
-          key={id}
-          onPointerDown={(e) => onDown(e, id)}
-          className={cn("flex items-center gap-2 rounded-lg border bg-card px-1 py-1 text-sm transition-shadow", dragging === id ? "relative z-10 shadow-lg ring-2 ring-accent" : "md:cursor-grab")}
-        >
-          <span data-handle aria-hidden className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground">
-            <GripVertical className="size-5" />
-          </span>
-          <span className="w-6 font-display font-bold tabular-nums text-muted-foreground">{i + 1}</span>
-          <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
-          <span className="min-w-0 flex-1 truncate font-medium">{playerName(state, id)}</span>
-          <button type="button" className="flex size-11 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30" disabled={i === 0} aria-label={`Move ${playerName(state, id)} up`} onClick={() => move(i, i - 1)}>
-            <ChevronUp aria-hidden className="size-5" />
-          </button>
-          <button type="button" className="flex size-11 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30" disabled={i === ballot.length - 1} aria-label={`Move ${playerName(state, id)} down`} onClick={() => move(i, i + 1)}>
-            <ChevronDown aria-hidden className="size-5" />
-          </button>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
 // Before opening night: call the award winners and the top three. After it: everyone's picks, scored live.
 export function PredictionsCard({ state, p }: { state: PooleanState; p: PredictionsData }) {
-  const { client, season, me, entries, mine, save, open } = p
+  const { client, season, me, all, entries, mine, save, open } = p
   const [draft, setDraft] = useState<Picks>({})
   const [duo, setDuo] = useState<[string, string]>(["", ""])
   const [status, setStatus] = useState("")
@@ -181,7 +125,7 @@ export function PredictionsCard({ state, p }: { state: PooleanState; p: Predicti
     const [a = "", b = ""] = (mine.picks.duo ?? "").split("|")
     setDuo([a, b])
   }, [mine])
-  const actual = useMemo(() => (season && !open ? actualResults(state, season) : null), [state, season, open])
+  const actual = useMemo(() => (season && !open ? actualResults(state, season, undefined, priorSeason(all.map((e) => e.season), season)) : null), [state, season, open, all])
   if (!client || !season) return null
   if (!open && entries.length === 0) return null
 
@@ -207,7 +151,7 @@ export function PredictionsCard({ state, p }: { state: PooleanState; p: Predicti
       {open ? (
         <>
           <p className="text-sm text-muted-foreground">
-            Call the award winners and the top three by two-way per 25 (the Standings order, at least 3 games) before opening night. Awards are worth 2 points, a top three spot 3 if exact and 1 if in the wrong spot. {entries.filter((e) => e.picks.mvp || (e.picks.top3 ?? []).length).length} in so far.
+            Call the award winners and the top three by two-way per 25 (the Standings order, at least 3 games) before opening night. Awards are worth 2 points, a top three spot 3 if exact and 1 if in the wrong spot. Jump picks score on top of these. {entries.filter((e) => e.picks.mvp || (e.picks.top3 ?? []).length).length} in so far.
           </p>
           {!me ? (
             <IdentityPrompt state={state} text="Who are you? Pick yourself to make your picks." />
@@ -242,7 +186,7 @@ export function PredictionsCard({ state, p }: { state: PooleanState; p: Predicti
                 </li>
               ))}
             </ol>
-            <BallotsSoFar state={state} entries={entries} season={season} />
+            <JumpsSoFar state={state} entries={entries} jumps={actual.jumps} />
           </>
         )
       )}
@@ -256,36 +200,25 @@ export function SeasonPredictionsCard({ state }: { state: PooleanState }) {
   return <PredictionsCard state={state} p={p} />
 }
 
-// How each preseason power ranking ballot is holding up against the standings, and who the group got most wrong.
-function BallotsSoFar({ state, entries, season }: { state: PooleanState; entries: Entry[]; season: string }) {
-  const order = useMemo(() => actualOrder(state, season), [state, season])
-  const scored = scoreBallots(entries, order)
-  if (scored.length === 0) return null
-  const { overrated, underrated } = biggestMisses(entries, order)
+// Who was picked to make a jump, and who is making one so far.
+function JumpsSoFar({ state, entries, jumps }: { state: PooleanState; entries: Entry[]; jumps: string[] }) {
+  const picks = jumpPicks(entries)
+  if (picks.length === 0) return null
   return (
     <div className="flex flex-col gap-1.5 border-t pt-3">
-      <h4 className="text-sm font-semibold">Power ranking predictions so far</h4>
-      <p className="text-xs text-muted-foreground">Average spots each prediction misses a player by, against the Standings. Lowest is closest.</p>
-      <ol className="flex flex-col gap-1 text-sm">
-        {scored.map((r, i) => (
-          <li key={r.voter} className="flex justify-between gap-2">
-            <span>
-              {i + 1}. {playerName(state, r.voter)}
+      <h4 className="text-sm font-semibold">Picked to make a jump</h4>
+      <p className="text-xs text-muted-foreground">Making one means {JUMP_SPOTS} or more spots higher in the Standings than last season. It changes as the season goes.</p>
+      <ul className="flex flex-col gap-1 text-sm">
+        {picks.map((r) => (
+          <li key={r.id} className="flex justify-between gap-2">
+            <span>{playerName(state, r.id)}</span>
+            <span className="tabular-nums text-muted-foreground">
+              {r.votes} {r.votes === 1 ? "pick" : "picks"}
+              {jumps.includes(r.id) ? ", making one" : ""}
             </span>
-            <span className="tabular-nums text-muted-foreground">off by {r.miss.toFixed(1)}</span>
           </li>
         ))}
-      </ol>
-      {overrated && (
-        <p className="text-xs">
-          Most overrated: <span className="font-semibold">{playerName(state, overrated.id)}</span>, ranked {overrated.gap.toFixed(1)} spots higher than they are.
-        </p>
-      )}
-      {underrated && (
-        <p className="text-xs">
-          Most underrated: <span className="font-semibold">{playerName(state, underrated.id)}</span>, {underrated.gap.toFixed(1)} spots better than the group thought.
-        </p>
-      )}
+      </ul>
     </div>
   )
 }

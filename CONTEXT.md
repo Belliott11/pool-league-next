@@ -102,9 +102,8 @@ One player's season told one fact at a time, from the season that just ended.
 **Preseason prediction**:
 A friend's call, made before opening night, on next season's award winners, top three and a power ranking of every player. Scored as the season plays out.
 
-**Predicted power ranking**:
-Everyone's power ranking predictions combined: each player's average predicted spot. Until anyone predicts, it shows last season by the numbers.
-_Avoid_: Way too early power ranking, ballot
+**Predicted players to watch**:
+The players the group picks to make a jump, up to three each, most picked first. A jump is finishing at least 2 spots higher in the Standings than the season before, among players ranked in both.
 
 **Players to watch**:
 Two short lists for next season from how players finished against how they started, using box scores, points from unfilmed games, and the old site's results and power rankings: "finishing strong" (played better in the second half of their games) and "due a bounce back" (cooled off late but strong over the season). A hint from a few games, never a forecast.
@@ -119,11 +118,6 @@ One third of a game by elapsed time, from its first shot to its last: first, mid
 
 **Hot hand**:
 Shooting better right after a make than right after a miss. Measured within one game for one shooter.
-
-### Scored ballots
-
-**Average miss**:
-How far off a preseason power ranking prediction was: the average number of spots it missed each ranked player by. Lowest is closest.
 
 **Pace, runs and swings**:
 League card on the Leaderboard from games with video times. Pace counts logged plays (shots and turnovers) per minute and the time between them, since there is no possession count. A run is unanswered baskets by one team, judged against a random order of the same baskets. Lead swings are lead changes, ties and games won from behind. Shooting by score state groups shots by the shooter's team margin: trailing 3 or more, close, leading 3 or more.

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest"
-import { earlyRanking } from "@/lib/offseason"
 import { EMPTY_OLD, type OldSite } from "@/lib/oldSite"
 import type { Game, PlayerGameStats, PooleanState } from "@/lib/types"
 import { watchList } from "@/lib/watchList"
@@ -68,16 +67,5 @@ describe("players to watch", () => {
     const w = watchList(state([]), 3, o)
     expect(w.rising).toEqual([])
     expect(w.bounce).toEqual([])
-  })
-})
-
-describe("early ranking with the old site", () => {
-  it("ranks a player with only old-site data, and averages it with the box score when both exist", () => {
-    const o = old({ power: new Map([["z", 90], ["x", 20]]), ranks: new Map([["z", [90, 90, 90]]]) })
-    const r = earlyRanking(state(six), o)
-    // x and y, z, w have box data (y best, then x tied with z by two-way). z also has old power 90 so it rises.
-    expect(r[0].id).toBe("z")
-    expect(r.find((p) => p.id === "x")?.oldPower).toBe(20)
-    expect(earlyRanking(state([]), o).map((p) => p.id)).toEqual(["z", "x"])
   })
 })

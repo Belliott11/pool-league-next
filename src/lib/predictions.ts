@@ -12,7 +12,7 @@ export interface Picks {
   mip?: string
   duo?: string // two player ids joined by "|", sorted
   top3?: string[]
-  ranking?: string[] // a preseason power ranking, best first
+  jumps?: string[] // players they think will make a jump
 }
 export interface Entry {
   voter: string
@@ -28,6 +28,9 @@ export const AWARD_PICKS = [
 export const AWARD_POINTS = 2
 export const EXACT_POINTS = 3
 export const TOP3_POINTS = 1
+export const JUMP_POINTS = 2
+export const MAX_JUMPS = 3
+export const JUMP_SPOTS = 2 // spots up the standings that count as a jump
 
 export async function loadPredictions(client: SupabaseClient, season: string): Promise<Entry[]> {
   const { data, error } = await client.from("season_predictions").select("voter,picks").eq("season", season)
@@ -47,42 +50,23 @@ export async function savePrediction(client: SupabaseClient, season: string, vot
   return !error
 }
 
-export interface ConsensusRow {
-  id: string
-  avg: number // average spot across the ballots that rank them, 1 is best
-  firsts: number
-  voters: number
+// Who the group expects to make a jump, most picked first. A repeat on one entry counts once.
+export function jumpPicks(entries: Entry[]): { id: string; votes: number }[] {
+  const votes = new Map<string, number>()
+  for (const e of entries) for (const id of new Set(e.picks.jumps ?? [])) votes.set(id, (votes.get(id) ?? 0) + 1)
+  return [...votes].map(([id, n]) => ({ id, votes: n })).sort((a, b) => b.votes - a.votes || a.id.localeCompare(b.id))
 }
 
-// The group's power ranking. Every ballot ranks everyone; a player's spot is their average place across ballots. Ties
-// go to whoever has more first-place votes, then more ballots.
-export function consensusRanking(entries: Entry[]): ConsensusRow[] {
-  const rows = new Map<string, { id: string; sum: number; firsts: number; voters: number }>()
-  for (const e of entries) {
-    const seen = new Set<string>()
-    ;(e.picks.ranking ?? []).forEach((id) => {
-      if (!id || seen.has(id)) return
-      seen.add(id)
-      const r = rows.get(id) ?? { id, sum: 0, firsts: 0, voters: 0 }
-      r.sum += seen.size
-      if (seen.size === 1) r.firsts++
-      r.voters++
-      rows.set(id, r)
-    })
-  }
-  return [...rows.values()]
-    .map((r) => ({ id: r.id, avg: r.sum / r.voters, firsts: r.firsts, voters: r.voters }))
-    .sort((a, b) => a.avg - b.avg || b.firsts - a.firsts || b.voters - a.voters)
+// Who finished at least JUMP_SPOTS higher than the season before, counting only players ranked in both.
+export function jumpers(before: string[], after: string[]): string[] {
+  const inBoth = (xs: string[], other: string[]) => xs.filter((id) => other.includes(id))
+  const was = inBoth(before, after)
+  const now = inBoth(after, before)
+  return now.filter((id, i) => was.indexOf(id) - i >= JUMP_SPOTS)
 }
 
-// A ballot over exactly this pool: the saved order first (anyone no longer in the pool dropped), then anyone new in the
-// fallback order.
-export function ballotFor(pool: string[], saved: string[] | undefined, fallback: string[]): string[] {
-  const inPool = new Set(pool)
-  const kept = (saved ?? []).filter((id, i, a) => inPool.has(id) && a.indexOf(id) === i)
-  const rest = [...fallback.filter((id) => inPool.has(id)), ...pool].filter((id, i, a) => !kept.includes(id) && a.indexOf(id) === i)
-  return [...kept, ...rest]
-}
+// The season before this one: the latest opening night earlier than it, or everything before it when there is none.
+export const priorSeason = (seasons: string[], season: string) => [...seasons].filter((s) => s < season).sort().at(-1) ?? ""
 
 export const duoKey = (a: string, b: string) => [a, b].sort().join("|")
 
@@ -92,6 +76,7 @@ export interface Actual {
   mip?: string
   duo?: string
   top3: string[]
+  jumps: string[]
 }
 
 // The season that started on opening night, up to (not including) the next one's.
@@ -124,21 +109,20 @@ export function actualOrder(state: PooleanState, from: string, to?: string): str
 }
 
 // Who leads right now in the season that started on opening night.
-export function actualResults(state: PooleanState, from: string, to?: string): Actual {
+export function actualResults(state: PooleanState, from: string, to?: string, before = ""): Actual {
   const rows = awardRace(seasonFrom(state, from, to))
   const lead = (key: string) => rows.find((r) => r.key === key)?.leaders[0]?.ids
   const duo = lead("best-duo")
-  return { mvp: lead("mvp")?.[0], dpoy: lead("dpoy")?.[0], mip: lead("mip")?.[0], duo: duo && duo.length === 2 ? duoKey(duo[0], duo[1]) : undefined, top3: actualOrder(state, from, to).slice(0, 3) }
+  return { mvp: lead("mvp")?.[0], dpoy: lead("dpoy")?.[0], mip: lead("mip")?.[0], duo: duo && duo.length === 2 ? duoKey(duo[0], duo[1]) : undefined, top3: actualOrder(state, from, to).slice(0, 3), jumps: jumpers(actualOrder(state, before, from), actualOrder(state, from, to)) }
 }
 
 export interface PastSeason {
   season: string
-  ballot?: { voter: string; miss: number }
   picks?: { voter: string; points: number }
 }
 
 // Finished seasons, newest first: each one runs from its opening night to the next. A season is finished once a later
-// opening night has been set. Each gets its closest power ranking ballot and its best set of predictions.
+// opening night has been set. Each gets its best set of predictions.
 export function pastSeasons(state: PooleanState, all: (Entry & { season: string })[]): PastSeason[] {
   const keys = [...new Set([...all.map((e) => e.season), ...(state.openingNight?.date ? [state.openingNight.date] : [])])].sort()
   return keys
@@ -146,57 +130,15 @@ export function pastSeasons(state: PooleanState, all: (Entry & { season: string 
     .map((season, i) => {
       const next = keys[i + 1]
       const entries = all.filter((e) => e.season === season)
-      const ballot = scoreBallots(entries, actualOrder(state, season, next))[0]
-      const best = scorePredictions(entries, actualResults(state, season, next))[0]
-      return { season, ballot, picks: best && best.points > 0 ? best : undefined }
+      const best = scorePredictions(entries, actualResults(state, season, next, keys[i - 1] ?? ""))[0]
+      return { season, picks: best && best.points > 0 ? best : undefined }
     })
-    .filter((p) => p.ballot || p.picks)
+    .filter((p) => p.picks)
     .reverse()
 }
 
-// A ballot cut down to the players in the standings, renumbered 1, 2, 3 in its own order.
-const spotsOn = (ballot: string[], order: string[]): Map<string, number> => {
-  const inOrder = new Set(order)
-  const kept = ballot.filter((id, i) => inOrder.has(id) && ballot.indexOf(id) === i)
-  return new Map(kept.map((id, i) => [id, i + 1]))
-}
-
-// How close each power ranking ballot came: the average number of spots it missed each ranked player by. Lower is
-// better; a ballot must cover at least 3 ranked players to count.
-export function scoreBallots(entries: Entry[], order: string[]): { voter: string; miss: number }[] {
-  const actual = new Map(order.map((id, i) => [id, i + 1]))
-  return entries
-    .map((e) => {
-      const spots = spotsOn(e.picks.ranking ?? [], order)
-      const misses = [...spots].map(([id, spot]) => Math.abs(spot - actual.get(id)!))
-      return { voter: e.voter, n: misses.length, miss: misses.reduce((a, b) => a + b, 0) / (misses.length || 1) }
-    })
-    .filter((r) => r.n >= 3)
-    .map(({ voter, miss }) => ({ voter, miss }))
-    .sort((a, b) => a.miss - b.miss)
-}
-
-// The players the group got most wrong: their average ballot spot against where they actually finished. A positive
-// gap means the group ranked them too high (overrated).
-export function biggestMisses(entries: Entry[], order: string[]): { overrated?: { id: string; gap: number }; underrated?: { id: string; gap: number } } {
-  const actual = new Map(order.map((id, i) => [id, i + 1]))
-  const sums = new Map<string, { sum: number; n: number }>()
-  for (const e of entries) {
-    for (const [id, spot] of spotsOn(e.picks.ranking ?? [], order)) {
-      const r = sums.get(id) ?? { sum: 0, n: 0 }
-      r.sum += spot
-      r.n++
-      sums.set(id, r)
-    }
-  }
-  const gaps = [...sums].map(([id, r]) => ({ id, gap: actual.get(id)! - r.sum / r.n }))
-  const over = gaps.filter((g) => g.gap > 0).sort((a, b) => b.gap - a.gap)[0]
-  const under = gaps.filter((g) => g.gap < 0).sort((a, b) => a.gap - b.gap)[0]
-  return { overrated: over, underrated: under ? { id: under.id, gap: -under.gap } : undefined }
-}
-
-// Points for each entry: an award called right is worth 2, a top three spot exactly right 3, and a top three pick in the
-// wrong spot 1. Best first.
+// Points for each entry: an award called right is worth 2, a top three spot exactly right 3, a top three pick in the
+// wrong spot 1, and a player who really made a jump 2. Best first.
 export function scorePredictions(entries: Entry[], actual: Actual): { voter: string; points: number }[] {
   return entries
     .map((e) => {
@@ -207,6 +149,7 @@ export function scorePredictions(entries: Entry[], actual: Actual): { voter: str
         if (actual.top3[i] === id) points += EXACT_POINTS
         else if (actual.top3.includes(id)) points += TOP3_POINTS
       })
+      for (const id of new Set(e.picks.jumps ?? [])) if (actual.jumps.includes(id)) points += JUMP_POINTS
       return { voter: e.voter, points }
     })
     .sort((a, b) => b.points - a.points)

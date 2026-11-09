@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { bestGames, careerTable, longestStreaks } from "@/lib/hallOfFame"
-import { ballotPool, isOffseason, isOpeningNight } from "@/lib/offseason"
-import { ballotFor, biggestMisses, consensusRanking, duoKey, scoreBallots, scorePredictions } from "@/lib/predictions"
+import { isOffseason, isOpeningNight } from "@/lib/offseason"
+import { duoKey, jumpers, jumpPicks, priorSeason, scorePredictions } from "@/lib/predictions"
 import type { Game, PooleanState } from "@/lib/types"
 import { wrappedFor } from "@/lib/wrapped"
 
@@ -65,7 +65,7 @@ describe("wrapped", () => {
 
 describe("predictions", () => {
   it("scores awards, exact top three spots and top three in the wrong spot", () => {
-    const actual = { mvp: "x", dpoy: "y", mip: undefined, duo: duoKey("x", "y"), top3: ["x", "y", "z"] }
+    const actual = { mvp: "x", dpoy: "y", mip: undefined, duo: duoKey("x", "y"), top3: ["x", "y", "z"], jumps: [] }
     const scored = scorePredictions(
       [
         { voter: "a", picks: { mvp: "x", dpoy: "z", duo: duoKey("y", "x"), top3: ["x", "z", "w"] } },
@@ -81,56 +81,23 @@ describe("predictions", () => {
   })
 })
 
-describe("preseason power ranking", () => {
-  it("ranks by average spot, counts a repeat once, and breaks ties on first-place votes", () => {
-    const rows = consensusRanking([
-      { voter: "a", picks: { ranking: ["x", "y", "z"] } },
-      { voter: "b", picks: { ranking: ["y", "x", "x", "z"] } },
-      { voter: "c", picks: { ranking: ["x", "z", "y"] } },
-      { voter: "d", picks: {} },
-    ])
-    // x: 1, 2, 1 = 1.33. y: 2, 1, 3 = 2. z: 3, 3, 2 = 2.67 (the repeat x on b does not push z down).
-    expect(rows.map((r) => [r.id, Math.round(r.avg * 100) / 100, r.firsts])).toEqual([
-      ["x", 1.33, 2],
-      ["y", 2, 1],
-      ["z", 2.67, 0],
-    ])
+describe("jump picks", () => {
+  it("counts a repeat once and puts the most picked first", () => {
+    const r = jumpPicks([{ voter: "a", picks: { jumps: ["x", "x", "y"] } }, { voter: "b", picks: { jumps: ["y"] } }, { voter: "c", picks: {} }])
+    expect(r).toEqual([{ id: "y", votes: 2 }, { id: "x", votes: 1 }])
   })
-
-  it("keeps a saved ballot's order, drops players who left and adds new ones at the end", () => {
-    expect(ballotFor(["x", "y", "z", "n"], ["z", "gone", "x"], ["y", "n", "x", "z"])).toEqual(["z", "x", "y", "n"])
-    expect(ballotFor(["x", "y"], undefined, ["y", "x"])).toEqual(["y", "x"])
+  it("calls a move of two spots a jump, among players ranked both seasons", () => {
+    // "new" was not ranked before, so it cannot jump and does not shift anyone. z goes from 3rd to 1st.
+    expect(jumpers(["x", "y", "z"], ["new", "z", "x", "y"])).toEqual(["z"])
+    expect(jumpers(["x", "y"], ["y", "x"])).toEqual([])
   })
-})
-
-describe("scored ballots", () => {
-  const order = ["x", "y", "z", "w"]
-  const entries = [
-    { voter: "a", picks: { ranking: ["x", "y", "z", "w", "gone"] } },
-    { voter: "b", picks: { ranking: ["w", "z", "y", "x"] } },
-    { voter: "c", picks: { ranking: ["y", "x"] } },
-  ]
-  it("scores by average spots missed, ignores players not in the standings, and needs 3 ranked players", () => {
-    // a is perfect once "gone" is dropped. b misses by 3, 1, 1, 3 = 2. c only ranks two, so it does not count.
-    expect(scoreBallots(entries, order)).toEqual([
-      { voter: "a", miss: 0 },
-      { voter: "b", miss: 2 },
-    ])
+  it("finds the season before", () => {
+    expect(priorSeason(["2027-06-01", "2026-06-01", "2028-06-01"], "2027-06-01")).toBe("2026-06-01")
+    expect(priorSeason(["2027-06-01"], "2027-06-01")).toBe("")
   })
-  it("finds who the group rated too high and too low", () => {
-    // w: actual 4th, ballots 4, 1 (c leaves w off), average 2.5, so overrated by 1.5. x: actual 1st, ballots 1, 4, 2,
-    // average 2.33, so underrated by 1.33.
-    const m = biggestMisses(entries, order)
-    expect(m.overrated).toMatchObject({ id: "w", gap: 1.5 })
-    expect(m.underrated?.id).toBe("x")
-    expect(m.underrated!.gap).toBeCloseTo(1.33, 2)
-  })
-})
-
-describe("ballot pool", () => {
-  it("puts every player in the app on the ballot, players from this season first", () => {
-    const s = state([game("1", "2026-08-01", ["z"], ["y"], 2, 1)])
-    expect(ballotPool(s)).toEqual(["y", "z", "w", "x"])
+  it("adds a right pick to the points once", () => {
+    const actual = { top3: [], jumps: ["z"] }
+    expect(scorePredictions([{ voter: "a", picks: { jumps: ["z", "z", "x"] } }], actual)).toEqual([{ voter: "a", points: 2 }])
   })
 })
 
