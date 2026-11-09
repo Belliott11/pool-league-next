@@ -126,8 +126,8 @@ export function ExportPage({ state, toggles, update }: { state: PooleanState; to
         <Section key={s.key} id={`export-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
           {s.key === "review" && (
             <>
-              <BackfillPanel title="Fix blanks" hint="Plays still missing a tag, each linked to its moment in the video. A fixed play drops off this list.">
-                <FixBlanks state={state} />
+              <BackfillPanel title="Fix blanks" hint="Plays still missing a tag. Watch the clip and fill it in here, and a fixed play drops off the list.">
+                <FixBlanks state={state} update={update} />
               </BackfillPanel>
               <BackfillPanel title="Light contests to re-check" hint="Tagged Light Contest before Got Beat existed. Say which each one really was.">
                 <LightRecheck state={state} update={update} />

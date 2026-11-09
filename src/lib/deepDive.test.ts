@@ -137,7 +137,10 @@ describe("blanks", () => {
     const k = findBlanks(state).map((b) => `${b.key}`)
     expect(k).toContain("8-shotType")
     expect(k).toContain("7-rebounder")
-    expect(k).toContain("t-forcedBy")
-    expect(k).toHaveLength(3)
+    // a free throw and a dunk need no shot type, and a free throw needs no spot
+    const odd = findBlanks({ ...state, games: [{ ...game, scoringEvents: [shot("ft", "a", 1, true, { points: 1, shotType: null, shotLocation: null }), shot("dk", "a", 2, true, { shotType: null, dunk: true }), shot("bk", "a", 3, false, { blockerId: "b" })] }] })
+    expect(odd).toEqual([])
+    expect(k).not.toContain("t-forcedBy")
+    expect(k).toHaveLength(2)
   })
 })
