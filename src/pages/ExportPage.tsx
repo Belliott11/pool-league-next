@@ -1,3 +1,7 @@
+import type { ReactNode } from "react"
+import { FixBlanks } from "@/pages/games/FixBlanks"
+import { TeamPicksBackfill } from "@/pages/games/TeamPicksBackfill"
+import type { Update } from "@/lib/store"
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -73,7 +77,24 @@ function ExportPanel({ spec, version }: { spec: ExportPanelSpec; version: unknow
   )
 }
 
-export function ExportPage({ state, toggles }: { state: PooleanState; toggles: Toggles }) {
+// A backfill job built in this app rather than the classic code, framed like the panels around it.
+function BackfillPanel({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+  return (
+    <details className="group export-panel overflow-hidden rounded-xl border bg-card" data-export-panel={title}>
+      <summary className="tile flex cursor-pointer list-none items-center gap-2 p-4 [&::-webkit-details-marker]:hidden">
+        <ChevronRight aria-hidden className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
+        <IconChip icon={panelIcon(title, "review")} />
+        <h3 className="font-display text-base font-bold">{title}</h3>
+      </summary>
+      <div className="flex min-w-0 flex-col gap-3 p-4 pt-0">
+        <p className="text-sm text-muted-foreground">{hint}</p>
+        {children}
+      </div>
+    </details>
+  )
+}
+
+export function ExportPage({ state, toggles, update }: { state: PooleanState; toggles: Toggles; update: Update }) {
   const version = useMemo(() => {
     syncLegacy(state, toggles)
     return { state, toggles }
@@ -103,6 +124,16 @@ export function ExportPage({ state, toggles }: { state: PooleanState; toggles: T
       </nav>
       {SECTIONS.map((s) => (
         <Section key={s.key} id={`export-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
+          {s.key === "review" && (
+            <>
+              <BackfillPanel title="Fix blanks" hint="Plays still missing a tag, each linked to its moment in the video. A fixed play drops off this list.">
+                <FixBlanks state={state} />
+              </BackfillPanel>
+              <BackfillPanel title="How teams were picked" hint="Fill in past games from memory, for the Does it hold up board.">
+                <TeamPicksBackfill state={state} update={update} />
+              </BackfillPanel>
+            </>
+          )}
           {PANELS.filter((p) => p.section === s.key && !SKIPPED.has(p.title))
             .sort((a, b) => a.order - b.order)
             .map((p) => (

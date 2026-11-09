@@ -430,7 +430,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         {!readOnly && (
           <TabsContent value="export">
             <Suspense fallback={<PageSkeleton label="Loading export tools" />}>
-              <ExportPage state={state} toggles={toggles} />
+              <ExportPage state={state} toggles={toggles} update={update} />
             </Suspense>
           </TabsContent>
         )}

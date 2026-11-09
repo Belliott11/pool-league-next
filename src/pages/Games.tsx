@@ -20,8 +20,6 @@ import { StatEntryPage } from "./statentry/StatEntryPage"
 import { findLiveGame } from "@/lib/live"
 import { upcomingRsvp } from "@/lib/nightPreview"
 import { showHub } from "@/lib/offseason"
-import { FixBlanks } from "./games/FixBlanks"
-import { TeamPicksBackfill } from "./games/TeamPicksBackfill"
 import { HallOfFame } from "./games/HallOfFame"
 import { OffseasonHub } from "./games/OffseasonHub"
 import { Wrapped } from "./games/Wrapped"
@@ -134,12 +132,6 @@ export function GamesPage({
           <>
             <Section id="games-section-setup" title="Set Up Tonight" teaser="RSVP who's coming and log tonight's game">
               <SetUpTonight state={state} update={update} onCreated={open} />
-            </Section>
-            <Section id="games-section-blanks" title="Fix blanks" teaser="Plays still missing a tag, each linked to its moment in the video">
-              <FixBlanks state={state} />
-            </Section>
-            <Section id="games-section-picks" title="How teams were picked" teaser="Fill in past games from memory, for the Does it hold up board">
-              <TeamPicksBackfill state={state} update={update} />
             </Section>
             <Section id="games-section-balance" title="Balance & Predict" teaser="Even splits, matchup odds, and a full night's schedule">
               <BalanceAndPredict state={state} update={update} onCreated={open} />
