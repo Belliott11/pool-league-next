@@ -227,7 +227,7 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
             ))}
           </Field>
           {defenderIds.length > 0 && (
-            <Field label="Contest level">
+            <Field label="Contest level" hint="Got Beat: the defender was beaten right before the shot and is out of the play, so the shot counts as wide open.">
               {CONTEST_LEVELS.map((c: { key: string; label: string }) => (
                 <Chip key={c.key} selected={contestLevel === c.key} onClick={() => setContestLevel(contestLevel === c.key ? null : (c.key as ScoringEvent["contestLevel"]))}>
                   {c.label}
