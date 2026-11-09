@@ -11205,13 +11205,17 @@ function renderStoppedEarlyReview() {
     const scoreB = teamScore(game, game.teamB);
     const teamANames = game.teamA.map(id => state.players.find(p => p.id === id)?.name).filter(Boolean).join(", ") || "Team A";
     const teamBNames = game.teamB.map(id => state.players.find(p => p.id === id)?.name).filter(Boolean).join(", ") || "Team B";
-    return `<li data-game-id="${game.id}">
+    const times = game.scoringEvents.map(ev => ev.videoTime).filter(t => typeof t === "number");
+    const lastPlay = times.length ? Math.max(...times) : null; // where a cut-short game shows itself
+    return `<li data-game-id="${game.id}" style="display:block">
       <span>${escapeHtml(formatDateDisplay(game.date))}: ${escapeHtml(teamANames)} ${scoreA} - ${scoreB} ${escapeHtml(teamBNames)}</span>
+      ${lastPlay === null ? "" : watchFilmLinksHtml([{ id: game.id, date: game.date, videoTime: Math.max(0, lastPlay - 10) }])}
       <div class="button-row" style="margin-top:4px">
         <button type="button" class="secondary-btn${game.stoppedEarly ? " selected" : ""}" data-toggle-stopped-early-review="${game.id}">${game.stoppedEarly ? `${icon("stop")} Stopped early` : "Mark as stopped early"}</button>
       </div>
     </li>`;
   }).join("")}</ul>`;
+  wireWatchFilmButtons(wrap);
   wrap.querySelectorAll("[data-toggle-stopped-early-review]").forEach(btn => {
     btn.addEventListener("click", () => {
       const game = state.games.find(g => g.id === btn.dataset.toggleStoppedEarlyReview);
