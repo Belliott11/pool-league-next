@@ -8,6 +8,7 @@ import { PanelGroup } from "@/components/PanelGroup"
 import { arrange, PLAYER_GROUPS, placeOf } from "@/lib/panelGroups"
 import { PlayerHero } from "@/components/PlayerHero"
 import { PlayerGameFlow } from "@/pages/PlayerGameFlow"
+import { PlayerInsight } from "@/pages/PlayerInsight"
 import { PlayerOldSite } from "@/pages/PlayerOldSite"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
@@ -277,6 +278,7 @@ export function PlayerDetailPage({
       ))}
 
       {pid && <PlayerOldSite state={state} pid={pid} />}
+      {pid && <PlayerInsight state={state} pid={pid} />}
       {pid && <PlayerGameFlow state={state} pid={pid} />}
     </div>
   )

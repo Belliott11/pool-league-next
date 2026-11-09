@@ -15,6 +15,27 @@ export const TAB_TRIGGER = {
   style: { height: "auto" },
 }
 
+// A few views of one thing as tabs. Only the open view is built, because the stock panels stay in the page (and visible)
+// whatever tab is selected.
+export function ViewTabs({ tabs }: { tabs: { value: string; label: string; node: ReactNode }[] }) {
+  const [active, setActive] = useState(tabs[0].value)
+  const current = tabs.find((t) => t.value === active) ?? tabs[0]
+  return (
+    <Tabs value={current.value} onValueChange={(v) => setActive(String(v))} className="gap-4">
+      <TabsList {...TAB_LIST}>
+        {tabs.map((t) => (
+          <TabsTrigger key={t.value} value={t.value} {...TAB_TRIGGER}>
+            {t.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      <TabsContent key={current.value} value={current.value} className="flex min-w-0 flex-col gap-3">
+        {current.node}
+      </TabsContent>
+    </Tabs>
+  )
+}
+
 export interface GroupTab {
   title: string // the panel's own title, used by search and jump
   label: string // the short tab name

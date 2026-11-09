@@ -14,6 +14,7 @@ import { LegacyPanels } from "./leaderboard/LegacyTablePanels"
 import { LaneBars } from "./leaderboard/LaneBars"
 import { SeasonRates } from "./leaderboard/SeasonRates"
 import { GameFlowCard } from "./leaderboard/GameFlowCard"
+import { InsightCard } from "./leaderboard/InsightCard"
 
 // Same six groups, in the same order, as the classic Leaderboard tab.
 const SECTIONS: { key: string; title: string }[] = [
@@ -43,6 +44,7 @@ const NAV = [
   { id: "lb-ranking", label: "Ranking" },
   { id: "lb-rates", label: "Season rates" },
   ...SECTIONS.map((s) => ({ id: `lb-section-${s.key}`, label: s.title })),
+  { id: "lb-insight", label: "What decided games" },
   { id: "lb-flow", label: "Game flow" },
 ]
 
@@ -104,6 +106,9 @@ export function LeaderboardPage({
         </div>
       ))}
       <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 2 } as React.CSSProperties}>
+        <InsightCard state={state} onOpenPlayer={onOpenPlayer} />
+      </div>
+      <div className="anim-rise scroll-mt-28" style={{ "--i": SECTIONS.length + 3 } as React.CSSProperties}>
         <GameFlowCard state={state} />
       </div>
     </div>
