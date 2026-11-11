@@ -1,3 +1,4 @@
+import { gameOver, raceLine } from "@/lib/race"
 import { FlipDigits } from "@/components/FlipDigits"
 import { CalendarDays, Radio, Tv } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -94,7 +95,7 @@ export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; on
 
   const [a, b] = liveTotals(shown)
   const target = liveTargetOf(shown)
-  const over = a >= target || b >= target
+  const over = gameOver(a, b, target)
   const wasOver = useRef(over)
   useEffect(() => {
     if (shown.id && over && !wasOver.current) haptic("success")
@@ -117,13 +118,7 @@ export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; on
   const last = [...(game.liveScores ?? []), ...(game.scorekeeperScores ?? [])].at(-1)
   const hint = !isLive
     ? `Final: Team ${a > b ? "A" : b > a ? "B" : "A and B tied"}${a === b ? "" : " won"}, ${a} to ${b}.`
-    : over && a === b
-      ? `Tied at ${a}.`
-      : over
-        ? `Team ${a > b ? "A" : "B"} reached ${target}.`
-        : a === b
-          ? `Tied. First to ${target}.`
-          : `Team ${a > b ? "A" : "B"} leads by ${Math.abs(a - b)}. ${target - Math.max(a, b)} to go.`
+    : raceLine(a, b, target)
 
   return (
     <div data-no-swipe className="mx-auto flex w-full max-w-md flex-col gap-3">

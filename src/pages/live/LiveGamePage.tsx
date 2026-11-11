@@ -1,3 +1,4 @@
+import { gameOver, raceLine } from "@/lib/race"
 import { FlipDigits } from "@/components/FlipDigits"
 import { useEffect, useRef, useState } from "react"
 import { Minus, Plus, Undo2, Flag, X, UserPlus, Vibrate, VibrateOff } from "lucide-react"
@@ -247,7 +248,7 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
   const [confirm, setConfirm] = useState(false)
   const [a, b] = liveTotals(game)
   const target = liveTargetOf(game)
-  const over = a >= target || b >= target
+  const over = gameOver(a, b, target)
   const pops = useScorePops(game)
   const [vib, setVib] = useState(hapticsEnabled)
 
@@ -281,13 +282,7 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
     wasOver.current = over
   }, [over])
 
-  const hint = over && a === b
-    ? `Tied at ${a}. Keep playing until someone leads, then finish the game.`
-    : over
-    ? `Team ${a > b ? "A" : "B"} reached ${target}. Finish the game.`
-    : a === b
-      ? `Tied. First to ${target}.`
-      : `Team ${a > b ? "A" : "B"} leads by ${Math.abs(a - b)}. ${target - Math.max(a, b)} to go.`
+  const hint = over ? `${raceLine(a, b, target)} Finish the game.` : raceLine(a, b, target)
 
   const add = (pid: string, pts: number) => {
     haptic(pts === 3 ? "medium" : pts === 2 ? "light" : "tick")

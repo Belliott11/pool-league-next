@@ -2,6 +2,7 @@ import { predictRealMatchup } from "@/lib/matchup"
 import { pregamePrediction } from "@/lib/scorecard"
 import { liveScoreOf } from "@/lib/stats"
 import { newGame } from "@/lib/store"
+import { gameOver, raceWin } from "@/lib/race"
 import type { Game, PooleanState } from "@/lib/types"
 
 export const DEFAULT_TARGET = 21
@@ -72,37 +73,13 @@ export function discardLive(state: PooleanState, id: string): PooleanState {
 // league's usual mix (measured on the logged games). V[a][b] is A's chance to win from the score a to b.
 // This beats the old curve-fit because it knows a 3-point lead is worth less early than late.
 const POINT_MIX: [number, number][] = [[1, 0.009], [2, 0.81], [3, 0.181]]
-const tables = new Map<string, number[][]>()
-
-function raceTable(target: number, q: number): number[][] {
-  const key = target + "|" + q.toFixed(4)
-  const hit = tables.get(key)
-  if (hit) return hit
-  const cap = target + 3
-  const V = Array.from({ length: cap + 1 }, () => new Array<number>(cap + 1).fill(0))
-  for (let a = cap; a >= 0; a--)
-    for (let b = cap; b >= 0; b--) {
-      if (a >= target && a > b) V[a][b] = 1
-      else if (b >= target && b > a) V[a][b] = 0
-      else if (a >= target && b >= target) V[a][b] = 0.5
-      else {
-        let v = 0
-        for (const [k, p] of POINT_MIX) v += p * (q * V[Math.min(a + k, cap)][b] + (1 - q) * V[a][Math.min(b + k, cap)])
-        V[a][b] = v
-      }
-    }
-  if (tables.size > 60) tables.clear()
-  tables.set(key, V)
-  return V
-}
-
 // The per-score share q that makes the pre-game chance equal `pre`.
 function shareFor(target: number, pre: number): number {
   let lo = 0.05
   let hi = 0.95
   for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2
-    if (raceTable(target, mid)[0][0] < pre) lo = mid
+    if (raceWin(0, 0, target, mid, POINT_MIX) < pre) lo = mid
     else hi = mid
   }
   return (lo + hi) / 2
@@ -113,13 +90,11 @@ function shareFor(target: number, pre: number): number {
 const PRIOR_SCORES = 20
 
 export function winProbabilityFrom(a: number, b: number, target: number, pregameA: number | null, nA = 0, nB = 0): number {
-  if (a >= target && a > b) return 0.99
-  if (b >= target && b > a) return 0.01
+  if (gameOver(a, b, target)) return a > b ? 0.99 : 0.01
   const pre = Math.min(0.97, Math.max(0.03, pregameA ?? 0.5))
   const q0 = shareFor(target, pre)
   const q = Math.min(0.97, Math.max(0.03, (PRIOR_SCORES * q0 + nA) / (PRIOR_SCORES + nA + nB)))
-  const cap = target + 3
-  return Math.min(0.99, Math.max(0.01, raceTable(target, q)[Math.min(a, cap)][Math.min(b, cap)]))
+  return Math.min(0.99, Math.max(0.01, raceWin(a, b, target, q, POINT_MIX)))
 }
 
 function liveCounts(game: Game) {

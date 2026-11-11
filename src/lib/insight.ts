@@ -1,4 +1,5 @@
 import { PER } from "@/lib/per"
+import { raceWin } from "@/lib/race"
 import { getGameStats } from "@/lib/stats"
 import type { Game, PooleanState, ScoringEvent, TurnoverEvent } from "@/lib/types"
 
@@ -275,24 +276,6 @@ export function targetOf(g: Game): number | null {
   return Math.max(...score(g)) >= t ? t : null
 }
 
-// Chance a team wins a race to the target, needing `mine` more points against the other team's `theirs`. Each basket is a coin flip
-// between the teams, worth 1, 2 or 3 in the league's own mix of made baskets. First to the target wins.
-export function raceChance(mine: number, theirs: number, mix: [number, number][]): number {
-  const memo = new Map<string, number>()
-  const go = (a: number, b: number): number => {
-    if (a <= 0) return 1
-    if (b <= 0) return 0
-    const k = `${a}|${b}`
-    const hit = memo.get(k)
-    if (hit !== undefined) return hit
-    let p = 0
-    for (const [v, w] of mix) p += 0.5 * w * (go(a - v, b) + go(a, b - v))
-    memo.set(k, p)
-    return p
-  }
-  return go(mine, theirs)
-}
-
 export const winChance = (margin: number, left: number, sq: number) => phi(margin / Math.sqrt(Math.max(left, 1) * sq))
 
 export interface Swing {
@@ -329,7 +312,7 @@ export function winProbAdded(state: PooleanState): Wpa {
   const expectedTotal = totals.length ? totals[Math.floor((totals.length - 1) / 2)] : 0
   const made2 = gs.flatMap((g) => g.scoringEvents.filter(made).map((e) => e.points * e.points))
   const sq = made2.length ? made2.reduce((a, b) => a + b, 0) / made2.length : 4
-  // The league's mix of made baskets by value, for the race to a game's target.
+  // The league's mix of made baskets by value, for the race to a game's target (first to it, win by 2).
   const values = gs.flatMap((g) => g.scoringEvents.filter(made).map((e) => e.points))
   const mix: [number, number][] = [1, 2, 3].map((v) => [v, values.length ? values.filter((x) => x === v).length / values.length : v === 2 ? 1 : 0] as [number, number]).filter(([, w]) => w > 0)
   const by = new Map<string, { games: number; baskets: number; added: number; allowed: number; points: number }>()
@@ -347,7 +330,7 @@ export function winProbAdded(state: PooleanState): Wpa {
     const order = orderOf(g).filter((e) => made(e) && side(g, e.scorerId) !== null)
     // With the game's target logged, each moment is a race to it; without one, the game length is guessed from the median total.
     const target = targetOf(g)
-    const chance = (left: number) => (target ? raceChance(target - run[0], target - run[1], mix) : null) ?? winChance(run[0] - run[1], left, sq)
+    const chance = (left: number) => (target ? raceWin(run[0], run[1], target, 0.5, mix) : winChance(run[0] - run[1], left, sq))
     order.forEach((e, i) => {
       const t = side(g, e.scorerId) as 0 | 1
       const left = Math.max(expectedTotal, final[0] + final[1]) - (run[0] + run[1])

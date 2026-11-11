@@ -49,7 +49,7 @@ export function TvBoard({ game, state, onClose }: { game: Game; state: PooleanSt
   return (
     <div role="dialog" aria-label="Scoreboard" className="fixed inset-0 z-50 flex flex-col gap-[2vmin] bg-background p-[2vmin]">
       <div className="flex items-center justify-between text-[2.6vmin] text-muted-foreground">
-        <span>{live ? `Live, first to ${target}` : "Final"}</span>
+        <span>{live ? `Live, first to ${target}, win by 2` : "Final"}</span>
         <button type="button" onClick={onClose} aria-label="Close scoreboard" className="flex size-11 items-center justify-center rounded-full border">
           <X aria-hidden className="size-5" />
         </button>
