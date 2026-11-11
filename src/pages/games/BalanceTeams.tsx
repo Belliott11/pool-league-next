@@ -29,6 +29,7 @@ import { poolNameOf } from "@/lib/real"
 import { newGame, type Update } from "@/lib/store"
 import { pct } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
+import { MatchupAdvice } from "./MatchupAdvice"
 import { nativeSelect } from "./GameLog"
 
 export function AttendeeChips({
@@ -214,6 +215,7 @@ function OptionCard({
   onUse: (a: string[], b: string[]) => void
 }) {
   const [preview, setPreview] = useState(false)
+  const [advice, setAdvice] = useState(false)
   const winProbs = predictTeamWinChances(option.teams)
   const realPred = option.teams.length === 2 && winProbs ? predictRealMatchup(option.teams[0], option.teams[1]) : null
   const warnings = computeCrossTeamRivalryWarnings(option.teams)
@@ -252,12 +254,16 @@ function OptionCard({
           <Button size="sm" variant="outline" onClick={() => setPreview((v) => !v)}>
             {preview ? "Hide Matchups" : "Preview Matchups"}
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setAdvice((v) => !v)}>
+            {advice ? "Hide Who Guards Whom" : "Who Guards Whom"}
+          </Button>
           <Button size="sm" disabled={!date} title={date ? undefined : "Pick a game date first"} onClick={() => onUse(option.teams[0], option.teams[1])}>
             Use These Teams &rarr; Create Game
           </Button>
         </div>
       )}
       {preview && option.teams.length === 2 && <MatchupPreview state={state} teamA={option.teams[0]} teamB={option.teams[1]} />}
+      {advice && option.teams.length === 2 && <MatchupAdvice state={state} teamA={option.teams[0]} teamB={option.teams[1]} />}
     </div>
   )
 }
