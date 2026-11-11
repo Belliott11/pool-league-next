@@ -111,11 +111,14 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
   const [sort, setSort] = useState<Sort | null>(defaultSort ?? null)
   const [allCards, setAllCards] = useState(false)
 
+  // With low-sample values hidden, a column is sorted, ranked and highlighted on the values still showing; hidden ones sink to the bottom.
+  const hidden = (col: Column<R>, r: R) => !!hideLow && !!col.sample && isLowSample(col.sample(r) as Sample)
   const sorted = useMemo(() => {
     const col = sort ? columns.find((c) => c.key === sort.key) : undefined
     if (!col || !sort) return rows
-    return [...rows].sort((a, b) => compareForSort(col.accessor(a), col.accessor(b), sort.dir))
-  }, [rows, columns, sort])
+    return [...rows].sort((a, b) => Number(hidden(col, a)) - Number(hidden(col, b)) || compareForSort(col.accessor(a), col.accessor(b), sort.dir))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, columns, sort, hideLow])
 
   const marks = useMemo(() => {
     const best: Record<string, number> = {}
@@ -123,7 +126,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
     if (!highlight) return { best, worst }
     columns.forEach((col, i) => {
       if (i === 0 || highlight.neutral.has(col.key) || highlight.skip?.has(col.key)) return
-      const values = rows.map((r) => col.accessor(r)).filter((v): v is number => typeof v === "number" && !Number.isNaN(v))
+      const values = rows.filter((r) => !hidden(col, r)).map((r) => col.accessor(r)).filter((v): v is number => typeof v === "number" && !Number.isNaN(v))
       if (values.length === 0) return
       const lower = highlight.lowerBetter.has(col.key)
       const b = lower ? Math.min(...values) : Math.max(...values)
@@ -132,20 +135,22 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
       if (w !== b) worst[col.key] = w
     })
     return { best, worst }
-  }, [rows, columns, highlight])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, columns, highlight, hideLow])
 
   const ranges = useMemo(() => {
     const out: Record<string, Range> = {}
     columns.forEach((col, i) => {
       if (i === 0 || col.key === "last5" || highlight?.skip?.has(col.key)) return
-      const vals = rows.map((r) => col.accessor(r)).filter((v): v is number => typeof v === "number" && Number.isFinite(v))
+      const vals = rows.filter((r) => !hidden(col, r)).map((r) => col.accessor(r)).filter((v): v is number => typeof v === "number" && Number.isFinite(v))
       if (vals.length < 2) return
       const lo = Math.min(0, ...vals)
       const hi = Math.max(0, ...vals)
       if (hi - lo > 0) out[col.key] = { lo, hi }
     })
     return out
-  }, [rows, columns, highlight])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, columns, highlight, hideLow])
 
   function toggle(key: string) {
     setSort((cur) => (cur?.key === key ? { key, dir: cur.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" }))
@@ -186,7 +191,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                       </TableCell>
                     )
                   }
-                  const v = col.accessor(r)
+                  const v = hidden(col, r) ? null : col.accessor(r)
                   const isBest = marks.best[col.key] !== undefined && v === marks.best[col.key]
                   return (
                     <TableCell
@@ -227,7 +232,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
               {(() => {
                 const stats = columns.filter((c) => c.key !== first.key && c.key !== hero?.key)
                 const renderStat = (c: Column<R>) => {
-                  const v = c.accessor(r)
+                  const v = hidden(c, r) ? null : c.accessor(r)
                   const rg = ranges[c.key]
                   return (
                     <div key={c.key} className="flex flex-col gap-1">
