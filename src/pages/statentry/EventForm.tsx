@@ -297,7 +297,7 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
               </Field>
             </>
           )}
-          {fg && (made ? assistId : passerId) && (made ? assistId : passerId) !== "none" && (
+          {fg && (contestLevel === "medium" || contestLevel === "heavy") && (made ? assistId : passerId) && (made ? assistId : passerId) !== "none" && (
             <Field label="Off the pass" hint="Catch and shoot: the shot starts in one motion from the catch. Feet can gather, but no fake, no dribble and no pause. Anything else is held it.">
               <Chip selected={catchAndShoot === true} onClick={() => setCatchAndShoot(catchAndShoot === true ? null : true)}>Catch and shoot</Chip>
               <Chip selected={catchAndShoot === false} onClick={() => setCatchAndShoot(catchAndShoot === false ? null : false)}>Held it</Chip>

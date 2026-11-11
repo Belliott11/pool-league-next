@@ -156,12 +156,12 @@ describe("catch and shoot", () => {
   it("puts a contest on the passer when it was shot on the catch, and on the shooter when they held it", () => {
     const st = { players: [], games: [g([
       shot("1", "a", 2, false, { passerId: "p", catchAndShoot: true, contestLevel: "heavy" }),
-      shot("2", "a", 2, true, { passerId: "p", assistId: "p", catchAndShoot: true, contestLevel: "none" }),
+      shot("2", "a", 2, true, { passerId: "p", assistId: "p", catchAndShoot: true, contestLevel: "none" }), // open: left out
       shot("3", "a", 2, false, { passerId: "p", catchAndShoot: false, contestLevel: "medium" }),
       shot("4", "a", 2, false, { passerId: "p" }), // untagged: left out
     ])] }
     const rows = passBlame(st)
-    expect(rows.find((r) => r.id === "p")).toMatchObject({ passes: 2, passesContested: 1 })
-    expect(rows.find((r) => r.id === "a")).toMatchObject({ held: 1, heldContested: 1 })
+    expect(rows.find((r) => r.id === "p")).toMatchObject({ setUps: 2, onPass: 1 })
+    expect(rows.find((r) => r.id === "a")).toMatchObject({ shots: 2, held: 1 })
   })
 })

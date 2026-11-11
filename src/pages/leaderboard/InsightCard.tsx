@@ -57,14 +57,14 @@ function Decided({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
 
 function PassBlameGrid({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const rows = useMemo(() => passBlame(state), [state])
-  if (rows.length === 0) return <Hint>Tag shots off a pass as catch and shoot or held it, and this shows whose fault a contested look was.</Hint>
+  if (rows.length === 0) return <Hint>Tag contested shots off a pass as catch and shoot or held it, and this shows whose fault the contest was.</Hint>
   const of = (n: number, d: number) => (d === 0 ? "-" : `${n} of ${d} (${Math.round((n / d) * 100)}%)`)
   return (
     <>
-      <Hint>Whose fault a contested look was. Contested on the catch: their pass was shot right away and still met a medium or heavy contest, so the pass led into coverage. Contested after holding: they caught a pass, held it, and let the defense recover.</Hint>
+      <Hint>Whose fault a medium or heavy contest off a pass was. On their pass: of the contested shots they set up, how many were shot right on the catch, so the pass led into coverage. On them shooting: of their own contested shots off a pass, how many they held first and let the defense recover.</Hint>
       <Grid
-        head={["Player", "Contested on the catch", "Contested after holding"]}
-        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, of(r.passesContested, r.passes), of(r.heldContested, r.held)] }))}
+        head={["Player", "On their pass", "On them shooting"]}
+        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, of(r.onPass, r.setUps), of(r.held, r.shots)] }))}
       />
     </>
   )

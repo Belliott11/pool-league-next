@@ -28,7 +28,9 @@ export function findBlanks(state: PooleanState): Blank[] {
       if (!freeThrow && !e.shotLocation) add("location")
       if (e.made === false && !e.rebounderId && !e.turnoverEventId && !e.blockerId) add("rebounder")
       const passer = e.made !== false ? e.assistId : e.passerId
-      if (!freeThrow && passer && passer !== "none" && passer !== e.scorerId && (e.catchAndShoot === null || e.catchAndShoot === undefined)) add("catch")
+      // Only a contested look needs it: on an open shot there is nothing to put on the passer or the shooter.
+      const contested = e.contestLevel === "medium" || e.contestLevel === "heavy"
+      if (!freeThrow && contested && passer && passer !== "none" && passer !== e.scorerId && (e.catchAndShoot === null || e.catchAndShoot === undefined)) add("catch")
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? 0) - (b.time ?? 0))

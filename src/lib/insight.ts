@@ -175,32 +175,29 @@ const validPass = (g: Game, e: ScoringEvent): string | null => {
   return a !== null && a === side(g, e.scorerId) ? p : null
 }
 
-// Whose fault a contest was on a shot off a pass. A catch-and-shoot shot that was still contested means the pass led into coverage (the
-// passer); a contested shot the shooter held first means the defense had time to recover (the shooter). Only tagged shots count.
+// Whose fault a contested look off a pass was. Shot on the catch and still contested: the pass led into coverage (the passer). Held
+// first: the shooter let the defense recover. Only contested shots are tagged, since an open look has nothing to blame.
 export interface PassBlame {
   id: string
-  passes: number // their passes that were caught and shot right away
-  passesContested: number
-  held: number // their own shots off a pass that they held first
-  heldContested: number
+  setUps: number // their passes that led to a contested shot, tagged either way
+  onPass: number // of those, shot on the catch: on the pass
+  shots: number // their own contested shots off a pass, tagged either way
+  held: number // of those, held first: on them as the shooter
 }
 const contested = (e: ScoringEvent) => e.contestLevel === "medium" || e.contestLevel === "heavy"
 export function passBlame(state: PooleanState): PassBlame[] {
   const by = new Map<string, PassBlame>()
-  const row = (id: string) => by.get(id) ?? by.set(id, { id, passes: 0, passesContested: 0, held: 0, heldContested: 0 }).get(id)!
+  const row = (id: string) => by.get(id) ?? by.set(id, { id, setUps: 0, onPass: 0, shots: 0, held: 0 }).get(id)!
   for (const g of games(state))
     for (const e of g.scoringEvents) {
       const p = validPass(g, e)
-      if (!p || e.catchAndShoot === null || e.catchAndShoot === undefined) continue
-      if (e.catchAndShoot) {
-        row(p).passes++
-        if (contested(e)) row(p).passesContested++
-      } else {
-        row(e.scorerId).held++
-        if (contested(e)) row(e.scorerId).heldContested++
-      }
+      if (!p || !contested(e) || e.catchAndShoot === null || e.catchAndShoot === undefined) continue
+      row(p).setUps++
+      row(e.scorerId).shots++
+      if (e.catchAndShoot) row(p).onPass++
+      else row(e.scorerId).held++
     }
-  return [...by.values()].sort((a, b) => b.passes + b.held - (a.passes + a.held))
+  return [...by.values()].sort((a, b) => b.setUps + b.shots - (a.setUps + a.shots))
 }
 
 export function shotsCreated(state: PooleanState): Creation {
