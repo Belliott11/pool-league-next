@@ -1,14 +1,14 @@
 import { useMemo } from "react"
 import { Panel } from "@/components/Panel"
-import { beatRates, rate, TRANSITION_SECONDS, type BeatRow } from "@/lib/beatRate"
+import { beatRates, count, rate, TRANSITION_SECONDS, type BeatRow } from "@/lib/beatRate"
 import { trustOf } from "@/lib/trust"
 import type { PooleanState } from "@/lib/types"
 import { Grid, Hint, TrustChip, Who } from "./parts"
 
 export const BEAT_TIP = `Beat means the defender was beaten right before the shot and was out of the play: not back, out of position, or away from the shot. It is a defensive breakdown, not a measure of the shooter. Transition is a shot within ${TRANSITION_SECONDS} seconds of a turnover or steal.`
 
-const cell = (n: number, d: number) => (d === 0 ? "-" : `${n} of ${d} (${Math.round((n / d) * 100)}%)`)
-const oppText = (r: BeatRow) => (r.oppAtt === 0 ? "-" : `${Math.round((r.oppMade / r.oppAtt) * 100)}% (${r.oppMade}/${r.oppAtt})`)
+const cell = (n: number, d: number) => (d === 0 ? "-" : `${count(n)} of ${count(d)} (${Math.round((n / d) * 100)}%)`)
+const oppText = (r: BeatRow) => (r.oppAtt === 0 ? "-" : `${Math.round((r.oppMade / r.oppAtt) * 100)}% (${count(r.oppMade)}/${count(r.oppAtt)})`)
 const sortKey = (r: BeatRow) => rate(r.beat, r.faced) ?? -1
 
 // Every defender's Beat Rate, split into transition and half court, with opponent FG% leaving beat shots out so someone who is

@@ -3,6 +3,7 @@
 // classic site exactly. It started as generated output; the generator is gone, so edit this file directly.
 import { PER } from "@/lib/per";
 import { loadsFor, loadText } from "@/lib/dayLoad";
+import { count as fmtCount, defenderShare, isTransition } from "@/lib/beatRate";
 import { facedSample, fgaSample, gamesSample, shotSample } from "@/lib/sampleSize";
 import { realPlayerIds } from "@/lib/real";
 let state = { players: [], games: [], masterVideos: [], rsvps: [], seasonHistory: [], currentSeasonStartedAt: null, playerPhysicalOverrides: {} };
@@ -2148,14 +2149,16 @@ let currentVideoEl = null;
 function gameDefenseStats(game, playerId) {
   const against = game.scoringEvents.filter(ev => (ev.defenderIds || []).includes(playerId));
   const madeAgainst = against.filter(ev => ev.made !== false);
-  const timesBeaten = madeAgainst.length;
-  const stops = against.filter(ev => ev.made === false).length;
+  // A double team splits each shot between its defenders (half each for two), so nobody carries a teammate's share.
+  const share = list => list.reduce((n, ev) => n + defenderShare(ev), 0);
+  const timesBeaten = share(madeAgainst);
+  const stops = share(against.filter(ev => ev.made === false));
   // Misses off a shot where this defender got beat earn no Stop credit (Opp FG% still counts them, so `stops` stays every miss).
-  const beatMisses = against.filter(ev => ev.made === false && ev.contestLevel === "beat").length;
+  const beatMisses = share(against.filter(ev => ev.made === false && ev.contestLevel === "beat"));
   // Made 3s against, specifically -- needed for Opponent eFG% (see poolean-defensive-mirrors-
   // spec.md). Free throws are never tagged with a defender at all (see Stat Entry: the defender
   // picker only shows for a 2/3-point shot).
-  const tpmAgainst = madeAgainst.filter(ev => ev.points === 3).length;
+  const tpmAgainst = share(madeAgainst.filter(ev => ev.points === 3));
   // Blocks this player gets extra defensive credit for in defensiveRating(), beyond the Stop
   // credit above — only counted here when the block ISN'T also one of their own tagged Stops
   // already (the common case, since a shot-blocker is almost always also the tagged on-ball
@@ -2165,7 +2168,7 @@ function gameDefenseStats(game, playerId) {
     ev.blockerId === playerId && ev.made === false && !(ev.defenderIds || []).includes(playerId)
   ).length;
   return {
-    ptsAllowed: madeAgainst.reduce((sum, ev) => sum + ev.points, 0),
+    ptsAllowed: madeAgainst.reduce((sum, ev) => sum + ev.points * defenderShare(ev), 0),
     timesBeaten,
     stops,
     beatMisses,
@@ -2230,10 +2233,10 @@ const GAME_STATS_COLUMNS = [
   { key: "tov", label: "TOV", accessor: r => r.s.tov },
   { key: "atov", label: "A/TO", accessor: r => r.s.liveBallTov === 0 ? (r.s.ast === 0 ? 0 : Infinity) : r.s.ast / r.s.liveBallTov },
   { key: "pf", label: "PF", accessor: r => r.s.pf },
-  { key: "ptsAllowed", label: "Pts Allowed", accessor: r => r.def.ptsAllowed },
+  { key: "ptsAllowed", label: "Pts Allowed", accessor: r => r.def.ptsAllowed, display: r => fmtCount(r.def.ptsAllowed) },
   { key: "oppfg", label: "Opp FG%", accessor: r => r.def.oppFgPct },
-  { key: "beaten", label: "Beaten", accessor: r => r.def.timesBeaten },
-  { key: "stops", label: "Stops", accessor: r => r.def.stops - (r.def.beatMisses || 0) },
+  { key: "beaten", label: "Beaten", accessor: r => r.def.timesBeaten, display: r => fmtCount(r.def.timesBeaten) },
+  { key: "stops", label: "Stops", accessor: r => r.def.stops - (r.def.beatMisses || 0), display: r => fmtCount(r.def.stops - (r.def.beatMisses || 0)) },
   { key: "offrtg", label: "Off Rating", accessor: r => r.offRtg },
   { key: "twoway", label: "Two-Way", accessor: r => r.twoWay }
 ];
@@ -2383,15 +2386,15 @@ function computeGotBeat(playerId) {
     game.scoringEvents.forEach(ev => {
       if (ev.points !== 2 && ev.points !== 3) return;
       if (!(ev.defenderIds || []).includes(playerId)) return;
-      tagged++;
-      if (ev.contestLevel === "beat") beat++;
+      tagged += defenderShare(ev);
+      if (ev.contestLevel === "beat") beat += defenderShare(ev);
     });
   });
   return { beat, tagged };
 }
 const GOT_BEAT_MIN = 10; // tagged shots before a rate is shown and ranked
 const gotBeatRate = g => g.tagged >= GOT_BEAT_MIN ? g.beat / g.tagged : null;
-const gotBeatText = g => g.tagged === 0 ? "-" : `${g.beat} of ${g.tagged}${g.tagged >= GOT_BEAT_MIN ? ` (${Math.round(g.beat / g.tagged * 100)}%)` : ""}`;
+const gotBeatText = g => g.tagged === 0 ? "-" : `${fmtCount(g.beat)} of ${fmtCount(g.tagged)}${g.tagged >= GOT_BEAT_MIN ? ` (${Math.round(g.beat / g.tagged * 100)}%)` : ""}`;
 
 function computeDefensiveLoad(playerId) {
   const games = qualifyingGamesForPlayer(playerId);
@@ -2414,7 +2417,7 @@ function computeDefensiveLoad(playerId) {
     );
     if (taggedOppFga.length === 0) return;
     shareSum += taggedOppFga.length / myTeam.length;
-    taggedSum += taggedOppFga.filter(ev => ev.defenderIds.includes(playerId)).length;
+    taggedSum += taggedOppFga.filter(ev => ev.defenderIds.includes(playerId)).reduce((n, ev) => n + defenderShare(ev), 0);
   });
   if (shareSum < DEFENSIVE_LOAD_MIN_SHARE) return null;
   return taggedSum / shareSum;
@@ -2712,6 +2715,7 @@ function computeDefensiveLoadPanelRows() {
         // only as a labeled "vs. old methodology" comparison for this first release.
         realContested: computeRealContestedDefense(r.player.id),
         gotBeat: computeGotBeat(r.player.id),
+        halfCourt: computeHalfCourtOppFg(r.player.id),
         sentence: describeDefensiveLoad(r.defensiveLoad, oppFgPct, leagueAvgOppFg),
         // Own gate (10+ tagged defended shots, see computeExpectedPointsAgainst), separate from
         // Defensive Load's own (8+ expected tagged possessions) -- a player can clear one without
@@ -2729,7 +2733,7 @@ const DEFENSIVE_LOAD_COLUMNS = [
     accessor: r => r.realContested ? r.realContested.fgPct : null,
     display: r => r.realContested === null
       ? `Not enough contested volume yet<br><span class="hint" style="margin:0">was ${formatPct(r.oppFgPct)} any-tag</span>`
-      : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${r.realContested.made}/${r.realContested.attempts} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`,
+      : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${fmtCount(r.realContested.made)}/${fmtCount(r.realContested.attempts)} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`,
   },
   { key: "defrtg", label: "Def Rating/25", accessor: r => r.defRtg, display: r => r.defRtg.toFixed(1) },
   {
@@ -2739,7 +2743,26 @@ const DEFENSIVE_LOAD_COLUMNS = [
   },
   { key: "gotbeat", label: "Got Beat Rate", accessor: r => gotBeatRate(r.gotBeat), display: r => gotBeatText(r.gotBeat) },
   { key: "read", label: "Read", accessor: r => r.sentence },
+  { key: "halfcourt", label: "Half-Court Opp FG%", accessor: r => r.halfCourt ? r.halfCourt.fgPct : null,
+    display: r => r.halfCourt ? `${formatPct(r.halfCourt.fgPct)}<br><span class="hint" style="margin:0">${fmtCount(r.halfCourt.made)}/${fmtCount(r.halfCourt.attempts)} with the defense set</span>` : "-",
+    tooltip: "Opp FG% on shots this player defended in the half court only, leaving out shots within 8 seconds of a turnover or steal, when a defender often had no chance to get back. Lower is better." },
 ];
+
+// Opp FG% in the half court: every tagged shot against this player except transition shots (within 8 seconds of a turnover or steal).
+// A double team splits the shot, as everywhere else.
+function computeHalfCourtOppFg(playerId) {
+  let made = 0, attempts = 0;
+  qualifyingGamesForPlayer(playerId).forEach(game => {
+    game.scoringEvents.forEach(ev => {
+      if (ev.points !== 2 && ev.points !== 3) return;
+      if (!(ev.defenderIds || []).includes(playerId) || isTransition(game, ev)) return;
+      attempts += defenderShare(ev);
+      if (ev.made !== false) made += defenderShare(ev);
+    });
+  });
+  if (attempts < REAL_CONTESTED_MIN_FGA) return null;
+  return { made, attempts, fgPct: pct(made, attempts) };
+}
 
 let defensiveLoadPanelSort = { key: "load", dir: "desc" };
 
@@ -2757,7 +2780,7 @@ function renderDefensiveLoadPanel() {
   rows.sort((a, b) => compareForSort(sortCol.accessor(a), sortCol.accessor(b), defensiveLoadPanelSort.dir));
   const oppFgCell = r => r.realContested === null
     ? `Not enough contested volume yet<br><span class="hint" style="margin:0">was ${formatPct(r.oppFgPct)} any-tag</span>`
-    : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${r.realContested.made}/${r.realContested.attempts} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`;
+    : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${fmtCount(r.realContested.made)}/${fmtCount(r.realContested.attempts)} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`;
   body.innerHTML = rows.map(r => `<tr>
     <td><button type="button" class="icon-btn defload-player-btn" data-player-id="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button></td>
     <td>${r.load.toFixed(2)}x</td>
@@ -2977,8 +3000,8 @@ function computeCloseGameDefense() {
     [...game.teamA, ...game.teamB].forEach(playerId => {
       // Shots off a beaten defender are a breakdown, not defending done, so they are left out here (same as Defensive Load).
       const against = game.scoringEvents.filter(ev => (ev.defenderIds || []).includes(playerId) && ev.contestLevel !== "beat");
-      const timesBeaten = against.filter(ev => ev.made !== false).length;
-      const stops = against.length - timesBeaten;
+      const timesBeaten = against.filter(ev => ev.made !== false).reduce((n, ev) => n + defenderShare(ev), 0);
+      const stops = against.reduce((n, ev) => n + defenderShare(ev), 0) - timesBeaten;
       if (timesBeaten + stops === 0) return;
       const t = totals[playerId] = totals[playerId] || { timesBeaten: 0, stops: 0, gp: 0 };
       t.timesBeaten += timesBeaten;
@@ -5701,8 +5724,8 @@ function computeRealContestedDefense(playerId) {
       if (ev.points !== 2 && ev.points !== 3) return;
       if (!(ev.defenderIds || []).includes(playerId)) return;
       if (ev.contestLevel !== "medium" && ev.contestLevel !== "heavy") return;
-      attempts++;
-      if (ev.made !== false) made++;
+      attempts += defenderShare(ev);
+      if (ev.made !== false) made += defenderShare(ev);
     });
   });
   if (attempts < REAL_CONTESTED_MIN_FGA) return null;
@@ -9175,10 +9198,10 @@ const PLAYER_GAME_LOG_COLUMNS = [
   { key: "tovdetail", label: "TOV Detail", accessor: r => r.s.tov },
   { key: "atov", label: "A/TO", accessor: r => r.s.liveBallTov === 0 ? (r.s.ast === 0 ? 0 : Infinity) : r.s.ast / r.s.liveBallTov },
   { key: "pf", label: "PF", accessor: r => r.s.pf },
-  { key: "ptsAllowed", label: "Pts Allowed", accessor: r => r.def.ptsAllowed },
+  { key: "ptsAllowed", label: "Pts Allowed", accessor: r => r.def.ptsAllowed, display: r => fmtCount(r.def.ptsAllowed) },
   { key: "oppfg", label: "Opp FG%", accessor: r => r.def.oppFgPct },
-  { key: "beaten", label: "Beaten", accessor: r => r.def.timesBeaten },
-  { key: "stops", label: "Stops", accessor: r => r.def.stops - (r.def.beatMisses || 0) },
+  { key: "beaten", label: "Beaten", accessor: r => r.def.timesBeaten, display: r => fmtCount(r.def.timesBeaten) },
+  { key: "stops", label: "Stops", accessor: r => r.def.stops - (r.def.beatMisses || 0), display: r => fmtCount(r.def.stops - (r.def.beatMisses || 0)) },
   { key: "offrtg", label: "Off Rating", accessor: r => r.offRtg },
   { key: "twoway", label: "Two-Way", accessor: r => r.twoWay }
 ];
@@ -9259,10 +9282,10 @@ function renderPlayerGameLog(playerId) {
       <td>${escapeHtml(turnoverTypeDetailForGame(r.game, playerId))}</td>
       <td>${formatAstTov(r.s.ast, r.s.liveBallTov)}</td>
       <td>${foulCellHtml(r.s.pf)}</td>
-      <td>${r.def.ptsAllowed}</td>
+      <td>${fmtCount(r.def.ptsAllowed)}</td>
       <td>${formatPct(r.def.oppFgPct)}</td>
-      <td>${r.def.timesBeaten}</td>
-      <td>${r.def.stops - (r.def.beatMisses || 0)}</td>
+      <td>${fmtCount(r.def.timesBeaten)}</td>
+      <td>${fmtCount(r.def.stops - (r.def.beatMisses || 0))}</td>
       <td>${r.offRtg.toFixed(1)}</td>
       <td>${r.twoWay.toFixed(1)}${twoWayBadge}</td>
     `;
@@ -11652,7 +11675,7 @@ export const TABLE_PANELS = [
   (() => {
     const oppFgCell = r => r.realContested === null
     ? `Not enough contested volume yet<br><span class="hint" style="margin:0">was ${formatPct(r.oppFgPct)} any-tag</span>`
-    : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${r.realContested.made}/${r.realContested.attempts} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`;
+    : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${fmtCount(r.realContested.made)}/${fmtCount(r.realContested.attempts)} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`;
     return { section: "style", order: 52, fn: "renderDefensiveLoadPanel", title: "Defensive Load", bodyId: "defensiveLoadPanelBody", headerId: "defensiveLoadPanelHeaderRow",
     columns: __withDisplay(DEFENSIVE_LOAD_COLUMNS, [(r) => `<button type="button" class="icon-btn defload-player-btn" data-player-id="${r.player.id}" style="padding:0;font-weight:700;color:var(--accent)">${escapeHtml(r.player.name)}</button>`, (r) => `${r.load.toFixed(2)}x`, (r) => `${oppFgCell(r)}`, (r) => `${r.defRtg.toFixed(1)}`, (r) => `${r.pointsAllowedUnderExpected === null ? "—" : `${r.pointsAllowedUnderExpected >= 0 ? "+" : ""}${r.pointsAllowedUnderExpected.toFixed(1)}`}`, (r) => `${gotBeatText(r.gotBeat)}`, (r) => `${escapeHtml(r.sentence)}`]),
     rows: () => (computeDefensiveLoadPanelRows()),

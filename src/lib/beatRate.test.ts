@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { beatRates, isTransition, TRANSITION_SECONDS } from "@/lib/beatRate"
+import { beatRates, count, isTransition, TRANSITION_SECONDS } from "@/lib/beatRate"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 const shot = (id: string, t: number, level: ScoringEvent["contestLevel"], made = true, extra: Partial<ScoringEvent> = {}): ScoringEvent => ({ id, scorerId: "a", points: 2, made, videoTime: t, contestLevel: level, defenderIds: ["d"], ...extra })
@@ -12,6 +12,15 @@ describe("beat rate", () => {
     const r = beatRates(state(g)).find((x) => x.id === "d")!
     expect([r.faced, r.beat]).toEqual([4, 2])
     expect([r.oppMade, r.oppAtt]).toEqual([1, 2])
+  })
+  it("splits a double-teamed shot between its defenders", () => {
+    const g = game([shot("1", 10, "beat", true, { defenderIds: ["d", "e"] }), shot("2", 40, "heavy", true)], { teamA: ["a", "b"], teamB: ["d", "e"] })
+    const d = beatRates(state(g)).find((x) => x.id === "d")!
+    const e = beatRates(state(g)).find((x) => x.id === "e")!
+    expect([d.faced, d.beat, d.oppMade, d.oppAtt]).toEqual([1.5, 0.5, 1, 1])
+    expect([e.faced, e.beat]).toEqual([0.5, 0.5])
+    expect(count(1.5)).toBe("1.5")
+    expect(count(2)).toBe("2")
   })
   it("calls a shot transition when a turnover or steal came just before it, and half court otherwise", () => {
     const g = game([shot("1", 50, "beat"), shot("2", 200, "beat"), shot("3", 300, "light")], {

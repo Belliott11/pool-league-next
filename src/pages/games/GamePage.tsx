@@ -17,6 +17,7 @@ import { WatchContext, WatchTime } from "@/components/WatchTime"
 import type { PlayerControl } from "@/components/YouTubePlayer"
 import { JUMP_LEAD_SECONDS } from "@/lib/legacy-core"
 import { gameVideoUrl } from "@/lib/video"
+import { count } from "@/lib/beatRate"
 import { predictionNote } from "@/lib/scorecard"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { useReadOnly } from "@/lib/mode"
@@ -153,8 +154,8 @@ function GameStats({ state, game }: { state: PooleanState; game: Game }) {
               <TableCell>{fmtPct(trueShootingPct(s.pts, sh.fga, sh.fta))}</TableCell>
               <TableCell>{def.ptsAllowed}</TableCell>
               <TableCell>{fmtPct(pct(def.timesBeaten, def.timesBeaten + def.stops))}</TableCell>
-              <TableCell>{def.timesBeaten}</TableCell>
-              <TableCell>{def.stops - def.beatMisses}</TableCell>
+              <TableCell>{count(def.timesBeaten)}</TableCell>
+              <TableCell>{count(def.stops - def.beatMisses)}</TableCell>
               <TableCell className="tabular-nums">{signed(offensiveRating(s, sh))}</TableCell>
               <TableCell className="tabular-nums">{signed(defensiveRating(s, def))}</TableCell>
               <TableCell className="font-semibold tabular-nums">{signed(twoWayScore(s, sh, def))}</TableCell>

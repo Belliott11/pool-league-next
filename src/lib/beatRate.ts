@@ -43,24 +43,31 @@ export function beatRates(state: PooleanState, only?: string): BeatRow[] {
       if (e.points !== 2 && e.points !== 3) continue
       const beat = e.contestLevel === "beat"
       const trans = isTransition(g, e)
+      // A double team splits the shot: each of two defenders carries half of it.
+      const w = defenderShare(e)
       for (const d of e.defenderIds ?? []) {
         if (only && d !== only) continue
         const r = row(d)
-        r.faced++
-        if (trans) r.tFaced++
-        else r.hFaced++
+        r.faced += w
+        if (trans) r.tFaced += w
+        else r.hFaced += w
         if (beat) {
-          r.beat++
-          if (trans) r.tBeat++
-          else r.hBeat++
+          r.beat += w
+          if (trans) r.tBeat += w
+          else r.hBeat += w
         } else {
-          r.oppAtt++
-          if (e.made !== false) r.oppMade++
+          r.oppAtt += w
+          if (e.made !== false) r.oppMade += w
         }
       }
     }
   }
   return [...by.values()]
 }
+
+// Each tagged defender's share of a shot: the whole shot for one defender, half each for a double team.
+export const defenderShare = (e: Game["scoringEvents"][number]) => 1 / Math.max(1, e.defenderIds?.length ?? 0)
+// A count that can be split by double teams, shown whole when it is whole.
+export const count = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
 
 export const rate = (n: number, d: number): number | null => (d > 0 ? n / d : null)
