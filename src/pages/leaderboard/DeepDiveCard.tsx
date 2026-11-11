@@ -8,6 +8,7 @@ import { playerName } from "@/lib/players"
 import { ZONES, ZONE_LABEL, playerIdentity } from "@/lib/playerIdentity"
 import { QUICK, sequences } from "@/lib/sequences"
 import { useReadOnly } from "@/lib/mode"
+import { byFormat, type FormatRow, type Rate as FRate } from "@/lib/byFormat"
 import { adviceFrom, RULE_LABEL, ruleTests, type RuleVerdict } from "@/lib/ruleTests"
 import { trustOf, wilson } from "@/lib/trust"
 import type { PooleanState } from "@/lib/types"
@@ -239,6 +240,44 @@ function HoldUpTab({ state }: { state: PooleanState }) {
   )
 }
 
+// How the game changes with team size. Everything is a rate with its counts, since formats play to different scores.
+const FORMAT_LINES: { label: string; get: (r: FormatRow) => FRate; note: string }[] = [
+  { label: "Trips ending in a live-ball turnover", get: (r) => r.turnovers, note: "out of trips that ended in a shot or a turnover" },
+  { label: "Shots that are threes", get: (r) => r.threes, note: "out of shots" },
+  { label: "Threes made", get: (r) => r.threeMade, note: "out of threes" },
+  { label: "Shots from close", get: (r) => r.close, note: "out of shots with a spot" },
+  { label: "Close shots made", get: (r) => r.closeMade, note: "out of close shots" },
+  { label: "Shots that are open", get: (r) => r.open, note: "none, light or beat, out of shots with a contest level" },
+  { label: "Open shots made", get: (r) => r.openMade, note: "out of open shots" },
+  { label: "Contested shots made", get: (r) => r.contestedMade, note: "medium or heavy" },
+  { label: "Made shots assisted", get: (r) => r.assisted, note: "out of made shots" },
+  { label: "Misses that are offensive rebounds", get: (r) => r.oreb, note: "out of rebounded misses" },
+  { label: "Winning margin as a share of points", get: (r) => r.margin, note: "higher is more lopsided" },
+]
+const rateText = (r: FRate) => (r.d === 0 ? "-" : `${Math.round((r.n / r.d) * 100)}% (${r.n}/${r.d})`)
+
+function FormatTab({ state }: { state: PooleanState }) {
+  const rows = useMemo(() => byFormat(state), [state])
+  if (rows.length === 0) return <Hint>No filmed games yet.</Hint>
+  return (
+    <>
+      <Hint>How the game plays at each team size, from filmed games. Formats play to different scores, so these are rates, not totals. Uneven teams are pooled. A format with only a couple of filmed games is a first read.</Hint>
+      <Grid
+        min={`${14 + rows.length * 8}rem`}
+        head={["", ...rows.map((r) => r.format)]}
+        rows={[
+          { key: "filmed", cells: ["Filmed games", ...rows.map((r) => r.filmed)] },
+          { key: "results", cells: ["All results", ...rows.map((r) => r.results)] },
+          ...FORMAT_LINES.map((l) => ({
+            key: l.label,
+            cells: [<span key="l" title={l.note}>{l.label}</span>, ...rows.map((r) => rateText(l.get(r)))],
+          })),
+        ]}
+      />
+    </>
+  )
+}
+
 export function DeepDiveCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: Open }) {
   const readOnly = useReadOnly()
   return (
@@ -247,6 +286,7 @@ export function DeepDiveCard({ state, onOpenPlayer }: { state: PooleanState; onO
         tabs={[
           { value: "impact", label: "Win impact", node: <ImpactTab state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "rules", label: "Does it hold up?", node: <HoldUpTab state={state} /> },
+          { value: "format", label: "By format", node: <FormatTab state={state} /> },
           { value: "identity", label: "Player identity", node: <IdentityTab state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "seq", label: "Play sequences", node: <SequenceTab state={state} onOpenPlayer={onOpenPlayer} /> },
           ...(readOnly ? [] : [{ value: "body", label: "Body and effort", node: <BodyTab state={state} onOpenPlayer={onOpenPlayer} /> }]),
