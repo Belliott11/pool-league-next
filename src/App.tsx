@@ -412,7 +412,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         </TabsContent>
         <TabsContent value="player">
           <Suspense fallback={<PageSkeleton label="Loading player" />}>
-            <PlayerDetailPage state={state} toggles={toggles} playerId={playerId} onChangePlayer={(id) => {
+            <PlayerDetailPage state={state} toggles={toggles} playerId={playerId} update={update} onChangePlayer={(id) => {
               setPlayerId(id)
               go({ player: id }, true)
             }} />

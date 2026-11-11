@@ -10,6 +10,8 @@ import { PlayerHero } from "@/components/PlayerHero"
 import { PlayerGameFlow } from "@/pages/PlayerGameFlow"
 import { PlayerInsight } from "@/pages/PlayerInsight"
 import { PlayerBeatRate } from "@/pages/leaderboard/BeatRatePanel"
+import { ScoutingCard } from "@/pages/ScoutingCard"
+import type { Update } from "@/lib/store"
 import { PlayerLiveTov } from "@/pages/leaderboard/LiveTovPanel"
 import { PlayerOldSite } from "@/pages/PlayerOldSite"
 import { LeagueRank } from "@/pages/leaderboard/native"
@@ -150,11 +152,13 @@ export function PlayerDetailPage({
   toggles,
   playerId,
   onChangePlayer,
+  update,
 }: {
   state: PooleanState
   toggles: Toggles
   playerId: string | null
   onChangePlayer: (id: string) => void
+  update?: Update
 }) {
   // The classic compute layer keeps its own copy of the state; refresh it before anything renders.
   const version = useMemo(() => {
@@ -272,6 +276,7 @@ export function PlayerDetailPage({
       </nav>
 
       <Panels section="overview" pid={pid} version={version} />
+      <ScoutingCard state={state} pid={pid} update={update} />
 
       {SECTIONS.map((s) => (
         <Fragment key={s.key}>

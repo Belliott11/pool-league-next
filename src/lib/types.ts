@@ -7,6 +7,8 @@ export interface Player {
   name: string
   // Which pronouns headlines use for this player. Unset means they/them.
   pronouns?: "he" | "she"
+  // The editor's own notes on the player's Scouting Card, one per section, saved with the player.
+  scout?: { strengths?: string; workOn?: string; guard?: string; sample?: string }
 }
 
 export interface PlayerGameStats {
