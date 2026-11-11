@@ -131,7 +131,7 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
                     <Line label={`Set up per ${PER}`} value={mc.created25.toFixed(1)} sub={`${mc.created} shots in ${mc.games} games`} />
                     <Line label="Went in" value={pct(mc.created ? mc.made / mc.created : null)} sub={`league ${pct(c.league.passedFg)} on passed shots`} />
                     <Line label={`Assists per ${PER}`} value={mc.assists25.toFixed(1)} />
-                    <Line label="Shot quality" value={`${mc.expected.toFixed(2)} pts`} sub="the league's average on that kind of shot" />
+                    <Line label="Shot quality" value={`${mc.expected.toFixed(2)} pts`} sub="the league's average on that kind of shot from that spot" />
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">No passes tagged on shots yet.</p>

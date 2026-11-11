@@ -69,7 +69,7 @@ function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
         head={["Player", `Set up/${PER}`, "Went in", `AST/${PER}`, "Shot quality", "Sample"]}
         rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.created25.toFixed(1), pct(r.made / r.created), r.assists25.toFixed(1), `${r.expected.toFixed(2)} pts`, <TrustChip key="t" t={trustOf(r.created, "shots")} />] }))}
       />
-      <Hint>Shot quality is the league's average points on that kind of shot, so it says how good the looks were, not whether they went in.</Hint>
+      <Hint>Shot quality is the league's average points on that kind of shot from that spot (close, mid, line or deep, plus shot type and how closely it was guarded), so it says how good the looks were, not whether they went in.</Hint>
     </div>
   )
 }

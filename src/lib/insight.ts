@@ -31,23 +31,44 @@ function score(g: Game): [number, number] {
 export const games = (state: PooleanState) => state.games.filter(usable)
 const total = (g: Game) => score(g)[0] + score(g)[1]
 
-// League points per shot for each kind of shot (type and how closely it was guarded), the yardstick for shot quality.
+// Where a shot was taken, in the same bands as the shot charts: close or mid for a two, line or deep for a three. A free throw is its
+// own band, and a shot with no spot logged has none.
+const CLOSE_RANGE = 30
+const DEEP_THREE = 80
+export function shotZone(e: ScoringEvent): string {
+  if (e.points === 1) return "ft"
+  if (!e.shotLocation) return "?"
+  const d = Math.hypot(e.shotLocation.x - 50, e.shotLocation.y)
+  return e.points === 3 ? (d > DEEP_THREE ? "deep" : "line") : d > CLOSE_RANGE ? "mid" : "close"
+}
+
+// League points per shot for each kind of shot, the yardstick for shot quality. The most specific group with enough shots wins: shot
+// type, contest level and zone; then contest level and zone; then zone alone; then the whole league.
+export const YARDSTICK_MIN = 5
 export function yardstick(gs: Game[]) {
+  const keys = (e: ScoringEvent) => {
+    const z = shotZone(e)
+    return [`t|${e.shotType ?? "?"}|${e.contestLevel ?? "?"}|${z}`, `c|${e.contestLevel ?? "?"}|${z}`, `z|${z}`]
+  }
   const by = new Map<string, [number, number]>()
-  const key = (e: ScoringEvent) => `${e.shotType ?? "?"}|${e.contestLevel ?? "?"}`
   let sum = 0
   let n = 0
   for (const g of gs)
     for (const e of g.scoringEvents) {
-      const a = by.get(key(e)) ?? [0, 0]
-      by.set(key(e), [a[0] + pts(e), a[1] + 1])
+      for (const k of keys(e)) {
+        const a = by.get(k) ?? [0, 0]
+        by.set(k, [a[0] + pts(e), a[1] + 1])
+      }
       sum += pts(e)
       n++
     }
   const all = n ? sum / n : 0
   return (e: ScoringEvent) => {
-    const a = by.get(key(e))
-    return a && a[1] >= 5 ? a[0] / a[1] : all
+    for (const k of keys(e)) {
+      const a = by.get(k)
+      if (a && a[1] >= YARDSTICK_MIN) return a[0] / a[1]
+    }
+    return all
   }
 }
 
@@ -59,7 +80,7 @@ export const FACTORS = ["quality", "making", "turnovers", "rebounds", "other"] a
 export type Factor = (typeof FACTORS)[number]
 export const FACTOR_LABEL: Record<Factor, string> = { quality: "Shot quality", making: "Shot making", turnovers: "Turnovers", rebounds: "Offensive rebounds", other: "Everything else" }
 export const FACTOR_HINT: Record<Factor, string> = {
-  quality: "How good the shots were: type and how closely they were guarded, against the league's average for that shot.",
+  quality: "How good the shots were: where they were taken, the shot type and how closely they were guarded, against the league's average for that shot.",
   making: "Points from shots going in more or less often than their quality says.",
   turnovers: "Points from giving the ball away less often, counted at the league's points per shot.",
   rebounds: "Points from more second chances, counted the same way.",

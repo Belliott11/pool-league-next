@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { FACTORS, marginBreakdown, shotsCreated, turnoverCost, winChance, winProbAdded } from "@/lib/insight"
+import { FACTORS, marginBreakdown, shotsCreated, shotZone, turnoverCost, winChance, winProbAdded, yardstick } from "@/lib/insight"
 import { PER } from "@/lib/per"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
@@ -127,5 +127,26 @@ describe("player breakdowns", () => {
     expect(a1.margin).toBe(4)
     expect(b1.margin).toBe(-4)
     for (const f of FACTORS) expect(a1.edge[f]).toBeCloseTo(-b1.edge[f], 6)
+  })
+})
+
+describe("shot quality yardstick", () => {
+  const at = (x: number, y: number) => ({ shotLocation: { x, y } })
+  const g = (evs: ScoringEvent[]): Game => ({ id: "y", date: "d", teamA: ["a"], teamB: ["b"], winner: "A", stats: [], scoringEvents: evs, turnoverEvents: [], stealEvents: [], foulEvents: [] })
+  it("uses where the shot was taken, falling back from type and contest to contest to zone to the league", () => {
+    // Five made close drives and five missed mid drives, all open: the same type and contest, so only the spot separates them.
+    const close = [1, 2, 3, 4, 5].map((i) => shot(`c${i}`, "a", 2, true, at(50, 10)))
+    const mid = [1, 2, 3, 4, 5].map((i) => shot(`m${i}`, "a", 2, false, at(50, 50)))
+    const expect_ = yardstick([g([...close, ...mid])])
+    expect(expect_(shot("q1", "a", 2, false, at(50, 12)))).toBe(2) // close, open drive: its own group
+    expect(expect_(shot("q2", "a", 2, false, at(50, 55)))).toBe(0) // mid, open drive
+    expect(expect_(shot("q3", "a", 2, false, { ...at(50, 12), shotType: "fadeaway" }))).toBe(2) // no fadeaways yet: contest and zone
+    expect(expect_(shot("q4", "a", 2, false, { ...at(50, 12), shotType: "fadeaway", contestLevel: "heavy" }))).toBe(2) // zone alone
+    expect(expect_(shot("q5", "a", 3, false, at(50, 90)))).toBe(1) // a deep three nobody has taken: the league's 1 point a shot
+  })
+  it("bands shots like the shot charts", () => {
+    expect(shotZone(shot("z", "a", 2, true, at(50, 10)))).toBe("close")
+    expect(shotZone(shot("z", "a", 3, true, at(50, 90)))).toBe("deep")
+    expect(shotZone(shot("z", "a", 2, true))).toBe("?")
   })
 })
