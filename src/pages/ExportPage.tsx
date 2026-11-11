@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { FixBlanks } from "@/pages/games/FixBlanks"
+import { UnfilledList } from "@/pages/games/UnfilledList"
 import { LightRecheck } from "@/pages/games/LightRecheck"
 import type { Update } from "@/lib/store"
 import { useEffect, useMemo, useState } from "react"
@@ -128,6 +129,9 @@ export function ExportPage({ state, toggles, update }: { state: PooleanState; to
             <>
               <BackfillPanel title="Fix blanks" hint="Plays still missing a tag. Watch the clip and fill it in here, and a fixed play drops off the list.">
                 <FixBlanks state={state} update={update} />
+              </BackfillPanel>
+              <BackfillPanel title="Still unfilled" hint="Each filmed game and what it still needs for the newer stats: tip-off matchups and a contest level on defended shots.">
+                <UnfilledList state={state} />
               </BackfillPanel>
               <BackfillPanel title="Light contests to re-check" hint="Tagged Light Contest before Got Beat existed. Say which each one really was.">
                 <LightRecheck state={state} update={update} />

@@ -29,7 +29,7 @@ export const LEADERBOARD_GROUPS: GroupDef[] = [
   { id: "turnovers", title: "Turnovers", home: "situational", members: [["TOV Recomputed", "TOV%"], ["Turnover Type Breakdown", "Types"], ["Forced Turnover Credit", "Forced credit"], ["Self-Creation Full Accounting", "Self-creation"], ["Turnover Type Mix", "Mix"], ["Turnover Type vs. Shot Type", "Vs shot type"], ["Turnover Type Over Time", "Over time"], ["Out-of-Bounds Misses", "Out of bounds"]] },
   { id: "close", title: "Close games", home: "situational", members: [["Close-Game Shooting", "Shooting"], ["Game-Winning Buckets", "Game winners"], ["Comeback Tracker", "Comebacks"]] },
   { id: "second", title: "Second chances", home: "situational", members: [["Second-Chance Conversion", "Conversion"], ["Points off Takeaways", "Takeaways"]] },
-  { id: "defense", title: "Defense", home: "defense", members: [["Defensive Load", "Load"], ["Beat Rate", "Beat rate"], ["Shooter-Quality-Adjusted Defense", "Adjusted defense"], ["Contest Level & Defensive Engagement", "Contests"], ["Defensive Shot Distance", "Shots faced"], ["Close-Game Defense", "Close games"], ["Second-Chance Points Allowed", "Second chances allowed"]] },
+  { id: "defense", title: "Defense", home: "defense", members: [["Defensive Load", "Load"], ["Beat Rate", "Beat rate"], ["Matchup Record", "Matchups"], ["Shooter-Quality-Adjusted Defense", "Adjusted defense"], ["Contest Level & Defensive Engagement", "Contests"], ["Defensive Shot Distance", "Shots faced"], ["Close-Game Defense", "Close games"], ["Second-Chance Points Allowed", "Second chances allowed"]] },
   { id: "dev", title: "Developer views", home: "style", editorOnly: true, members: [["Calibrated Thresholds", "Thresholds"], ["Win Shares Model (beta)", "Win shares model"]] },
 ]
 
