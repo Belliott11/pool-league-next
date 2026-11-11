@@ -1,3 +1,4 @@
+import { AdvancedReads } from "./leaderboard/AdvancedReads"
 import { useMemo } from "react"
 import { Section } from "@/components/Section"
 import { sectionIcon } from "@/lib/panelIcons"
@@ -48,8 +49,8 @@ const JUMP_ITEMS: JumpItem[] = [
 
 // Phones only: one row of chips pinned under the header, so the long page is a jump away instead of a scroll.
 // The big dropdowns, most to least important. The first two cards sit above these, always.
-const ORDER = ["comparison", "insight", "shooting", "defense", "matchups", "deep", "situational", "flow", "media", "style"] as const
-const NATIVE = { insight: { id: "lb-insight", label: "What decided games" }, deep: { id: "lb-deep", label: "Player deep dive" }, flow: { id: "lb-flow", label: "Game flow" } } as const
+const ORDER = ["comparison", "reads", "insight", "shooting", "defense", "matchups", "deep", "situational", "flow", "media", "style"] as const
+const NATIVE = { reads: { id: "lb-reads", label: "Advanced reads" }, insight: { id: "lb-insight", label: "What decided games" }, deep: { id: "lb-deep", label: "Player deep dive" }, flow: { id: "lb-flow", label: "Game flow" } } as const
 const NAV = [
   { id: "lb-ranking", label: "Ranking" },
   { id: "lb-rates", label: "Season rates" },
@@ -110,6 +111,7 @@ export function LeaderboardPage({
       </div>
       {ORDER.filter((k) => !(readOnly && EDITOR_ONLY.has(k))).map((k, i) => {
         const style = { "--i": i + 2 } as React.CSSProperties
+        if (k === "reads") return <div key={k} className="anim-rise scroll-mt-28" style={style}><AdvancedReads state={state} onOpenPlayer={onOpenPlayer} /></div>
         if (k === "insight") return <div key={k} className="anim-rise scroll-mt-28" style={style}><InsightCard state={state} onOpenPlayer={onOpenPlayer} /></div>
         if (k === "deep") return <div key={k} className="anim-rise scroll-mt-28" style={style}><DeepDiveCard state={state} onOpenPlayer={onOpenPlayer} /></div>
         if (k === "flow") return <div key={k} className="anim-rise scroll-mt-28" style={style}><GameFlowCard state={state} onOpenPlayer={onOpenPlayer} /></div>
