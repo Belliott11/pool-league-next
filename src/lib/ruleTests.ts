@@ -1,6 +1,6 @@
 import { CLEAR_Z, compareMeans, compareRates, HINT_Z, leagueFlow, pct, type Mean, type Rate } from "@/lib/gameFlow"
 import { allResults, oldGames } from "@/lib/hallOfFame"
-import { games, partsOf, yardstick } from "@/lib/insight"
+import { games, partsOf, targetOf, yardstick } from "@/lib/insight"
 import { correlate } from "@/lib/bodyEffort"
 import type { RealGame } from "@/lib/real"
 import { sequences } from "@/lib/sequences"
@@ -245,6 +245,37 @@ function resultRules(state: PooleanState, old: RealGame[]): Rule[] {
   ]
 }
 
+// A lead late in a game, using each game's own target: the first moment a team is up SAFE_MARGIN or more and within SAFE_TO_GO points
+// of winning. Did they hold on?
+const SAFE_MARGIN = 3
+const SAFE_TO_GO = 4
+export function lateLeads(gs: Game[]) {
+  let held = 0
+  let n = 0
+  for (const g of gs) {
+    const target = targetOf(g)
+    if (!target) continue
+    const ev = g.scoringEvents.filter(madeOf).sort((a, b) => (a.videoTime ?? 0) - (b.videoTime ?? 0))
+    const s: [number, number] = [0, 0]
+    let leader: 0 | 1 | null = null
+    for (const e of ev) {
+      const t = g.teamA.includes(e.scorerId) ? 0 : g.teamB.includes(e.scorerId) ? 1 : null
+      if (t === null) continue
+      s[t] += e.points
+      const up = s[0] > s[1] ? 0 : s[1] > s[0] ? 1 : null
+      if (up !== null && s[up] - s[1 - up] >= SAFE_MARGIN && target - s[up] <= SAFE_TO_GO && s[up] < target) {
+        leader = up
+        break
+      }
+    }
+    if (leader === null) continue
+    n++
+    const final = ev.reduce<[number, number]>((f, e) => (g.teamA.includes(e.scorerId) ? [f[0] + e.points, f[1]] : g.teamB.includes(e.scorerId) ? [f[0], f[1] + e.points] : f), [0, 0])
+    if ((final[0] > final[1] ? 0 : 1) === leader) held++
+  }
+  return { held, n }
+}
+
 function firstAndHalf(gs: Game[]) {
   let firstW = 0
   let halfW = 0
@@ -320,6 +351,7 @@ function shotRules(state: PooleanState): Rule[] {
     }
   }
   const { firstW, n, halfW, halfN } = firstAndHalf(gs)
+  const late = lateLeads(gs)
 
   return [
     {
@@ -364,6 +396,7 @@ function shotRules(state: PooleanState): Rule[] {
     { id: "hot-hand", sport: "Basketball", claim: "A make makes the next shot more likely", numbers: `After a make ${pc(hot.afterMake)}, after a miss ${pc(hot.afterMiss)}`, n: `${hot.afterMake.att + hot.afterMiss.att} shots`, ...fromCompare(streak.verdict, streak.diff, Math.min(hot.afterMake.att, hot.afterMiss.att)), advice: "Shooters really do stay hot. Feed whoever just hit." },
     { id: "four-factors", sport: "NBA", claim: "The better shooting team wins", numbers: `Better shooting team won ${shootW} of ${shootN}`, n: `${shootN} games`, ...verdictFromWins(shootW, shootN), advice: "Shooting decides games here, so shot choice matters more than anything else." },
     { id: "ball-security", sport: "Football", claim: "Win the turnover battle, win the game", numbers: `Team with fewer live turnovers won ${tovW} of ${tovN}`, n: `${tovN} games`, ...verdictFromWins(tovW, tovN), advice: "Holding on to the ball decides games. Cut the risky passes." },
+    { id: "safe-lead", sport: "Basketball", claim: `Up ${SAFE_MARGIN} or more with ${SAFE_TO_GO} or fewer to win, the lead holds`, numbers: `The leader held on ${late.held} of ${late.n} times`, n: `${late.n} games`, note: "Uses each game's own target score.", ...verdictFromWins(late.held, late.n) },
     { id: "halftime", sport: "Soccer", claim: "The leader at halfway wins", numbers: `Halfway leader won ${halfW} of ${halfN}`, n: `${halfN} games`, ...verdictFromWins(halfW, halfN) },
     { id: "first-score", sport: "Soccer", claim: "Whoever scores first wins", numbers: `First to score won ${firstW} of ${n}`, n: `${n} games`, ...verdictFromWins(firstW, n), advice: "The first basket matters. Come out with a real play." },
   ]

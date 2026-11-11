@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { adviceFrom, coinP, pickOf, picksFor, ruleTests, stratified, verdictFromWins, type Rule } from "@/lib/ruleTests"
+import { adviceFrom, coinP, lateLeads, pickOf, picksFor, ruleTests, stratified, verdictFromWins, type Rule } from "@/lib/ruleTests"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 const base = { stats: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
@@ -122,5 +122,16 @@ describe("team picks", () => {
   it("uses what a game was tagged with", () => {
     const g = { ...game("g", "d1", [shot("1", "a", true, 0)]), teamsPickedBy: "random" as const }
     expect(picksFor(state([g]), [r("d1", ["b"], ["a"])])).toEqual(["random"])
+  })
+})
+
+describe("late leads", () => {
+  const ev = (id: string, scorerId: string, points: 1 | 2 | 3, t: number): ScoringEvent => ({ id, scorerId, points, made: true, videoTime: t })
+  const g = (evs: ScoringEvent[]): Game => ({ id: "l", date: "d", teamA: ["a"], teamB: ["b"], winner: "A", liveTarget: 11, stats: [], scoringEvents: evs, turnoverEvents: [], stealEvents: [], foulEvents: [] })
+  it("finds the first time a team is up 3 or more within 4 of the target, and whether they held on", () => {
+    // a reaches 7 to 2 (4 to go, up 5), then b comes back and wins 11 to 9.
+    const comeback = g([ev("1", "a", 3, 1), ev("2", "a", 2, 2), ev("3", "b", 2, 3), ev("4", "a", 2, 4), ev("5", "b", 3, 5), ev("6", "b", 3, 6), ev("7", "a", 2, 7), ev("8", "b", 3, 8)])
+    const held = g([ev("1", "a", 3, 1), ev("2", "a", 2, 2), ev("3", "a", 2, 3), ev("4", "b", 2, 4), ev("5", "a", 2, 5), ev("6", "a", 2, 6)])
+    expect(lateLeads([comeback, held])).toEqual({ held: 1, n: 2 })
   })
 })

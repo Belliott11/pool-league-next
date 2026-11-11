@@ -97,7 +97,7 @@ function Chance({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (i
   return (
     <div className="flex flex-col gap-3">
       <Hint>
-        Each made basket moves the scoring team's chance of winning, more late and in close games. The scorer gets the credit (65% of it when a pass led to the basket, 35% to the passer), and defenders on that shot share what was allowed. Games usually end near {w.expectedTotal} points. Shown in points of win chance per {PER} points, so +10 is ten percentage points of win chance.
+        Each made basket moves the scoring team's chance of winning, more late and in close games. The scorer gets the credit (65% of it when a pass led to the basket, 35% to the passer), and defenders on that shot share what was allowed. Each game is played as a race to its own target score (16 or 21, as logged); a game with no target falls back to the usual total of {w.expectedTotal} points. Shown in points of win chance per {PER} points, so +10 is ten percentage points of win chance.
       </Hint>
       <Grid
         head={["Player", "Added", "Allowed", "Net", "Sample"]}

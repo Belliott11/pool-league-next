@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { FACTORS, marginBreakdown, passBlame, shotsCreated, shotZone, turnoverCost, winChance, winProbAdded, yardstick } from "@/lib/insight"
+import { FACTORS, marginBreakdown, passBlame, raceChance, shotsCreated, shotZone, targetOf, turnoverCost, winChance, winProbAdded, yardstick } from "@/lib/insight"
 import { PER } from "@/lib/per"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
@@ -181,5 +181,21 @@ describe("catch and shoot", () => {
     ]
     const r = shotsCreated({ players: [], games: [g(evs)] }).rows.find((x) => x.id === "p")!
     expect(r.realAssists25 / r.assists25).toBeCloseTo(2 / 3)
+  })
+})
+
+describe("race to the target", () => {
+  const twos: [number, number][] = [[2, 1]]
+  it("is even when both teams need the same, and favours the team that needs less", () => {
+    expect(raceChance(10, 10, twos)).toBeCloseTo(0.5)
+    expect(raceChance(2, 10, twos)).toBeGreaterThan(0.95)
+    expect(raceChance(10, 2, twos)).toBeLessThan(0.05)
+  })
+  it("only uses a target the game actually reached", () => {
+    const g = (o: Partial<Game>): Game => ({ id: "t", date: "d", teamA: ["a"], teamB: ["b"], winner: "A", stats: [], scoringEvents: [shot("1", "a", 2, true), shot("2", "a", 2, true)], turnoverEvents: [], stealEvents: [], foulEvents: [], ...o })
+    expect(targetOf(g({ liveTarget: 4 }))).toBe(4)
+    expect(targetOf(g({ liveTarget: 16 }))).toBeNull() // never got there
+    expect(targetOf(g({ liveTarget: 4, stoppedEarly: true }))).toBeNull()
+    expect(targetOf(g({}))).toBeNull()
   })
 })
