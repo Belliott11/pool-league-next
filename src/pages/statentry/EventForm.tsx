@@ -134,6 +134,7 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
   const carry = (shooter: string | null) => (last && shooter ? last.defenderIds.filter((d) => teamsOf(game, shooter).opps.includes(d)) : [])
   const [defenderIds, setDefenderIds] = useState<string[]>(edit?.defenderIds ?? carry(scorerId))
   const [contestLevel, setContestLevel] = useState<ScoringEvent["contestLevel"]>(edit?.contestLevel ?? null)
+  const [catchAndShoot, setCatchAndShoot] = useState<boolean | null>(edit?.catchAndShoot ?? null)
   const [shotType, setShotType] = useState<string | null>(edit?.shotType ?? null)
   const [dunk, setDunk] = useState(edit?.dunk === true)
   const [loc, setLoc] = useState<{ x: number; y: number } | null>(edit?.shotLocation ?? null)
@@ -151,13 +152,14 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
     setBlockerId(null)
     setDefenderIds(carry(id))
     setContestLevel(null)
+    setCatchAndShoot(null)
   }
   const toggleDef = (id: string) => setDefenderIds((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))
   const one = (cur: string | null, set: (v: string | null) => void, id: string) => set(cur === id ? null : id)
 
   const save = (again?: boolean) => {
     if (!scorerId) return
-    const common = { assistId, passerId, rebounderId, reboundContesterIds: contesterIds, reboundNoContest: noContest, blockerId, defenderIds, contestLevel, shotType, dunk, shotLocation: loc, videoTime: time }
+    const common = { assistId, passerId, rebounderId, reboundContesterIds: contesterIds, reboundNoContest: noContest, blockerId, defenderIds, contestLevel, shotType, dunk, shotLocation: loc, videoTime: time, catchAndShoot }
     if (edit) onSave((g) => editShot(g, edit.id, common))
     else {
       onSave((g) => addShot(g, { scorerId, points, made, outOfBounds: oob, ...common }))
@@ -294,6 +296,12 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
                 ))}
               </Field>
             </>
+          )}
+          {fg && (made ? assistId : passerId) && (made ? assistId : passerId) !== "none" && (
+            <Field label="Off the pass" hint="Catch and shoot: the shot starts in one motion from the catch. Feet can gather, but no fake, no dribble and no pause. Anything else is held it.">
+              <Chip selected={catchAndShoot === true} onClick={() => setCatchAndShoot(catchAndShoot === true ? null : true)}>Catch and shoot</Chip>
+              <Chip selected={catchAndShoot === false} onClick={() => setCatchAndShoot(catchAndShoot === false ? null : false)}>Held it</Chip>
+            </Field>
           )}
           {fg && (
             <>

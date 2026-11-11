@@ -175,6 +175,34 @@ const validPass = (g: Game, e: ScoringEvent): string | null => {
   return a !== null && a === side(g, e.scorerId) ? p : null
 }
 
+// Whose fault a contest was on a shot off a pass. A catch-and-shoot shot that was still contested means the pass led into coverage (the
+// passer); a contested shot the shooter held first means the defense had time to recover (the shooter). Only tagged shots count.
+export interface PassBlame {
+  id: string
+  passes: number // their passes that were caught and shot right away
+  passesContested: number
+  held: number // their own shots off a pass that they held first
+  heldContested: number
+}
+const contested = (e: ScoringEvent) => e.contestLevel === "medium" || e.contestLevel === "heavy"
+export function passBlame(state: PooleanState): PassBlame[] {
+  const by = new Map<string, PassBlame>()
+  const row = (id: string) => by.get(id) ?? by.set(id, { id, passes: 0, passesContested: 0, held: 0, heldContested: 0 }).get(id)!
+  for (const g of games(state))
+    for (const e of g.scoringEvents) {
+      const p = validPass(g, e)
+      if (!p || e.catchAndShoot === null || e.catchAndShoot === undefined) continue
+      if (e.catchAndShoot) {
+        row(p).passes++
+        if (contested(e)) row(p).passesContested++
+      } else {
+        row(e.scorerId).held++
+        if (contested(e)) row(e.scorerId).heldContested++
+      }
+    }
+  return [...by.values()].sort((a, b) => b.passes + b.held - (a.passes + a.held))
+}
+
 export function shotsCreated(state: PooleanState): Creation {
   const gs = games(state)
   const expect = yardstick(gs)

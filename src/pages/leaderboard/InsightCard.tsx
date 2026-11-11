@@ -2,7 +2,7 @@ import { Lightbulb } from "lucide-react"
 import { useMemo } from "react"
 import { ViewTabs } from "@/components/PanelGroup"
 import { Section } from "@/components/Section"
-import { FACTORS, FACTOR_HINT, FACTOR_LABEL, marginBreakdown, shotsCreated, turnoverCost, winProbAdded, type Breakdown } from "@/lib/insight"
+import { FACTORS, FACTOR_HINT, FACTOR_LABEL, marginBreakdown, passBlame, shotsCreated, turnoverCost, winProbAdded, type Breakdown } from "@/lib/insight"
 import { PER } from "@/lib/per"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
@@ -55,6 +55,21 @@ function Decided({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
   )
 }
 
+function PassBlameGrid({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+  const rows = useMemo(() => passBlame(state), [state])
+  if (rows.length === 0) return <Hint>Tag shots off a pass as catch and shoot or held it, and this shows whose fault a contested look was.</Hint>
+  const of = (n: number, d: number) => (d === 0 ? "-" : `${n} of ${d} (${Math.round((n / d) * 100)}%)`)
+  return (
+    <>
+      <Hint>Whose fault a contested look was. Contested on the catch: their pass was shot right away and still met a medium or heavy contest, so the pass led into coverage. Contested after holding: they caught a pass, held it, and let the defense recover.</Hint>
+      <Grid
+        head={["Player", "Contested on the catch", "Contested after holding"]}
+        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, of(r.passesContested, r.passes), of(r.heldContested, r.held)] }))}
+      />
+    </>
+  )
+}
+
 function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const c = useMemo(() => shotsCreated(state), [state])
   const rows = c.rows.filter((r) => r.created >= 5)
@@ -70,6 +85,7 @@ function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
         rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.created25.toFixed(1), pct(r.made / r.created), r.assists25.toFixed(1), `${r.expected.toFixed(2)} pts`, <TrustChip key="t" t={trustOf(r.created, "shots")} />] }))}
       />
       <Hint>Shot quality is the league's average points on that kind of shot from that spot (close, mid, line or deep, plus shot type and how closely it was guarded), so it says how good the looks were, not whether they went in.</Hint>
+      <PassBlameGrid state={state} onOpenPlayer={onOpenPlayer} />
     </div>
   )
 }

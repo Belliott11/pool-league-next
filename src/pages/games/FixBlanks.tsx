@@ -38,6 +38,12 @@ export function FixBlanks({ state, update }: { state: PooleanState; update: Upda
               ))}
             </div>
           )}
+          {b.kind === "catch" && (
+            <div className="flex flex-wrap gap-1.5" title="Catch and shoot: the shot starts in one motion from the catch. Feet can gather, but no fake, no dribble and no pause.">
+              <Chip onClick={() => fill(b, { catchAndShoot: true })}>Catch and shoot</Chip>
+              <Chip onClick={() => fill(b, { catchAndShoot: false })}>Held it</Chip>
+            </div>
+          )}
           {b.kind === "rebounder" && (
             <div className="flex flex-wrap gap-1.5">
               {[...(state.games.find((g) => g.id === b.gameId)?.teamA ?? []), ...(state.games.find((g) => g.id === b.gameId)?.teamB ?? [])].map((id) => (

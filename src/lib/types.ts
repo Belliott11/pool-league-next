@@ -39,6 +39,9 @@ export interface ScoringEvent {
   dunk?: boolean
   contestLevel?: "none" | "beat" | "light" | "medium" | "heavy" | null
   contestChecked?: boolean // an old Light Contest tag someone has looked at again
+  // Shots off a pass: true when the shot starts in one motion from the catch (feet can gather; no fake, dribble or pause), false when
+  // the shooter held it first. Says whether a contest was on the pass or on the shooter.
+  catchAndShoot?: boolean | null
   passerId?: string | null
   // Rebound battles: who was matched up on the rebounder, or reboundNoContest when nobody was.
   reboundContesterIds?: string[]

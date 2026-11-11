@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { FACTORS, marginBreakdown, shotsCreated, shotZone, turnoverCost, winChance, winProbAdded, yardstick } from "@/lib/insight"
+import { FACTORS, marginBreakdown, passBlame, shotsCreated, shotZone, turnoverCost, winChance, winProbAdded, yardstick } from "@/lib/insight"
 import { PER } from "@/lib/per"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
@@ -148,5 +148,20 @@ describe("shot quality yardstick", () => {
     expect(shotZone(shot("z", "a", 2, true, at(50, 10)))).toBe("close")
     expect(shotZone(shot("z", "a", 3, true, at(50, 90)))).toBe("deep")
     expect(shotZone(shot("z", "a", 2, true))).toBe("?")
+  })
+})
+
+describe("catch and shoot", () => {
+  const g = (evs: ScoringEvent[]): Game => ({ id: "c", date: "d", teamA: ["a", "p"], teamB: ["b"], winner: "A", stats: [], scoringEvents: evs, turnoverEvents: [], stealEvents: [], foulEvents: [] })
+  it("puts a contest on the passer when it was shot on the catch, and on the shooter when they held it", () => {
+    const st = { players: [], games: [g([
+      shot("1", "a", 2, false, { passerId: "p", catchAndShoot: true, contestLevel: "heavy" }),
+      shot("2", "a", 2, true, { passerId: "p", assistId: "p", catchAndShoot: true, contestLevel: "none" }),
+      shot("3", "a", 2, false, { passerId: "p", catchAndShoot: false, contestLevel: "medium" }),
+      shot("4", "a", 2, false, { passerId: "p" }), // untagged: left out
+    ])] }
+    const rows = passBlame(st)
+    expect(rows.find((r) => r.id === "p")).toMatchObject({ passes: 2, passesContested: 1 })
+    expect(rows.find((r) => r.id === "a")).toMatchObject({ held: 1, heldContested: 1 })
   })
 })

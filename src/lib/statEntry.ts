@@ -26,6 +26,7 @@ export interface ShotInput {
   shotType?: string | null
   dunk?: boolean
   shotLocation?: { x: number; y: number } | null
+  catchAndShoot?: boolean | null
   // Miss only: ruled out of bounds, which creates a linked turnover (missEventId / turnoverEventId).
   outOfBounds?: boolean
   videoTime?: number | null
@@ -55,6 +56,8 @@ function fixShot(ev: ScoringEvent) {
     ev.assistId = null
     if (ev.turnoverEventId) ev.rebounderId = null
   }
+  // Catch and shoot only means something on a shot off a teammate's pass.
+  if (!fg || !ev.passerId || ev.passerId === "none") ev.catchAndShoot = null
   // A rebound battle only exists on a live-ball miss with a rebounder; naming contesters means someone contested.
   if (made || !ev.rebounderId || ev.turnoverEventId) {
     ev.reboundContesterIds = []
@@ -106,6 +109,7 @@ export function addShot(game: Game, input: ShotInput): Game {
     shotType: input.shotType ?? null,
     contestLevel: input.contestLevel ?? null,
     passerId: input.made ? null : (input.passerId ?? null),
+    catchAndShoot: input.catchAndShoot ?? null,
     videoTime: input.videoTime ?? null,
   }
   fixShot(ev)
@@ -122,7 +126,7 @@ export function addShot(game: Game, input: ShotInput): Game {
 
 // Like the classic Shot Log edit: who is tagged and how, never scorer/points/make-vs-miss/out of
 // bounds (those change which other records exist, so fixing them means delete and re-log).
-export type ShotPatch = Partial<Pick<ShotInput, "assistId" | "passerId" | "rebounderId" | "reboundContesterIds" | "reboundNoContest" | "blockerId" | "defenderIds" | "contestLevel" | "shotType" | "dunk" | "shotLocation" | "videoTime">>
+export type ShotPatch = Partial<Pick<ShotInput, "assistId" | "passerId" | "rebounderId" | "reboundContesterIds" | "reboundNoContest" | "blockerId" | "defenderIds" | "contestLevel" | "shotType" | "dunk" | "shotLocation" | "videoTime" | "catchAndShoot">>
 
 export function editShot(game: Game, id: string, patch: ShotPatch): Game {
   const g = structuredClone(game)
