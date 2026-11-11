@@ -173,4 +173,13 @@ describe("catch and shoot", () => {
     expect(q([...open, ...tough(false)])).toMatchObject({ created: 10, expected: 2 }) // held: on the shooter
     expect(q([...open, ...tough(true)])).toMatchObject({ created: 10, expected: 1 }) // shot on the catch: on the pass
   })
+  it("leaves a contested make the shooter held out of real assists", () => {
+    const evs = [
+      shot("1", "a", 2, true, { passerId: "p", assistId: "p", catchAndShoot: false, contestLevel: "heavy" }),
+      shot("2", "a", 2, true, { passerId: "p", assistId: "p", catchAndShoot: true, contestLevel: "heavy" }),
+      shot("3", "a", 2, true, { passerId: "p", assistId: "p", contestLevel: "none" }),
+    ]
+    const r = shotsCreated({ players: [], games: [g(evs)] }).rows.find((x) => x.id === "p")!
+    expect(r.realAssists25 / r.assists25).toBeCloseTo(2 / 3)
+  })
 })

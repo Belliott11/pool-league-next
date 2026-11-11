@@ -8279,6 +8279,7 @@ const LEADERBOARD_COLUMNS = [
     tooltip: "Share of this player's own zone-marked field goal attempts from the two real-positive-value zones (Close, 3PT Line) rather than the two weak ones (Midrange, 3PT Deep) -- see the Shot Distance panel below for the four-way split this collapses into one number. How much of this diet is good shots, at a glance, not a read on whether they're making them." },
   { key: "oreb", label: "OREB/25", accessor: r => r.rate.oreb, display: r => r.rate.oreb.toFixed(1), tooltip: "Offensive rebounds (grabbed by a teammate of the shooter), per 25 combined points." },
   { key: "dreb", label: "DREB/25", accessor: r => r.rate.dreb, display: r => r.rate.dreb.toFixed(1), tooltip: "Defensive rebounds (grabbed by an opponent of the shooter), per 25 combined points." },
+  { key: "foughtreb", label: "Fought REB/25", accessor: r => foughtReboundsPer25(r), display: r => foughtReboundsPer25(r).toFixed(1), tooltip: "Rebounds per 25 combined points, with a rebound nobody contested counted as half: separates winning boards from standing where the ball falls. Rebounds with no contest tag count in full." },
   { key: "ast", label: "AST/25", accessor: r => r.rate.ast, display: r => r.rate.ast.toFixed(1), tooltip: "Assists (credited on a made shot when a teammate is tagged as the passer), per 25 combined points." },
   { key: "stl", label: "STL/25", accessor: r => r.rate.stl, display: r => r.rate.stl.toFixed(1), tooltip: "Steals, per 25 combined points. Feeds Def Rating below." },
   { key: "tovcredit", label: "TOV Credit %", advanced: true,
@@ -8558,6 +8559,23 @@ function renderLeaderboard() {
     body.appendChild(tr);
   });
   renderLeaderboardSectionTeasers();
+}
+
+// A rebound nobody contested counts this much in Fought REB/25; a contested one (or one with no contest tag) counts in full.
+const FREE_REBOUND_WEIGHT = 0.5;
+const foughtCache = new WeakMap();
+function foughtReboundsPer25(r) {
+  if (foughtCache.has(r)) return foughtCache.get(r);
+  const total = r.totals.oreb + r.totals.dreb;
+  let free = 0;
+  qualifyingGamesForPlayer(r.player.id).forEach(game => game.scoringEvents.forEach(ev => {
+    if (ev.made === false && ev.rebounderId === r.player.id && !ev.turnoverEventId && ev.reboundNoContest) free++;
+  }));
+  // REB/25 is a straight per-25 rate, so its scale carries over to the weighted count.
+  const scale = total > 0 ? (r.rate.oreb + r.rate.dreb) / total : 0;
+  const v = Math.max(0, total - (1 - FREE_REBOUND_WEIGHT) * free) * scale;
+  foughtCache.set(r, v);
+  return v;
 }
 
 // How much data sits behind each percentage, so tables can print the count next to it and fade thin ones (thresholds: sampleSize.ts).

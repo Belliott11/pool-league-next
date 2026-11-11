@@ -162,6 +162,7 @@ export interface Creator {
   expected: number // average quality of the shots they set up, in points per shot
   created25: number
   assists25: number
+  realAssists25: number // assists, leaving out contested makes the shooter held first: the shooter made those
 }
 export interface Creation {
   rows: Creator[]
@@ -203,8 +204,8 @@ export function passBlame(state: PooleanState): PassBlame[] {
 export function shotsCreated(state: PooleanState): Creation {
   const gs = games(state)
   const expect = yardstick(gs)
-  const by = new Map<string, { games: number; created: number; made: number; assists: number; xp: number; rated: number; points: number }>()
-  const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, created: 0, made: 0, assists: 0, xp: 0, rated: 0, points: 0 }).get(id)!
+  const by = new Map<string, { games: number; created: number; made: number; assists: number; real: number; xp: number; rated: number; points: number }>()
+  const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, created: 0, made: 0, assists: 0, real: 0, xp: 0, rated: 0, points: 0 }).get(id)!
   let passed = 0
   let passedMade = 0
   let other = 0
@@ -232,7 +233,10 @@ export function shotsCreated(state: PooleanState): Creation {
         other++
         if (made(e)) otherMade++
       }
-      if (made(e) && e.assistId && side(g, e.assistId) !== null) row(e.assistId).assists++
+      if (made(e) && e.assistId && side(g, e.assistId) !== null) {
+        row(e.assistId).assists++
+        if (!(e.catchAndShoot === false && contested(e))) row(e.assistId).real++
+      }
     }
   }
   const rows = [...by]
@@ -246,6 +250,7 @@ export function shotsCreated(state: PooleanState): Creation {
       expected: r.rated ? r.xp / r.rated : 0,
       created25: r.points ? (r.created / r.points) * PER : 0,
       assists25: r.points ? (r.assists / r.points) * PER : 0,
+      realAssists25: r.points ? (r.real / r.points) * PER : 0,
     }))
     .sort((a, b) => b.created25 - a.created25 || b.created - a.created)
   return { rows, league: { passed, passedFg: passed ? passedMade / passed : null, otherFg: other ? otherMade / other : null } }
