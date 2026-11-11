@@ -1,3 +1,4 @@
+import { seasonView } from "@/lib/season"
 import { Fragment, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -165,6 +166,8 @@ export function PlayerDetailPage({
     syncLegacy(state, toggles)
     return { state, toggles }
   }, [state, toggles])
+  // This season's games for the panels about how they are playing now (see season.ts); their old-site record keeps every result.
+  const season = useMemo(() => seasonView(state, toggles.pastSeasons), [state, toggles.pastSeasons])
 
   // A link names a player by slug. Resolve it forgivingly ("ian" finds "g-ian"); a slug that matches nobody is said so
   // below, never answered with some other player's page.
@@ -276,21 +279,21 @@ export function PlayerDetailPage({
       </nav>
 
       <Panels section="overview" pid={pid} version={version} />
-      <ScoutingCard state={state} pid={pid} update={update} />
+      <ScoutingCard state={season} pid={pid} update={update} />
 
       {SECTIONS.map((s) => (
         <Fragment key={s.key}>
           <Section id={`section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
-            {s.key === "defense" && pid && <PlayerBeatRate state={state} pid={pid} />}
-            {s.key === "passing" && pid && <PlayerLiveTov state={state} pid={pid} />}
+            {s.key === "defense" && pid && <PlayerBeatRate state={season} pid={pid} />}
+            {s.key === "passing" && pid && <PlayerLiveTov state={season} pid={pid} />}
             <Panels section={s.key} pid={pid} version={version} />
           </Section>
           {/* The sections built in this app sit where they matter: how their games were decided right after the main stat groups,
               game flow and the old site's record after trends, and media last. */}
-          {pid && s.key === "passing" && <PlayerInsight state={state} pid={pid} />}
+          {pid && s.key === "passing" && <PlayerInsight state={season} pid={pid} />}
           {pid && s.key === "trends" && (
             <>
-              <PlayerGameFlow state={state} pid={pid} />
+              <PlayerGameFlow state={season} pid={pid} />
               <PlayerOldSite state={state} pid={pid} />
             </>
           )}

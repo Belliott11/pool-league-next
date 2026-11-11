@@ -1,4 +1,4 @@
-import { yardstick, games } from "@/lib/insight"
+import { leagueYardstick, games } from "@/lib/insight"
 import { shrink } from "@/lib/trust"
 import type { PooleanState, ScoringEvent } from "@/lib/types"
 
@@ -50,7 +50,7 @@ const mean = (xs: ScoringEvent[], f: (e: ScoringEvent) => number) => (xs.length 
 
 export function playerIdentity(state: PooleanState): PlayerIdentity {
   const gs = games(state)
-  const expect = yardstick(gs)
+  const expect = leagueYardstick(state)
   const all = gs.flatMap((g) => g.scoringEvents)
   const inZone = (xs: ScoringEvent[], z: Zone) => xs.filter((e) => zoneOf(e) === z)
   const league = {

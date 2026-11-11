@@ -1,3 +1,4 @@
+import { seasonView } from "@/lib/season"
 import { AdvancedReads } from "./leaderboard/AdvancedReads"
 import { useMemo } from "react"
 import { Section } from "@/components/Section"
@@ -93,6 +94,8 @@ export function LeaderboardPage({
     return { state, toggles }
   }, [state, toggles])
   const teasers = computeLeaderboardSectionTeasers() as Record<string, string>
+  // Panels about how players are doing now follow the season start; league-wide ones get every game (see season.ts).
+  const season = useMemo(() => seasonView(state, toggles.pastSeasons), [state, toggles.pastSeasons])
   const readOnly = useReadOnly()
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -111,14 +114,14 @@ export function LeaderboardPage({
       </div>
       {ORDER.filter((k) => !(readOnly && EDITOR_ONLY.has(k))).map((k, i) => {
         const style = { "--i": i + 2 } as React.CSSProperties
-        if (k === "reads") return <div key={k} className="anim-rise scroll-mt-28" style={style}><AdvancedReads state={state} onOpenPlayer={onOpenPlayer} /></div>
-        if (k === "insight") return <div key={k} className="anim-rise scroll-mt-28" style={style}><InsightCard state={state} onOpenPlayer={onOpenPlayer} /></div>
-        if (k === "deep") return <div key={k} className="anim-rise scroll-mt-28" style={style}><DeepDiveCard state={state} onOpenPlayer={onOpenPlayer} /></div>
-        if (k === "flow") return <div key={k} className="anim-rise scroll-mt-28" style={style}><GameFlowCard state={state} onOpenPlayer={onOpenPlayer} /></div>
+        if (k === "reads") return <div key={k} className="anim-rise scroll-mt-28" style={style}><AdvancedReads state={season} all={state} onOpenPlayer={onOpenPlayer} /></div>
+        if (k === "insight") return <div key={k} className="anim-rise scroll-mt-28" style={style}><InsightCard state={season} onOpenPlayer={onOpenPlayer} /></div>
+        if (k === "deep") return <div key={k} className="anim-rise scroll-mt-28" style={style}><DeepDiveCard state={state} season={season} onOpenPlayer={onOpenPlayer} /></div>
+        if (k === "flow") return <div key={k} className="anim-rise scroll-mt-28" style={style}><GameFlowCard state={season} onOpenPlayer={onOpenPlayer} /></div>
         return (
           <div key={k} className="anim-rise" style={style}>
             <Section id={`lb-section-${k}`} title={sectionTitle(k)} icon={sectionIcon(k)} teaser={k === "defense" ? DEFENSE_TEASER : (teasers[k] ?? "")}>
-              <LegacyPanels state={state} section={k} onOpenPlayer={onOpenPlayer} version={version} />
+              <LegacyPanels state={season} section={k} onOpenPlayer={onOpenPlayer} version={version} />
               {k === "situational" && <FatiguePanel state={state} onOpenPlayer={onOpenPlayer} />}
             </Section>
           </div>

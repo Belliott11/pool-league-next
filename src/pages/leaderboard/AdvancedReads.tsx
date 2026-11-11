@@ -2,6 +2,7 @@ import { BookOpenText } from "lucide-react"
 import { useMemo } from "react"
 import { Section } from "@/components/Section"
 import { advancedReads, EARLY_GAMES, READ_MIN_GAMES, type Read, type Tone } from "@/lib/advancedReads"
+import { isSeasonOnly } from "@/lib/season"
 import type { PooleanState } from "@/lib/types"
 import { Grid, Hint, Who } from "./parts"
 
@@ -34,14 +35,19 @@ function Card({ r, state, onOpenPlayer }: { r: Read; state: PooleanState; onOpen
 }
 
 // Every regular's non-box-score stats in plain words, rebuilt from the data each time it is opened.
-export function AdvancedReads({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
-  const { reads, middle } = useMemo(() => advancedReads(state), [state])
+// Early in a season nobody has enough games yet, so it falls back to every game and says so.
+export function AdvancedReads({ state, all = state, onOpenPlayer }: { state: PooleanState; all?: PooleanState; onOpenPlayer: (id: string) => void }) {
+  const { reads, middle, fallback } = useMemo(() => {
+    const now = advancedReads(state)
+    return now.reads.length === 0 && isSeasonOnly(state) ? { ...advancedReads(all), fallback: true } : { ...now, fallback: false }
+  }, [state, all])
   return (
     <Section id="lb-reads" title="Advanced reads" icon={BookOpenText} teaser="What the box score misses for each regular: shot quality, passing, ball security, defense, boards and winning.">
       {reads.length === 0 ? (
         <Hint>Shows up once players have {READ_MIN_GAMES} filmed even-team games.</Hint>
       ) : (
         <>
+          {fallback && <Hint>Nobody has {READ_MIN_GAMES} filmed games this season yet, so these reads still include past seasons.</Hint>}
           <Hint>
             Every player with {READ_MIN_GAMES} or more filmed even-team games, written from the current data. Rates are per 25 combined points and every number is set against the league middle. Green and red mark clear gaps. Under {EARLY_GAMES} games is an early read.
           </Hint>

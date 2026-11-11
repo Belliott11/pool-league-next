@@ -1,5 +1,6 @@
 import { PER } from "@/lib/per"
 import { raceWin } from "@/lib/race"
+import { allGamesOf } from "@/lib/season"
 import { getGameStats } from "@/lib/stats"
 import type { Game, PooleanState, ScoringEvent, TurnoverEvent } from "@/lib/types"
 
@@ -46,6 +47,9 @@ export function shotZone(e: ScoringEvent): string {
 // League points per shot for each kind of shot, the yardstick for shot quality. The most specific group with enough shots wins: shot
 // type, contest level and zone; then contest level and zone; then zone alone; then the whole league.
 export const YARDSTICK_MIN = 5
+// The yardstick from every game the league has played, even when the state handed in is one season's view: what a shot is worth does
+// not reset with the season.
+export const leagueYardstick = (state: PooleanState) => yardstick(games({ ...state, games: allGamesOf(state) }))
 export function yardstick(gs: Game[]) {
   const keys = (e: ScoringEvent) => {
     const z = shotZone(e)
@@ -131,7 +135,7 @@ export function partsOf(g: Game, expect: (e: ScoringEvent) => number): { margin:
 // With `only`, one player's games from their own team's side. Without, every game from the winner's side.
 export function marginBreakdown(state: PooleanState, only?: string): Breakdown {
   const gs = games(state)
-  const expect = yardstick(gs)
+  const expect = leagueYardstick(state)
   const out: Breakdown = { games: 0, margin: 0, edge: { quality: 0, making: 0, turnovers: 0, rebounds: 0, other: 0 }, favored: { quality: 0, making: 0, turnovers: 0, rebounds: 0, other: 0 } }
   for (const g of gs) {
     if (only && side(g, only) === null) continue
@@ -204,7 +208,7 @@ export function passBlame(state: PooleanState): PassBlame[] {
 
 export function shotsCreated(state: PooleanState): Creation {
   const gs = games(state)
-  const expect = yardstick(gs)
+  const expect = leagueYardstick(state)
   const by = new Map<string, { games: number; created: number; made: number; assists: number; real: number; xp: number; rated: number; points: number }>()
   const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, created: 0, made: 0, assists: 0, real: 0, xp: 0, rated: 0, points: 0 }).get(id)!
   let passed = 0
@@ -444,7 +448,7 @@ export interface PlayerParts {
 
 export function playerBreakdowns(state: PooleanState): PlayerParts[] {
   const gs = games(state)
-  const expect = yardstick(gs)
+  const expect = leagueYardstick(state)
   const by = new Map<string, PlayerParts>()
   for (const g of gs) {
     const p = partsOf(g, expect)

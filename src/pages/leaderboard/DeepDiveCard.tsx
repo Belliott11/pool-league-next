@@ -278,7 +278,8 @@ function FormatTab({ state }: { state: PooleanState }) {
   )
 }
 
-export function DeepDiveCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: Open }) {
+// Win impact, Does it hold up? and By format are league-wide and use every game; the per-player tabs use the season view.
+export function DeepDiveCard({ state, season = state, onOpenPlayer }: { state: PooleanState; season?: PooleanState; onOpenPlayer: Open }) {
   const readOnly = useReadOnly()
   return (
     <Section id="lb-deep" title="Player deep dive" icon={Telescope} teaser="Win impact, play sequences, who gets open, and which sports rules hold up.">
@@ -287,9 +288,9 @@ export function DeepDiveCard({ state, onOpenPlayer }: { state: PooleanState; onO
           { value: "impact", label: "Win impact", node: <ImpactTab state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "rules", label: "Does it hold up?", node: <HoldUpTab state={state} /> },
           { value: "format", label: "By format", node: <FormatTab state={state} /> },
-          { value: "identity", label: "Player identity", node: <IdentityTab state={state} onOpenPlayer={onOpenPlayer} /> },
-          { value: "seq", label: "Play sequences", node: <SequenceTab state={state} onOpenPlayer={onOpenPlayer} /> },
-          ...(readOnly ? [] : [{ value: "body", label: "Body and effort", node: <BodyTab state={state} onOpenPlayer={onOpenPlayer} /> }]),
+          { value: "identity", label: "Player identity", node: <IdentityTab state={season} onOpenPlayer={onOpenPlayer} /> },
+          { value: "seq", label: "Play sequences", node: <SequenceTab state={season} onOpenPlayer={onOpenPlayer} /> },
+          ...(readOnly ? [] : [{ value: "body", label: "Body and effort", node: <BodyTab state={season} onOpenPlayer={onOpenPlayer} /> }]),
         ]}
       />
     </Section>
