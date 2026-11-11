@@ -164,4 +164,13 @@ describe("catch and shoot", () => {
     expect(rows.find((r) => r.id === "p")).toMatchObject({ setUps: 2, onPass: 1 })
     expect(rows.find((r) => r.id === "a")).toMatchObject({ shots: 2, held: 1 })
   })
+  it("leaves a contested shot the shooter held out of the passer's shot quality, but still counts it as a set-up", () => {
+    // Five open makes from close (worth 2) and five heavy misses from close (worth 0), all off p's passes.
+    const at = { shotLocation: { x: 50, y: 10 } }
+    const open = [1, 2, 3, 4, 5].map((i) => shot(`o${i}`, "a", 2, true, { ...at, passerId: "p", assistId: "p", catchAndShoot: true, contestLevel: "none" }))
+    const tough = (cs: boolean) => [1, 2, 3, 4, 5].map((i) => shot(`t${i}`, "a", 2, false, { ...at, passerId: "p", catchAndShoot: cs, contestLevel: "heavy" }))
+    const q = (evs: ScoringEvent[]) => shotsCreated({ players: [], games: [g(evs)] }).rows.find((r) => r.id === "p")!
+    expect(q([...open, ...tough(false)])).toMatchObject({ created: 10, expected: 2 }) // held: on the shooter
+    expect(q([...open, ...tough(true)])).toMatchObject({ created: 10, expected: 1 }) // shot on the catch: on the pass
+  })
 })

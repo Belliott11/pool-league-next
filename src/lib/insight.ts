@@ -203,8 +203,8 @@ export function passBlame(state: PooleanState): PassBlame[] {
 export function shotsCreated(state: PooleanState): Creation {
   const gs = games(state)
   const expect = yardstick(gs)
-  const by = new Map<string, { games: number; created: number; made: number; assists: number; xp: number; points: number }>()
-  const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, created: 0, made: 0, assists: 0, xp: 0, points: 0 }).get(id)!
+  const by = new Map<string, { games: number; created: number; made: number; assists: number; xp: number; rated: number; points: number }>()
+  const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, created: 0, made: 0, assists: 0, xp: 0, rated: 0, points: 0 }).get(id)!
   let passed = 0
   let passedMade = 0
   let other = 0
@@ -220,7 +220,11 @@ export function shotsCreated(state: PooleanState): Creation {
       if (p) {
         const r = row(p)
         r.created++
-        r.xp += expect(e)
+        // A contested shot the shooter held first is on the shooter, so it stays a set-up but is left out of the pass's quality.
+        if (!(e.catchAndShoot === false && contested(e))) {
+          r.xp += expect(e)
+          r.rated++
+        }
         if (made(e)) r.made++
         passed++
         if (made(e)) passedMade++
@@ -239,7 +243,7 @@ export function shotsCreated(state: PooleanState): Creation {
       created: r.created,
       made: r.made,
       assists: r.assists,
-      expected: r.created ? r.xp / r.created : 0,
+      expected: r.rated ? r.xp / r.rated : 0,
       created25: r.points ? (r.created / r.points) * PER : 0,
       assists25: r.points ? (r.assists / r.points) * PER : 0,
     }))

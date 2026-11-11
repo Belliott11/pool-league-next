@@ -6051,7 +6051,7 @@ const PASS_OPENNESS_WEIGHT = { none: 1.3, beat: 1.3, light: 1.1, medium: 0.9, he
 const PASS_QUALITY_MIN_VOLUME = 3;
 
 function computeWeightedPassQuality(playerId, zonePpa) {
-  let volume = 0, qualitySum = 0;
+  let volume = 0, rated = 0, qualitySum = 0;
   qualifyingGamesForPlayer(playerId).forEach(game => {
     game.scoringEvents.forEach(ev => {
       if (ev.points !== 2 && ev.points !== 3) return;
@@ -6062,11 +6062,14 @@ function computeWeightedPassQuality(playerId, zonePpa) {
       const openness = PASS_OPENNESS_WEIGHT[ev.contestLevel];
       if (zoneValue === null || zoneValue === undefined || openness === undefined) return;
       volume++;
+      // A contested shot the shooter held first is on the shooter: still a pass, but left out of its quality.
+      if (ev.catchAndShoot === false && (ev.contestLevel === "medium" || ev.contestLevel === "heavy")) return;
+      rated++;
       qualitySum += zoneValue * openness;
     });
   });
-  if (volume < PASS_QUALITY_MIN_VOLUME) return null;
-  return { volume, avgQuality: qualitySum / volume };
+  if (volume < PASS_QUALITY_MIN_VOLUME || rated === 0) return null;
+  return { volume, avgQuality: qualitySum / rated };
 }
 
 const TAKEAWAY_WINDOW_SECONDS = 15;
@@ -8238,7 +8241,7 @@ const LEADERBOARD_COLUMNS = [
   { key: "passquality", label: "Weighted Pass Quality", advanced: true,
     accessor: r => r.passQuality ? r.passQuality.avgQuality : null,
     display: r => r.passQuality ? `${r.passQuality.avgQuality.toFixed(2)} (${r.passQuality.volume} passes)` : "—",
-    tooltip: `Average zone value x openness weight across every shot this player passed into: separates "passes often" from "creates good shots when they do." Openness rewards a looser contest (the passer created more real separation) -- weights are a reasonable starting guess, not a validated formula yet. Needs ${PASS_QUALITY_MIN_VOLUME}+ passes before showing.` },
+    tooltip: `Average zone value x openness weight across every shot this player passed into: separates "passes often" from "creates good shots when they do." Openness rewards a looser contest (the passer created more real separation) -- weights are a reasonable starting guess, not a validated formula yet. A contested shot the shooter held first is on the shooter, so it is left out of the average. Needs ${PASS_QUALITY_MIN_VOLUME}+ passes before showing.` },
   { key: "moneyzone", label: "Money Zone %", advanced: true,
     accessor: r => {
       const money = r.shooting.closeA + r.shooting.tpArcA;
