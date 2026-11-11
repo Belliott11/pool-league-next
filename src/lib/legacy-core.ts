@@ -3,6 +3,7 @@
 // classic site exactly. It started as generated output; the generator is gone, so edit this file directly.
 import { PER } from "@/lib/per";
 import { loadsFor, loadText } from "@/lib/dayLoad";
+import { facedSample, fgaSample, gamesSample, shotSample } from "@/lib/sampleSize";
 import { realPlayerIds } from "@/lib/real";
 let state = { players: [], games: [], masterVideos: [], rsvps: [], seasonHistory: [], currentSeasonStartedAt: null, playerPhysicalOverrides: {} };
 function saveState() { window.dispatchEvent(new CustomEvent("legacy-state-changed")); }
@@ -8527,6 +8528,29 @@ function renderLeaderboard() {
   });
   renderLeaderboardSectionTeasers();
 }
+
+// How much data sits behind each percentage, so tables can print the count next to it and fade thin ones (thresholds: sampleSize.ts).
+const SAMPLE_OF = {
+  fg: r => shotSample(r.shooting.fgm, r.shooting.fga),
+  tpt: r => shotSample(r.shooting.tpm, r.shooting.tpa),
+  ft: r => shotSample(r.shooting.ftm, r.shooting.fta),
+  efg: r => fgaSample(r.shooting.fga),
+  ts: r => fgaSample(r.shooting.fga),
+  tovpct: r => fgaSample(r.shooting.fga),
+  oppfg: r => facedSample(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops),
+  pct: r => gamesSample(r.gp),
+  shotpct: r => gamesSample(r.gp),
+  astpct: r => gamesSample(r.gp),
+  orebpct: r => gamesSample(r.gp),
+  drebpct: r => gamesSample(r.gp),
+  trebpct: r => gamesSample(r.gp),
+  rebpermiss: r => gamesSample(r.gp),
+  stlperplay: r => gamesSample(r.gp),
+  astpermate: r => gamesSample(r.gp),
+  livetov25: r => gamesSample(r.gp),
+  livetovshare: r => gamesSample(r.gp),
+};
+for (const c of LEADERBOARD_COLUMNS) if (SAMPLE_OF[c.key]) c.sample = SAMPLE_OF[c.key];
 
 const COMPARISON_NEUTRAL_KEYS = new Set(["gp", "shotpct", "astpct", "orebpct", "drebpct", "trebpct", "livetovshare"]);
 

@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { compareForSort } from "@/lib/legacy-core"
+import { isLowSample, lowSampleNote, type Sample } from "@/lib/sampleSize"
 
 // Column shape shared with the classic site's *_COLUMNS arrays (extracted into legacy-core.ts):
 // accessor gives the sortable value, display (optional) the text shown.
@@ -14,6 +15,8 @@ export interface Column<R> {
   display?: (r: R) => string
   tooltip?: string
   advanced?: boolean
+  // How much data is behind this value: printed next to it, and faded (or hidden) when thin.
+  sample?: (r: R) => Sample | null
 }
 
 export interface Sort {
@@ -34,6 +37,7 @@ interface Props<R> {
   highlight?: { neutral: Set<string>; lowerBetter: Set<string>; skip?: Set<string> }
   empty?: string
   emptyHint?: string
+  hideLow?: boolean // show a dash in place of values with too little behind them
 }
 
 // A row built on very few games is shown fainter, in every table that carries a games-played count.
@@ -94,14 +98,26 @@ function cellText<R>(col: Column<R>, r: R): string {
 
 // The classic site's cell formatters sometimes return small HTML snippets (a line break and a hint
 // span). They are built from our own numbers and escaped names, so they are rendered as markup.
-function Cell<R>({ col, r }: { col: Column<R>; r: R }) {
+function Cell<R>({ col, r, hideLow }: { col: Column<R>; r: R; hideLow?: boolean }) {
+  const s = col.sample?.(r) ?? null
+  const low = s ? isLowSample(s) : false
+  if (s && low && hideLow) return <span className="text-muted-foreground" title={lowSampleNote(s)}>-</span>
   const text = cellText(col, r)
+  const body = text.includes("<") ? <span dangerouslySetInnerHTML={{ __html: text }} /> : <>{decodeEntities(text)}</>
+  if (s) {
+    return (
+      <span className={low ? "italic text-muted-foreground" : undefined} title={low ? lowSampleNote(s) : undefined}>
+        {body}
+        <span className="ml-1 text-xs font-normal not-italic text-muted-foreground">({s.count})</span>
+      </span>
+    )
+  }
   // The classic formatters escape their text for innerHTML (an apostrophe becomes &#39;). With no markup in it
   // the text is shown as plain text here, so turn those escapes back into characters.
   return text.includes("<") ? <span dangerouslySetInnerHTML={{ __html: text }} /> : <>{decodeEntities(text)}</>
 }
 
-export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, heroKey, highlight, empty, emptyHint }: Props<R>) {
+export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, heroKey, highlight, empty, emptyHint, hideLow }: Props<R>) {
   const [sort, setSort] = useState<Sort | null>(defaultSort ?? null)
   const [allCards, setAllCards] = useState(false)
 
@@ -176,7 +192,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                   if (i === 0) {
                     return (
                       <TableCell key={col.key} className="sticky left-0 z-10 bg-card font-medium">
-                        {renderFirst ? renderFirst(r) : <Cell col={col} r={r} />}
+                        {renderFirst ? renderFirst(r) : <Cell col={col} r={r} hideLow={hideLow} />}
                       </TableCell>
                     )
                   }
@@ -196,7 +212,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                         />
                       )}
                       <span className="relative">
-                        <Cell col={col} r={r} />
+                        <Cell col={col} r={r} hideLow={hideLow} />
                       </span>
                     </TableCell>
                   )
@@ -215,7 +231,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
               {hero && hero.key !== first.key && (
                 <div className="flex items-baseline justify-between rounded-md bg-accent/10 px-3 py-2">
                   <span className="text-xs text-muted-foreground">{hero.label}</span>
-                  <span className="font-display text-2xl font-bold tabular-nums text-accent"><Cell col={hero} r={r} /></span>
+                  <span className="font-display text-2xl font-bold tabular-nums text-accent"><Cell col={hero} r={r} hideLow={hideLow} /></span>
                 </div>
               )}
               {(() => {
@@ -227,7 +243,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                     <div key={c.key} className="flex flex-col gap-1">
                       <div className="flex items-center justify-between gap-3 text-sm">
                         <span className="text-muted-foreground">{c.label}</span>
-                        <span className="text-right tabular-nums font-medium"><Cell col={c} r={r} /></span>
+                        <span className="text-right tabular-nums font-medium"><Cell col={c} r={r} hideLow={hideLow} /></span>
                       </div>
                       {rg && typeof v === "number" && Number.isFinite(v) && (
                         <div className="relative h-1 rounded-full bg-muted">

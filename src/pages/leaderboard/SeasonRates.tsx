@@ -9,6 +9,7 @@ import {
   LEADERBOARD_COLUMNS,
   computeLeaderboard,
 } from "@/lib/legacy-core"
+import { readHideLow, writeHideLow } from "@/lib/sampleSize"
 import type { Toggles } from "@/lib/toggles"
 import type { PooleanState } from "@/lib/types"
 
@@ -40,6 +41,7 @@ export function SeasonRates({
   onOpenPlayer: (id: string) => void
 }) {
   const [showAdvanced, setShowAdvanced] = useState(() => localStorage.getItem(ADVANCED_KEY) === "true")
+  const [hideLow, setHideLow] = useState(readHideLow)
   const columns = LEADERBOARD_COLUMNS.filter((c: { advanced?: boolean }) => !c.advanced || showAdvanced)
   // Players with no games yet would just be a row of dashes.
   const all = computeLeaderboard() as { gp: number }[]
@@ -72,6 +74,15 @@ export function SeasonRates({
               setShowAdvanced(v)
             }}
           />
+          <ToggleRow
+            label="Hide low-sample values"
+            checked={hideLow}
+            title="Shows a dash instead of a value built on fewer than 15 shots, 5 shots faced or 4 games. Nothing is recalculated."
+            onChange={(v) => {
+              writeHideLow(v)
+              setHideLow(v)
+            }}
+          />
         </div>
       </details>
       {missing > 0 && (
@@ -86,13 +97,17 @@ export function SeasonRates({
         rowKey={(r: { player: { id: string } }) => r.player.id}
         defaultSort={{ key: "twoway25", dir: "desc" }}
         highlight={HIGHLIGHT}
+        hideLow={hideLow}
         empty="No player stats yet"
         emptyHint="Log a game and the season table fills in."
-        renderFirst={(r: { player: { id: string; name: string } }) => (
-          <button type="button" className="flex items-center gap-2 font-bold text-accent hover:underline" onClick={() => onOpenPlayer(r.player.id)}>
-            <PlayerAvatar id={r.player.id} name={r.player.name} size="sm" />
-            {r.player.name}
-          </button>
+        renderFirst={(r: { player: { id: string; name: string }; gp: number }) => (
+          <span className="flex items-center gap-2">
+            <button type="button" className="flex items-center gap-2 font-bold text-accent hover:underline" onClick={() => onOpenPlayer(r.player.id)}>
+              <PlayerAvatar id={r.player.id} name={r.player.name} size="sm" />
+              {r.player.name}
+            </button>
+            <span className="text-xs font-normal text-muted-foreground">{r.gp} GP</span>
+          </span>
         )}
       />
     </Panel>
