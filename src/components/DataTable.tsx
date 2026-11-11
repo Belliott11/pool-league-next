@@ -100,18 +100,8 @@ function cellText<R>(col: Column<R>, r: R): string {
 // span). They are built from our own numbers and escaped names, so they are rendered as markup.
 function Cell<R>({ col, r, hideLow }: { col: Column<R>; r: R; hideLow?: boolean }) {
   const s = col.sample?.(r) ?? null
-  const low = s ? isLowSample(s) : false
-  if (s && low && hideLow) return <span className="text-muted-foreground" title={lowSampleNote(s)}>-</span>
+  if (s && isLowSample(s) && hideLow) return <span className="text-muted-foreground" title={lowSampleNote(s)}>-</span>
   const text = cellText(col, r)
-  const body = text.includes("<") ? <span dangerouslySetInnerHTML={{ __html: text }} /> : <>{decodeEntities(text)}</>
-  if (s) {
-    return (
-      <span className={low ? "italic text-muted-foreground" : undefined} title={low ? lowSampleNote(s) : undefined}>
-        {body}
-        <span className="ml-1 text-xs font-normal not-italic text-muted-foreground">({s.count})</span>
-      </span>
-    )
-  }
   // The classic formatters escape their text for innerHTML (an apostrophe becomes &#39;). With no markup in it
   // the text is shown as plain text here, so turn those escapes back into characters.
   return text.includes("<") ? <span dangerouslySetInnerHTML={{ __html: text }} /> : <>{decodeEntities(text)}</>
