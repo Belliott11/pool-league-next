@@ -22,6 +22,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
 import { GameTagsEditor } from "@/components/GameTags"
+import { tipoffStatus } from "@/lib/matchupSets"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import {
@@ -344,6 +345,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
   const control = useRef<PlayerControl | null>(null)
   const videoBox = useRef<HTMLDivElement>(null)
   const hasVideo = !!gameVideoUrl(state, game)
+  const tip = tipoffStatus(game)
   // Event times are positions in the recording, so this plays from just before the moment.
   const clipTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   useEffect(() => () => clearInterval(clipTimer.current), [])
@@ -419,6 +421,11 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
         )}
       </div>
 
+      {!readOnly && tip.assigned < tip.total && (
+        <p role="alert" className="rounded-lg border border-gold px-3 py-2 text-sm text-gold">
+          No matchups logged at tip-off: {tip.assigned} of {tip.total} defenders assigned.{onStatEntry ? " Add them in Stat Entry." : ""}
+        </p>
+      )}
       {!readOnly && <GameTagsEditor key={game.id} game={game} update={update} state={state} />}
       <Card>
         <CardContent className="flex items-center justify-around gap-4">

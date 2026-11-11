@@ -19,6 +19,7 @@ import { EventForm, type Apply, type Draft } from "./EventForm"
 import { QuickAdd } from "./QuickAdd"
 import { EventLog } from "./EventLog"
 import { ExtraEntry } from "./ExtraForms"
+import { MatchupEntry } from "./MatchupEntry"
 
 const ADD: { kind: Draft["kind"]; label: string }[] = [
   { kind: "shot", label: "Add shot" },
@@ -201,6 +202,7 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
         />
       )}
 
+      <MatchupEntry state={state} game={game} apply={apply} now={() => (yt ? (ytControl.current?.time() ?? null) : (videoRef.current?.currentTime ?? null))} />
       <ExtraEntry state={state} game={game} apply={apply} hasVideo={direct || !!yt} now={() => (yt ? (ytControl.current?.time() ?? null) : (videoRef.current?.currentTime ?? null))} />
 
       <EventLog
