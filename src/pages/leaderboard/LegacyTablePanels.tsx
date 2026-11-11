@@ -8,6 +8,7 @@ import { PanelBoundary } from "@/components/PanelBoundary"
 import { DataTable } from "@/components/DataTable"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import hints from "@/data/panel-hints.json"
+import { BEAT_TIP, BeatRatePanel } from "./BeatRatePanel"
 import { AwardsVsStats, PassingChemistryPair, PlayerComparison, PowerRankingVsPerformance } from "./native"
 import { LeagueHeatmap, PassingChemistryGrid, TwoWayRankChart } from "./charts2"
 import { PlayStyleClusters, ShotMakingAddedChart } from "./charts3"
@@ -37,6 +38,8 @@ interface MountSpec {
 
 const TABLES = TABLE_PANELS as TableSpec[]
 const MOUNTS = MOUNT_PANELS as MountSpec[]
+// Beat Rate is a React panel with no classic markup; it joins the Defense tabs as one more spec.
+const BEAT_SPEC = { section: "defense", order: 21, title: "Beat Rate" }
 const HINTS = hints as Record<string, { hint: string; tag?: string }>
 
 // One table panel generated from the classic site's own render function (rows, sort, per-column
@@ -147,10 +150,11 @@ export function LegacyPanels({
   version: unknown
 }) {
   const readOnly = useReadOnly()
-  const layout = useMemo(() => arrange([...TABLES, ...MOUNTS] as { title: string; section: string; order: number }[], LEADERBOARD_GROUPS, { drop: LEADERBOARD_DROP, editor: !readOnly }), [readOnly])
-  const specOf = (title: string) => [...TABLES, ...MOUNTS].find((s) => s.title === title)!
+  const layout = useMemo(() => arrange([...TABLES, ...MOUNTS, BEAT_SPEC] as { title: string; section: string; order: number }[], LEADERBOARD_GROUPS, { drop: LEADERBOARD_DROP, editor: !readOnly }), [readOnly])
+  const specOf = (title: string) => [...TABLES, ...MOUNTS, BEAT_SPEC].find((s) => s.title === title)!
   // A panel's body without its card, for use as a tab; or the whole card when it stands alone.
   const bodyOf = (title: string, bare: boolean) => {
+    if (title === "Beat Rate") return <BeatRatePanel state={state} onOpenPlayer={onOpenPlayer} bare={bare} />
     const s = specOf(title)
     if ("bodyId" in s) return <LegacyTablePanel spec={s as TableSpec} onOpenPlayer={onOpenPlayer} bare={bare} />
     const native = nativePanel(title, state, onOpenPlayer)
@@ -166,7 +170,7 @@ export function LegacyPanels({
               title={p.group.title}
               section={section}
               frame="card"
-              tabs={p.members!.map((m) => ({ title: m.title, label: m.label, hint: HINTS[m.title]?.hint, tag: HINTS[m.title]?.tag, node: () => bodyOf(m.title, true) }))}
+              tabs={p.members!.map((m) => ({ title: m.title, label: m.label, hint: HINTS[m.title]?.hint ?? (m.title === "Beat Rate" ? BEAT_TIP : undefined), tag: HINTS[m.title]?.tag, node: () => bodyOf(m.title, true) }))}
             />
           </PanelBoundary>
         ) : (

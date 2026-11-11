@@ -13,11 +13,11 @@ const sortKey = (r: BeatRow) => rate(r.beat, r.faced) ?? -1
 
 // Every defender's Beat Rate, split into transition and half court, with opponent FG% leaving beat shots out so someone who is
 // solid when in position reads differently from someone who is burned.
-export function BeatRatePanel({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+export function BeatRatePanel({ state, onOpenPlayer, bare }: { state: PooleanState; onOpenPlayer: (id: string) => void; bare?: boolean }) {
   const rows = useMemo(() => beatRates(state).filter((r) => r.faced > 0).sort((a, b) => sortKey(b) - sortKey(a) || b.faced - a.faced), [state])
   if (rows.length === 0) return null
-  return (
-    <Panel title="Beat Rate" hint={BEAT_TIP}>
+  const body = (
+    <>
       <Grid
         min="44rem"
         head={["Defender", "Beat Rate", "Transition", "Half court", "Opp FG% without beat shots", "Sample"]}
@@ -27,8 +27,10 @@ export function BeatRatePanel({ state, onOpenPlayer }: { state: PooleanState; on
         }))}
       />
       <Hint>Games with uneven teams and games stopped early are left out. A defender needs about 30 shots faced before this reads as steady.</Hint>
-    </Panel>
+    </>
   )
+  // As a tab the card and hint come from the tab group.
+  return bare ? body : <Panel title="Beat Rate" hint={BEAT_TIP}>{body}</Panel>
 }
 
 // One player's line for their page.
