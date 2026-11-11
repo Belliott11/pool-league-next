@@ -5,7 +5,7 @@ import { FlipDigits } from "@/components/FlipDigits"
 import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/EmptyState"
-import { useEffect, useRef, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, type ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +22,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
 import { GameTagsEditor } from "@/components/GameTags"
+import { loadsFor, loadText } from "@/lib/dayLoad"
 import { tipoffStatus } from "@/lib/matchupSets"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
@@ -314,7 +315,7 @@ function Reel({ state, game }: { state: PooleanState; game: Game }) {
 }
 
 function TeamScore({ state, game, ids, label, score }: { state: PooleanState; game: Game; ids: string[]; label: string; score: number }) {
-  void game
+  const loads = useMemo(() => loadsFor(state, game), [state, game])
   return (
     <div className="flex flex-1 flex-col items-center gap-2 text-center">
       <span className={cn("text-sm font-semibold", label === "Team A" ? TEAM.A.text : TEAM.B.text)}>{label}</span>
@@ -323,9 +324,12 @@ function TeamScore({ state, game, ids, label, score }: { state: PooleanState; ga
       </span>
       <div className="flex flex-wrap justify-center gap-2">
         {ids.map((id) => (
-          <span key={id} className="flex items-center gap-1 text-sm">
-            <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
-            {playerName(state, id)}
+          <span key={id} className="flex flex-col items-center gap-0.5 text-sm">
+            <span className="flex items-center gap-1">
+              <PlayerAvatar id={id} name={playerName(state, id)} size="sm" />
+              {playerName(state, id)}
+            </span>
+            {loads?.get(id) && <span className="text-xs text-muted-foreground">{loadText(loads.get(id)!)}</span>}
           </span>
         ))}
       </div>

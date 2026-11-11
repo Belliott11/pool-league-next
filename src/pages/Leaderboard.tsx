@@ -18,6 +18,7 @@ import { GameFlowCard } from "./leaderboard/GameFlowCard"
 import { InsightCard } from "./leaderboard/InsightCard"
 import { BeatRatePanel } from "./leaderboard/BeatRatePanel"
 import { DeepDiveCard } from "./leaderboard/DeepDiveCard"
+import { FatiguePanel } from "./leaderboard/FatiguePanel"
 
 // Same six groups, in the same order, as the classic Leaderboard tab.
 const SECTIONS: { key: string; title: string }[] = [
@@ -118,6 +119,7 @@ export function LeaderboardPage({
             <Section id={`lb-section-${k}`} title={sectionTitle(k)} icon={sectionIcon(k)} teaser={k === "defense" ? DEFENSE_TEASER : (teasers[k] ?? "")}>
               {k === "defense" && <BeatRatePanel state={state} onOpenPlayer={onOpenPlayer} />}
               <LegacyPanels state={state} section={k} onOpenPlayer={onOpenPlayer} version={version} />
+              {k === "situational" && <FatiguePanel state={state} onOpenPlayer={onOpenPlayer} />}
             </Section>
           </div>
         )

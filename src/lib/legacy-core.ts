@@ -2,6 +2,7 @@
 // The classic site's compute layer, column definitions and dependencies, taken verbatim so the numbers match the
 // classic site exactly. It started as generated output; the generator is gone, so edit this file directly.
 import { PER } from "@/lib/per";
+import { loadsFor, loadText } from "@/lib/dayLoad";
 import { realPlayerIds } from "@/lib/real";
 let state = { players: [], games: [], masterVideos: [], rsvps: [], seasonHistory: [], currentSeasonStartedAt: null, playerPhysicalOverrides: {} };
 function saveState() { window.dispatchEvent(new CustomEvent("legacy-state-changed")); }
@@ -9126,6 +9127,7 @@ function exportLeagueVideo() {
 const PLAYER_GAME_LOG_COLUMNS = [
   { key: "date", label: "Date", accessor: r => r.game.date || "" },
   { key: "result", label: "Result", accessor: r => r.result || "" },
+  { key: "day", label: "Game of the Day", accessor: r => r.load ? r.load.before : null },
   { key: "pts", label: "PTS", accessor: r => r.s.pts },
   { key: "fg", label: "FG", accessor: r => r.sh.fga },
   { key: "tpt", label: "3PT", accessor: r => r.sh.tpa },
@@ -9174,14 +9176,14 @@ function renderPlayerGameLog(playerId) {
   body.innerHTML = "";
   const games = state.games.filter(g => g.teamA.includes(playerId) || g.teamB.includes(playerId));
   if (games.length === 0) {
-    body.innerHTML = '<tr><td colspan="23" class="empty-state">No games recorded for this player yet.</td></tr>';
+    body.innerHTML = '<tr><td colspan="24" class="empty-state">No games recorded for this player yet.</td></tr>';
     return;
   }
   const rows = games.map(game => {
     const s = getOrCreatePlayerStats(game, playerId);
     const sh = shootingStats(game, playerId);
     const def = gameDefenseStats(game, playerId);
-    return { game, s, sh, def, result: playerGameResult(game, playerId), offRtg: offensiveRating(s, sh), twoWay: twoWayScore(s, sh, def) };
+    return { game, s, sh, def, result: playerGameResult(game, playerId), load: (loadsFor(state, game) || new Map()).get(playerId) || null, offRtg: offensiveRating(s, sh), twoWay: twoWayScore(s, sh, def) };
   });
   // Best/worst individual game by Two-Way score, same 🔥/👎 language as the Games list's own
   // best/worst-this-game badges — only among games with real shots logged, so an unreviewed
@@ -9209,6 +9211,7 @@ function renderPlayerGameLog(playerId) {
     tr.innerHTML = `
       <td><button type="button" class="icon-btn game-log-date-btn" data-game-id="${r.game.id}" style="padding:0;font-weight:600;color:var(--accent)">${formatDateDisplay(r.game.date)}</button>${stoppedEarlyBadge}</td>
       <td>${r.result || "—"}</td>
+      <td>${r.load ? loadText(r.load) : "-"}</td>
       <td>${r.s.pts}</td>
       <td>${formatShootingSplit(r.sh.fgm, r.sh.fga)}</td>
       <td>${formatShootingSplit(r.sh.tpm, r.sh.tpa)}</td>
