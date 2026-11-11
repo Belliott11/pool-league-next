@@ -151,7 +151,7 @@
   "hint": "TS% counting only shots from the closest third of games, to show who shoots well when it's tight. Click a column to sort."
  },
  "Close-Game Defense": {
-  "hint": "The defensive side of Close-Game Shooting: Opp FG% on shots this player defended in close games (the closest-finishing third of games). Lower is better, so it sorts lowest first. Tied games count. Click any column header to sort."
+  "hint": "The defensive side of Close-Game Shooting: Opp FG% on shots this player defended in close games (the closest-finishing third of games). Lower is better, so it sorts lowest first. Tied games count. Shots off a beaten defender are left out. Click any column header to sort."
  },
  "Game-Winning Buckets": {
   "hint": "Who scored the last basket in wins. In a race to a score the winner always scores last, so this counts who tends to close games, not rare heroics. Needs a video time on that shot."

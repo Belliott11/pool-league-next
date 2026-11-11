@@ -2975,11 +2975,14 @@ function computeCloseGameDefense() {
   const totals = {}; // playerId -> { timesBeaten, stops, gp }
   closeGames.forEach(game => {
     [...game.teamA, ...game.teamB].forEach(playerId => {
-      const def = gameDefenseStats(game, playerId);
-      if (def.timesBeaten + def.stops === 0) return;
+      // Shots off a beaten defender are a breakdown, not defending done, so they are left out here (same as Defensive Load).
+      const against = game.scoringEvents.filter(ev => (ev.defenderIds || []).includes(playerId) && ev.contestLevel !== "beat");
+      const timesBeaten = against.filter(ev => ev.made !== false).length;
+      const stops = against.length - timesBeaten;
+      if (timesBeaten + stops === 0) return;
       const t = totals[playerId] = totals[playerId] || { timesBeaten: 0, stops: 0, gp: 0 };
-      t.timesBeaten += def.timesBeaten;
-      t.stops += def.stops;
+      t.timesBeaten += timesBeaten;
+      t.stops += stops;
       t.gp++;
     });
   });
