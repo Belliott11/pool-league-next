@@ -10,6 +10,7 @@ import { PlayerHero } from "@/components/PlayerHero"
 import { PlayerGameFlow } from "@/pages/PlayerGameFlow"
 import { PlayerInsight } from "@/pages/PlayerInsight"
 import { PlayerBeatRate } from "@/pages/leaderboard/BeatRatePanel"
+import { PlayerLiveTov } from "@/pages/leaderboard/LiveTovPanel"
 import { PlayerOldSite } from "@/pages/PlayerOldSite"
 import { LeagueRank } from "@/pages/leaderboard/native"
 import { Panel } from "@/components/Panel"
@@ -276,6 +277,7 @@ export function PlayerDetailPage({
         <Fragment key={s.key}>
           <Section id={`section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
             {s.key === "defense" && pid && <PlayerBeatRate state={state} pid={pid} />}
+            {s.key === "passing" && pid && <PlayerLiveTov state={state} pid={pid} />}
             <Panels section={s.key} pid={pid} version={version} />
           </Section>
           {/* The sections built in this app sit where they matter: how their games were decided right after the main stat groups,

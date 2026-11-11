@@ -2591,6 +2591,8 @@ function computeLeaderboardUncached() {
       // poolean-turnover-type-spec.md. The raw box-score TOV column elsewhere stays the total,
       // since that's what actually happened in the game, not a rate stat.
       tovPct: turnoverPct(tovSplit.liveBall, shooting.fga, shooting.fta),
+      liveTovPer25: per25(tovSplit.liveBall),
+      liveTovShare: pct(tovSplit.liveBall, tovSplit.total),
       astTov: formatAstTov(totals.ast, tovSplit.liveBall),
       last5Gp: last5.gp, last5OffRatingPer25: last5.offRatingPer25, last5TwoWayPer25: last5.twoWayPer25, last5Trend
     };
@@ -8169,6 +8171,8 @@ const LEADERBOARD_COLUMNS = [
   { key: "stlperplay", label: "STL/Opp Play", advanced: true, accessor: r => r.stlPerOppPlay, display: r => formatPct(r.stlPerOppPlay), tooltip: "Steals per opponent play, counting the other team's shots and turnovers in games they played. Per 25 steals rise when a game has more turnovers; this holds the number of chances steady." },
   { key: "astpermate", label: "AST/Mate FG", advanced: true, accessor: r => r.astPerMateFg, display: r => formatPct(r.astPerMateFg), tooltip: "Assists per teammate made field goal in games they played: how often a teammate's basket came off their pass. Unlike AST%, it does not depend on how many assists the team had in all." },
   { key: "tovpct", label: "TOV%", advanced: true, accessor: r => r.tovPct, display: r => formatPct(r.tovPct), tooltip: "How often this player turned it over relative to their own scoring opportunities: TOV ÷ (FGA + 0.44×FTA + TOV), the same FTA-equivalent scaling True Shooting % uses. Not a share of the team's turnovers like Shot%/AST% above; a turnover isn't a shared resource the way a shot or an assist is, so this measures usage instead: of the times this player had the ball in a position to score or give it away, how often it was the latter." },
+  { key: "livetov25", label: "Live TOV/25", accessor: r => r.liveTovPer25, display: r => r.liveTovPer25.toFixed(1), tooltip: "Live-ball turnovers are the ones where the other team gets the ball with the defense still moving, so they lead to transition scoring. Stolen or blocked shots are already counted as shots, so they are left out." },
+  { key: "livetovshare", label: "Live-Ball Share", advanced: true, accessor: r => r.liveTovShare, display: r => formatPct(r.liveTovShare), tooltip: "The share of this player's turnovers that were live-ball. The rest were stolen or blocked shots, which are counted as shots." },
   { key: "fg", label: "FG", accessor: r => pct(r.shooting.fgm, r.shooting.fga), display: r => formatShootingSplit(r.rateShooting.fgm, r.rateShooting.fga, true), tooltip: "Field goals made/attempted (2s and 3s combined), per 25 combined points, with FG%." },
   { key: "tpt", label: "3PT", accessor: r => pct(r.shooting.tpm, r.shooting.tpa), display: r => formatShootingSplit(r.rateShooting.tpm, r.rateShooting.tpa, true), tooltip: "3-pointers made/attempted, per 25 combined points, with 3PT%. See the 3PT Shot Distance panel below for the Arc/Deep breakdown." },
   { key: "ft", label: "FT", accessor: r => pct(r.shooting.ftm, r.shooting.fta), display: r => formatShootingSplit(r.rateShooting.ftm, r.rateShooting.fta, true), tooltip: "Free throws made/attempted, per 25 combined points, with FT%." },
@@ -8523,9 +8527,9 @@ function renderLeaderboard() {
   renderLeaderboardSectionTeasers();
 }
 
-const COMPARISON_NEUTRAL_KEYS = new Set(["gp", "shotpct", "astpct", "orebpct", "drebpct", "trebpct"]);
+const COMPARISON_NEUTRAL_KEYS = new Set(["gp", "shotpct", "astpct", "orebpct", "drebpct", "trebpct", "livetovshare"]);
 
-const COMPARISON_LOWER_IS_BETTER_KEYS = new Set(["l", "tov", "pf", "ptsAllowed", "oppfg", "oppefg", "beaten", "tovpct"]);
+const COMPARISON_LOWER_IS_BETTER_KEYS = new Set(["l", "tov", "pf", "ptsAllowed", "oppfg", "oppefg", "beaten", "tovpct", "livetov25"]);
 
 function renderPlayerComparisonSelects() {
   const sel1 = document.getElementById("comparePlayer1Select");

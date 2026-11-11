@@ -182,6 +182,8 @@ export interface LeaderboardRow {
   astPer25: number
   tovSplit: TovSplit
   tovPct: number | null
+  liveTovPer25: number // live-ball turnovers per 25 combined points
+  liveTovShare: number | null // percent of this player's turnovers that were live-ball
   astTov: string
   tsPct: number | null
   offRatingPer25: number
@@ -248,6 +250,8 @@ export function computeLeaderboard(state: PooleanState): LeaderboardRow[] {
       astPer25: per25(totals.ast),
       tovSplit,
       tovPct: turnoverPct(tovSplit.liveBall, shooting.fga, shooting.fta),
+      liveTovPer25: per25(tovSplit.liveBall),
+      liveTovShare: pct(tovSplit.liveBall, tovSplit.total),
       astTov: formatAstTov(totals.ast, tovSplit.liveBall),
       tsPct: trueShootingPct(totals.pts, shooting.fga, shooting.fta),
       offRatingPer25: per25(totalOffRating),
