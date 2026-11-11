@@ -16,6 +16,7 @@ import { LaneBars } from "./leaderboard/LaneBars"
 import { SeasonRates } from "./leaderboard/SeasonRates"
 import { GameFlowCard } from "./leaderboard/GameFlowCard"
 import { InsightCard } from "./leaderboard/InsightCard"
+import { BeatRatePanel } from "./leaderboard/BeatRatePanel"
 import { DeepDiveCard } from "./leaderboard/DeepDiveCard"
 
 // Same six groups, in the same order, as the classic Leaderboard tab.
@@ -115,6 +116,7 @@ export function LeaderboardPage({
         return (
           <div key={k} className="anim-rise" style={style}>
             <Section id={`lb-section-${k}`} title={sectionTitle(k)} icon={sectionIcon(k)} teaser={k === "defense" ? DEFENSE_TEASER : (teasers[k] ?? "")}>
+              {k === "defense" && <BeatRatePanel state={state} onOpenPlayer={onOpenPlayer} />}
               <LegacyPanels state={state} section={k} onOpenPlayer={onOpenPlayer} version={version} />
             </Section>
           </div>

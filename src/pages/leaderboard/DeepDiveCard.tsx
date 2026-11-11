@@ -136,7 +136,7 @@ function IdentityTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlaye
       <Hint>How free a player gets and the shots they choose. Open means nobody is on the shot, including a beaten defender. League: {pc(d.league.open)} open, {d.league.defenders.toFixed(2)} defenders a shot.</Hint>
       <Grid
         min="38rem"
-        head={["Player", "Shots", "Open", "Off a pass", "On their own", "Defenders", ...(hasBeat ? ["Got beat (defending)", "Open off a beat defender"] : []), "Shot choice", "Sample"]}
+        head={["Player", "Shots", "Open", "Off a pass", "On their own", "Defenders", ...(hasBeat ? ["Got beat (defending)", "Breakdown shots"] : []), "Shot choice", "Sample"]}
         rows={d.rows.map((r) => ({ key: r.id, cells: [<Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.shots, pc(r.open), pc(r.openPassed), pc(r.openSelf), r.defenders.toFixed(2), ...(hasBeat ? [r.gotBeat, r.openOffBeat] : []), sign(r.qualityVsLeague, 2), <TrustChip key="t" t={trustOf(r.shots, "shots")} />] }))}
       />
       <Title>Points per shot by zone, against the league</Title>

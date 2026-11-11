@@ -67,6 +67,7 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
       ["Steady / Some data / Too early", "How much is behind a number: Steady is 100 or more shots or 15 or more games, Some data is 30 or more shots or 6 or more games. Fainter table rows have fewer than 3 games."],
       ["Win impact", "Points of win chance against an average player, with teammates and opponents held constant."],
       ["Holds up / Backwards / No sign of it", "Whether a rule from another sport is true in your games. No sign of it needs a real sample; with too few games it reads Too early."],
+      ["Beat Rate", "How often a defender was the one beaten, out of the shots they were tagged on, split into transition (within 8 seconds of a turnover or steal) and half court. Breakdown shots is the same shots from the shooter's side, so it does not read as skill."],
       ["Got beat", "A contest tag: the tagged defender was beaten right before the shot and is out of the play. It counts the shot as wide open, and it measures a defensive breakdown more than the shooter's skill."],
       ["Likely", "The range the true rate probably sits in, given how few shots are behind it."],
     ],
