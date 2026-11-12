@@ -9,6 +9,7 @@ import { ZONES, ZONE_LABEL, playerIdentity } from "@/lib/playerIdentity"
 import { QUICK, sequences } from "@/lib/sequences"
 import { useReadOnly } from "@/lib/mode"
 import { byFormat, type FormatRow, type Rate as FRate } from "@/lib/byFormat"
+import { statCheck } from "@/lib/statCheck"
 import { adviceFrom, RULE_LABEL, ruleTests, type RuleVerdict } from "@/lib/ruleTests"
 import { trustOf, wilson } from "@/lib/trust"
 import type { PooleanState } from "@/lib/types"
@@ -202,6 +203,29 @@ function BodyTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: O
 
 const RULE_TONE: Record<RuleVerdict, string> = { holds: "border-primary bg-primary/15 text-primary", backwards: "border-gold text-gold", none: "", early: "" }
 
+// Do the newer stats line up with winning? A check-up to run after the first few nights of a season.
+function StatCheckTab({ state }: { state: PooleanState }) {
+  const rows = useMemo(() => statCheck(state), [state])
+  return (
+    <>
+      <Hint>For each stat, every game asks whether the team that did better on it won. A stat that keeps landing on No sign of it once there are enough games is not separating winners from losers, and can move out of the way. Uses every game.</Hint>
+      <ul className="flex flex-col gap-3">
+        {rows.map((r) => (
+          <li key={r.id} className="flex flex-col gap-0.5 border-t pt-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium">{r.stat}</span>
+              <span className={`inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground ${RULE_TONE[r.verdict]}`}>
+                {RULE_LABEL[r.verdict]}{r.strength === "hint" ? ", a hint" : ""}
+              </span>
+            </div>
+            <span className="tabular-nums">The team that {r.better} won {r.wins} of {r.games}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
 function HoldUpTab({ state }: { state: PooleanState }) {
   const rules = useMemo(() => ruleTests(state), [state])
   const advice = adviceFrom(rules)
@@ -288,6 +312,7 @@ export function DeepDiveCard({ state, season = state, onOpenPlayer }: { state: P
           { value: "impact", label: "Win impact", node: <ImpactTab state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "rules", label: "Does it hold up?", node: <HoldUpTab state={state} /> },
           { value: "format", label: "By format", node: <FormatTab state={state} /> },
+          { value: "check", label: "Stat check", node: <StatCheckTab state={state} /> },
           { value: "identity", label: "Player identity", node: <IdentityTab state={season} onOpenPlayer={onOpenPlayer} /> },
           { value: "seq", label: "Play sequences", node: <SequenceTab state={season} onOpenPlayer={onOpenPlayer} /> },
           ...(readOnly ? [] : [{ value: "body", label: "Body and effort", node: <BodyTab state={season} onOpenPlayer={onOpenPlayer} /> }]),
