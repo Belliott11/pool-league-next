@@ -104,7 +104,9 @@ function Actions({ canSave, label, onSave, onClose, again }: { canSave: boolean;
 
 // Remembers the last shot logged in each game, so a run of shots by the same player starts with their
 // name, value and result already chosen.
-const lastShot: Record<string, { scorerId: string; points: 1 | 2 | 3; made: boolean; defenderIds: string[] }> = {}
+const CONTEST_KEYS: Record<string, ScoringEvent["contestLevel"]> = { b: "beat", l: "light", d: "medium", h: "heavy" }
+const KEYS = "Keys: M make, X miss, 1 2 3 points. N no defender, then B got beat, L light, D medium, H heavy. C catch and shoot, T held it. Enter saves and starts the next shot."
+const lastShot: Record<string, { scorerId: string; points: 1 | 2 | 3; made: boolean; defenderIds: string[]; contestLevel?: ScoringEvent["contestLevel"] }> = {}
 
 function teamsOf(game: Game, id: string | null) {
   const onA = id ? game.teamA.includes(id) : false
@@ -133,7 +135,9 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
   // shooter is on the same team as the last shooter.
   const carry = (shooter: string | null) => (last && shooter ? last.defenderIds.filter((d) => teamsOf(game, shooter).opps.includes(d)) : [])
   const [defenderIds, setDefenderIds] = useState<string[]>(edit?.defenderIds ?? carry(scorerId))
-  const [contestLevel, setContestLevel] = useState<ScoringEvent["contestLevel"]>(edit?.contestLevel ?? null)
+  // The contest level carries with the defenders: a run of shots against the same defender is usually guarded the same way.
+  const carryContest = (shooter: string | null) => (carry(shooter).length ? (last?.contestLevel ?? null) : null)
+  const [contestLevel, setContestLevel] = useState<ScoringEvent["contestLevel"]>(edit ? (edit.contestLevel ?? null) : carryContest(scorerId))
   const [catchAndShoot, setCatchAndShoot] = useState<boolean | null>(edit?.catchAndShoot ?? null)
   const [shotType, setShotType] = useState<string | null>(edit?.shotType ?? null)
   const [dunk, setDunk] = useState(edit?.dunk === true)
@@ -151,7 +155,7 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
     setRebounderId(null)
     setBlockerId(null)
     setDefenderIds(carry(id))
-    setContestLevel(null)
+    setContestLevel(carryContest(id))
     setCatchAndShoot(null)
   }
   const toggleDef = (id: string) => setDefenderIds((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))
@@ -163,12 +167,12 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
     if (edit) onSave((g) => editShot(g, edit.id, common))
     else {
       onSave((g) => addShot(g, { scorerId, points, made, outOfBounds: oob, ...common }))
-      lastShot[game.id] = { scorerId, points, made, defenderIds }
+      lastShot[game.id] = { scorerId, points, made, defenderIds, contestLevel }
     }
     onClose(again)
   }
 
-  // Keyboard, for a full pass from film: M make, X miss, 1 2 3 for the value, Enter to save and log the next.
+  // Keyboard, for a full pass from film (see KEYS below).
   const live = useRef({ save, scorerId })
   live.current = { save, scorerId }
   useEffect(() => {
@@ -180,6 +184,12 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
       if (k === "m") setMade(true)
       else if (k === "x") setMade(false)
       else if (k === "1" || k === "2" || k === "3") setPoints(Number(k) as 1 | 2 | 3)
+      else if (k === "n") {
+        setDefenderIds([])
+        setContestLevel(null)
+      } else if (k in CONTEST_KEYS) setContestLevel(CONTEST_KEYS[k])
+      else if (k === "c") setCatchAndShoot(true)
+      else if (k === "t") setCatchAndShoot(false)
       else if (k === "enter" && el.tagName !== "BUTTON" && live.current.scorerId) live.current.save(true)
     }
     window.addEventListener("keydown", on)
@@ -194,6 +204,7 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
         </p>
       ) : (
         <>
+          <p className="hidden text-xs text-muted-foreground md:block">{KEYS}</p>
           <Field label="Scorer">
             {[game.teamA, game.teamB].map((team, i) => (
               <div key={i} className="flex w-full flex-wrap items-center gap-2">
