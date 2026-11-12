@@ -1,3 +1,4 @@
+import { SeasonSwitch } from "@/components/SeasonSwitch"
 import { seasonView } from "@/lib/season"
 import { Fragment, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -154,12 +155,14 @@ export function PlayerDetailPage({
   playerId,
   onChangePlayer,
   update,
+  setToggles,
 }: {
   state: PooleanState
   toggles: Toggles
   playerId: string | null
   onChangePlayer: (id: string) => void
   update?: Update
+  setToggles?: (t: Toggles) => void
 }) {
   // The classic compute layer keeps its own copy of the state; refresh it before anything renders.
   const version = useMemo(() => {
@@ -278,6 +281,7 @@ export function PlayerDetailPage({
         ))}
       </nav>
 
+      <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />
       <Panels section="overview" pid={pid} version={version} />
       <ScoutingCard state={season} pid={pid} update={update} />
 

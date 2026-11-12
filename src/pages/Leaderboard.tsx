@@ -1,3 +1,4 @@
+import { SeasonSwitch } from "@/components/SeasonSwitch"
 import { seasonView } from "@/lib/season"
 import { AdvancedReads } from "./leaderboard/AdvancedReads"
 import { useMemo } from "react"
@@ -106,6 +107,7 @@ export function LeaderboardPage({
         <StatLegend />
       </div>
       <QuickNav />
+      <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />
       <div id="lb-ranking" className="anim-rise scroll-mt-28" style={{ "--i": 0 } as React.CSSProperties}>
         <LaneBars onOpenPlayer={onOpenPlayer} />
       </div>

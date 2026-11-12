@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { leagueYardstick } from "@/lib/insight"
-import { allGamesOf, isSeasonOnly, seasonView } from "@/lib/season"
+import { allGamesOf, carryNote, carryOver, isSeasonOnly, SEASON_MIN_GAMES, seasonView } from "@/lib/season"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 const shot = (id: string, made: boolean): ScoringEvent => ({ id, scorerId: "a", points: 2, made, shotType: "drive", contestLevel: "none", shotLocation: { x: 50, y: 10 } })
@@ -11,10 +11,23 @@ const now = game("now", "2026-09-01", [...[1, 2, 3, 4, 5].map((i) => shot(`n${i}
 const state: PooleanState = { players: [], games: [old, now], currentSeasonStartedAt: "2026-08-20" }
 
 describe("season view", () => {
-  it("keeps only this season's games unless past seasons are included", () => {
-    expect(seasonView(state, false).games.map((g) => g.id)).toEqual(["now"])
-    expect(seasonView(state, true).games.map((g) => g.id)).toEqual(["old", "now"])
+  it("carries last season's games while the new season is short of games", () => {
+    expect(seasonView(state, false).games.map((g) => g.id)).toEqual(["old", "now"])
+    expect(carryOver(state)).toEqual({ start: "2026-08-20", from: "2026-07-01", seasonGames: 1, carried: 1 })
+    expect(carryNote(state, false)).toContain("also count the last 1")
+    expect(carryNote(state, true)).toBeNull()
     expect(isSeasonOnly(seasonView(state, false))).toBe(true)
+  })
+  it("carries only the most recent games needed, whole nights at a time, and none once the season is full", () => {
+    const g = (id: string, date: string) => game(id, date, [{ id: `${id}1`, scorerId: "a", points: 2, made: true }])
+    const past = Array.from({ length: 20 }, (_, i) => g(`p${i}`, `2026-07-${String(i + 1).padStart(2, "0")}`))
+    const season = Array.from({ length: SEASON_MIN_GAMES - 3 }, (_, i) => g(`s${i}`, "2026-09-01"))
+    const st: PooleanState = { players: [], games: [...past, ...season], currentSeasonStartedAt: "2026-08-20" }
+    expect(carryOver(st)?.carried).toBe(3)
+    expect(seasonView(st, false).games.filter((x) => x.date < "2026-08-20").map((x) => x.id)).toEqual(["p17", "p18", "p19"])
+    const full: PooleanState = { ...st, games: [...past, ...season, g("a", "2026-09-02"), g("b", "2026-09-02"), g("c", "2026-09-02")] }
+    expect(carryOver(full)?.carried).toBe(0)
+    expect(seasonView(full, false).games.every((x) => x.date >= "2026-08-20")).toBe(true)
   })
   it("changes nothing before any season has been closed", () => {
     const fresh = { ...state, currentSeasonStartedAt: null }
