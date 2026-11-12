@@ -33,8 +33,8 @@ import { importStateFromJson, loadState, saveState } from "@/lib/state"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 import { GamesPage } from "@/pages/Games"
-import { PlayersPage } from "@/pages/PlayersPage"
 
+const PlayersPage = lazy(() => import("@/pages/PlayersPage").then((m) => ({ default: m.PlayersPage })))
 const ExportPage = lazy(() => import("@/pages/ExportPage").then((m) => ({ default: m.ExportPage })))
 const PlayerDetailPage = lazy(() => import("@/pages/PlayerDetail").then((m) => ({ default: m.PlayerDetailPage })))
 const LeaderboardPage = lazy(() => import("@/pages/Leaderboard").then((m) => ({ default: m.LeaderboardPage })))
@@ -420,11 +420,13 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         </TabsContent>
         {!readOnly && (
           <TabsContent value="players">
-            <PlayersPage
-              state={state}
-              update={update}
-              onOpenPlayer={openPlayer}
-            />
+            <Suspense fallback={<PageSkeleton label="Loading players" />}>
+              <PlayersPage
+                state={state}
+                update={update}
+                onOpenPlayer={openPlayer}
+              />
+            </Suspense>
           </TabsContent>
         )}
         {!readOnly && (

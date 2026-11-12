@@ -1,28 +1,33 @@
+import { lazy, Suspense, type ReactNode } from "react"
 import { CalendarDays, Crown, Radio } from "lucide-react"
+import { PageSkeleton } from "@/components/PageSkeleton"
 import { getClient } from "@/lib/cloud"
 import { Button } from "@/components/ui/button"
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
-import { BalanceAndPredict } from "./games/BalanceAndPredict"
-import { GamePage } from "./games/GamePage"
 import { GameLog } from "./games/GameLog"
 import { Section } from "@/components/Section"
 import { useReadOnly } from "@/lib/mode"
 import { SetUpTonight } from "./games/SetUpTonight"
 import { Sidebar } from "./games/Sidebar"
-import { LiveGamePage } from "./live/LiveGamePage"
 import { LiveBanner, LiveWatch } from "./live/LiveWatch"
-import { NightRecap } from "./games/NightRecap"
 import { GoingIn } from "./games/GoingIn"
 import { NightPreviewCard } from "./games/NightPreview"
 import { PickEmCard } from "./games/PickEm"
-import { StatEntryPage } from "./statentry/StatEntryPage"
 import { findLiveGame } from "@/lib/live"
 import { upcomingRsvp } from "@/lib/nightPreview"
 import { showHub } from "@/lib/offseason"
-import { HallOfFame } from "./games/HallOfFame"
 import { OffseasonHub } from "./games/OffseasonHub"
-import { Wrapped } from "./games/Wrapped"
+
+// Screens opened from the game list load when first opened, so the list itself shows up faster.
+const BalanceAndPredict = lazy(() => import("./games/BalanceAndPredict").then((m) => ({ default: m.BalanceAndPredict })))
+const GamePage = lazy(() => import("./games/GamePage").then((m) => ({ default: m.GamePage })))
+const LiveGamePage = lazy(() => import("./live/LiveGamePage").then((m) => ({ default: m.LiveGamePage })))
+const NightRecap = lazy(() => import("./games/NightRecap").then((m) => ({ default: m.NightRecap })))
+const StatEntryPage = lazy(() => import("./statentry/StatEntryPage").then((m) => ({ default: m.StatEntryPage })))
+const HallOfFame = lazy(() => import("./games/HallOfFame").then((m) => ({ default: m.HallOfFame })))
+const Wrapped = lazy(() => import("./games/Wrapped").then((m) => ({ default: m.Wrapped })))
+const Lazy = ({ children }: { children: ReactNode }) => <Suspense fallback={<PageSkeleton label="Loading" />}>{children}</Suspense>
 
 export function GamesPage({
   state,
@@ -54,20 +59,20 @@ export function GamesPage({
   const open = (g: Game) => go(g.liveInProgress ? "live" : "game:" + g.id)
 
   if (kind === "wrapped") {
-    return <Wrapped state={state} playerId={arg || undefined} onPick={(id) => go("wrapped:" + id, true)} onClose={goBack} />
+    return <Lazy><Wrapped state={state} playerId={arg || undefined} onPick={(id) => go("wrapped:" + id, true)} onClose={goBack} /></Lazy>
   }
 
   if (kind === "hall") {
-    return <HallOfFame state={state} onBack={goBack} onOpenPlayer={onOpenPlayer} onOpenGame={(id) => go("game:" + id)} />
+    return <Lazy><HallOfFame state={state} onBack={goBack} onOpenPlayer={onOpenPlayer} onOpenGame={(id) => go("game:" + id)} /></Lazy>
   }
 
   if (liveOpen) {
-    return readOnly ? <LiveWatch state={state} onClose={goBack} onRecap={showRecap} /> : <LiveGamePage state={state} update={update} onClose={goBack} onRecap={showRecap} />
+    return readOnly ? <LiveWatch state={state} onClose={goBack} onRecap={showRecap} /> : <Lazy><LiveGamePage state={state} update={update} onClose={goBack} onRecap={showRecap} /></Lazy>
   }
 
   if (recapOpen) {
     return (
-      <NightRecap
+      <Lazy><NightRecap
         update={update}
         key={recapDate ?? "latest"}
         initialDate={recapDate}
@@ -76,17 +81,17 @@ export function GamesPage({
         onOpenGame={(id) => go("game:" + id)}
         onStatEntry={(id) => go("stat:" + id)}
         onOpenPlayer={onOpenPlayer}
-      />
+      /></Lazy>
     )
   }
 
   if (openGame && kind === "stat" && !readOnly) {
-    return <StatEntryPage state={state} update={update} game={openGame} onBack={goBack} />
+    return <Lazy><StatEntryPage state={state} update={update} game={openGame} onBack={goBack} /></Lazy>
   }
 
   if (openGame) {
     return (
-      <GamePage
+      <Lazy><GamePage
         state={state}
         update={update}
         game={openGame}
@@ -94,7 +99,7 @@ export function GamesPage({
         onOpenGame={open}
         autoSeek={openRequest && openRequest.id === openGame.id ? openRequest : null}
         onBack={goBack}
-      />
+      /></Lazy>
     )
   }
 
@@ -134,7 +139,7 @@ export function GamesPage({
               <SetUpTonight state={state} update={update} onCreated={open} />
             </Section>
             <Section id="games-section-balance" title="Balance & Predict" teaser="Even splits, matchup odds, and a full night's schedule">
-              <BalanceAndPredict state={state} update={update} onCreated={open} />
+              <Lazy><BalanceAndPredict state={state} update={update} onCreated={open} /></Lazy>
             </Section>
           </>
         )}
