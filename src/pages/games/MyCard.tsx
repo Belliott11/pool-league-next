@@ -38,7 +38,7 @@ export function MyCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPla
   }, [state, me])
   if (!me || !d) return null
   const lines: string[] = []
-  if (d.row && d.rank) lines.push(`You are ${ordinal(d.rank)} of ${d.ranked} in the standings at ${d.row.twoWayPer25.toFixed(1)} two-way per 25, with a ${d.row.wins}-${d.row.losses} record.`)
+  if (d.row && d.rank) lines.push(`You are ${ordinal(d.rank)} of ${d.ranked} in the standings at ${d.row.twoWayPer25.toFixed(1)} two-way per game, with a ${d.row.wins}-${d.row.losses} record.`)
   else lines.push("You are not ranked yet. That takes one filmed game with even teams.")
   const over = isOffseason(state)
   if (d.mvp >= 0 && over) lines.push(`You finished ${ordinal(d.mvp + 1)} in the MVP race.`)

@@ -1,5 +1,6 @@
 import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { setAppGames } from "@/lib/matchup"
+import { setPaceGames } from "@/lib/per"
 import { AccountMenu } from "@/components/AccountMenu"
 import { StoryPublisher } from "@/components/StoryPublisher"
 import { PullToRefresh } from "@/components/PullToRefresh"
@@ -95,6 +96,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   const readOnly = mode === "viewer"
   const [state, setState] = useState(initial)
   setAppGames(state.games)
+  setPaceGames(state.games)
   // Private player labels: editor only, and never part of the shared league data.
   const [labels, setLabelsState] = useState<LabelBook>({})
   const labelsRef = useRef(labels)

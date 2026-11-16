@@ -85,8 +85,8 @@ export function previewStoriesFor(state: PooleanState, coming: string[], name: N
     const per25 = twoWayPer25Of(state)
     const top = tw[0]
     const low = tw[tw.length - 1]
-    add(2, top.id, say("pv-top" + top.id, `${name(top.id)} is the best all-around player on the list, ${per25(top.id)} two-way per 25. Everyone else is playing for second.`, `Who is the best on tonight's list? ${name(top.id)}, ${per25(top.id)} two-way per 25, and they know.`))
-    if (low.avg < 0) add(1.6, low.id, say("pv-low" + low.id, `${name(low.id)} is on the list at ${per25(low.id)} two-way per 25, so whichever team gets them has a plan to make.`, `Whoever gets ${name(low.id)} tonight should know the average is ${per25(low.id)} two-way. Plan accordingly.`))
+    add(2, top.id, say("pv-top" + top.id, `${name(top.id)} is the best all-around player on the list, ${per25(top.id)} two-way per game. Everyone else is playing for second.`, `Who is the best on tonight's list? ${name(top.id)}, ${per25(top.id)} two-way per game, and they know.`))
+    if (low.avg < 0) add(1.6, low.id, say("pv-low" + low.id, `${name(low.id)} is on the list at ${per25(low.id)} two-way per game, so whichever team gets them has a plan to make.`, `Whoever gets ${name(low.id)} tonight should know the average is ${per25(low.id)} two-way. Plan accordingly.`))
   }
 
   return rank(items, 6)

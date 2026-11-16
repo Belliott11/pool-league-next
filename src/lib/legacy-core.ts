@@ -1,7 +1,7 @@
 // @ts-nocheck
 // The classic site's compute layer, column definitions and dependencies, taken verbatim so the numbers match the
 // classic site exactly. It started as generated output; the generator is gone, so edit this file directly.
-import { PER } from "@/lib/per";
+import { PER, gamePace } from "@/lib/per";
 import { loadsFor, loadText } from "@/lib/dayLoad";
 import { count as fmtCount, defenderShare, isTransition } from "@/lib/beatRate";
 import { facedSample, fgaSample, gamesSample, shotSample } from "@/lib/sampleSize";
@@ -426,7 +426,7 @@ function renderStandingsSidebar(containerId) {
   }
   wrap.innerHTML = `
     <table class="standings-mini-table">
-      <thead><tr><th>#</th><th>Player</th><th>W-L</th><th>Two-Way/25</th></tr></thead>
+      <thead><tr><th>#</th><th>Player</th><th>W-L</th><th>Two-Way/G</th></tr></thead>
       <tbody>
         ${rows.map((r, i) => `
           <tr>
@@ -479,7 +479,7 @@ function renderLeaderboardHighlights() {
   const board = computeLeaderboard().filter(r => r.gp > 0);
   const cards = [];
 
-  // Biggest positive Last 5 vs. season Two-Way/25 gap, not just the highest raw Last 5 number —
+  // Biggest positive Last 5 vs. season Two-Way/G gap, not just the highest raw Last 5 number —
   // a great player having a normal week shouldn't outrank someone actually trending up. Needs at
   // least 3 of their last 5 games logged to count as a real trend, and a real ▲ (same >0.5
   // threshold the Last 5 column itself uses), not just noise around a flat week.
@@ -490,14 +490,14 @@ function renderLeaderboardHighlights() {
     .sort((a, b) => b.delta - a.delta)[0];
   if (hotStreak) {
     cards.push({ icon: icon("flame"), label: "Hot Streak", player: hotStreak.player,
-      detail: `${hotStreak.last5.toFixed(1)} Two-Way/25 over their last 5, up from ${hotStreak.season.toFixed(1)} on the season` });
+      detail: `${hotStreak.last5.toFixed(1)} Two-Way/G over their last 5, up from ${hotStreak.season.toFixed(1)} on the season` });
   }
 
   // Same ranking as the full Consistency panel, just the #1 surfaced here.
   const consistent = computeConsistencyStandings()[0];
   if (consistent) {
     cards.push({ icon: icon("target"), label: "Most Consistent", player: consistent.player,
-      detail: `±${consistent.stdDev.toFixed(1)} Two-Way/25 std dev across ${consistent.gp} games` });
+      detail: `±${consistent.stdDev.toFixed(1)} Two-Way/G std dev across ${consistent.gp} games` });
   }
 
   // Best TS% in games decided by the calibrated close-game margin or fewer — needs at least 5
@@ -516,15 +516,15 @@ function renderLeaderboardHighlights() {
       detail: `${topDuo.count} assist${topDuo.count === 1 ? "" : "s"} to ${playerLink(topDuo.scorer.id, topDuo.scorer.name)}` });
   }
 
-  // League's top Def Rating/25 — every other card here leans offense/situational, so this rounds
+  // League's top Def Rating/G — every other card here leans offense/situational, so this rounds
   // things out with a defense-focused one. Same formula and column as the main table's own
-  // Def Rating/25, just the #1 surfaced here instead of requiring a sort click.
+  // Def Rating/G, just the #1 surfaced here instead of requiring a sort click.
   const bestDefender = [...board]
     .map(r => ({ player: r.player, defRating: defensiveRating(r.rate, r.rateDefense) }))
     .sort((a, b) => b.defRating - a.defRating)[0];
   if (bestDefender) {
     cards.push({ icon: icon("shield"), label: "Best Defender", player: bestDefender.player,
-      detail: `${bestDefender.defRating.toFixed(1)} Def Rating/25` });
+      detail: `${bestDefender.defRating.toFixed(1)} Def Rating/G` });
   }
 
   if (cards.length === 0) {
@@ -958,7 +958,7 @@ function renderGames() {
       ? ` <span class="badge badge-lowlight" title="This game ended early. Not comparable to a complete game -- excluded from Best/Worst Games, Power Ranking vs. Performance, Shot Attempt Differential, Pace/PPP, and Win Shares. Season-total rates still include it.">${icon("stop")} Stopped Early</span>`
       : "";
     // Best/worst-of-the-game badge — same Two-Way score Best & Worst Individual Games ranks by
-    // (Off Rating + Def Rating for that one game, not a per-25 rate or season number), just
+    // (Off Rating + Def Rating for that one game, not a per-game rate or season number), just
     // scoped to this specific game's own roster instead of pooled across the whole season. Only
     // meaningful once there's real data to rank and at least two players to compare, so an
     // unreviewed game or a lone-player roster gets neither badge rather than a trivial or
@@ -1531,6 +1531,11 @@ function teamScore(game, playerIds) {
 
 function gameTotalPoints(game) {
   return teamScore(game, game.teamA) + teamScore(game, game.teamB);
+}
+
+// The denominator of every per-game rate: how much game this was, in trips (see per.ts).
+function paceOf(game) {
+  return gamePace(game, gameTotalPoints(game));
 }
 
 function playerGameResult(game, playerId) {
@@ -2499,7 +2504,7 @@ function computeLeaderboardUncached() {
       defense.beatMisses += def.beatMisses;
       defense.tpmAgainst += def.tpmAgainst;
       defense.blocksNotAlreadyStopped += def.blocksNotAlreadyStopped;
-      combinedPoints += gameTotalPoints(g);
+      combinedPoints += paceOf(g);
       // Shot%/AST% denominators: this player's own team's total in this game (themselves
       // included), so "what share of the team's shots/assists were theirs" — not the league's,
       // since a team's own diet in each category is the meaningful comparison for who's actually
@@ -2539,12 +2544,12 @@ function computeLeaderboardUncached() {
     // per-game numbers would.
     const totalOffRating = offensiveRating(totals, shooting);
     const totalTwoWay = totalOffRating + defensiveRating(totals, defense);
-    // Every counting stat on the Leaderboard is a rate per 25 combined points scored in the
+    // Every counting stat on the Leaderboard is a rate per game in the
     // game, not a per-game average — games are capped at different totals (16 or 21), so a
     // player who mostly plays 16-point games isn't fairly compared to one who mostly plays
     // 21s by a plain per-game average. The combined final score stands in for "how much game
-    // happened," since possessions aren't tracked. This is the same reasoning PTS/25 and
-    // Off Rating/25 always used, just applied uniformly instead of singling those two out.
+    // happened," since possessions aren't tracked. This is the same reasoning PTS/G and
+    // Off Rating/G always used, just applied uniformly instead of singling those two out.
     const per25 = value => combinedPoints > 0 ? (value / combinedPoints) * PER : 0;
     const rate = {};
     STAT_FIELDS.forEach(f => { rate[f] = per25(totals[f]); });
@@ -2557,7 +2562,7 @@ function computeLeaderboardUncached() {
       beatMisses: per25(defense.beatMisses),
       blocksNotAlreadyStopped: per25(defense.blocksNotAlreadyStopped)
     };
-    // Last 5 games (by date, not insertion order), same per-25 math as the season — a quick
+    // Last 5 games (by date, not insertion order), same per-game math as the season — a quick
     // "how are they trending lately" read next to the season number, not a separate stat family.
     // Fewer than 5 games played just means fewer games in the window, not a blank/"—" — the
     // comparison still means something with 2-3 games, just noisier.
@@ -2575,7 +2580,7 @@ function computeLeaderboardUncached() {
       winPct: (wins + losses) > 0 ? pct(wins, wins + losses) : null,
       offRatingPer25: seasonOffRatingPer25,
       twoWayPer25: per25(totalTwoWay),
-      // Season-long sums, not per-25 rates — for the rare comparison (MVP) where "played a lot
+      // Season-long sums, not per-game rates — for the rare comparison (MVP) where "played a lot
       // and contributed a lot" should outweigh a slightly higher rate over fewer games.
       offRatingTotal: totalOffRating,
       twoWayTotal: totalTwoWay,
@@ -2648,7 +2653,7 @@ function renderConsistencyStandings() {
   wrap.innerHTML = `
     <div class="table-scroll">
       <table class="matchup-table">
-        <thead><tr><th>#</th><th>Player</th><th>Two-Way Std Dev</th><th>Two-Way/25</th><th>GP</th></tr></thead>
+        <thead><tr><th>#</th><th>Player</th><th>Two-Way Std Dev</th><th>Two-Way/G</th><th>GP</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>
@@ -2749,7 +2754,7 @@ const DEFENSIVE_LOAD_COLUMNS = [
       ? `Not enough contested volume yet<br><span class="hint" style="margin:0">was ${formatPct(r.oppFgPct)} any-tag</span>`
       : `${formatPct(r.realContested.fgPct)}<br><span class="hint" style="margin:0">${fmtCount(r.realContested.made)}/${fmtCount(r.realContested.attempts)} medium/heavy · was ${formatPct(r.oppFgPct)} any-tag</span>`,
   },
-  { key: "defrtg", label: "Def Rating/25", accessor: r => r.defRtg, display: r => r.defRtg.toFixed(1) },
+  { key: "defrtg", label: "Def Rating/G", accessor: r => r.defRtg, display: r => r.defRtg.toFixed(1) },
   {
     key: "xpa", label: "Pts Allowed Under Exp",
     accessor: r => r.pointsAllowedUnderExpected,
@@ -3250,22 +3255,22 @@ function computeAwardStandings() {
     });
     if (lifts.length === 0) return null;
     const avg = lifts.reduce((a, b) => a + b, 0) / lifts.length;
-    return { player: p, value: avg, display: `${avg >= 0 ? "+" : ""}${avg.toFixed(1)} Two-Way/25 avg lift (${lifts.length} teammate${lifts.length === 1 ? "" : "s"})` };
+    return { player: p, value: avg, display: `${avg >= 0 ? "+" : ""}${avg.toFixed(1)} Two-Way/G avg lift (${lifts.length} teammate${lifts.length === 1 ? "" : "s"})` };
   }).filter(Boolean).sort((a, b) => b.value - a.value);
 
   return {
     twoWay: [...board].sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
-      .map(r => ({ player: r.player, value: r.twoWayPer25, display: `${r.twoWayPer25.toFixed(1)} Two-Way/25` })),
+      .map(r => ({ player: r.player, value: r.twoWayPer25, display: `${r.twoWayPer25.toFixed(1)} Two-Way/G` })),
     twoWayTotal: [...board].sort((a, b) => b.twoWayTotal - a.twoWayTotal)
       .map(r => ({ player: r.player, value: r.twoWayTotal, display: `${r.twoWayTotal.toFixed(1)} Two-Way (season)` })),
     defRating: [...board].sort((a, b) => defensiveRating(b.rate, b.rateDefense) - defensiveRating(a.rate, a.rateDefense))
-      .map(r => ({ player: r.player, value: defensiveRating(r.rate, r.rateDefense), display: `${defensiveRating(r.rate, r.rateDefense).toFixed(1)} Def Rating/25` })),
+      .map(r => ({ player: r.player, value: defensiveRating(r.rate, r.rateDefense), display: `${defensiveRating(r.rate, r.rateDefense).toFixed(1)} Def Rating/G` })),
     gwb: computeGameWinningBuckets()
       .map(r => ({ player: r.player, value: r.count, display: `${r.count} game-winning bucket${r.count === 1 ? "" : "s"}` })),
     closeGameTs: [...computeCloseGameShooting()].sort((a, b) => b.ts - a.ts)
       .map(r => ({ player: r.player, value: r.ts, display: `${r.ts}% TS in close games (${r.gp} game${r.gp === 1 ? "" : "s"}, ${r.attempts} att)` })),
     trend: [...board].sort((a, b) => b.last5TwoWayPer25 - a.last5TwoWayPer25)
-      .map(r => ({ player: r.player, value: r.last5TwoWayPer25, display: `Last 5: ${r.last5Trend} ${r.last5TwoWayPer25.toFixed(1)} vs. season ${r.twoWayPer25.toFixed(1)} Two-Way/25` })),
+      .map(r => ({ player: r.player, value: r.last5TwoWayPer25, display: `Last 5: ${r.last5Trend} ${r.last5TwoWayPer25.toFixed(1)} vs. season ${r.twoWayPer25.toFixed(1)} Two-Way/G` })),
     teammateLift
   };
 }
@@ -3856,7 +3861,7 @@ function computeAwardRace() {
   }
   const standings = computeAwardStandings();
   const local = (key, statKey, basis) => rows.push({ key, basis, local: true, empty: "No logged games for this yet.", leaders: (standings[statKey] || []).slice(0, 3).map(r => ({ ids: [r.player.id], value: r.display })) });
-  local("dpoy", "defRating", "Defensive rating per 25");
+  local("dpoy", "defRating", "Defensive rating per game");
   local("clutch", "closeGameTs", "Shooting in close games");
   // Best Teammate from real games when there are any: how much more often a player's teammates
   // win with them than those same teammates do without them, pulled toward 0 by 30 phantom
@@ -4286,12 +4291,12 @@ async function generateTradingCardCanvas(playerId) {
   if (real) { ctx.fillText(`Real Record: ${real.w}-${real.l}`, W / 2, y); y += 42; }
   if (power) { ctx.fillText(`Power Ranking: ${Math.round(power.avgPct)}%`, W / 2, y); y += 42; }
   y += 10;
-  // Statline: the same per-25 core numbers shown on the profile header itself, so the card
+  // Statline: the same per-game core numbers shown on the profile header itself, so the card
   // carries this app's own local read alongside the real site's data above it.
   if (row) {
     const tsPct = trueShootingPct(row.totals.pts, row.shooting.fga, row.shooting.fta);
     ctx.font = "22px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.fillText(`${row.rate.pts.toFixed(1)} PTS/25 · ${row.rate.ast.toFixed(1)} AST/25${tsPct !== null ? ` · ${tsPct}% TS` : ""} · ${row.twoWayPer25.toFixed(1)} Two-Way/25`, W / 2, y);
+    ctx.fillText(`${row.rate.pts.toFixed(1)} PTS/G · ${row.rate.ast.toFixed(1)} AST/G${tsPct !== null ? ` · ${tsPct}% TS` : ""} · ${row.twoWayPer25.toFixed(1)} Two-Way/G`, W / 2, y);
     y += 40;
   }
   y += 12;
@@ -4581,7 +4586,7 @@ function poolRealRecord(playerId) {
 
 function computePowerRankingVsPerformance() {
   return PARTY_RANKINGS.map(party => {
-    // Excludes stoppedEarly games: "that night's Two-Way/25" is exactly the single-game case a
+    // Excludes stoppedEarly games: "that night's Two-Way/G" is exactly the single-game case a
     // partial game would distort undiluted (see poolean-stopped-early-spec.md).
     const gamesThatNight = state.games.filter(g => g.date === party.date && isQualifyingGame(g) && !g.stoppedEarly);
     const rows = party.players.map(pr => {
@@ -4618,7 +4623,7 @@ function renderPowerRankingVsPerformance() {
       <h4>${escapeHtml(formatDateDisplay(party.date))}</h4>
       <div class="table-scroll">
         <table class="matchup-table">
-          <thead><tr><th>Power Rank</th><th>Player</th><th>Power %</th><th>Two-Way/25 That Night</th></tr></thead>
+          <thead><tr><th>Power Rank</th><th>Player</th><th>Power %</th><th>Two-Way/G That Night</th></tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       </div>
@@ -4676,7 +4681,7 @@ function renderQuadrantChart() {
     const cx = xScale(d.offRtg), cy = yScale(d.defRtg);
     return `
       <g>
-        <title>${escapeHtml(d.player.name)}: ${d.offRtg.toFixed(1)} Off Rating/25, ${d.defRtg.toFixed(1)} Def Rating/25</title>
+        <title>${escapeHtml(d.player.name)}: ${d.offRtg.toFixed(1)} Off Rating/G, ${d.defRtg.toFixed(1)} Def Rating/G</title>
         ${svgAvatarDot(d.player, cx, cy)}
       </g>
       <text x="${cx}" y="${cy - 12}" text-anchor="middle" class="quadrant-label">${escapeHtml(d.player.name)}</text>
@@ -4692,8 +4697,8 @@ function renderQuadrantChart() {
       <line x1="${PAD}" y1="${zeroY}" x2="${W - PAD}" y2="${zeroY}" class="quadrant-axis" />
       <line x1="${zeroX}" y1="${PAD}" x2="${zeroX}" y2="${H - PAD}" class="quadrant-axis" />
       ${dotsSvg}
-      <text x="${W - PAD}" y="${H - PAD + 16}" text-anchor="end" class="quadrant-axis-label">Off Rating/25 &#8594;</text>
-      <text x="4" y="${PAD - 10}" text-anchor="start" class="quadrant-axis-label">&#8593; Def Rating/25</text>
+      <text x="${W - PAD}" y="${H - PAD + 16}" text-anchor="end" class="quadrant-axis-label">Off Rating/G &#8594;</text>
+      <text x="4" y="${PAD - 10}" text-anchor="start" class="quadrant-axis-label">&#8593; Def Rating/G</text>
     </svg>
   `;
 }
@@ -4726,7 +4731,7 @@ function renderVolumeEfficiencyChart() {
     const cx = xScale(d.volume), cy = yScale(d.ts);
     return `
       <g>
-        <title>${escapeHtml(d.player.name)}: ${d.volume.toFixed(1)} FGA/25, ${d.ts}% TS</title>
+        <title>${escapeHtml(d.player.name)}: ${d.volume.toFixed(1)} FGA/G, ${d.ts}% TS</title>
         ${svgAvatarDot(d.player, cx, cy)}
       </g>
       <text x="${cx}" y="${cy - 12}" text-anchor="middle" class="quadrant-label">${escapeHtml(d.player.name)}</text>
@@ -4738,18 +4743,18 @@ function renderVolumeEfficiencyChart() {
       <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H - PAD_B}" class="quadrant-axis" />
       <line x1="${PAD_L}" y1="${H - PAD_B}" x2="${W - PAD_R}" y2="${H - PAD_B}" class="quadrant-axis" />
       ${dotsSvg}
-      <text x="${W - PAD_R}" y="${H - PAD_B + 16}" text-anchor="end" class="quadrant-axis-label">FGA/25 &#8594;</text>
+      <text x="${W - PAD_R}" y="${H - PAD_B + 16}" text-anchor="end" class="quadrant-axis-label">FGA/G &#8594;</text>
       <text x="${PAD_L - 10}" y="${PAD_T + 4}" text-anchor="end" class="quadrant-axis-label">&#8593; TS%</text>
     </svg>
   `;
 }
 
 const PLAY_STYLE_FEATURES = [
-  { key: "off", label: "Off Rating/25", accessor: r => r.offRatingPer25 },
-  { key: "def", label: "Def Rating/25", accessor: r => defensiveRating(r.rate, r.rateDefense) },
-  { key: "ast", label: "Assists/25", accessor: r => r.rate.ast },
-  { key: "reb", label: "Rebounds/25", accessor: r => r.rate.oreb + r.rate.dreb },
-  { key: "stocks", label: "Stocks/25", accessor: r => r.rate.stl + r.rate.blk }
+  { key: "off", label: "Off Rating/G", accessor: r => r.offRatingPer25 },
+  { key: "def", label: "Def Rating/G", accessor: r => defensiveRating(r.rate, r.rateDefense) },
+  { key: "ast", label: "Assists/G", accessor: r => r.rate.ast },
+  { key: "reb", label: "Rebounds/G", accessor: r => r.rate.oreb + r.rate.dreb },
+  { key: "stocks", label: "Stocks/G", accessor: r => r.rate.stl + r.rate.blk }
 ];
 
 const PLAY_STYLE_MIN_PLAYERS = 4;
@@ -5016,7 +5021,7 @@ function renderTwoWayRankChart() {
     const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${xScale(dateIndex[p.date])},${yScale(p.rank)}`).join(" ");
     const dotsSvg = points.map(p => `
       <g>
-        <title>${escapeHtml(player.name)}: #${p.rank} as of ${escapeHtml(formatDateDisplay(p.date))} (${p.twoWay.toFixed(1)} Two-Way/25)</title>
+        <title>${escapeHtml(player.name)}: #${p.rank} as of ${escapeHtml(formatDateDisplay(p.date))} (${p.twoWay.toFixed(1)} Two-Way/G)</title>
         ${svgAvatarDot(player, xScale(dateIndex[p.date]), yScale(p.rank), 8, p.rank)}
       </g>
     `).join("");
@@ -5341,7 +5346,7 @@ function renderTeammateLiftMatrix() {
       const opacity = 0.18 + magnitude * 0.62;
       const hue = cell.lift >= 0 ? 120 : 0;
       const sign = cell.lift >= 0 ? "+" : "";
-      return `<td class="matchup-grid-cell" style="background: color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)" title="With ${escapeHtml(rowP.name)} on their team, ${escapeHtml(colP.name)}'s Two-Way/25 is ${sign}${cell.lift.toFixed(1)} (${cell.withGp} with / ${cell.withoutGp} without)">${sign}${cell.lift.toFixed(1)}</td>`;
+      return `<td class="matchup-grid-cell" style="background: color-mix(in oklab, color-mix(in oklab, var(--neg), var(--pos) ${hue / 120 * 100}%) ${opacity * 100}%, transparent)" title="With ${escapeHtml(rowP.name)} on their team, ${escapeHtml(colP.name)}'s Two-Way/G is ${sign}${cell.lift.toFixed(1)} (${cell.withGp} with / ${cell.withoutGp} without)">${sign}${cell.lift.toFixed(1)}</td>`;
     }).join("");
     return `<tr><td class="sticky-col">${playerLink(rowP.id, rowP.name)}</td>${cellsHtml}</tr>`;
   }).join("");
@@ -5358,7 +5363,7 @@ function renderTeammateLiftMatrix() {
 const TEAMMATE_CONTEXT_COLUMNS = [
   { key: "player", label: "Player", accessor: r => r.player.name },
   { key: "gp", label: "GP", accessor: r => r.gp },
-  { key: "offRtg", label: "Off Rating/25", accessor: r => r.offRatingPer25 },
+  { key: "offRtg", label: "Off Rating/G", accessor: r => r.offRatingPer25 },
   { key: "teammateQuality", label: "Teammate Quality", accessor: r => r.teammateQuality },
   { key: "offMatchupDifficulty", label: "Off Matchup Difficulty", accessor: r => r.offMatchupDifficulty },
   { key: "defMatchupDifficulty", label: "Def Matchup Difficulty", accessor: r => r.defMatchupDifficulty },
@@ -6066,7 +6071,7 @@ const REAL_PLAYMAKING_MIN = 3;
 function computeRealPlaymakingVolume(playerId) {
   let shotsCreated = 0, pointsGenerated = 0, oldAssists = 0, combinedPoints = 0;
   qualifyingGamesForPlayer(playerId).forEach(game => {
-    combinedPoints += gameTotalPoints(game);
+    combinedPoints += paceOf(game);
     game.scoringEvents.forEach(ev => {
       if (ev.points !== 2 && ev.points !== 3) return;
       if (ev.assistId === playerId && ev.made !== false) oldAssists++;
@@ -6883,7 +6888,7 @@ function computeRateSummaryForGames(playerId, games) {
     defense.stops += def.stops;
     defense.beatMisses += def.beatMisses;
     defense.blocksNotAlreadyStopped += def.blocksNotAlreadyStopped;
-    combinedPoints += gameTotalPoints(g);
+    combinedPoints += paceOf(g);
   });
   const totalOffRating = offensiveRating(totals, shooting);
   const totalTwoWay = totalOffRating + defensiveRating(totals, defense);
@@ -6937,7 +6942,7 @@ function renderSeasonHistoryPanel(playerId) {
   wrap.innerHTML = `
     <div class="table-scroll">
       <table class="matchup-table">
-        <thead><tr><th>Season</th><th>GP</th><th>Record</th><th>Off Rating/25</th><th>Def Rating/25</th><th>Two-Way/25</th></tr></thead>
+        <thead><tr><th>Season</th><th>GP</th><th>Record</th><th>Off Rating/G</th><th>Def Rating/G</th><th>Two-Way/G</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>
@@ -7015,7 +7020,7 @@ function renderLeagueSeasonStandings() {
   wrap.innerHTML = `
     <div class="table-scroll">
       <table class="matchup-table">
-        <thead><tr><th>#</th><th>Player</th><th>GP</th><th>Record</th><th>Off Rating/25</th><th>Def Rating/25</th><th>Two-Way/25</th></tr></thead>
+        <thead><tr><th>#</th><th>Player</th><th>GP</th><th>Record</th><th>Off Rating/G</th><th>Def Rating/G</th><th>Two-Way/G</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>
@@ -7145,9 +7150,9 @@ function computePlayerTips(playerId) {
   const ownTs = trueShootingPct(row.totals.pts, row.shooting.fga, row.shooting.fta);
   if (avgTs !== null && avgFga !== null && ownTs !== null) {
     if (row.rateShooting.fga - avgFga >= 2.5 && avgTs - ownTs >= 8) {
-      candidates.push({ diff: (avgTs - ownTs) + (row.rateShooting.fga - avgFga), icon: icon("target"), text: `Shot selection: you're taking more shots per 25 than most (${row.rateShooting.fga.toFixed(1)} vs. ${avgFga.toFixed(1)} average) at a below-average TS% (${formatPct(ownTs)} vs. ${formatPct(avgTs)}). A more selective diet could raise the efficiency without giving up much volume.` });
+      candidates.push({ diff: (avgTs - ownTs) + (row.rateShooting.fga - avgFga), icon: icon("target"), text: `Shot selection: you're taking more shots per game than most (${row.rateShooting.fga.toFixed(1)} vs. ${avgFga.toFixed(1)} average) at a below-average TS% (${formatPct(ownTs)} vs. ${formatPct(avgTs)}). A more selective diet could raise the efficiency without giving up much volume.` });
     } else if (avgFga - row.rateShooting.fga >= 2.5 && ownTs - avgTs >= 8) {
-      candidates.push({ diff: (ownTs - avgTs) + (avgFga - row.rateShooting.fga), icon: icon("target"), text: `Shot selection: you're shooting ${formatPct(ownTs)} TS%, well above the ${formatPct(avgTs)} average, on fewer attempts than most (${row.rateShooting.fga.toFixed(1)} vs. ${avgFga.toFixed(1)} per 25). There's real room to take (and make) more without your efficiency needing to hold up on its own; it already has.` });
+      candidates.push({ diff: (ownTs - avgTs) + (avgFga - row.rateShooting.fga), icon: icon("target"), text: `Shot selection: you're shooting ${formatPct(ownTs)} TS%, well above the ${formatPct(avgTs)} average, on fewer attempts than most (${row.rateShooting.fga.toFixed(1)} vs. ${avgFga.toFixed(1)} per game). There's real room to take (and make) more without your efficiency needing to hold up on its own; it already has.` });
     }
   }
 
@@ -7501,7 +7506,7 @@ function renderPlayerPassingPanel(playerId) {
   if (!d) { wrap.innerHTML = '<p class="empty-state">Not enough passing volume yet.</p>'; return; }
   wrap.innerHTML = `
     <div class="profile-stat-pair">
-      <div class="profile-stat-tile"><div class="profile-stat-label">Real Playmaking Volume/25</div><div class="profile-stat-value">${d.volume ? d.volume.shotsCreatedPer25.toFixed(1) : "—"}</div></div>
+      <div class="profile-stat-tile"><div class="profile-stat-label">Real Playmaking Volume/G</div><div class="profile-stat-value">${d.volume ? d.volume.shotsCreatedPer25.toFixed(1) : "—"}</div></div>
       <div class="profile-stat-tile"><div class="profile-stat-label">Weighted Pass Quality</div><div class="profile-stat-value">${d.quality ? d.quality.avgQuality.toFixed(2) : "—"}</div></div>
     </div>
     <p class="hint">${escapeHtml(d.read)}</p>
@@ -7646,7 +7651,7 @@ function computeAreasToWorkOn(playerId) {
     }
   }
 
-  // Def Rating/25 and Opp FG% together, min 10 shots defended for either to count — two views of
+  // Def Rating/G and Opp FG% together, min 10 shots defended for either to count — two views of
   // the same defensive-difficulty question, shown together either way, flagged on whichever one
   // actually clears its own threshold.
   {
@@ -7675,7 +7680,7 @@ function computeAreasToWorkOn(playerId) {
           const trend = trendNote(seasonRate, recentRate, false);
           results.push({
             key: "defense", isWeak,
-            text: `Your defense: opponents shoot ${formatPct(ownFg)} ${useReal ? `on shots you contested medium or heavy (${ownReal.made}/${ownReal.attempts}, league median ${formatPct(medFg)})` : `against you on any tagged shot (league median ${formatPct(medFg)}, not contested-only)`}${engagement !== null ? `, with an engagement rate of ${formatPct(engagement)}` : ""}, and your Def Rating/25 is ${ownDefRtg.toFixed(1)} (league median ${medDefRtg.toFixed(1)}).${isWeak ? " Tighter closeouts or a different defensive matchup could close that gap." : " Real defensive strength, not a fluke at this sample size."}${trend}`
+            text: `Your defense: opponents shoot ${formatPct(ownFg)} ${useReal ? `on shots you contested medium or heavy (${ownReal.made}/${ownReal.attempts}, league median ${formatPct(medFg)})` : `against you on any tagged shot (league median ${formatPct(medFg)}, not contested-only)`}${engagement !== null ? `, with an engagement rate of ${formatPct(engagement)}` : ""}, and your Def Rating/G is ${ownDefRtg.toFixed(1)} (league median ${medDefRtg.toFixed(1)}).${isWeak ? " Tighter closeouts or a different defensive matchup could close that gap." : " Real defensive strength, not a fluke at this sample size."}${trend}`
           });
         }
       }
@@ -7798,10 +7803,10 @@ const TEAMMATE_SYNERGY_COLUMNS = [
   { key: "teammate", label: "Teammate", accessor: r => r.teammate.name },
   { key: "gpWith", label: "GP With", accessor: r => r.with.gp },
   { key: "gpWithout", label: "GP W/o", accessor: r => r.without.gp },
-  { key: "offRtgWith", label: "Off Rating/25 With", accessor: r => r.with.gp > 0 ? r.with.offRatingPer25 : null },
-  { key: "offRtgWithout", label: "Off Rating/25 W/o", accessor: r => r.without.gp > 0 ? r.without.offRatingPer25 : null },
-  { key: "twoWayWith", label: "Two-Way/25 With", accessor: r => r.with.gp > 0 ? r.with.twoWayPer25 : null },
-  { key: "twoWayWithout", label: "Two-Way/25 W/o", accessor: r => r.without.gp > 0 ? r.without.twoWayPer25 : null }
+  { key: "offRtgWith", label: "Off Rating/G With", accessor: r => r.with.gp > 0 ? r.with.offRatingPer25 : null },
+  { key: "offRtgWithout", label: "Off Rating/G W/o", accessor: r => r.without.gp > 0 ? r.without.offRatingPer25 : null },
+  { key: "twoWayWith", label: "Two-Way/G With", accessor: r => r.with.gp > 0 ? r.with.twoWayPer25 : null },
+  { key: "twoWayWithout", label: "Two-Way/G W/o", accessor: r => r.without.gp > 0 ? r.without.twoWayPer25 : null }
 ];
 
 let teammateSynergySort = { key: "gpWith", dir: "desc" };
@@ -7830,7 +7835,7 @@ function computeTwoWayTrend(playerId) {
 function renderTwoWayTrendChart(playerId) {
   const { points, seasonAvg } = computeTwoWayTrend(playerId);
   const leagueAvg = leagueAvgOfPlayerTrend(computeTwoWayTrend);
-  renderTrendLineChart("playerTwoWayTrend", points, seasonAvg, "Two-Way/25", leagueAvg);
+  renderTrendLineChart("playerTwoWayTrend", points, seasonAvg, "Two-Way/G", leagueAvg);
 }
 
 const TREND_MIN_POINTS = 5;
@@ -7918,14 +7923,14 @@ const PLAYER_TREND_STATS = [
       const den = 2 * (fga + 0.44 * fta);
       return { value: den > 0 ? (pts / den) * 100 : null, n: fga };
     } },
-  { key: "twoWay", label: "Two-Way/25", unit: "/25", decimals: 1, minN: 0,
-    about: "Offense plus defense rating per 25 combined points, the same number as the Two-Way Trend above.",
+  { key: "twoWay", label: "Two-Way/G", unit: "/G", decimals: 1, minN: 0,
+    about: "Offense plus defense rating per game, the same number as the Two-Way Trend above.",
     compute: (pid, games) => ({ value: games.length ? computeRateSummaryForGames(pid, games).twoWayPer25 : null, n: games.length }) },
-  { key: "offRating", label: "Off Rating/25", unit: "/25", decimals: 1, minN: 0,
-    about: "Offense-only rating per 25 combined points.",
+  { key: "offRating", label: "Off Rating/G", unit: "/G", decimals: 1, minN: 0,
+    about: "Offense-only rating per game.",
     compute: (pid, games) => ({ value: games.length ? computeRateSummaryForGames(pid, games).offRatingPer25 : null, n: games.length }) },
-  { key: "defRating", label: "Def Rating/25", unit: "/25", decimals: 1, minN: 0,
-    about: "Defense-only rating per 25 combined points.",
+  { key: "defRating", label: "Def Rating/G", unit: "/G", decimals: 1, minN: 0,
+    about: "Defense-only rating per game.",
     compute: (pid, games) => {
       if (!games.length) return { value: null, n: 0 };
       const r = computeRateSummaryForGames(pid, games);
@@ -8068,7 +8073,7 @@ function computeTeammateQualityTrend(playerId) {
 function renderTeammateQualityChart(playerId) {
   const { points, seasonAvg } = computeTeammateQualityTrend(playerId);
   const leagueAvg = leagueAvgOfPlayerTrend(computeTeammateQualityTrend);
-  renderTrendLineChart("playerTeammateQuality", points, seasonAvg, "Off Rating/25", leagueAvg);
+  renderTrendLineChart("playerTeammateQuality", points, seasonAvg, "Off Rating/G", leagueAvg);
 }
 
 function computeDefensiveMatchupDifficultyTrend(playerId) {
@@ -8095,7 +8100,7 @@ function computeDefensiveMatchupDifficultyTrend(playerId) {
 function renderDefensiveMatchupDifficultyChart(playerId) {
   const { points, seasonAvg } = computeDefensiveMatchupDifficultyTrend(playerId);
   const leagueAvg = leagueAvgOfPlayerTrend(computeDefensiveMatchupDifficultyTrend);
-  renderTrendLineChart("playerDefensiveMatchupDifficulty", points, seasonAvg, "Opp Off Rating/25", leagueAvg);
+  renderTrendLineChart("playerDefensiveMatchupDifficulty", points, seasonAvg, "Opp Off Rating/G", leagueAvg);
 }
 
 function renderPlayerDefensiveLoadPanel(playerId) {
@@ -8116,7 +8121,7 @@ function renderPlayerDefensiveLoadPanel(playerId) {
     ? `, Pts Allowed Under Exp: ${xpa.pointsAllowedUnderExpected >= 0 ? "+" : ""}${xpa.pointsAllowedUnderExpected.toFixed(1)}`
     : "";
   wrap.innerHTML = `
-    <p class="score-display">${load.toFixed(2)}x <span class="hint" style="margin:0">(Opp FG%: ${formatPct(oppFgPct)}, Def Rating/25: ${defRtg.toFixed(1)}${xpaText})</span></p>
+    <p class="score-display">${load.toFixed(2)}x <span class="hint" style="margin:0">(Opp FG%: ${formatPct(oppFgPct)}, Def Rating/G: ${defRtg.toFixed(1)}${xpaText})</span></p>
     <p class="hint" style="margin:8px 0 0">${escapeHtml(describeDefensiveLoad(load, oppFgPct, leagueAvgOppFg))}</p>
   `;
 }
@@ -8150,7 +8155,7 @@ function computeOffensiveMatchupDifficultyTrend(playerId) {
 function renderOffensiveMatchupDifficultyChart(playerId) {
   const { points, seasonAvg } = computeOffensiveMatchupDifficultyTrend(playerId);
   const leagueAvg = leagueAvgOfPlayerTrend(computeOffensiveMatchupDifficultyTrend);
-  renderTrendLineChart("playerOffensiveMatchupDifficulty", points, seasonAvg, "Opp Def Rating/25", leagueAvg);
+  renderTrendLineChart("playerOffensiveMatchupDifficulty", points, seasonAvg, "Opp Def Rating/G", leagueAvg);
 }
 
 function computeAssistedByBreakdown(playerId) {
@@ -8204,7 +8209,7 @@ function renderAssistedByPanel(playerId) {
   })();
   const assistedPctNote = leagueAvgAssistedPct !== null ? ` (league average: ${formatPct(leagueAvgAssistedPct)})` : "";
   const qualityNote = avgAssisterQuality !== null
-    ? `, average assister quality: ${avgAssisterQuality.toFixed(1)} Off Rating/25${leagueAvgAssisterQuality !== null ? ` (league average: ${leagueAvgAssisterQuality.toFixed(1)})` : ""}`
+    ? `, average assister quality: ${avgAssisterQuality.toFixed(1)} Off Rating/G${leagueAvgAssisterQuality !== null ? ` (league average: ${leagueAvgAssisterQuality.toFixed(1)})` : ""}`
     : "";
   const rows = assisters.length === 0
     ? '<tr><td colspan="3" class="empty-state">No assisted makes yet.</td></tr>'
@@ -8213,7 +8218,7 @@ function renderAssistedByPanel(playerId) {
     <p class="hint" style="margin:0 0 10px">${assistedFgm} of ${fgm} makes were assisted (${formatPct(assistedPct)}${assistedPctNote})${qualityNote}.</p>
     <div class="table-scroll">
       <table class="matchup-table">
-        <thead><tr><th>Teammate</th><th>Assists</th><th>Their Off Rating/25</th></tr></thead>
+        <thead><tr><th>Teammate</th><th>Assists</th><th>Their Off Rating/G</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -8226,21 +8231,21 @@ const LEADERBOARD_COLUMNS = [
   { key: "w", label: "W", accessor: r => r.wins, tooltip: "Wins, counted only for games with real shots logged." },
   { key: "l", label: "L", accessor: r => r.losses, tooltip: "Losses, counted only for games with real shots logged." },
   { key: "pct", label: "PCT", accessor: r => r.winPct, display: r => formatPct(r.winPct), tooltip: "Win percentage: wins / (wins + losses)." },
-  { key: "pts", label: "PTS/25", accessor: r => r.rate.pts, display: r => r.rate.pts.toFixed(1), tooltip: "Points, per 25 combined points scored in the game (not per game; see the note above the table)." },
-  { key: "shotpct", label: "Shot%", advanced: true, accessor: r => r.shotPct, display: r => formatPct(r.shotPct), tooltip: "Share of their own team's field goal attempts that were theirs, across games they played: not the league's shots, their team's. A season-long share (their FGA / their team's FGA in those same games), not a per-25 rate." },
-  { key: "astpct", label: "AST%", advanced: true, accessor: r => r.astPct, display: r => formatPct(r.astPct), tooltip: "Share of their own team's assists that were theirs, across games they played: not the league's assists, their team's. A season-long share (their AST / their team's AST in those same games), not a per-25 rate." },
-  { key: "orebpct", label: "OREB%", advanced: true, accessor: r => r.orebPct, display: r => formatPct(r.orebPct), tooltip: "Real Total Rebound %-style share: this player's OREB divided by every offensive rebound available on their team's misses that game (their team's OREB plus the opponent's DREB on those same misses), not just their own team's OREB total like Shot%/AST% above, since a rebound is contested between both teams. Poolean has no substitutions, so a rostered player is on the floor for the whole game; the minutes-played term real rebound rate stats normally need just doesn't apply here. A season-long share, not a per-25 rate." },
-  { key: "drebpct", label: "DREB%", advanced: true, accessor: r => r.drebPct, display: r => formatPct(r.drebPct), tooltip: "Same idea as OREB% for the other side of the ball: this player's DREB divided by every defensive rebound available on the opponent's misses that game (their team's DREB plus the opponent's OREB on those same misses). A season-long share, not a per-25 rate." },
-  { key: "trebpct", label: "TRB%", advanced: true, accessor: r => r.trebPct, display: r => formatPct(r.trebPct), tooltip: "OREB and DREB combined: this player's total rebounds divided by every rebound actually available across the games they played (OREB% and DREB%'s two pools added together). Same no-substitutions reasoning as OREB%/DREB% above; a season-long share, not a per-25 rate." },
+  { key: "pts", label: "PTS/G", accessor: r => r.rate.pts, display: r => r.rate.pts.toFixed(1), tooltip: "Points, per game in the game (not per game; see the note above the table)." },
+  { key: "shotpct", label: "Shot%", advanced: true, accessor: r => r.shotPct, display: r => formatPct(r.shotPct), tooltip: "Share of their own team's field goal attempts that were theirs, across games they played: not the league's shots, their team's. A season-long share (their FGA / their team's FGA in those same games), not a per-game rate." },
+  { key: "astpct", label: "AST%", advanced: true, accessor: r => r.astPct, display: r => formatPct(r.astPct), tooltip: "Share of their own team's assists that were theirs, across games they played: not the league's assists, their team's. A season-long share (their AST / their team's AST in those same games), not a per-game rate." },
+  { key: "orebpct", label: "OREB%", advanced: true, accessor: r => r.orebPct, display: r => formatPct(r.orebPct), tooltip: "Real Total Rebound %-style share: this player's OREB divided by every offensive rebound available on their team's misses that game (their team's OREB plus the opponent's DREB on those same misses), not just their own team's OREB total like Shot%/AST% above, since a rebound is contested between both teams. Poolean has no substitutions, so a rostered player is on the floor for the whole game; the minutes-played term real rebound rate stats normally need just doesn't apply here. A season-long share, not a per-game rate." },
+  { key: "drebpct", label: "DREB%", advanced: true, accessor: r => r.drebPct, display: r => formatPct(r.drebPct), tooltip: "Same idea as OREB% for the other side of the ball: this player's DREB divided by every defensive rebound available on the opponent's misses that game (their team's DREB plus the opponent's OREB on those same misses). A season-long share, not a per-game rate." },
+  { key: "trebpct", label: "TRB%", advanced: true, accessor: r => r.trebPct, display: r => formatPct(r.trebPct), tooltip: "OREB and DREB combined: this player's total rebounds divided by every rebound actually available across the games they played (OREB% and DREB%'s two pools added together). Same no-substitutions reasoning as OREB%/DREB% above; a season-long share, not a per-game rate." },
   { key: "rebpermiss", label: "REB/Miss", advanced: true, accessor: r => r.rebPerMiss, display: r => formatPct(r.rebPerMiss), tooltip: "Rebounds per missed shot by either team in games they played: how often they came away with the ball when one was available. Unlike TRB%, it does not depend on how many rebounds the teams grabbed." },
-  { key: "stlperplay", label: "STL/Opp Play", advanced: true, accessor: r => r.stlPerOppPlay, display: r => formatPct(r.stlPerOppPlay), tooltip: "Steals per opponent play, counting the other team's shots and turnovers in games they played. Per 25 steals rise when a game has more turnovers; this holds the number of chances steady." },
+  { key: "stlperplay", label: "STL/Opp Play", advanced: true, accessor: r => r.stlPerOppPlay, display: r => formatPct(r.stlPerOppPlay), tooltip: "Steals per opponent play, counting the other team's shots and turnovers in games they played. Per game steals rise when a game has more turnovers; this holds the number of chances steady." },
   { key: "astpermate", label: "AST/Mate FG", advanced: true, accessor: r => r.astPerMateFg, display: r => formatPct(r.astPerMateFg), tooltip: "Assists per teammate made field goal in games they played: how often a teammate's basket came off their pass. Unlike AST%, it does not depend on how many assists the team had in all." },
   { key: "tovpct", label: "TOV%", advanced: true, accessor: r => r.tovPct, display: r => formatPct(r.tovPct), tooltip: "How often this player turned it over relative to their own scoring opportunities: TOV ÷ (FGA + 0.44×FTA + TOV), the same FTA-equivalent scaling True Shooting % uses. Not a share of the team's turnovers like Shot%/AST% above; a turnover isn't a shared resource the way a shot or an assist is, so this measures usage instead: of the times this player had the ball in a position to score or give it away, how often it was the latter." },
-  { key: "livetov25", label: "Live TOV/25", accessor: r => r.liveTovPer25, display: r => r.liveTovPer25.toFixed(1), tooltip: "Live-ball turnovers are the ones where the other team gets the ball with the defense still moving, so they lead to transition scoring. Stolen or blocked shots are already counted as shots, so they are left out." },
+  { key: "livetov25", label: "Live TOV/G", accessor: r => r.liveTovPer25, display: r => r.liveTovPer25.toFixed(1), tooltip: "Live-ball turnovers are the ones where the other team gets the ball with the defense still moving, so they lead to transition scoring. Stolen or blocked shots are already counted as shots, so they are left out." },
   { key: "livetovshare", label: "Live-Ball Share", advanced: true, accessor: r => r.liveTovShare, display: r => formatPct(r.liveTovShare), tooltip: "The share of this player's turnovers that were live-ball. The rest were stolen or blocked shots, which are counted as shots." },
-  { key: "fg", label: "FG", accessor: r => pct(r.shooting.fgm, r.shooting.fga), display: r => formatShootingSplit(r.rateShooting.fgm, r.rateShooting.fga, true), tooltip: "Field goals made/attempted (2s and 3s combined), per 25 combined points, with FG%." },
-  { key: "tpt", label: "3PT", accessor: r => pct(r.shooting.tpm, r.shooting.tpa), display: r => formatShootingSplit(r.rateShooting.tpm, r.rateShooting.tpa, true), tooltip: "3-pointers made/attempted, per 25 combined points, with 3PT%. See the 3PT Shot Distance panel below for the Arc/Deep breakdown." },
-  { key: "ft", label: "FT", accessor: r => pct(r.shooting.ftm, r.shooting.fta), display: r => formatShootingSplit(r.rateShooting.ftm, r.rateShooting.fta, true), tooltip: "Free throws made/attempted, per 25 combined points, with FT%." },
+  { key: "fg", label: "FG", accessor: r => pct(r.shooting.fgm, r.shooting.fga), display: r => formatShootingSplit(r.rateShooting.fgm, r.rateShooting.fga, true), tooltip: "Field goals made/attempted (2s and 3s combined), per game, with FG%." },
+  { key: "tpt", label: "3PT", accessor: r => pct(r.shooting.tpm, r.shooting.tpa), display: r => formatShootingSplit(r.rateShooting.tpm, r.rateShooting.tpa, true), tooltip: "3-pointers made/attempted, per game, with 3PT%. See the 3PT Shot Distance panel below for the Arc/Deep breakdown." },
+  { key: "ft", label: "FT", accessor: r => pct(r.shooting.ftm, r.shooting.fta), display: r => formatShootingSplit(r.rateShooting.ftm, r.rateShooting.fta, true), tooltip: "Free throws made/attempted, per game, with FT%." },
   { key: "efg", label: "eFG%", accessor: r => effectiveFgPct(r.shooting.fgm, r.shooting.tpm, r.shooting.fga), display: r => formatPct(effectiveFgPct(r.shooting.fgm, r.shooting.tpm, r.shooting.fga)), tooltip: "Effective FG%: field goal percentage weighted so a made 3 counts as 1.5 made 2s." },
   { key: "ts", label: "TS%", accessor: r => trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta), display: r => formatPct(trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta)), tooltip: "True Shooting %: overall scoring efficiency across field goals and free throws combined." },
   { key: "ptsoverxp", label: "Pts +/- Exp", advanced: true,
@@ -8250,7 +8255,7 @@ const LEADERBOARD_COLUMNS = [
       const v = r.expectedPoints.pointsOverExpected;
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
-    tooltip: "Points Over Expected: every field goal attempt gets an expected value from its own zone's real, empirical league-average points-per-attempt (this season's own League TS% by Shot Distance, expressed as points instead of a percentage) -- an unmarked shot location falls back to the league's overall average rather than being dropped. This player's actual points scored on those same attempts, minus that sum, across the whole season (a total, not a per-25 rate). Positive means outscoring what an average shooter would on the exact same shot selection: real shooting skill on those specific shots, not just an easier shot diet. Free throws excluded entirely (no shot location, no zone, uncontested by rule)." },
+    tooltip: "Points Over Expected: every field goal attempt gets an expected value from its own zone's real, empirical league-average points-per-attempt (this season's own League TS% by Shot Distance, expressed as points instead of a percentage) -- an unmarked shot location falls back to the league's overall average rather than being dropped. This player's actual points scored on those same attempts, minus that sum, across the whole season (a total, not a per-game rate). Positive means outscoring what an average shooter would on the exact same shot selection: real shooting skill on those specific shots, not just an easier shot diet. Free throws excluded entirely (no shot location, no zone, uncontested by rule)." },
   { key: "shotdiff", label: "Shot Diff/G", advanced: true,
     accessor: r => r.shotAttemptDiff ? r.shotAttemptDiff.diffPerGame : null,
     display: r => {
@@ -8258,7 +8263,7 @@ const LEADERBOARD_COLUMNS = [
       const v = r.shotAttemptDiff.diffPerGame;
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
-    tooltip: "Shot Attempt Differential, per game: this player's own team's total field goal attempts (made or missed, regardless of outcome) minus the opponent's, averaged across the games they played. A real, separate signal from shooting efficiency (TS%/eFG% already cover that) -- closer to shot creation and tempo control, whether this player's side tends to generate (or allow) more total looks. Deliberately a plain per-game differential, not a normalized /25 rate, matching the real stat's own simplicity: count every attempt equally, don't weight by quality. Excludes any game flagged Stopped Early (Export, Review Stopped-Early Games): a partial game's shot count isn't comparable to a complete one." },
+    tooltip: "Shot Attempt Differential, per game: this player's own team's total field goal attempts (made or missed, regardless of outcome) minus the opponent's, averaged across the games they played. A real, separate signal from shooting efficiency (TS%/eFG% already cover that) -- closer to shot creation and tempo control, whether this player's side tends to generate (or allow) more total looks. Deliberately a plain per-game differential, not a normalized /G rate, matching the real stat's own simplicity: count every attempt equally, don't weight by quality. Excludes any game flagged Stopped Early (Export, Review Stopped-Early Games): a partial game's shot count isn't comparable to a complete one." },
   { key: "rebdiff", label: "Reb Diff/G", advanced: true,
     accessor: r => r.reboundDiff ? r.reboundDiff.diffPerGame : null,
     display: r => {
@@ -8279,7 +8284,7 @@ const LEADERBOARD_COLUMNS = [
     accessor: r => r.winShares ? r.winShares.winShares : null,
     display: r => r.winShares ? r.winShares.winShares.toFixed(2) : "—",
     tooltip: "Experimental, provisional: this season's share of actual team wins credited to this player, from a regression fit fresh against real game margins (not an assumed points scale like GmSc/Two-Way), sign-constrained so each stat can only push in its basketball-plausible direction. See the Win Shares Model panel below for this fit's current sample size, alpha, and leave-one-out validation numbers. Not enough data yet to trust for anything with real stakes. Excludes any game flagged Stopped Early: a margin from an incomplete game isn't a real outcome to fit against." },
-  { key: "dunks", label: "Dunks", advanced: true, accessor: r => r.dunks, tooltip: "Made dunks, season total (not per-25: a counting stat, not a rate). Only counts shots tagged as a dunk in Stat Entry; games logged before that field existed need a manual pass (Export, Review Possible Dunks) before they count here." },
+  { key: "dunks", label: "Dunks", advanced: true, accessor: r => r.dunks, tooltip: "Made dunks, season total (not per-game: a counting stat, not a rate). Only counts shots tagged as a dunk in Stat Entry; games logged before that field existed need a manual pass (Export, Review Possible Dunks) before they count here." },
   { key: "dunkpct", label: "Dunk%", advanced: true, accessor: r => r.dunkPct, display: r => formatPct(r.dunkPct), tooltip: "Share of this player's own field goal attempts (2s and 3s combined) that were tagged as a dunk, make or miss: how much of their offense is above the rim. Same Review Possible Dunks caveat as Dunks: undercounts until older games are backfilled." },
   { key: "selfcreated", label: "Self-Created %", advanced: true,
     accessor: r => r.shotCreation ? r.shotCreation.noHeaves.selfCreatedPct : null,
@@ -8289,10 +8294,10 @@ const LEADERBOARD_COLUMNS = [
       return `${formatPct(r.shotCreation.noHeaves.selfCreatedPct)}${raw !== null ? ` (${formatPct(raw)} incl. heaves)` : ""}`;
     },
     tooltip: `Share of this player's own ATTEMPTS (makes and misses, 2s and 3s) with no passer credited, deep heaves excluded from both sides of the rate entirely (a grabbed rebound immediately heaved up reflects no real shot-creation skill, so it's dropped rather than counted as a failure to self-create). The raw rate including heaves is shown underneath for reference. Needs ${SHOT_CREATION_MIN_FGA}+ qualifying attempts before showing.` },
-  { key: "realplaymaking", label: "Real Playmaking Volume/25", advanced: true,
+  { key: "realplaymaking", label: "Real Playmaking Volume/G", advanced: true,
     accessor: r => r.realPlaymaking ? r.realPlaymaking.shotsCreatedPer25 : null,
     display: r => r.realPlaymaking ? `${r.realPlaymaking.shotsCreatedPer25.toFixed(1)} (${r.realPlaymaking.shotsCreated} shots, ${r.realPlaymaking.pointsGenerated} pts, ${r.realPlaymaking.oldAssists} old assists)` : "—",
-    tooltip: `Every pass that led to ANY attempt, make or miss (passerId), per 25 combined points -- same rate convention as every other /25 column here, so this compares fairly across different games-played totals instead of just rewarding volume. Replaces raw assist count as the primary passing-volume stat, since assists alone silently hide every good pass that led to a miss. Season totals and the old assist count are shown underneath for reference. Needs ${REAL_PLAYMAKING_MIN}+ shots created before showing.` },
+    tooltip: `Every pass that led to ANY attempt, make or miss (passerId), per game -- same rate convention as every other /G column here, so this compares fairly across different games-played totals instead of just rewarding volume. Replaces raw assist count as the primary passing-volume stat, since assists alone silently hide every good pass that led to a miss. Season totals and the old assist count are shown underneath for reference. Needs ${REAL_PLAYMAKING_MIN}+ shots created before showing.` },
   { key: "passquality", label: "Weighted Pass Quality", advanced: true,
     accessor: r => r.passQuality ? r.passQuality.avgQuality : null,
     display: r => r.passQuality ? `${r.passQuality.avgQuality.toFixed(2)} (${r.passQuality.volume} passes)` : "—",
@@ -8309,28 +8314,28 @@ const LEADERBOARD_COLUMNS = [
       return total > 0 ? formatPct(pct(money, total)) : "—";
     },
     tooltip: "Share of this player's own zone-marked field goal attempts from the two real-positive-value zones (Close, 3PT Line) rather than the two weak ones (Midrange, 3PT Deep) -- see the Shot Distance panel below for the four-way split this collapses into one number. How much of this diet is good shots, at a glance, not a read on whether they're making them." },
-  { key: "oreb", label: "OREB/25", accessor: r => r.rate.oreb, display: r => r.rate.oreb.toFixed(1), tooltip: "Offensive rebounds (grabbed by a teammate of the shooter), per 25 combined points." },
-  { key: "dreb", label: "DREB/25", accessor: r => r.rate.dreb, display: r => r.rate.dreb.toFixed(1), tooltip: "Defensive rebounds (grabbed by an opponent of the shooter), per 25 combined points." },
-  { key: "foughtreb", label: "Fought REB/25", accessor: r => foughtReboundsPer25(r), display: r => foughtReboundsPer25(r).toFixed(1), tooltip: "Rebounds per 25 combined points, with a rebound nobody contested counted as half: separates winning boards from standing where the ball falls. Rebounds with no contest tag count in full." },
-  { key: "ast", label: "AST/25", accessor: r => r.rate.ast, display: r => r.rate.ast.toFixed(1), tooltip: "Assists (credited on a made shot when a teammate is tagged as the passer), per 25 combined points." },
-  { key: "stl", label: "STL/25", accessor: r => r.rate.stl, display: r => r.rate.stl.toFixed(1), tooltip: "Steals, per 25 combined points. Feeds Def Rating below." },
+  { key: "oreb", label: "OREB/G", accessor: r => r.rate.oreb, display: r => r.rate.oreb.toFixed(1), tooltip: "Offensive rebounds (grabbed by a teammate of the shooter), per game." },
+  { key: "dreb", label: "DREB/G", accessor: r => r.rate.dreb, display: r => r.rate.dreb.toFixed(1), tooltip: "Defensive rebounds (grabbed by an opponent of the shooter), per game." },
+  { key: "foughtreb", label: "Fought REB/G", accessor: r => foughtReboundsPer25(r), display: r => foughtReboundsPer25(r).toFixed(1), tooltip: "Rebounds per game, with a rebound nobody contested counted as half: separates winning boards from standing where the ball falls. Rebounds with no contest tag count in full." },
+  { key: "ast", label: "AST/G", accessor: r => r.rate.ast, display: r => r.rate.ast.toFixed(1), tooltip: "Assists (credited on a made shot when a teammate is tagged as the passer), per game." },
+  { key: "stl", label: "STL/G", accessor: r => r.rate.stl, display: r => r.rate.stl.toFixed(1), tooltip: "Steals, per game. Feeds Def Rating below." },
   { key: "tovcredit", label: "TOV Credit %", advanced: true,
     accessor: r => r.turnoverCredit ? r.turnoverCredit.rate : null,
     display: r => r.turnoverCredit ? formatPct(r.turnoverCredit.rate) : "—",
     tooltip: `Of every turnover the opponent committed in games this player's own team was on defense (credited or not -- the whole pool a credited one could come from), what share did this player individually get credited for forcing (a real steal, or being named on a standalone turnover)? A turnover with no one credited has no defender tag at all, so it can't honestly be pinned on one specific teammate over another; this only compares against the real, checkable pool. Separates active disruption from benefiting off sloppy opposing possessions without causing them. Needs ${TURNOVER_CREDIT_MIN_POOL}+ team turnovers forced.` },
-  { key: "blk", label: "BLK/25", accessor: r => r.rate.blk, display: r => r.rate.blk.toFixed(1), tooltip: "Blocks (credited on a missed shot when this player is tagged as the blocker), per 25 combined points. Feeds Def Rating below, except when the block is already one of this player's own Stops (the usual case); see Def Rating's own tooltip." },
-  { key: "tov", label: "TOV/25", accessor: r => r.rate.tov, display: r => r.rate.tov.toFixed(1), tooltip: "Turnovers (including ones forced by a steal, or a miss ruled out of bounds), per 25 combined points." },
+  { key: "blk", label: "BLK/G", accessor: r => r.rate.blk, display: r => r.rate.blk.toFixed(1), tooltip: "Blocks (credited on a missed shot when this player is tagged as the blocker), per game. Feeds Def Rating below, except when the block is already one of this player's own Stops (the usual case); see Def Rating's own tooltip." },
+  { key: "tov", label: "TOV/G", accessor: r => r.rate.tov, display: r => r.rate.tov.toFixed(1), tooltip: "Turnovers (including ones forced by a steal, or a miss ruled out of bounds), per game." },
   { key: "atov", label: "A/TO", accessor: r => r.tovSplit.liveBall === 0 ? (r.totals.ast === 0 ? 0 : Infinity) : r.totals.ast / r.tovSplit.liveBall, display: r => r.astTov, tooltip: "Assist-to-turnover ratio, counting live-ball turnovers only -- a missed shot ruled out of bounds isn't charged against it (see TOV Recomputed below)." },
-  { key: "pf", label: "PF/25", accessor: r => r.rate.pf, display: r => r.rate.pf.toFixed(1), tooltip: "Personal fouls, per 25 combined points." },
-  { key: "ptsAllowed", label: "Pts Allowed/25", accessor: r => r.rateDefense.ptsAllowed, display: r => r.rateDefense.ptsAllowed.toFixed(1), tooltip: "Points scored by opponents on shots where this player was the tagged defender, per 25 combined points." },
+  { key: "pf", label: "PF/G", accessor: r => r.rate.pf, display: r => r.rate.pf.toFixed(1), tooltip: "Personal fouls, per game." },
+  { key: "ptsAllowed", label: "Pts Allowed/G", accessor: r => r.rateDefense.ptsAllowed, display: r => r.rateDefense.ptsAllowed.toFixed(1), tooltip: "Points scored by opponents on shots where this player was the tagged defender, per game." },
   { key: "oppfg", label: "Opp FG%", accessor: r => pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops), display: r => formatPct(pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops)), tooltip: "Shooting percentage of everyone this player was tagged defending, make or miss: a real 'shooting percentage allowed.'" },
   { key: "oppefg", label: "Opp eFG%", advanced: true,
     accessor: r => effectiveFgPct(r.defense.timesBeaten, r.defense.tpmAgainst, r.defense.timesBeaten + r.defense.stops),
     display: r => formatPct(effectiveFgPct(r.defense.timesBeaten, r.defense.tpmAgainst, r.defense.timesBeaten + r.defense.stops)),
     tooltip: "Opp FG%'s value-weighted counterpart, the exact same formula offensive eFG% uses just applied to shots allowed: a made 3 counts as 1.5x a made 2. Separates a defender who allows a lot of made 3s from one allowing the same raw FG% but mostly on 2s, who currently look identical on plain Opp FG% alone." },
-  { key: "beaten", label: "Beaten/25", accessor: r => r.rateDefense.timesBeaten, display: r => r.rateDefense.timesBeaten.toFixed(1), tooltip: "Times scored on while tagged as the defender on a made shot, per 25 combined points." },
-  { key: "stops", label: "Stops/25", accessor: r => r.rateDefense.stops - (r.rateDefense.beatMisses || 0), display: r => (r.rateDefense.stops - (r.rateDefense.beatMisses || 0)).toFixed(1), tooltip: "Times tagged as the defender on a missed shot, per 25 combined points." },
-  { key: "defrtg25", label: "Def Rating/25", accessor: r => defensiveRating(r.rate, r.rateDefense), display: r => defensiveRating(r.rate, r.rateDefense).toFixed(1), tooltip: "This tool's Defensive Rating: STL, plus BLK (only when it isn't already one of this player's own Stops, so a blocked-and-tagged shot isn't credited twice), plus Stops minus Beaten minus 0.4×Pts Allowed, all per 25 combined points. Not points-allowed-per-100-possessions like the NBA stat of the same name; possessions aren't tracked here, so combined points stands in as the pace proxy, same as every other per-25 rate on this board. 0 for anyone never tagged as a defender with no steals or blocks, not a penalty for conservative tagging." },
+  { key: "beaten", label: "Beaten/G", accessor: r => r.rateDefense.timesBeaten, display: r => r.rateDefense.timesBeaten.toFixed(1), tooltip: "Times scored on while tagged as the defender on a made shot, per game." },
+  { key: "stops", label: "Stops/G", accessor: r => r.rateDefense.stops - (r.rateDefense.beatMisses || 0), display: r => (r.rateDefense.stops - (r.rateDefense.beatMisses || 0)).toFixed(1), tooltip: "Times tagged as the defender on a missed shot, per game." },
+  { key: "defrtg25", label: "Def Rating/G", accessor: r => defensiveRating(r.rate, r.rateDefense), display: r => defensiveRating(r.rate, r.rateDefense).toFixed(1), tooltip: "This tool's Defensive Rating: STL, plus BLK (only when it isn't already one of this player's own Stops, so a blocked-and-tagged shot isn't credited twice), plus Stops minus Beaten minus 0.4×Pts Allowed, all per game. Not points-allowed-per-100-possessions like the NBA stat of the same name; possessions aren't tracked here, so combined points stands in as the pace proxy, same as every other per-game rate on this board. 0 for anyone never tagged as a defender with no steals or blocks, not a penalty for conservative tagging." },
   { key: "ptsallowedunderxp", label: "Pts Allowed Under Exp", advanced: true,
     accessor: r => r.expectedPointsAgainst ? r.expectedPointsAgainst.pointsAllowedUnderExpected : null,
     display: r => {
@@ -8339,9 +8344,9 @@ const LEADERBOARD_COLUMNS = [
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
     tooltip: "Expected Points' defensive counterpart, using the same zone rates: every shot this player is tagged defending gets that shot zone's league-average points-per-attempt as its expected value (Close/Midrange/Line/Deep), summed and compared to what was actually scored on them. Positive means allowing fewer points than the shot difficulty they actually faced would predict, the good outcome for defense (opposite sign convention from offensive Pts +/- Exp, where scoring more than expected is good). Separates 'suppresses shooting below what's normal for the shots faced' from 'happens to face an easier or harder mix of shots than average' -- Opp FG% alone can't tell those apart. Needs 10+ tagged defended shots to show at all; inherits the same still-early zone-rate caveat as offensive Expected Points, and doesn't touch the separate, still-open question of whether a 'beaten' shot was genuinely well-defended or not." },
-  { key: "offrtg25", label: "Off Rating/25", accessor: r => r.offRatingPer25, display: r => r.offRatingPer25.toFixed(1), tooltip: "Offense-only Game Score: PTS, shooting efficiency, rebounds, assists, TOV, and fouls, adapted from the standard basketball Game Score formula, minus its STL and BLK terms, which live in Def Rating instead, per 25 combined points." },
-  { key: "twoway25", label: "Two-Way/25", accessor: r => r.twoWayPer25, display: r => r.twoWayPer25.toFixed(1), tooltip: "Off Rating plus Def Rating, per 25 combined points." },
-  { key: "last5", label: "Last 5", accessor: r => r.last5OffRatingPer25, display: r => r.last5Gp > 0 ? `${r.last5Trend} ${r.last5OffRatingPer25.toFixed(1)}` : "—", tooltip: "Off Rating/25 over their last 5 games with real shots logged (fewer if they haven't played 5 yet). ▲/▼ shows whether that's above or below their season Off Rating/25; within ±0.5 counts as flat (–)." }
+  { key: "offrtg25", label: "Off Rating/G", accessor: r => r.offRatingPer25, display: r => r.offRatingPer25.toFixed(1), tooltip: "Offense-only Game Score: PTS, shooting efficiency, rebounds, assists, TOV, and fouls, adapted from the standard basketball Game Score formula, minus its STL and BLK terms, which live in Def Rating instead, per game." },
+  { key: "twoway25", label: "Two-Way/G", accessor: r => r.twoWayPer25, display: r => r.twoWayPer25.toFixed(1), tooltip: "Off Rating plus Def Rating, per game." },
+  { key: "last5", label: "Last 5", accessor: r => r.last5OffRatingPer25, display: r => r.last5Gp > 0 ? `${r.last5Trend} ${r.last5OffRatingPer25.toFixed(1)}` : "—", tooltip: "Off Rating/G over their last 5 games with real shots logged (fewer if they haven't played 5 yet). ▲/▼ shows whether that's above or below their season Off Rating/G; within ±0.5 counts as flat (–)." }
 ];
 
 let leaderboardSort = { key: "twoway25", dir: "desc" };
@@ -8593,7 +8598,7 @@ function renderLeaderboard() {
   renderLeaderboardSectionTeasers();
 }
 
-// A rebound nobody contested counts this much in Fought REB/25; a contested one (or one with no contest tag) counts in full.
+// A rebound nobody contested counts this much in Fought REB/G; a contested one (or one with no contest tag) counts in full.
 const FREE_REBOUND_WEIGHT = 0.5;
 const foughtCache = new WeakMap();
 function foughtReboundsPer25(r) {
@@ -8603,7 +8608,7 @@ function foughtReboundsPer25(r) {
   qualifyingGamesForPlayer(r.player.id).forEach(game => game.scoringEvents.forEach(ev => {
     if (ev.made === false && ev.rebounderId === r.player.id && !ev.turnoverEventId && ev.reboundNoContest) free++;
   }));
-  // REB/25 is a straight per-25 rate, so its scale carries over to the weighted count.
+  // REB/G is a straight per-game rate, so its scale carries over to the weighted count.
   const scale = total > 0 ? (r.rate.oreb + r.rate.dreb) / total : 0;
   const v = Math.max(0, total - (1 - FREE_REBOUND_WEIGHT) * free) * scale;
   foughtCache.set(r, v);
@@ -8703,13 +8708,13 @@ function renderPlayerDetail() {
   document.getElementById("playerDetailTitle").innerHTML = `${renderPlayerAvatar(player, "large", playerAvatarRingClass(player.id))}<span>${escapeHtml(player.name)}</span>`;
   renderPlayerRankPill(player.id);
   document.getElementById("playerDetailSummary").textContent = row
-    ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""} · ${row.rate.pts.toFixed(1)} PTS/25 · ${row.offRatingPer25.toFixed(1)} Off Rating/25 · ${row.twoWayPer25.toFixed(1)} Two-Way/25`
+    ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""} · ${row.rate.pts.toFixed(1)} PTS/G · ${row.offRatingPer25.toFixed(1)} Off Rating/G · ${row.twoWayPer25.toFixed(1)} Two-Way/G`
     : "No games yet";
   const shareBtn = document.getElementById("sharePlayerBtn");
   shareBtn.onclick = () => shareOrCopy({
     title: "Poolean Intel",
     text: row
-      ? `${player.name}: ${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}, ${row.twoWayPer25.toFixed(1)} Two-Way/25`
+      ? `${player.name}: ${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}, ${row.twoWayPer25.toFixed(1)} Two-Way/G`
       : player.name,
     url: `${location.origin}${location.pathname}#player=${encodeURIComponent(player.id)}`
   }, shareBtn);
@@ -10041,7 +10046,7 @@ function renderTurnoverTypeMixPanel() {
 function computeForcedTurnoverCredit(playerId) {
   let strips = 0, combinedPoints = 0;
   qualifyingGamesForPlayer(playerId).forEach(game => {
-    combinedPoints += gameTotalPoints(game);
+    combinedPoints += paceOf(game);
     game.turnoverEvents.forEach(ev => {
       if (ev.turnoverType !== "stripped") return;
       if (ev.opponentId !== playerId) return;
@@ -10055,7 +10060,7 @@ function computeForcedTurnoverCredit(playerId) {
 const FORCED_TURNOVER_CREDIT_COLUMNS = [
   { key: "player", label: "Defender", accessor: r => r.player.name },
   { key: "strips", label: "Strips Forced", accessor: r => r.credit.strips },
-  { key: "per25", label: "Strips per 25", accessor: r => r.credit.stripsPer25, display: r => r.credit.stripsPer25.toFixed(2) },
+  { key: "per25", label: "Strips per game", accessor: r => r.credit.stripsPer25, display: r => r.credit.stripsPer25.toFixed(2) },
 ];
 
 let forcedTurnoverCreditSort = { key: "strips", dir: "desc" };
@@ -10705,14 +10710,14 @@ function renderPlayerShotArc(playerId) {
 const LEAGUE_RANK_MIN_GP = 2;
 
 const LEAGUE_RANK_STATS = [
-  { key: "pts", label: "PTS/25", higherBetter: true, value: r => r.rate.pts },
-  { key: "ast", label: "AST/25", higherBetter: true, value: r => r.rate.ast },
-  { key: "stocks", label: "STL+BLK/25", higherBetter: true, value: r => r.rate.stl + r.rate.blk },
+  { key: "pts", label: "PTS/G", higherBetter: true, value: r => r.rate.pts },
+  { key: "ast", label: "AST/G", higherBetter: true, value: r => r.rate.ast },
+  { key: "stocks", label: "STL+BLK/G", higherBetter: true, value: r => r.rate.stl + r.rate.blk },
   { key: "ts", label: "TS%", higherBetter: true, value: r => trueShootingPct(r.totals.pts, r.shooting.fga, r.shooting.fta) },
-  { key: "tov", label: "TOV/25", higherBetter: false, value: r => r.rate.tov },
-  { key: "offRating", label: "Off Rating/25", higherBetter: true, value: r => r.offRatingPer25 },
-  { key: "defRating", label: "Def Rating/25", higherBetter: true, value: r => r.twoWayPer25 - r.offRatingPer25 },
-  { key: "twoWay", label: "Two-Way/25", higherBetter: true, value: r => r.twoWayPer25 },
+  { key: "tov", label: "TOV/G", higherBetter: false, value: r => r.rate.tov },
+  { key: "offRating", label: "Off Rating/G", higherBetter: true, value: r => r.offRatingPer25 },
+  { key: "defRating", label: "Def Rating/G", higherBetter: true, value: r => r.twoWayPer25 - r.offRatingPer25 },
+  { key: "twoWay", label: "Two-Way/G", higherBetter: true, value: r => r.twoWayPer25 },
   { key: "winShares", label: "Win Shares", higherBetter: true, value: r => r.winShares ? r.winShares.winShares : null }
 ];
 
@@ -10757,12 +10762,12 @@ function computePlayerSectionTeasers(playerId) {
   const defAttempts = row.defense.timesBeaten + row.defense.stops;
   const record = `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}`;
   return {
-    shooting: tsPct !== null ? `${tsPct}% TS, ${row.rate.pts.toFixed(1)} PTS/25` : "Not enough field goals yet",
-    passing: `${row.rate.ast.toFixed(1)} AST/25 · ${formatPct(row.tovPct)} turnover rate`,
+    shooting: tsPct !== null ? `${tsPct}% TS, ${row.rate.pts.toFixed(1)} PTS/G` : "Not enough field goals yet",
+    passing: `${row.rate.ast.toFixed(1)} AST/G · ${formatPct(row.tovPct)} turnover rate`,
     defense: defAttempts >= 5 ? `Opponents shooting ${formatPct(pct(row.defense.timesBeaten, defAttempts))} against` : "Not enough tagged defensive plays yet",
     matchups: "Individual matchup history, as scorer and as defender",
     team: "How this player's own numbers shift with and without each teammate",
-    trends: `${record} · ${row.twoWayPer25.toFixed(1)} Two-Way/25`,
+    trends: `${record} · ${row.twoWayPer25.toFixed(1)} Two-Way/G`,
     media: "Every logged game, plus any clipped highlights and lowlights"
   };
 }
@@ -11912,7 +11917,7 @@ export const MOUNT_PANELS = [
   { title: "TS% by Shot Distance", section: "comparison", order: 6, html: "\r\n        <div id=\"leagueTsByZoneChart\"></div>\r\n      ", render: () => { renderLeagueTsByZoneChart(); }, wires: [] },
   { title: "League TS% Over Time", section: "comparison", order: 7, html: "\r\n        <div id=\"leagueTsChart\"></div>\r\n      ", render: () => { renderLeagueTsChart(); }, wires: [] },
   { title: "League Shot Heatmap", section: "comparison", order: 8, html: "\r\n        <div id=\"leagueHeatmap\"></div>\r\n      ", render: () => { renderLeagueHeatmap(); }, wires: [] },
-  { title: "Two-Way/25 Rank Over the Season", section: "comparison", order: 9, html: "\r\n        <div id=\"twoWayRankChart\"></div>\r\n      ", render: () => { renderTwoWayRankChart(); }, wires: [] },
+  { title: "Two-Way/G Rank Over the Season", section: "comparison", order: 9, html: "\r\n        <div id=\"twoWayRankChart\"></div>\r\n      ", render: () => { renderTwoWayRankChart(); }, wires: [] },
   { title: "Closed Seasons in This App (League)", section: "comparison", order: 10, html: "\r\n        <select id=\"leagueSeasonSelect\" style=\"margin-bottom:10px\"></select>\r\n        <div class=\"table-scroll\">\r\n          <div id=\"leagueSeasonStandings\"></div>\r\n        </div>\r\n      ", render: () => { renderLeagueSeasonSelect(); renderLeagueSeasonStandings(); }, wires: [{ id: "leagueSeasonSelect", evt: "change", handler: renderLeagueSeasonStandings }] },
   { title: "Consistency", section: "comparison", order: 11, html: "\r\n        <div class=\"table-scroll\">\r\n          <div id=\"consistencyStandings\"></div>\r\n        </div>\r\n      ", render: () => { renderConsistencyStandings(); }, wires: [] },
   { title: "Shot Distance", section: "shooting", order: 12, html: "\r\n      <div class=\"shot-selection-legend\">\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-close\"></span>Close</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-mid\"></span>Midrange</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-line\"></span>3PT Line</span>\r\n        <span class=\"legend-item\"><span class=\"legend-swatch shot-seg-deep\"></span>3PT Deep</span>\r\n      </div>\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"shotZoneTable\">\r\n          <thead><tr id=\"shotZoneHeaderRow\"></tr></thead>\r\n          <tbody id=\"shotZoneBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: () => { renderShotZonePanel(); }, wires: [] },
@@ -11989,7 +11994,7 @@ export const PLAYER_PANELS = [
   { title: "Defensive Matchup Difficulty", hint: "How good the scorers this player guarded have been, game by game, to show whether they get the tough assignments. The dashed line is the season average.", tag: null, open: false, section: "matchups", order: 25, html: "\r\n      <div id=\"playerDefensiveMatchupDifficulty\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderDefensiveMatchupDifficultyChart(pid); }, wires: [] },
   { title: "Teammate Synergy (With/Without)", hint: "This player's numbers in games with each teammate versus without them. A dash means no games in that group yet, and a few games means it's noisy.", tag: null, open: true, section: "team", order: 26, html: "\r\n      <div class=\"table-scroll\">\r\n        <table class=\"matchup-table\" id=\"teammateSynergyTable\">\r\n          <thead><tr id=\"teammateSynergyHeaderRow\"></tr></thead>\r\n          <tbody id=\"teammateSynergyBody\"></tbody>\r\n        </table>\r\n      </div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTeammateSynergy(pid); }, wires: [] },
   { title: "Teammate Quality", hint: "How good this player's teammates are on offense, game by game. The dashed line is the season average.", tag: null, open: false, section: "team", order: 27, html: "\r\n      <div id=\"playerTeammateQuality\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTeammateQualityChart(pid); }, wires: [] },
-  { title: "Two-Way Trend", hint: "This player's Two-Way/25 game by game. The dashed line is their season average; recent games above it mean they're trending up.", tag: null, open: true, section: "trends", order: 28, html: "\r\n      <div id=\"playerTwoWayTrend\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTwoWayTrendChart(pid); }, wires: [] },
+  { title: "Two-Way Trend", hint: "This player's Two-Way/G game by game. The dashed line is their season average; recent games above it mean they're trending up.", tag: null, open: true, section: "trends", order: 28, html: "\r\n      <div id=\"playerTwoWayTrend\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderTwoWayTrendChart(pid); }, wires: [] },
   { title: "Flake %", hint: "Of the dates this player said they were coming (and games were played), how many they missed.", tag: null, open: false, section: "trends", order: 29, html: "\r\n      <div id=\"playerFlakeStats\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderFlakeStatsPanel(pid); }, wires: [] },
   { title: "Closed Seasons in This App", hint: "This player's final numbers from each season closed in this app (Start New Season in Export), from logged games. Real Site Seasons above has the real site's numbers. Turn on Include Past Seasons to blend them into the current numbers instead.", tag: null, open: false, section: "trends", order: 30, html: "\r\n      <label class=\"ios-switch-row\" style=\"margin-bottom:10px\">\r\n        <span>Include Past Seasons</span>\r\n        <span class=\"ios-switch\"><input type=\"checkbox\" id=\"togglePastSeasonsBtnPlayer\"><span class=\"ios-switch-track\"><span class=\"ios-switch-knob\"></span></span></span>\r\n      </label>\r\n      <div id=\"playerSeasonHistory\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderSeasonHistoryPanel(pid); }, wires: [{ id: "togglePastSeasonsBtnPlayer", evt: "change", handler: togglePastSeasonsInclusion }] },
   { title: "Real Game Record", hint: "This player's win-loss from every real game, next to the smaller set logged in detail from film in this app.", tag: "Old site data", open: false, section: "trends", order: 31, html: "\r\n      <div id=\"playerRealRecord\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerRealRecord(pid); }, wires: [] },

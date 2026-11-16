@@ -1,13 +1,13 @@
 import { oldSite, type OldSite } from "@/lib/oldSite"
-import { PER } from "@/lib/per"
+import { PER, gamePace } from "@/lib/per"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
 import { seasonGames } from "@/lib/offseason"
 import type { PooleanState } from "@/lib/types"
 
 // Who to watch next season, from how each player finished against how they started. Four kinds of evidence, each
 // compared first half against second half of that player's own record:
-//   twoWay   two-way per 25 over box-scored games
-//   scoring  points per 25 over every game, used only when a player has too few box-scored games
+//   twoWay   two-way per game over box-scored games
+//   scoring  points per game over every game, used only when a player has too few box-scored games
 //   wins     win rate over the old site's results (most games were never filmed)
 //   power    the old site's nightly power ranking percentile
 // With this few games it is a hint, not a forecast.
@@ -62,8 +62,8 @@ export function watchList(state: PooleanState, limit = 3, old: OldSite = oldSite
     const [a, b] = scoreOf(g)
     for (const id of [...g.teamA, ...g.teamB]) {
       const line = playerLine(g, id)
-      every.set(id, [...(every.get(id) ?? []), { v: line.pts, total: a + b }])
-      if (g.scoringEvents.length > 0 && line.twoWay !== null) box.set(id, [...(box.get(id) ?? []), { v: line.twoWay, total: a + b }])
+      every.set(id, [...(every.get(id) ?? []), { v: line.pts, total: gamePace(g, a + b) }])
+      if (g.scoringEvents.length > 0 && line.twoWay !== null) box.set(id, [...(box.get(id) ?? []), { v: line.twoWay, total: gamePace(g, a + b) }])
     }
   }
 
@@ -87,7 +87,7 @@ export function watchList(state: PooleanState, limit = 3, old: OldSite = oldSite
     fromList("power", id, old.ranks.get(id) ?? [], old.power.get(id))
   }
 
-  // The middle of the league for the two per-25 kinds; 50% for wins; 50 for power.
+  // The middle of the league for the two per-game kinds; 50% for wins; 50 for power.
   const mid: Record<Kind, number> = { twoWay: 0, scoring: 0, wins: 0.5, power: 50 }
   for (const k of ["twoWay", "scoring"] as const) mid[k] = median([...raw.values()].flat().filter((r) => r.kind === k).map((r) => r.season))
 

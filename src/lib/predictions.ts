@@ -86,7 +86,7 @@ const seasonFrom = (state: PooleanState, from: string, to?: string): PooleanStat
   currentSeasonStartedAt: from,
 })
 
-// The order for that season: two-way per 25 over at least 3 games. Where the old site has power rankings from nights inside
+// The order for that season: two-way per game over at least 3 games. Where the old site has power rankings from nights inside
 // the season, each player's two-way spot (0 to 100) is averaged with their old power percentile, so players whose games
 // were never filmed are scored too. Seasons the old site did not cover are ordered by two-way alone.
 export function actualOrder(state: PooleanState, from: string, to?: string): string[] {

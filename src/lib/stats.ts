@@ -10,7 +10,7 @@
 //     calibration state this slice doesn't load) -- fgm/fga/tpm/tpa/ftm/fta are unaffected.
 // Every formula that IS included is unchanged from app.js, not reimplemented from memory.
 
-import { PER } from "@/lib/per"
+import { PER, gamePace } from "@/lib/per"
 import type { Game, Player, PlayerGameStats, PooleanState } from "./types"
 
 export function isBalancedGame(game: Game): boolean {
@@ -37,6 +37,9 @@ export function teamScore(game: Game, playerIds: string[]): number {
 export function gameTotalPoints(game: Game): number {
   return teamScore(game, game.teamA) + teamScore(game, game.teamB)
 }
+
+// The denominator of every per-game rate: how much game this was (see per.ts).
+export const paceOf = (game: Game) => gamePace(game, gameTotalPoints(game))
 
 export function playerGameResult(game: Game, playerId: string): "W" | "L" | "T" | null {
   const onA = game.teamA.includes(playerId)
@@ -182,7 +185,7 @@ export interface LeaderboardRow {
   astPer25: number
   tovSplit: TovSplit
   tovPct: number | null
-  liveTovPer25: number // live-ball turnovers per 25 combined points
+  liveTovPer25: number // live-ball turnovers per game
   liveTovShare: number | null // percent of this player's turnovers that were live-ball
   astTov: string
   tsPct: number | null
@@ -224,7 +227,7 @@ export function computeLeaderboard(state: PooleanState): LeaderboardRow[] {
       defense.stops += def.stops
       defense.beatMisses += def.beatMisses
       defense.blocksNotAlreadyStopped += def.blocksNotAlreadyStopped
-      combinedPoints += gameTotalPoints(g)
+      combinedPoints += paceOf(g)
       const result = playerGameResult(g, p.id)
       if (result === "W") wins++
       else if (result === "L") losses++
@@ -308,7 +311,7 @@ export function formatVideoTime(t: number | null | undefined): string {
 
 // ---- Planner helpers (ported from app.js) ----
 
-// Same per-25 math as computeLeaderboard(), scoped to a specific subset of one player's games.
+// Same per-game math as computeLeaderboard(), scoped to a specific subset of one player's games.
 export function computeRateSummaryForGames(playerId: string, games: Game[]) {
   const totals: PlayerGameStats = { playerId, pts: 0, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 }
   const shooting: ShootingStats = { fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0 }
@@ -325,7 +328,7 @@ export function computeRateSummaryForGames(playerId: string, games: Game[]) {
     defense.stops += def.stops
     defense.beatMisses += def.beatMisses
     defense.blocksNotAlreadyStopped += def.blocksNotAlreadyStopped
-    combinedPoints += gameTotalPoints(g)
+    combinedPoints += paceOf(g)
   })
   const totalOffRating = offensiveRating(totals, shooting)
   const totalTwoWay = totalOffRating + defensiveRating(totals, defense)
@@ -334,7 +337,7 @@ export function computeRateSummaryForGames(playerId: string, games: Game[]) {
 }
 
 // For each teammate this player has shared a team with, split their own games into "with" and
-// "without" that teammate and compare per-25 output across the split.
+// "without" that teammate and compare per-game output across the split.
 export function computeTeammateSynergy(state: PooleanState, playerId: string) {
   const qualifyingGames = qualifyingGamesForPlayer(state, playerId)
   const teammateIds = new Set<string>()

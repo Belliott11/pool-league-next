@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { FACTORS, marginBreakdown, passBlame, shotsCreated, shotZone, targetOf, turnoverCost, winChance, winProbAdded, yardstick } from "@/lib/insight"
-import { PER } from "@/lib/per"
+import { DEFAULT_TRIPS } from "@/lib/per"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 // A (a1, a2) beats B (b1) 8 to 4 on shots. a2 passes to a1 twice (one assisted make, one miss); b1 turns it over once and a1's
@@ -52,7 +52,8 @@ describe("shots created", () => {
     expect(a2.created).toBe(2)
     expect(a2.made).toBe(1)
     expect(a2.assists).toBe(1)
-    expect(a2.created25).toBeCloseTo((2 / 12) * PER, 6)
+    // 7 shots and 1 live-ball turnover make 8 trips; the rate is scaled to an average game's trips.
+    expect(a2.created25).toBeCloseTo((2 / 8) * DEFAULT_TRIPS, 6)
   })
   it("compares passed shots with the rest", () => {
     expect(c.league.passed).toBe(2)

@@ -81,7 +81,7 @@ function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
         {c.league.passedFg !== null && c.league.otherFg !== null && ` Shots off a pass went in ${pct(c.league.passedFg)} of the time, against ${pct(c.league.otherFg)} for the rest.`}
       </Hint>
       <Grid
-        head={["Player", `Set up/${PER}`, "Went in", `AST/${PER}`, `Real AST/${PER}`, "Shot quality", "Sample"]}
+        head={["Player", "Set up/G", "Went in", "AST/G", "Real AST/G", "Shot quality", "Sample"]}
         rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, r.created25.toFixed(1), pct(r.made / r.created), r.assists25.toFixed(1), r.realAssists25.toFixed(1), `${r.expected.toFixed(2)} pts`, <TrustChip key="t" t={trustOf(r.created, "shots")} />] }))}
       />
       <Hint>Shot quality is the league's average points on that kind of shot from that spot (close, mid, line or deep, plus shot type and how closely it was guarded), so it says how good the looks were, not whether they went in. A contested shot the shooter held first is left out of the passer's shot quality, since the contest was on the shooter. Real AST leaves out those makes too: the shooter made them.</Hint>
@@ -128,7 +128,7 @@ function Cost({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id:
         {t.perTurnover !== null && ` The other team's next shot after a turnover scored ${t.perTurnover.toFixed(2)} points on average (${t.followed} cases), so ${t.perTurnover > t.perPossession ? "a giveaway costs a little more than a typical possession" : "a giveaway costs about a typical possession"}.`}
       </Hint>
       <Grid
-        head={["Player", "Gave", "Forced", `Net pts/${PER}`, "Sample"]}
+        head={["Player", "Gave", "Forced", "Net pts/G", "Sample"]}
         rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, String(r.giveaways), String(r.forced), sign(r.net25, 2), <TrustChip key="t" t={trustOf(r.games, "games")} />] }))}
       />
       <Hint>Live-ball turnovers only: a stolen or blocked shot is already counted as a shot. Net is turnovers forced minus turnovers given away, at the league's points per possession.</Hint>

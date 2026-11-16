@@ -1,6 +1,6 @@
 import { compareRates, type Comparison, type Rate } from "@/lib/gameFlow"
 import { games } from "@/lib/insight"
-import { PER } from "@/lib/per"
+import { PER, gamePace } from "@/lib/per"
 import { getGameStats } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 import { winImpact, type WinImpact } from "@/lib/winImpact"
@@ -11,7 +11,7 @@ export type Trait = (typeof TRAITS)[number]
 export const TRAIT_LABEL: Record<Trait, string> = { heightIn: "Height", build: "Build", effort: "Effort" }
 export const OUTCOMES = ["rebounds", "distance", "stops", "impact"] as const
 export type Outcome = (typeof OUTCOMES)[number]
-export const OUTCOME_LABEL: Record<Outcome, string> = { rebounds: `Rebounds per ${PER}`, distance: "Shot distance", stops: "Stops per defended shot", impact: "Adjusted win impact" }
+export const OUTCOME_LABEL: Record<Outcome, string> = { rebounds: "Rebounds per game", distance: "Shot distance", stops: "Stops per defended shot", impact: "Adjusted win impact" }
 
 type Physical = Partial<Record<Trait, number>>
 export type Sure = "clear" | "hint" | "early"
@@ -94,7 +94,7 @@ export function bodyEffort(state: PooleanState, impact: WinImpact = winImpact(st
       const s = getGameStats(g, id)
       const r = row(id)
       r.reb += s.oreb + s.dreb
-      r.pts += total
+      r.pts += gamePace(g, total)
     }
     for (const e of g.scoringEvents) {
       if (e.shotLocation) {

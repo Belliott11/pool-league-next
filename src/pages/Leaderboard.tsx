@@ -39,7 +39,7 @@ const DEFENSE_TEASER = "Who defends well, who gets beat, and how hard the shots 
 const HINTS = hints as Record<string, { hint: string }>
 const sectionTitle = (key: string) => SECTIONS.find((s) => s.key === key)?.title ?? key
 const JUMP_ITEMS: JumpItem[] = [
-  { title: "Two-Way Ranking", group: "Top of the page", sectionId: null, hint: "Every player ranked by Two-Way/25" },
+  { title: "Two-Way Ranking", group: "Top of the page", sectionId: null, hint: "Every player ranked by Two-Way/G" },
   { title: "Season Rates (Individual)", group: "Top of the page", sectionId: null, hint: "The full stat table" },
   ...[...(TABLE_PANELS as { title: string; section: string }[]), ...(MOUNT_PANELS as { title: string; section: string }[])]
     .filter((p) => !LEADERBOARD_DROP.has(p.title) && !placeOf(p.title, LEADERBOARD_GROUPS)?.editorOnly)

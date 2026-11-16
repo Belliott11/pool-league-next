@@ -1,4 +1,4 @@
-import { PER } from "@/lib/per"
+import { PER, gamePace } from "@/lib/per"
 import { raceWin } from "@/lib/race"
 import { allGamesOf } from "@/lib/season"
 import { getGameStats } from "@/lib/stats"
@@ -32,6 +32,8 @@ function score(g: Game): [number, number] {
 }
 export const games = (state: PooleanState) => state.games.filter(usable)
 const total = (g: Game) => score(g)[0] + score(g)[1]
+// How much game it was, the base of every per-game rate (see per.ts).
+const pace = (g: Game) => gamePace(g, total(g))
 
 // Where a shot was taken, in the same bands as the shot charts: close or mid for a two, line or deep for a three. A free throw is its
 // own band, and a shot with no spot logged has none.
@@ -219,7 +221,7 @@ export function shotsCreated(state: PooleanState): Creation {
     for (const id of members(g)) {
       const r = row(id)
       r.games++
-      r.points += total(g)
+      r.points += pace(g)
     }
     for (const e of g.scoringEvents) {
       const p = validPass(g, e)
@@ -297,7 +299,7 @@ export interface PlayerWpa {
   added: number // win chance gained by their baskets and passes, in whole games
   allowed: number // win chance given up on baskets scored against them while they defended
   net: number
-  added25: number // the same, per 25 combined points
+  added25: number // the same, per game
   allowed25: number
   net25: number
 }
@@ -328,7 +330,7 @@ export function winProbAdded(state: PooleanState): Wpa {
     for (const id of members(g)) {
       const r = row(id)
       r.games++
-      r.points += final[0] + final[1]
+      r.points += pace(g)
     }
     const run: [number, number] = [0, 0]
     const order = orderOf(g).filter((e) => made(e) && side(g, e.scorerId) !== null)
@@ -373,7 +375,7 @@ export interface TovRow {
   forced: number
   handed: number // points the other team scored on its next shot after their giveaways
   taken: number // points their team scored on its next shot after turnovers they forced
-  net25: number // points per 25 from forcing more than they give away, at the league's points per possession
+  net25: number // points per game from forcing more than they give away, at the league's points per possession
 }
 export interface TovCost {
   games: number
@@ -403,7 +405,7 @@ export function turnoverCost(state: PooleanState): TovCost {
     tovs += live.length
     for (const id of members(g)) {
       row(id).games++
-      row(id).points += total(g)
+      row(id).points += pace(g)
     }
     for (const x of live) {
       if (side(g, x.playerId) !== null) row(x.playerId).giveaways++

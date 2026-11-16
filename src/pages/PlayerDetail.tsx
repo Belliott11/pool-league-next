@@ -222,7 +222,7 @@ export function PlayerDetailPage({
 
   async function share() {
     const url = `${location.origin}${location.pathname}#player=${encodeURIComponent(pid!)}`
-    const text = row ? `${player!.name}: ${record}, ${fmtRate(row.twoWayPer25)} Two-Way/25` : player!.name
+    const text = row ? `${player!.name}: ${record}, ${fmtRate(row.twoWayPer25)} Two-Way/G` : player!.name
     if (navigator.share) {
       try {
         await navigator.share({ title: "Poolean Intel", text, url })

@@ -128,9 +128,9 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
                 <Hint>Shots they passed to a teammate, made or missed, per {PER} points.</Hint>
                 {mc ? (
                   <>
-                    <Line label={`Set up per ${PER}`} value={mc.created25.toFixed(1)} sub={`${mc.created} shots in ${mc.games} games`} />
+                    <Line label={"Set up per game"} value={mc.created25.toFixed(1)} sub={`${mc.created} shots in ${mc.games} games`} />
                     <Line label="Went in" value={pct(mc.created ? mc.made / mc.created : null)} sub={`league ${pct(c.league.passedFg)} on passed shots`} />
-                    <Line label={`Assists per ${PER}`} value={mc.assists25.toFixed(1)} />
+                    <Line label={"Assists per game"} value={mc.assists25.toFixed(1)} />
                     <Line label="Shot quality" value={`${mc.expected.toFixed(2)} pts`} sub="the league's average on that kind of shot from that spot" />
                   </>
                 ) : (
@@ -149,7 +149,7 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
                   <>
                     <Line label="Gave away" value={String(mt.giveaways)} sub={`${mt.handed} points scored on the next shot`} />
                     <Line label="Forced" value={String(mt.forced)} sub={`${mt.taken} points scored on the next shot`} />
-                    <Line label={`Net pts per ${PER}`} value={sign(mt.net25, 2)} />
+                    <Line label={"Net pts per game"} value={sign(mt.net25, 2)} />
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">No turnovers tagged yet.</p>

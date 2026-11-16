@@ -44,7 +44,7 @@ export function Sidebar({
           {rows.length > 0 && (
             <>
               <details className="mb-3 text-xs text-muted-foreground">
-                <summary className="cursor-pointer font-medium text-foreground">Ranked by two-way per 25. What do these numbers mean?</summary>
+                <summary className="cursor-pointer font-medium text-foreground">Ranked by two-way per game. What do these numbers mean?</summary>
                 <dl className="mt-2 flex flex-col gap-1.5">
                   <div>
                     <dt className="inline font-semibold text-foreground">Which games count: </dt>
@@ -59,8 +59,8 @@ export function Sidebar({
                     <dd className="inline">steals, blocks and stops, minus times beaten and points allowed.</dd>
                   </div>
                   <div>
-                    <dt className="inline font-semibold text-foreground">Per 25: </dt>
-                    <dd className="inline">scaled to 25 combined points of play, so a short game and a long one compare fairly.</dd>
+                    <dt className="inline font-semibold text-foreground">Per game: </dt>
+                    <dd className="inline">scaled to an average game's worth of possessions, so a short game and a long one compare fairly.</dd>
                   </div>
                   <div>
                     <dt className="inline font-semibold text-foreground">Uneven teams: </dt>
@@ -79,7 +79,7 @@ export function Sidebar({
                   <TableHead>#</TableHead>
                   <TableHead>Player</TableHead>
                   <TableHead>W-L</TableHead>
-                  <TableHead>Two-Way/25</TableHead>
+                  <TableHead>Two-Way/G</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

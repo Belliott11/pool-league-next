@@ -1,6 +1,5 @@
 import { useMemo } from "react"
 import { Panel } from "@/components/Panel"
-import { PER } from "@/lib/per"
 import { computeLeaderboard } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 
@@ -11,7 +10,7 @@ const median = (xs: number[]) => {
   return s.length ? (s[Math.floor((s.length - 1) / 2)] + s[Math.ceil((s.length - 1) / 2)]) / 2 : null
 }
 
-// One player's live-ball turnovers per 25 combined points, the share of their turnovers that were live-ball, and the league's middle.
+// One player's live-ball turnovers per game, the share of their turnovers that were live-ball, and the league's middle.
 export function PlayerLiveTov({ state, pid }: { state: PooleanState; pid: string }) {
   const { me, mid } = useMemo(() => {
     const rows = computeLeaderboard(state).filter((r) => r.gp > 0)
@@ -27,7 +26,7 @@ export function PlayerLiveTov({ state, pid }: { state: PooleanState; pid: string
   )
   return (
     <Panel title="Live-ball turnovers" hint={LIVE_TOV_TIP}>
-      {line(`Live-ball TOV per ${PER}`, me.liveTovPer25.toFixed(1), mid === null ? undefined : `league middle ${mid.toFixed(1)}`)}
+      {line("Live-ball TOV per game", me.liveTovPer25.toFixed(1), mid === null ? undefined : `league middle ${mid.toFixed(1)}`)}
       {line("Share that were live-ball", me.liveTovShare === null ? "-" : `${me.liveTovShare}%`, `${me.tovSplit.liveBall} of ${me.tovSplit.total} turnovers in ${me.gp} games`)}
     </Panel>
   )

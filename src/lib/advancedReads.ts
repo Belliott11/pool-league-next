@@ -4,7 +4,7 @@ import { passBlame, shotsCreated, turnoverCost, winProbAdded } from "@/lib/insig
 import { playerIdentity } from "@/lib/playerIdentity"
 import { applyPronouns } from "@/lib/pronouns"
 import type { RealGame } from "@/lib/real"
-import { computeLeaderboard, gameTotalPoints, qualifyingGamesForPlayer } from "@/lib/stats"
+import { computeLeaderboard, paceOf, qualifyingGamesForPlayer } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 import { winImpact } from "@/lib/winImpact"
 
@@ -29,7 +29,7 @@ export interface Metrics {
   quality: number | null // shot quality against the league, in points a shot
   open: number | null
   heldIn: [number, number] // contested shots off a pass held first, of those tagged
-  setups: number | null // per 25
+  setups: number | null // per game
   setupQuality: number | null
   setupFg: number | null
   ast: number | null
@@ -45,7 +45,7 @@ export interface Metrics {
   reb: number
   fought: number
   contested: number | null // share of their rebounds that were contested
-  wpa: number | null // win chance net per 25, in points of win chance
+  wpa: number | null // win chance net per game, in points of win chance
   impact: { value: number; games: number; sure: string } | null
   career: [number, number] | null // wins and losses over every result
 }
@@ -86,7 +86,7 @@ function metricsFor(state: PooleanState, old: RealGame[]): Metrics[] {
   return board.map((r) => {
     const id = r.player.id
     const games = qualifyingGamesForPlayer(state, id)
-    const combined = games.reduce((s, g) => s + gameTotalPoints(g), 0)
+    const combined = games.reduce((s, g) => s + paceOf(g), 0)
     const per25 = (v: number) => (combined ? (v / combined) * 25 : 0)
     // Defensive load leaving out beat shots and splitting double teams, and rebounds weighted by whether anyone fought for them.
     let mine = 0
@@ -188,7 +188,7 @@ export function advancedReads(state: PooleanState, old: RealGame[] = oldGames())
     }
     // Passing
     if (m.setups !== null) {
-      const parts = [`${one(m.setups)} set-ups per 25 (middle ${one(mid("setups"))})`]
+      const parts = [`${one(m.setups)} set-ups per game (middle ${one(mid("setups"))})`]
       if (m.setupQuality !== null) parts[0] += ` worth ${m.setupQuality.toFixed(2)} points a shot (middle ${mid("setupQuality").toFixed(2)}).`
       else parts[0] += "."
       if (m.setupFg !== null) parts.push(`${pc(m.setupFg)} of them go in.`)
@@ -199,7 +199,7 @@ export function advancedReads(state: PooleanState, old: RealGame[] = oldGames())
     // The ball
     lines.push({
       label: "Ball",
-      text: `${one(m.liveTov)} live-ball turnovers per 25 (middle ${one(mid("liveTov"))}). Forced ${m.forced} against ${m.giveaways} giveaways.`,
+      text: `${one(m.liveTov)} live-ball turnovers per game (middle ${one(mid("liveTov"))}). Forced ${m.forced} against ${m.giveaways} giveaways.`,
       tone: tone("liveTov", m.liveTov, "low"),
     })
     // Defense
@@ -216,7 +216,7 @@ export function advancedReads(state: PooleanState, old: RealGame[] = oldGames())
     // Boards
     lines.push({
       label: "Boards",
-      text: `${one(m.reb)} rebounds per 25, ${one(m.fought)} counting uncontested ones as half (middle ${one(mid("fought"))})${m.contested !== null ? `. ${pc(m.contested)} of them contested` : ""}.`,
+      text: `${one(m.reb)} rebounds per game, ${one(m.fought)} counting uncontested ones as half (middle ${one(mid("fought"))})${m.contested !== null ? `. ${pc(m.contested)} of them contested` : ""}.`,
       tone: tone("fought", m.fought, "high"),
     })
     // Winning

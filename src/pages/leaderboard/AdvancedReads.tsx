@@ -75,11 +75,11 @@ export function AdvancedReads({ state, all = state, onOpenPlayer }: { state: Poo
           <Hint>{writtenNote(all)}</Hint>
           {fallback && <Hint>Nobody has {READ_MIN_GAMES} filmed games this season yet, so these reads still include past seasons.</Hint>}
           <Hint>
-            Every player with {READ_MIN_GAMES} or more filmed even-team games, written from the current data. Rates are per 25 combined points and every number is set against the league middle. Green and red mark clear gaps. Under {EARLY_GAMES} games is an early read.
+            Every player with {READ_MIN_GAMES} or more filmed even-team games, written from the current data. Rates are per game and every number is set against the league middle. Green and red mark clear gaps. Under {EARLY_GAMES} games is an early read.
           </Hint>
           <Grid
             min="52rem"
-            head={["Player", "Games", "TS%", "Shot quality", "Set-ups/25", "Live TOV/25", "Beat rate", "Opp FG% in position", "Fought REB/25", "Win chance"]}
+            head={["Player", "Games", "TS%", "Shot quality", "Set-ups/G", "Live TOV/G", "Beat rate", "Opp FG% in position", "Fought REB/G", "Win chance"]}
             rows={[
               { key: "mid", pin: true, cells: [<span key="m" className="italic text-muted-foreground">League middle</span>, "", pc(middle.ts ?? null), sg(middle.quality ?? null), (middle.setups ?? 0).toFixed(1), (middle.liveTov ?? 0).toFixed(1), pc(middle.beatRate ?? null), pc(middle.oppFg ?? null), (middle.fought ?? 0).toFixed(1), sg(middle.wpa ?? null, 0)] },
               ...reads.map((r) => {

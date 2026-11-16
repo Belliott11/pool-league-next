@@ -3,7 +3,7 @@ import reads from "@/data/advanced-reads.json"
 import { termsIn } from "@/lib/terms"
 
 test("picks only the terms a text uses", () => {
-  expect(termsIn(["Alex sits at -6.1 two-way per 25."]).map(([k]) => k)).toEqual(["Per 25", "Two-way score"])
+  expect(termsIn(["Alex sits at -6.1 two-way per game."]).map(([k]) => k)).toEqual(["Per game", "Two-way score"])
   expect(termsIn(["Adam won 4 straight."])).toEqual([])
 })
 

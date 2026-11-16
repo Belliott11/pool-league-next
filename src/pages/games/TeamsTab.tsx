@@ -22,7 +22,7 @@ function Form({ results }: { results: Result[] }) {
   )
 }
 
-// Both sides as a lineup: name, recent form and two-way per 25, with each side's key player marked and compared.
+// Both sides as a lineup: name, recent form and two-way per game, with each side's key player marked and compared.
 export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; game: Game; onOpenGame?: (g: Game) => void }) {
   const rows = useMemo(() => boardOf(state), [state])
   const byId = useMemo(() => new Map(rows.map((r) => [r.player.id, r])), [rows])
@@ -56,7 +56,7 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
                   </div>
                 )
               })}
-              <p className="text-xs text-muted-foreground">Last 5 games before this one, then two-way per 25.</p>
+              <p className="text-xs text-muted-foreground">Last 5 games before this one, then two-way per game.</p>
             </CardContent>
           </Card>
         ))}
@@ -74,8 +74,8 @@ export function TeamsTab({ state, game, onOpenGame }: { state: PooleanState; gam
               <span className={cn("text-right font-semibold", TEAM.B.text)}>{kb.player.name}</span>
               {(
                 [
-                  ["Two-way per 25", ka.twoWayPer25.toFixed(1), kb.twoWayPer25.toFixed(1)],
-                  ["Points per 25", ka.ptsPer25.toFixed(1), kb.ptsPer25.toFixed(1)],
+                  ["Two-way per game", ka.twoWayPer25.toFixed(1), kb.twoWayPer25.toFixed(1)],
+                  ["Points per game", ka.ptsPer25.toFixed(1), kb.ptsPer25.toFixed(1)],
                   ["Games", String(ka.gp), String(kb.gp)],
                   ["Record", `${ka.wins}-${ka.losses}`, `${kb.wins}-${kb.losses}`],
                 ] as const

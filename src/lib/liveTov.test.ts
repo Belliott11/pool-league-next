@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { PER } from "@/lib/per"
+import { DEFAULT_TRIPS } from "@/lib/per"
 import { computeLeaderboard } from "@/lib/stats"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
@@ -19,7 +19,8 @@ describe("live-ball turnover rate", () => {
   const a = computeLeaderboard(state).find((r) => r.player.id === "a")!
   it("counts only live-ball turnovers, per the app's per-game scale", () => {
     expect(a.tovSplit).toMatchObject({ liveBall: 2, shotBased: 1, total: 3 })
-    expect(a.liveTovPer25).toBeCloseTo((2 / 10) * PER, 6)
+    // 6 shots and 2 live-ball turnovers make 8 trips; the rate is scaled to an average game's trips.
+    expect(a.liveTovPer25).toBeCloseTo((2 / 8) * DEFAULT_TRIPS, 6)
   })
   it("shows the share of turnovers that were live-ball", () => {
     expect(a.liveTovShare).toBe(67)

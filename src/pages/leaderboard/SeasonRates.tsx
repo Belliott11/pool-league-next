@@ -52,7 +52,7 @@ export function SeasonRates({
   return (
     <Panel
       title="Season Rates (Individual)"
-      hint={`Each stat is per 25 combined points, so 16- and 21-point games compare fairly. Only fully logged games count${toggles.imbalanced ? ", uneven teams included because Include Imbalanced Games is on" : ", and only even teams (turn on Include Imbalanced Games to count uneven ones)"}. Two-Way is offense plus defense in one number. Click a name for their page, or a column to sort.`}
+      hint={`Each stat is per game, so 16- and 21-point games compare fairly. Only fully logged games count${toggles.imbalanced ? ", uneven teams included because Include Imbalanced Games is on" : ", and only even teams (turn on Include Imbalanced Games to count uneven ones)"}. Two-Way is offense plus defense in one number. Click a name for their page, or a column to sort.`}
     >
       <details className="rounded-lg border p-3">
         <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">Filters</summary>

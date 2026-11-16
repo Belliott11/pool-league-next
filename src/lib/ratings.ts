@@ -1,5 +1,5 @@
 import { PER } from "@/lib/per"
-import { defensiveRating, gameDefenseStats, gameTotalPoints, getGameStats, offensiveRating, qualifyingGamesForPlayer, shootingStats, trueShootingPct } from "@/lib/stats"
+import { defensiveRating, gameDefenseStats, getGameStats, offensiveRating, paceOf, qualifyingGamesForPlayer, shootingStats, trueShootingPct } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 
 // 2K-style ratings from the box scores. Each player is rated on their last WINDOW box-scored games against everyone
@@ -29,7 +29,7 @@ interface Inputs {
   defense: number
 }
 
-// Everything per 25 combined points, the same pace adjustment as the standings.
+// Everything per game, the same pace adjustment as the standings.
 function inputsFor(state: PooleanState, id: string, before?: string): Inputs {
   const games = qualifyingGamesForPlayer(state, id)
     .filter((g) => before === undefined || g.date < before)
@@ -41,7 +41,7 @@ function inputsFor(state: PooleanState, id: string, before?: string): Inputs {
     const s = getGameStats(g, id)
     const sh = shootingStats(g, id)
     const d = gameDefenseStats(g, id)
-    total += gameTotalPoints(g)
+    total += paceOf(g)
     t.pts += s.pts
     t.reb += s.oreb + s.dreb
     t.ast += s.ast

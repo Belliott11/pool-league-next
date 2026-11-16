@@ -2,7 +2,7 @@ import { beatRates, countsForBeatRate } from "@/lib/beatRate"
 import type { PooleanState } from "@/lib/types"
 
 // A scouting card for one player: where they sit against the league's middle on each stat, in plain words. It reads the same rates the
-// leaderboard shows (per 25 combined points) and the zone splits, and never boils a player down to one grade.
+// leaderboard shows (per game) and the zone splits, and never boils a player down to one grade.
 export const EARLY_GAMES = 5
 export const EARLY_SHOTS = 20
 const MIN_ZONE_SHOTS = 5 // a zone percentage needs this many shots to be compared at all
@@ -52,11 +52,11 @@ const pc = (v: number) => `${Math.round(v * 100)}%`
 const one = (v: number) => v.toFixed(1)
 
 const STATS: Stat[] = [
-  { key: "pts", label: "Scoring", good: "high", get: (m) => m.pts, text: (v) => `${one(v)} points per 25` },
-  { key: "reb", label: "Rebounding", good: "high", get: (m) => m.reb, text: (v) => `${one(v)} rebounds per 25` },
-  { key: "ast", label: "Passing", good: "high", get: (m) => m.ast, text: (v) => `${one(v)} assists per 25` },
-  { key: "stl", label: "Steals", good: "high", get: (m) => m.stl, text: (v) => `${one(v)} steals per 25` },
-  { key: "liveTov", label: "Live-ball turnovers", good: "low", get: (m) => m.liveTov, text: (v) => `${one(v)} live-ball turnovers per 25` },
+  { key: "pts", label: "Scoring", good: "high", get: (m) => m.pts, text: (v) => `${one(v)} points per game` },
+  { key: "reb", label: "Rebounding", good: "high", get: (m) => m.reb, text: (v) => `${one(v)} rebounds per game` },
+  { key: "ast", label: "Passing", good: "high", get: (m) => m.ast, text: (v) => `${one(v)} assists per game` },
+  { key: "stl", label: "Steals", good: "high", get: (m) => m.stl, text: (v) => `${one(v)} steals per game` },
+  { key: "liveTov", label: "Live-ball turnovers", good: "low", get: (m) => m.liveTov, text: (v) => `${one(v)} live-ball turnovers per game` },
   { key: "fg", label: "Shooting", good: "high", get: (m) => m.fg, text: (v) => `${pc(v)} from the field` },
   { key: "rimFg", label: "Finishing at the rim", good: "high", get: (m) => m.rimFg, text: (v) => `${pc(v)} on close shots` },
   { key: "lineFg", label: "Shooting off the 3 point line", good: "high", get: (m) => m.lineFg, text: (v) => `${pc(v)} on line threes` },

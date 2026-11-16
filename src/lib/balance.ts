@@ -92,7 +92,7 @@ export function getPlayerPhysicalData(state: PooleanState, id: string): Physical
 
 const CLEAN_SWEEP_BONUS = 1.5 // was 1.2 when rates were per 20; scaled by 25/20
 export function estimatedQualityFromReputation(avgPercentile: number, parties: number): number {
-  const base = (avgPercentile - 50) / 8 // a 10-point percentile gap was 1 per-20 point; per 25 it is 1.25
+  const base = (avgPercentile - 50) / 8 // a 10-point percentile gap was 1 per-20 point; per game it is 1.25
   return avgPercentile === 100 && parties >= 2 ? base + CLEAN_SWEEP_BONUS : base
 }
 
@@ -186,7 +186,7 @@ function teamSetSignature(teams: string[][]): string {
 type LiftMap = Record<string, { value: number; gp: number }>
 type WinRateMap = Record<string, { value: number; gp: number; real: boolean }>
 
-// How each attendee's own Two-Way/25 actually changed with each other attendee on their team.
+// How each attendee's own Two-Way/G actually changed with each other attendee on their team.
 export function computeChemistryLiftMap(state: PooleanState, attendeeIds: string[]): LiftMap {
   const map: LiftMap = {}
   attendeeIds.forEach((playerId) => {
@@ -220,7 +220,7 @@ export function teamChemistryAdjustment(team: string[], liftMap: LiftMap) {
   return { value: count > 0 ? sum / count : 0, minGp }
 }
 
-// Win rate of every attendee pair that shared a team, converted to a Two-Way/25-scale adjustment.
+// Win rate of every attendee pair that shared a team, converted to a Two-Way/G-scale adjustment.
 // Prefers the real site's full pairwise history over this app's own logged subset.
 export function computeTeamWinRateMap(state: PooleanState, attendeeIds: string[]): WinRateMap {
   const map: WinRateMap = {}

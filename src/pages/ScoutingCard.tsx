@@ -9,7 +9,7 @@ import type { PooleanState } from "@/lib/types"
 type Key = "strengths" | "workOn" | "guard" | "sample"
 
 const HINT =
-  "Each player's rates (per 25 combined points) and zone splits set against the league's middle. A stat has to sit clearly away from the middle to be listed. It is a set of notes, not a grade."
+  "Each player's rates (per game) and zone splits set against the league's middle. A stat has to sit clearly away from the middle to be listed. It is a set of notes, not a grade."
 
 // One section's editable note. Saved with the player when the box is left, so typing never rewrites the shared data on every key.
 function Note({ value, editable, onSave }: { value: string; editable: boolean; onSave: (v: string) => void }) {

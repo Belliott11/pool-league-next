@@ -40,3 +40,20 @@ test("projection: the player who scores more and shows up more is the favorite, 
   expect(a.chance).toBeGreaterThan(0.9) // 24 now plus 6 a game over 10 games
   expect(s.mvp[0].lo).toBeLessThanOrEqual(s.mvp[0].mid)
 })
+
+test("per-game rates: the same line in a long, sloppy game counts for less than in a short one", async () => {
+  const { gamePace, setPaceGames, PER } = await import("@/lib/per")
+  const mk = (id: string, misses: number) => ({
+    id, date: "2026-01-01", teamA: ["a"], teamB: ["b"], stats: [stat("a", 4), stat("b", 4)],
+    scoringEvents: [shot("a"), shot("a"), shot("b"), shot("b"), ...Array.from({ length: misses }, () => shot("b", false))],
+    turnoverEvents: [],
+  }) as never
+  const short = mk("s", 0) // 4 trips
+  const long = mk("l", 8) // 12 trips, the same 8 points
+  setPaceGames([short, long]) // an average game is 8 trips
+  expect(gamePace(short, 8)).toBeCloseTo(PER / 2)
+  expect(gamePace(long, 8)).toBeCloseTo(PER * 1.5)
+  // A game with no shot log has no trips, so it falls back to its points.
+  expect(gamePace({ ...(short as object), scoringEvents: [] } as never, 8)).toBe(8)
+  setPaceGames([])
+})

@@ -1,9 +1,8 @@
-import { isQualifyingGame } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
 
 // Per-trip numbers, worked out from the shot log with no extra logging. A trip is one turn with the ball: it ends in a shot the
 // other team gets (or a make), or in a live-ball turnover. A miss the shooting team rebounds keeps the same trip going, so
-// trips = shots - offensive rebounds + live-ball turnovers. Rates per 25 points flatter a sloppy game; these do not.
+// trips = shots - offensive rebounds + live-ball turnovers. Rates per game flatter a sloppy game; these do not.
 // Filmed games with even teams only. Free throws add points but are not counted as trips.
 export interface PossRow {
   id: string
@@ -24,7 +23,7 @@ interface Side {
   ends: number
 }
 
-const counts = (g: Game) => isQualifyingGame(g) && !g.liveInProgress && !g.stoppedEarly
+const counts = (g: Game) => g.scoringEvents.length > 0 && g.teamA.length === g.teamB.length && !g.liveInProgress && !g.stoppedEarly
 
 export function gameSides(g: Game): { a: Side; b: Side; used: Map<string, { used: number; pts: number; tov: number }> } {
   const a = { trips: 0, pts: 0, ends: 0 }
@@ -58,6 +57,18 @@ export function gameSides(g: Game): { a: Side; b: Side; used: Map<string, { used
     p.tov++
   }
   return { a, b, used }
+}
+
+// Both teams' trips in one game.
+export const gameTrips = (g: Game) => {
+  const { a, b } = gameSides(g)
+  return a.trips + b.trips
+}
+
+// A full game's trips, on average: filmed, finished games with even teams. null until there is one.
+export function averageTrips(games: Game[]): number | null {
+  const full = games.filter(counts).map(gameTrips).filter((t) => t > 0)
+  return full.length ? full.reduce((a, b) => a + b, 0) / full.length : null
 }
 
 export function possessions(state: PooleanState): { rows: PossRow[]; league: { trips: number; pts: number; games: number } } {

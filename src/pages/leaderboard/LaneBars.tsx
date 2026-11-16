@@ -12,7 +12,7 @@ interface Row {
   gp: number
 }
 
-// One lane per player, ranked by Two-Way/25. Bars grow from the zero line (aqua above, red
+// One lane per player, ranked by Two-Way/G. Bars grow from the zero line (aqua above, red
 // below), the leader's bar is the screen's one coral mark, and the photo sits at the bar's head.
 export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void }) {
   // One-shot reveal: flips to true the first time the card is on screen and never back, so
@@ -54,7 +54,7 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
   const pos = (v: number) => ((v - lo) / span) * 100
 
   return (
-    <Panel title="Two-Way Ranking" hint="Offense plus defense per 25 combined points. Green bars are above zero and red bars are below it. Click a name for their page.">
+    <Panel title="Two-Way Ranking" hint="Offense plus defense per game. Green bars are above zero and red bars are below it. Click a name for their page.">
       <div ref={card} className="rounded-xl border bg-card p-3">
         <div className="flex items-center gap-3 pb-1 text-[10px] text-muted-foreground">
           <span className="w-16 shrink-0 sm:w-24" />

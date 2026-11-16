@@ -1,6 +1,5 @@
 import { BookOpen } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { PER } from "@/lib/per"
 
 // A key to the abbreviations used in column headers and panels, one tap away on any screen. Plain definitions only; each
 // panel's own hint has the detail.
@@ -8,10 +7,10 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
   {
     title: "Rates",
     rows: [
-      [`/${PER}`, `Per ${PER} combined points scored by both teams in a player's games, about one game. It evens out short and long games.`],
-      [`Two-Way/${PER}`, `Offense plus defense in one number, per ${PER}.`],
-      [`Off Rating/${PER}`, "The offense half: scoring, shooting, passing and ball security."],
-      [`Def Rating/${PER}`, "The defense half: stops, steals and blocks against points allowed and times beaten."],
+      ["/G", "Scaled to an average game's worth of possessions (turns with the ball), so it reads like points per game but stays fair when games run short or long. It is not a plain per-game average."],
+      ["Two-Way/G", "Offense plus defense in one number, per game."],
+      ["Off Rating/G", "The offense half: scoring, shooting, passing and ball security."],
+      ["Def Rating/G", "The defense half: stops, steals and blocks against points allowed and times beaten."],
       ["GP", "Games played."],
       ["W-L", "Wins and losses."],
     ],

@@ -1,10 +1,9 @@
-import { PER } from "@/lib/per"
 
 // Plain definitions for the jargon in hand-written reads and headlines. termsIn() picks the ones a text actually uses,
 // so each read and headline list can define its own terms right underneath.
 const TERMS: [name: string, match: RegExp, def: string][] = [
-  [`Per ${PER}`, /per 25|\/25/i, `Per ${PER} combined points scored by both teams in a player's games, about one game. It evens out short and long games.`],
-  ["Two-way score", /two-way/i, `Offense plus defense in one number, per ${PER} combined points. It adds up scoring, shooting, passing and ball security, then stops, steals and blocks against points allowed and times beaten. Higher is better.`],
+  ["Per game", /[Pp]er game|\/G\b/, "Scaled to an average game's worth of possessions (turns with the ball), so it reads like points per game but stays fair when games run short or long. It is not a plain per-game average."],
+  ["Two-way score", /two-way/i, `Offense plus defense in one number, per game. It adds up scoring, shooting, passing and ball security, then stops, steals and blocks against points allowed and times beaten. Higher is better.`],
   ["TS%", /\bTS\b/, "True shooting: how many points a player scores per shot, counting threes and free throws, shown as a percentage."],
   ["Filmed game", /filmed|on film/i, "A game logged shot by shot from video. Other games only have a final score."],
   ["Results", /\d+ results|every result/i, "Every game with a recorded score, filmed or not."],
