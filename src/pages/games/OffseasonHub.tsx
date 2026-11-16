@@ -61,7 +61,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
         <p className="text-xs font-semibold uppercase tracking-wider text-accent">{tonight ? "Opening night is tonight" : "Opening night"}</p>
         <h3 className="font-display text-2xl font-bold">
           {formatDateLong(o.date)}
-          {o.time && <span className="text-muted-foreground">, {formatTime(o.time)}</span>}
+          {o.time && <span className="whitespace-nowrap text-muted-foreground">, {formatTime(o.time)}</span>}
         </h3>
         <p className="text-xs text-muted-foreground">Cherry Hill time.</p>
         <Countdown date={o.date} time={o.time} className="font-display text-xl font-bold tabular-nums text-accent" />

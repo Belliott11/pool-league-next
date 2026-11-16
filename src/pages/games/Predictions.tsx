@@ -154,7 +154,7 @@ export function PredictionsCard({ state, p }: { state: PooleanState; p: Predicti
             Call the award winners and the top three by two-way per 25 (the Standings order, at least 3 games) before opening night. Awards are worth 2 points, a top three spot 3 if exact and 1 if in the wrong spot. {entries.filter((e) => e.picks.mvp || (e.picks.top3 ?? []).length).length} in so far.
           </p>
           {!me ? (
-            <IdentityPrompt state={state} text="Who are you? Pick yourself to make your picks." />
+            <p className="text-sm text-muted-foreground">Pick who you are above to make your picks.</p>
           ) : (
             <div className="flex flex-col gap-2">
               {AWARD_PICKS.map((a) => (

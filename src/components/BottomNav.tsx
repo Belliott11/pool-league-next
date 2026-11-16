@@ -20,7 +20,7 @@ export function BottomNav({ tab, onChange, editor = true }: { tab: string; onCha
               type="button"
               aria-current={tab === value ? "page" : undefined}
               onClick={() => onChange(value)}
-              className={`flex w-full flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${tab === value ? "text-primary" : "text-muted-foreground"}`}
+              className={`flex w-full flex-col items-center gap-0.5 py-2 text-xs font-medium ${tab === value ? "text-primary" : "text-muted-foreground"}`}
             >
               <Icon className="size-5" aria-hidden />
               {label}

@@ -273,7 +273,7 @@ export function LeagueRank({ pid }: { pid: string }) {
         <div key={r.key} className={`tile rounded-xl border p-2 text-center ${r.rank === 1 ? "border-gold" : ""}`} title={`${r.label}: ${r.decimals === undefined ? r.value : r.value.toFixed(r.decimals)}`}>
           <div className={`font-display text-2xl font-extrabold tabular-nums ${tone(r.rank)}`}>{ordinal(r.rank)}</div>
           <div className="text-xs font-medium">{r.label}</div>
-          <div className="text-[11px] text-muted-foreground">of {r.of}</div>
+          <div className="text-xs text-muted-foreground">of {r.of}</div>
         </div>
       ))}
     </div>

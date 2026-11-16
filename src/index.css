@@ -194,6 +194,15 @@ html { overscroll-behavior-y: contain; }
   }
 }
 
+/* Touch screens: small text buttons, name links and "show more" toggles keep their look but get a taller invisible
+   hit area, so a thumb does not have to land on a 20px line. Utilities that position a button still win. */
+@layer base {
+  @media (pointer: coarse) {
+    :where(button, summary) { position: relative; }
+    :where(button, summary)::after { content: ""; position: absolute; inset: -8px 0; }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

@@ -199,13 +199,13 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
                 <span className="px-1 text-muted-foreground">-</span>
                 <span className={TEAM.B.text}>{g.scoreB}</span>
               </span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 Game {i + 1}
                 {g.live ? " · live" : g.liveOnly ? " · scored live" : ""}
               </span>
               {(() => {
                 const note = predictionNote(state.games.find((x) => x.id === g.id))
-                return note && <span className="text-[11px] text-muted-foreground">{note}</span>
+                return note && <span className="text-xs text-muted-foreground">{note}</span>
               })()}
             </span>
             <span className={cn("min-w-0 truncate text-right text-sm", g.winner === "B" ? "font-semibold" : "text-muted-foreground")}>{names(g.teamB)}</span>

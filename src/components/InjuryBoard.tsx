@@ -70,7 +70,7 @@ export function InjuryBoard({ state, update, onOpenPlayer }: { state: PooleanSta
                     <button type="button" className="font-semibold hover:underline" onClick={() => onOpenPlayer(i.playerId)}>
                       {name}
                     </button>
-                    <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-bold tracking-wide", TONE[info.tone])}>{info.label}</span>
+                    <span className={cn("rounded px-1.5 py-0.5 text-xs font-bold tracking-wide", TONE[info.tone])}>{info.label}</span>
                   </div>
                   {i.note && <p className="text-sm">{i.note}</p>}
                   <p className="text-xs text-muted-foreground">
