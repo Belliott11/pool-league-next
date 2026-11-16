@@ -9441,6 +9441,8 @@ let h2hDefenderSort = { key: "fg", dir: "desc" };
 function renderHeadToHead(playerId) {
   const scorerHeaderRow = document.getElementById("h2hScorerHeaderRow");
   const scorerBody = document.getElementById("h2hScorerBody");
+  // Each table sits in its own tab now, so only one of the two is on the page at a time.
+  if (scorerBody) {
   renderSortableHeader(scorerHeaderRow, H2H_SCORER_COLUMNS, h2hScorerSort, () => renderHeadToHead(playerId));
   const scorerRows = headToHeadAsScorer(playerId).map(r => ({ ...r, defender: r.defenderId ? state.players.find(p => p.id === r.defenderId) : null }));
   const scorerSortCol = H2H_SCORER_COLUMNS.find(c => c.key === h2hScorerSort.key);
@@ -9449,8 +9451,10 @@ function renderHeadToHead(playerId) {
     ? '<tr><td colspan="3" class="empty-state">No tagged shots yet.</td></tr>'
     : scorerRows.map(r => `<tr><td>${r.defender ? playerLink(r.defender.id, r.defender.name) : "No defender"}</td><td>${formatShootingSplit(r.fgm, r.fga)}</td><td>${formatPct(pct(r.fgm, r.fga))}</td></tr>`).join("");
 
+  }
   const defenderHeaderRow = document.getElementById("h2hDefenderHeaderRow");
   const defenderBody = document.getElementById("h2hDefenderBody");
+  if (defenderBody) {
   renderSortableHeader(defenderHeaderRow, H2H_DEFENDER_COLUMNS, h2hDefenderSort, () => renderHeadToHead(playerId));
   const defenderRows = headToHeadAsDefender(playerId).map(r => ({ ...r, scorer: state.players.find(p => p.id === r.scorerId) }));
   const defenderSortCol = H2H_DEFENDER_COLUMNS.find(c => c.key === h2hDefenderSort.key);
@@ -9458,6 +9462,7 @@ function renderHeadToHead(playerId) {
   defenderBody.innerHTML = defenderRows.length === 0
     ? '<tr><td colspan="3" class="empty-state">No tagged shots yet.</td></tr>'
     : defenderRows.map(r => `<tr><td>${r.scorer ? playerLink(r.scorer.id, r.scorer.name) : "?"}</td><td>${formatShootingSplit(r.fgm, r.fga)}</td><td>${formatPct(pct(r.fgm, r.fga))}</td></tr>`).join("");
+  }
 }
 
 function download(filename, content, mime) {
