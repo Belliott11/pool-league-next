@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
+import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { setAppGames } from "@/lib/matchup"
 import { AccountMenu } from "@/components/AccountMenu"
 import { StoryPublisher } from "@/components/StoryPublisher"
@@ -181,6 +181,9 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   const [view, setView] = useState<View>(() => hashToView(location.hash) ?? DEFAULT_VIEW)
   const viewRef = useRef(view)
   const tab = view.tab
+  // The Leaderboard and Player pages take a moment to build, so once opened they stay built (hidden) and coming back is instant.
+  const visited = useRef(new Set<string>())
+  visited.current.add(tab)
   useEffect(() => {
     history.scrollRestoration = "manual"
     history.replaceState({ n: history.state?.n ?? 0, y: 0 }, "", viewToHash(viewRef.current))
@@ -410,7 +413,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
             onOpenPlayer={openPlayer}
           />
         </TabsContent>
-        <TabsContent value="leaderboard">
+        <TabsContent value="leaderboard" keepMounted>
+          {visited.current.has("leaderboard") && <Frozen active={tab === "leaderboard"} keys={[state, toggles]}>
           <Suspense fallback={<PageSkeleton label="Loading leaderboard" />}>
             <LeaderboardPage
             state={state}
@@ -419,14 +423,17 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
             onOpenPlayer={openPlayer}
           />
           </Suspense>
+          </Frozen>}
         </TabsContent>
-        <TabsContent value="player">
+        <TabsContent value="player" keepMounted>
+          {visited.current.has("player") && <Frozen active={tab === "player"} keys={[state, toggles, playerId]}>
           <Suspense fallback={<PageSkeleton label="Loading player" />}>
             <PlayerDetailPage state={state} toggles={toggles} setToggles={setToggles} playerId={playerId} update={update} onChangePlayer={(id) => {
               setPlayerId(id)
               go({ player: id }, true)
             }} />
           </Suspense>
+          </Frozen>}
         </TabsContent>
         {!readOnly && (
           <TabsContent value="players">
@@ -457,6 +464,16 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     </ReadOnlyContext.Provider>
   )
 }
+
+// A page that is kept built while hidden. It skips every update while hidden, so it costs nothing while the editor logs a game or
+// the data refreshes, and when shown it only rebuilds if the data it reads (`keys`) changed since it was last built. The callbacks
+// passed to these pages only call setters, so an older copy of them still works.
+const Frozen = memo(
+  function Frozen({ children }: { active: boolean; keys: unknown[]; children: ReactNode }) {
+    return <>{children}</>
+  },
+  (prev, next) => !next.active || (prev.active && prev.keys.every((k, i) => k === next.keys[i])),
+)
 
 // Shown to a visitor when the cloud is set up but nothing has been published yet (or it cannot be reached).
 function NoSharedData({ cloud }: { cloud: Cloud }) {
