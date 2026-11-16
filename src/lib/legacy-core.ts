@@ -2473,7 +2473,8 @@ function computeLeaderboardUncached() {
   const zonePpa = computeLeagueZonePointsPerAttempt();
   // Same one-time-not-per-player reasoning as zonePpa above: the regression is fit once against
   // the whole league's current player-games, not refit fresh for each player being scored by it.
-  const winSharesWeights = computeWinSharesWeights();
+  // Fitted only when something reads a row's win shares (see the getter below): the fit is by far the slowest step here, and the
+  // first screen of the Leaderboard does not show it.
   return state.players.map(p => {
     // Only games actually logged with real shots count toward GP/averages — a game that's
     // just been rostered (or only carries a historical winner imported with no shot-level
@@ -2592,7 +2593,11 @@ function computeLeaderboardUncached() {
       shotAttemptDiff: computeShotAttemptDifferential(p.id),
       reboundDiff: computeReboundDifferential(p.id),
       paceAndPpp: computePaceAndPpp(p.id),
-      winShares: computeWinShares(p.id, winSharesWeights),
+      get winShares() {
+        const value = computeWinShares(p.id, computeWinSharesWeights());
+        Object.defineProperty(this, "winShares", { value, enumerable: true, writable: true, configurable: true });
+        return value;
+      },
       shotPct: pct(shooting.fga, teamFgaTotal),
       astPct: pct(totals.ast, teamAstTotal),
       orebPct: pct(totals.oreb, orebPoolTotal),
@@ -6394,12 +6399,23 @@ function winSharesRegressionRows() {
   return rows;
 }
 
+// Plain loops, same order of additions as the map/reduce they replaced, so the results are identical. The win-shares fit below
+// calls these about a million times, and that fit was most of the wait the first time the Leaderboard opened.
 function matVec(M, v) {
-  return M.map(row => row.reduce((sum, x, j) => sum + x * v[j], 0));
+  const out = new Array(M.length);
+  for (let i = 0; i < M.length; i++) {
+    const row = M[i];
+    let sum = 0;
+    for (let j = 0; j < row.length; j++) sum += row[j] * v[j];
+    out[i] = sum;
+  }
+  return out;
 }
 
 function dotProduct(a, b) {
-  return a.reduce((sum, x, i) => sum + x * b[i], 0);
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
+  return sum;
 }
 
 function largestEigenvalue(M, iterations = 200) {
@@ -6440,10 +6456,17 @@ function projectedRidge(Z, yc, bounds, priorsStd, alphaVec, iterations = 1500) {
                               // doesn't change what the optimizer converges to
   for (let it = 0; it < iterations; it++) {
     const ZtZw = matVec(ZtZ, w);
-    w = w.map((wj, j) => {
+    const next = new Array(k);
+    let moved = false;
+    for (let j = 0; j < k; j++) {
+      const wj = w[j];
       const grad = 2 * (ZtZw[j] - Zty[j]) + 2 * alphaVec[j] * (wj - priorsStd[j]);
-      return Math.min(bounds[j][1], Math.max(bounds[j][0], wj - step * grad));
-    });
+      next[j] = Math.min(bounds[j][1], Math.max(bounds[j][0], wj - step * grad));
+      if (next[j] !== wj) moved = true;
+    }
+    w = next;
+    // Once a step changes nothing, every later step would repeat it exactly, so stopping here gives the same answer.
+    if (!moved) break;
   }
   return w;
 }

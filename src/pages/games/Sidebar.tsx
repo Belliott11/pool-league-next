@@ -7,6 +7,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import type { Update } from "@/lib/store"
 import { HeadToHeadCard } from "./HeadToHeadCard"
 import { AwardRaceCard } from "./AwardRace"
+import { ProjectionsCard } from "./Projections"
 import { AttendanceCard, RivalriesCard } from "./RivalryCards"
 import { SeasonPredictionsCard } from "./Predictions"
 import { PredictionScorecard } from "./PredictionScorecard"
@@ -136,6 +137,7 @@ export function Sidebar({
       </Card>
       <SeasonStoriesCard state={state} update={update} />
       <AwardRaceCard state={state} onOpenPlayer={onOpenPlayer} />
+      <ProjectionsCard state={state} onOpenPlayer={onOpenPlayer} />
       {state.openingNight && !isOffseason(state) && <SeasonPredictionsCard state={state} />}
       <InjuryBoard state={state} update={update} onOpenPlayer={onOpenPlayer} />
       {/* The smaller cards share one spot with a tab each, so the column is a few cards long, not ten. */}

@@ -283,6 +283,7 @@ export function BalanceTeams({
 }) {
   const [teamSize, setTeamSize] = useState(3)
   const [results, setResults] = useState<BalanceOption[]>([])
+  const [random, setRandom] = useState<[string[], string[]] | null>(null)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const rsvps = [...(state.rsvps ?? [])].sort((a, b) => (b.date || "").localeCompare(a.date || ""))
   const [rsvpId, setRsvpId] = useState("")
@@ -310,8 +311,20 @@ export function BalanceTeams({
     setResults(generateBalancedTeamSets(state, attendees, Math.max(1, teamSize || 3)))
   }
 
-  function useTeams(a: string[], b: string[]) {
-    const game = newGame({ id: uid("game"), date, teamA: [...a], teamB: [...b], prediction: pregamePrediction(a, b), teamsPickedBy: "balanced" })
+  // Teams drawn from a hat. Games with random teams are the cleanest test of who actually helps a team win, because nobody
+  // chose who plays with whom (see ruleTests.ts).
+  function drawRandom() {
+    const ids = [...attendees]
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[ids[i], ids[j]] = [ids[j], ids[i]]
+    }
+    const size = Math.min(Math.max(1, teamSize || 3), Math.floor(ids.length / 2))
+    setRandom([ids.slice(0, size), ids.slice(size, size * 2)])
+  }
+
+  function useTeams(a: string[], b: string[], teamsPickedBy: Game["teamsPickedBy"] = "balanced") {
+    const game = newGame({ id: uid("game"), date, teamA: [...a], teamB: [...b], prediction: pregamePrediction(a, b), teamsPickedBy })
     update((s) => ({ ...s, games: [...s.games, game] }))
     onCreated(game)
   }
@@ -372,7 +385,31 @@ export function BalanceTeams({
           <Button size="sm" disabled={attendees.length < 2} onClick={generate}>
             Generate Balanced Teams
           </Button>
+          <Button size="sm" variant="outline" disabled={attendees.length < 2} onClick={drawRandom}>
+            {random ? "Draw again" : "Random teams"}
+          </Button>
         </div>
+        {random && (
+          <div className="flex flex-col gap-2 rounded-xl border p-3">
+            <strong className="font-display">Random teams</strong>
+            <p className="text-sm text-muted-foreground">
+              Drawn from a hat, so they may be lopsided. Games played this way are saved as random, and they are the fairest test of who helps a team win.
+            </p>
+            {random.map((team, i) => (
+              <p key={i} className="text-sm">
+                <span className="font-semibold">Team {i === 0 ? "A" : "B"}:</span> {team.map((id) => playerName(state, id)).join(", ")}
+              </p>
+            ))}
+            {attendees.length > random[0].length * 2 && (
+              <p className="text-sm text-muted-foreground">
+                Sitting out: {attendees.filter((id) => !random[0].includes(id) && !random[1].includes(id)).map((id) => playerName(state, id)).join(", ")}
+              </p>
+            )}
+            <Button size="sm" className="self-start" disabled={!date} title={date ? undefined : "Pick a game date first"} onClick={() => useTeams(random[0], random[1], "random")}>
+              Use these teams and create the game
+            </Button>
+          </div>
+        )}
         {results.map((r, i) => (
           <OptionCard
             key={i}

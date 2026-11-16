@@ -184,6 +184,11 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   // The Leaderboard and Player pages take a moment to build, so once opened they stay built (hidden) and coming back is instant.
   const visited = useRef(new Set<string>())
   visited.current.add(tab)
+  // Kept pages are only hidden, so a clip playing on one would carry on out of sight: stop every video on a switch.
+  useEffect(() => {
+    document.querySelectorAll("video").forEach((v) => v.pause())
+    document.querySelectorAll<HTMLIFrameElement>('iframe[src*="youtube"]').forEach((f) => f.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', "*"))
+  }, [tab])
   useEffect(() => {
     history.scrollRestoration = "manual"
     history.replaceState({ n: history.state?.n ?? 0, y: 0 }, "", viewToHash(viewRef.current))

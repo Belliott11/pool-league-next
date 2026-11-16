@@ -76,6 +76,13 @@ A player's offense and defense in one game, added together. The MVP award adds i
 The two-way score scaled to 25 combined points scored by both teams (about one game). The 25 lives in `src/lib/per.ts`. Standings rank by it, and so does "Best player".
 _Avoid_: Two-way rating
 
+**Trip**:
+One turn with the ball. It ends in a make, a shot the other team gets, or a live-ball turnover; a miss the shooting team rebounds keeps the same trip going. Worked out from the shot log (`src/lib/possessions.ts`), never logged by hand.
+_Avoid_: Possession, play
+
+**Projection**:
+Where an award race ends up if the season runs more games like the ones so far (`src/lib/projections.ts`). Not a prediction: it is never saved or scored.
+
 **Prediction**:
 The model's win chance for a game, saved before it is played and never filled in afterward.
 

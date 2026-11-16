@@ -1,14 +1,18 @@
 import { Medal } from "lucide-react"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { awardRace } from "@/lib/awardRace"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
 
+const FIRST = 3 // awards shown before "Show all"
+
 // Who leads each award so far this season, from this season's own games.
 export function AwardRaceCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
-  const rows = useMemo(() => awardRace(state), [state])
-  if (rows.length === 0) return null
+  const all = useMemo(() => awardRace(state), [state])
+  const [open, setOpen] = useState(false)
+  if (all.length === 0) return null
+  const rows = open ? all : all.slice(0, FIRST)
   return (
     <Card>
       <CardHeader>
@@ -41,6 +45,11 @@ export function AwardRaceCard({ state, onOpenPlayer }: { state: PooleanState; on
             </ol>
           </section>
         ))}
+        {all.length > FIRST && (
+          <button type="button" className="self-start text-sm font-medium text-accent hover:underline" onClick={() => setOpen(!open)}>
+            {open ? "Show fewer" : `Show all ${all.length} awards`}
+          </button>
+        )}
       </CardContent>
     </Card>
   )

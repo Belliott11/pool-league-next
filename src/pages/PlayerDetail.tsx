@@ -1,4 +1,5 @@
 import { PlayerRead } from "@/pages/PlayerRead"
+import { PlayerCompare } from "@/pages/PlayerCompare"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
 import { seasonView } from "@/lib/season"
 import { Fragment, useEffect, useMemo, useState } from "react"
@@ -284,6 +285,7 @@ export function PlayerDetailPage({
 
       <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />
       <PlayerRead state={state} pid={pid} />
+      <PlayerCompare key={pid} state={season} pid={pid} />
       {/* On a phone the awards, tips and scouting report sit under one fold so the stat sections are within reach; on a wide screen they are always open. */}
       <details open={(typeof matchMedia !== "undefined" && matchMedia("(min-width: 768px)").matches) || undefined} className="group/more flex flex-col gap-4">
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl border bg-card px-4 font-display font-bold md:hidden [&::-webkit-details-marker]:hidden">

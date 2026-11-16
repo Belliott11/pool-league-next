@@ -12,6 +12,7 @@ import { byFormat, type FormatRow, type Rate as FRate } from "@/lib/byFormat"
 import { statCheck } from "@/lib/statCheck"
 import { CLOSE, LATE, clutchSplits } from "@/lib/clutch"
 import { PAIR_MIN, TRIO_MIN, leagueLineups, type Lineup } from "@/lib/lineups"
+import { perTrip, possessions } from "@/lib/possessions"
 import { adviceFrom, RULE_LABEL, ruleTests, type RuleVerdict } from "@/lib/ruleTests"
 import { trustOf, wilson } from "@/lib/trust"
 import type { PooleanState } from "@/lib/types"
@@ -345,6 +346,43 @@ function ClutchTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer:
   )
 }
 
+const trip = (v: number | null) => (v === null ? "-" : v.toFixed(2))
+function TripsTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: Open }) {
+  const { rows, league } = useMemo(() => possessions(state), [state])
+  if (league.trips === 0) return <Hint>Shows up once a game with even teams is logged shot by shot.</Hint>
+  const mid = perTrip(league.pts, league.trips)!
+  return (
+    <>
+      <Hint>
+        Points for each turn with the ball, so a sloppy game does not flatter anyone. A trip ends in a shot the other team gets, a make, or a live-ball turnover; a miss your own team rebounds keeps the trip going. From {league.games} filmed games with even teams, the league scores {mid.toFixed(2)} a trip. Team columns cover every trip while the player was in the game, so teammates share them.
+      </Hint>
+      <Grid
+        min="44rem"
+        head={["Player", "Trips", "Team scores", "Team allows", "Net", "Trips ended", "Own points per trip", "Turnover rate", "Share of team trips", "Sample"]}
+        rows={rows.map((r) => {
+          const off = perTrip(r.teamPts, r.trips)
+          const def = perTrip(r.oppPts, r.oppTrips)
+          return {
+            key: r.id,
+            cells: [
+              <Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />,
+              r.trips,
+              trip(off),
+              trip(def),
+              off === null || def === null ? "-" : sign(off - def, 2),
+              r.used,
+              r.used >= SHOW_SHOTS ? trip(perTrip(r.pts, r.used)) : "-",
+              r.used >= SHOW_SHOTS ? `${Math.round((r.tov / r.used) * 100)}%` : "-",
+              r.teamEnds ? `${Math.round((r.used / r.teamEnds) * 100)}%` : "-",
+              <TrustChip key="t" t={trustOf(r.used, "shots")} />,
+            ],
+          }
+        })}
+      />
+    </>
+  )
+}
+
 // Win impact, Does it hold up? and By format are league-wide and use every game; the per-player tabs use the season view.
 export function DeepDiveCard({ state, season = state, onOpenPlayer }: { state: PooleanState; season?: PooleanState; onOpenPlayer: Open }) {
   const readOnly = useReadOnly()
@@ -357,6 +395,7 @@ export function DeepDiveCard({ state, season = state, onOpenPlayer }: { state: P
           { value: "format", label: "By format", node: <FormatTab state={state} /> },
           { value: "check", label: "Stat check", node: <StatCheckTab state={state} /> },
           { value: "lineups", label: "Lineups", node: <LineupsTab state={state} /> },
+          { value: "trips", label: "Per trip", node: <TripsTab state={season} onOpenPlayer={onOpenPlayer} /> },
           { value: "clutch", label: "Late and close", node: <ClutchTab state={season} onOpenPlayer={onOpenPlayer} /> },
           { value: "identity", label: "Player identity", node: <IdentityTab state={season} onOpenPlayer={onOpenPlayer} /> },
           { value: "seq", label: "Play sequences", node: <SequenceTab state={season} onOpenPlayer={onOpenPlayer} /> },

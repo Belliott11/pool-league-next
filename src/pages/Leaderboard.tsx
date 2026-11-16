@@ -1,7 +1,7 @@
 import { SeasonSwitch } from "@/components/SeasonSwitch"
 import { seasonView } from "@/lib/season"
 import { AdvancedReads } from "./leaderboard/AdvancedReads"
-import { useMemo } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Section } from "@/components/Section"
 import { sectionIcon } from "@/lib/panelIcons"
 import { syncLegacy } from "@/lib/legacy"
@@ -62,7 +62,7 @@ const NAV = [
 function QuickNav() {
   const readOnly = useReadOnly()
   const go = (id: string) => {
-    const el = document.getElementById(id)
+    const el = document.getElementById(id) ?? document.querySelector<HTMLElement>(`[data-later="${id}"]`)
     if (!el) return
     if (el instanceof HTMLDetailsElement) el.open = true
     el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" })
@@ -76,6 +76,22 @@ function QuickNav() {
       ))}
     </nav>
   )
+}
+
+// A card below the first screen is built when it comes near the screen (or a jump chip asks for it), so opening the page only
+// pays for what is in view. Until then it holds its place with an empty box named by `id`, which the jump chips can still find.
+function Later({ id, children }: { id: string; children: ReactNode }) {
+  const [show, setShow] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || show) return
+    if (typeof IntersectionObserver === "undefined") return setShow(true)
+    const io = new IntersectionObserver((e) => e.some((x) => x.isIntersecting) && setShow(true), { rootMargin: "600px" })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [show])
+  return show ? <>{children}</> : <div ref={ref} data-later={id} className="h-16 scroll-mt-28 rounded-xl border bg-card" />
 }
 
 export function LeaderboardPage({
@@ -116,10 +132,10 @@ export function LeaderboardPage({
       </div>
       {ORDER.filter((k) => !(readOnly && EDITOR_ONLY.has(k))).map((k, i) => {
         const style = { "--i": i + 2 } as React.CSSProperties
-        if (k === "reads") return <div key={k} className="anim-rise scroll-mt-28" style={style}><AdvancedReads state={season} all={state} onOpenPlayer={onOpenPlayer} /></div>
-        if (k === "insight") return <div key={k} className="anim-rise scroll-mt-28" style={style}><InsightCard state={season} onOpenPlayer={onOpenPlayer} /></div>
-        if (k === "deep") return <div key={k} className="anim-rise scroll-mt-28" style={style}><DeepDiveCard state={state} season={season} onOpenPlayer={onOpenPlayer} /></div>
-        if (k === "flow") return <div key={k} className="anim-rise scroll-mt-28" style={style}><GameFlowCard state={season} onOpenPlayer={onOpenPlayer} /></div>
+        if (k === "reads") return <div key={k} className="anim-rise scroll-mt-28" style={style}><Later id="lb-reads"><AdvancedReads state={season} all={state} onOpenPlayer={onOpenPlayer} /></Later></div>
+        if (k === "insight") return <div key={k} className="anim-rise scroll-mt-28" style={style}><Later id="lb-insight"><InsightCard state={season} onOpenPlayer={onOpenPlayer} /></Later></div>
+        if (k === "deep") return <div key={k} className="anim-rise scroll-mt-28" style={style}><Later id="lb-deep"><DeepDiveCard state={state} season={season} onOpenPlayer={onOpenPlayer} /></Later></div>
+        if (k === "flow") return <div key={k} className="anim-rise scroll-mt-28" style={style}><Later id="lb-flow"><GameFlowCard state={season} onOpenPlayer={onOpenPlayer} /></Later></div>
         return (
           <div key={k} className="anim-rise" style={style}>
             <Section id={`lb-section-${k}`} title={sectionTitle(k)} icon={sectionIcon(k)} teaser={k === "defense" ? DEFENSE_TEASER : (teasers[k] ?? "")}>
