@@ -26,3 +26,15 @@ describe("advanced reads", () => {
     expect(advancedReads({ players: [], games: [] }, []).reads).toEqual([])
   })
 })
+
+describe("written reads", () => {
+  it("are for real players, with a headline and no em dashes", async () => {
+    const w = (await import("@/data/advanced-reads.json")).default as { filmedGames: number; players: Record<string, { headline: string; text: string[] }> }
+    const ids = new Set(data.players.map((p) => p.id))
+    for (const [id, r] of Object.entries(w.players)) {
+      expect(ids.has(id)).toBe(true)
+      expect(r.headline.length).toBeGreaterThan(10)
+      expect(JSON.stringify(r)).not.toMatch(/—/)
+    }
+  })
+})

@@ -4,6 +4,7 @@ import { Section } from "@/components/Section"
 import { advancedReads, EARLY_GAMES, READ_MIN_GAMES, type Read, type Tone } from "@/lib/advancedReads"
 import { isSeasonOnly } from "@/lib/season"
 import type { PooleanState } from "@/lib/types"
+import written from "@/data/advanced-reads.json"
 import { Grid, Hint, Who } from "./parts"
 
 const TONE: Record<string, string> = { good: "text-pos font-semibold", bad: "text-neg font-semibold" }
@@ -11,7 +12,22 @@ const cls = (t: Tone) => (t ? TONE[t] : "")
 const pc = (v: number | null) => (v === null ? "-" : `${Math.round(v * 100)}%`)
 const sg = (v: number | null, d = 2) => (v === null ? "-" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`)
 
+// Reads written by hand from the numbers, saved with the site and rewritten on request. The computed lines stay underneath.
+const WRITTEN = written as { writtenAt: string; filmedGames: number; players: Record<string, { headline: string; text: string[] }> }
+const filmedGames = (state: PooleanState) => state.games.filter((g) => !g.liveInProgress && g.scoringEvents.length > 0).length
+
 function Card({ r, state, onOpenPlayer }: { r: Read; state: PooleanState; onOpenPlayer: (id: string) => void }) {
+  const mine = WRITTEN.players[r.id]
+  const numbers = (
+    <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[6.5rem_minmax(0,1fr)]">
+      {r.lines.map((l) => (
+        <div key={l.label} className="contents">
+          <dt className={`text-muted-foreground font-semibold ${cls(l.tone)}`}>{l.label}</dt>
+          <dd className="mb-2 min-w-0 sm:mb-0">{l.text}</dd>
+        </div>
+      ))}
+    </dl>
+  )
   return (
     <article className="flex flex-col gap-3 rounded-lg border p-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -21,15 +37,25 @@ function Card({ r, state, onOpenPlayer }: { r: Read; state: PooleanState; onOpen
           {r.m.games} games, {r.m.shots} shots
         </span>
       </div>
-      <p className="font-medium">{r.headline}</p>
-      <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[6.5rem_minmax(0,1fr)]">
-        {r.lines.map((l) => (
-          <div key={l.label} className="contents">
-            <dt className={`text-muted-foreground font-semibold ${cls(l.tone)}`}>{l.label}</dt>
-            <dd className="mb-2 min-w-0 sm:mb-0">{l.text}</dd>
+      {mine ? (
+        <>
+          <p className="font-medium">{mine.headline}</p>
+          <div className="flex max-w-prose flex-col gap-2 text-sm">
+            {mine.text.map((t, i) => (
+              <p key={i}>{t}</p>
+            ))}
           </div>
-        ))}
-      </dl>
+          <details className="group/n">
+            <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">The numbers, as of now</summary>
+            <div className="mt-2">{numbers}</div>
+          </details>
+        </>
+      ) : (
+        <>
+          <p className="font-medium">{r.headline}</p>
+          {numbers}
+        </>
+      )}
     </article>
   )
 }
@@ -47,6 +73,15 @@ export function AdvancedReads({ state, all = state, onOpenPlayer }: { state: Poo
         <Hint>Shows up once players have {READ_MIN_GAMES} filmed even-team games.</Hint>
       ) : (
         <>
+          {(() => {
+            const since = filmedGames(all) - WRITTEN.filmedGames
+            const when = new Date(WRITTEN.writtenAt + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })
+            return (
+              <Hint>
+                Written {when} from {WRITTEN.filmedGames} filmed games.{since > 0 ? ` ${since} more ${since === 1 ? "game has" : "games have"} been filmed since, so the written reads are behind the numbers until they are rewritten.` : ""}
+              </Hint>
+            )
+          })()}
           {fallback && <Hint>Nobody has {READ_MIN_GAMES} filmed games this season yet, so these reads still include past seasons.</Hint>}
           <Hint>
             Every player with {READ_MIN_GAMES} or more filmed even-team games, written from the current data. Rates are per 25 combined points and every number is set against the league middle. Green and red mark clear gaps. Under {EARLY_GAMES} games is an early read.
