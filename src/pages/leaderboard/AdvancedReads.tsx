@@ -55,7 +55,7 @@ export function AdvancedReads({ state, all = state, onOpenPlayer }: { state: Poo
             min="52rem"
             head={["Player", "Games", "TS%", "Shot quality", "Set-ups/25", "Live TOV/25", "Beat rate", "Opp FG% in position", "Fought REB/25", "Win chance"]}
             rows={[
-              { key: "mid", cells: [<span key="m" className="italic text-muted-foreground">League middle</span>, "", pc(middle.ts ?? null), sg(middle.quality ?? null), (middle.setups ?? 0).toFixed(1), (middle.liveTov ?? 0).toFixed(1), pc(middle.beatRate ?? null), pc(middle.oppFg ?? null), (middle.fought ?? 0).toFixed(1), sg(middle.wpa ?? null, 0)] },
+              { key: "mid", pin: true, cells: [<span key="m" className="italic text-muted-foreground">League middle</span>, "", pc(middle.ts ?? null), sg(middle.quality ?? null), (middle.setups ?? 0).toFixed(1), (middle.liveTov ?? 0).toFixed(1), pc(middle.beatRate ?? null), pc(middle.oppFg ?? null), (middle.fought ?? 0).toFixed(1), sg(middle.wpa ?? null, 0)] },
               ...reads.map((r) => {
                 const t = (label: string) => r.lines.find((l) => l.label === label)?.tone ?? null
                 return {
