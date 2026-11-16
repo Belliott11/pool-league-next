@@ -283,9 +283,18 @@ export function PlayerDetailPage({
       </nav>
 
       <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />
-      <Panels section="overview" pid={pid} version={version} />
       <PlayerRead state={state} pid={pid} />
-      <ScoutingCard state={season} pid={pid} update={update} />
+      {/* On a phone the awards, tips and scouting report sit under one fold so the stat sections are within reach; on a wide screen they are always open. */}
+      <details open={(typeof matchMedia !== "undefined" && matchMedia("(min-width: 768px)").matches) || undefined} className="group/more flex flex-col gap-4">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl border bg-card px-4 font-display font-bold md:hidden [&::-webkit-details-marker]:hidden">
+          <ChevronRight aria-hidden className="size-4 text-muted-foreground transition-transform group-open/more:rotate-90" />
+          Awards, tips and scouting report
+        </summary>
+        <div className="flex flex-col gap-4 max-md:mt-4">
+          <Panels section="overview" pid={pid} version={version} />
+          <ScoutingCard state={season} pid={pid} update={update} />
+        </div>
+      </details>
 
       {SECTIONS.map((s) => (
         <Fragment key={s.key}>

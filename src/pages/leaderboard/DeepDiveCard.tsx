@@ -10,6 +10,8 @@ import { QUICK, sequences } from "@/lib/sequences"
 import { useReadOnly } from "@/lib/mode"
 import { byFormat, type FormatRow, type Rate as FRate } from "@/lib/byFormat"
 import { statCheck } from "@/lib/statCheck"
+import { CLOSE, LATE, clutchSplits } from "@/lib/clutch"
+import { PAIR_MIN, TRIO_MIN, leagueLineups, type Lineup } from "@/lib/lineups"
 import { adviceFrom, RULE_LABEL, ruleTests, type RuleVerdict } from "@/lib/ruleTests"
 import { trustOf, wilson } from "@/lib/trust"
 import type { PooleanState } from "@/lib/types"
@@ -302,6 +304,47 @@ function FormatTab({ state }: { state: PooleanState }) {
   )
 }
 
+const wl = (l: Lineup) => `${l.w}-${l.gp - l.w}`
+function LineupsTab({ state }: { state: PooleanState }) {
+  const pairs = useMemo(() => leagueLineups(state, 2), [state])
+  const trios = useMemo(() => leagueLineups(state, 3), [state])
+  if (pairs.length === 0) return <Hint>Shows up once two players have shared a team {PAIR_MIN} times.</Hint>
+  const table = (rows: Lineup[], what: string) => (
+    <Grid
+      min="20rem"
+      head={[what, "Games", "Record", "Win %"]}
+      rows={rows.map((l) => ({ key: l.ids.join("|"), cells: [l.ids.map((id) => playerName(state, id)).join(", "), l.gp, wl(l), `${Math.round((l.w / l.gp) * 100)}%`] }))}
+    />
+  )
+  return (
+    <>
+      <Hint>
+        How players do on the same team, over every result, filmed or not. Pairs need {PAIR_MIN} games together and trios {TRIO_MIN}. The order pulls short records toward even, so 9-1 sits above 3-0. A record over a handful of games is a first read, and it says nothing about who on the team did the work.
+      </Hint>
+      {table(pairs, "Pair")}
+      {trios.length > 0 && table(trios, "Trio")}
+    </>
+  )
+}
+
+const shooting = (s: { made: number; att: number }) => (s.att ? `${s.made}/${s.att} (${Math.round((s.made / s.att) * 100)}%)` : "-")
+function ClutchTab({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: Open }) {
+  const rows = useMemo(() => clutchSplits(state), [state])
+  if (rows.length === 0) return <Hint>Shows up once a filmed game with a logged target has a shot late in a close game.</Hint>
+  return (
+    <>
+      <Hint>
+        Shots taken when the game is on the line: the teams are within {CLOSE} points and the leader is within {LATE} of the score the game is played to. Filmed games with a logged target only. These are small counts, so read them as what happened, not as who is clutch.
+      </Hint>
+      <Grid
+        min="26rem"
+        head={["Player", "Late and close", "Points", "Rest of the game"]}
+        rows={rows.map((r) => ({ key: r.id, cells: [<Who key="w" state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, shooting(r.clutch), r.clutch.pts, shooting(r.rest)] }))}
+      />
+    </>
+  )
+}
+
 // Win impact, Does it hold up? and By format are league-wide and use every game; the per-player tabs use the season view.
 export function DeepDiveCard({ state, season = state, onOpenPlayer }: { state: PooleanState; season?: PooleanState; onOpenPlayer: Open }) {
   const readOnly = useReadOnly()
@@ -313,6 +356,8 @@ export function DeepDiveCard({ state, season = state, onOpenPlayer }: { state: P
           { value: "rules", label: "Does it hold up?", node: <HoldUpTab state={state} /> },
           { value: "format", label: "By format", node: <FormatTab state={state} /> },
           { value: "check", label: "Stat check", node: <StatCheckTab state={state} /> },
+          { value: "lineups", label: "Lineups", node: <LineupsTab state={state} /> },
+          { value: "clutch", label: "Late and close", node: <ClutchTab state={season} onOpenPlayer={onOpenPlayer} /> },
           { value: "identity", label: "Player identity", node: <IdentityTab state={season} onOpenPlayer={onOpenPlayer} /> },
           { value: "seq", label: "Play sequences", node: <SequenceTab state={season} onOpenPlayer={onOpenPlayer} /> },
           ...(readOnly ? [] : [{ value: "body", label: "Body and effort", node: <BodyTab state={season} onOpenPlayer={onOpenPlayer} /> }]),

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { FixBlanks } from "@/pages/games/FixBlanks"
 import { UnfilledList } from "@/pages/games/UnfilledList"
+import { TagQueue } from "@/pages/games/TagQueue"
 import { LightRecheck } from "@/pages/games/LightRecheck"
 import type { Update } from "@/lib/store"
 import { useEffect, useMemo, useState } from "react"
@@ -127,6 +128,9 @@ export function ExportPage({ state, toggles, update }: { state: PooleanState; to
         <Section key={s.key} id={`export-section-${s.key}`} title={s.title} icon={sectionIcon(s.key)} teaser={teasers[s.key] ?? ""}>
           {s.key === "review" && (
             <>
+              <BackfillPanel title="What to tag next" hint="Every kind of missing tag across all filmed games, biggest pile first, and the stats each one feeds. Fix them in the lists below.">
+                <TagQueue state={state} />
+              </BackfillPanel>
               <BackfillPanel title="Fix blanks" hint="Plays still missing a tag. Watch the clip and fill it in here, and a fixed play drops off the list.">
                 <FixBlanks state={state} update={update} />
               </BackfillPanel>

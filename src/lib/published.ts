@@ -17,6 +17,8 @@ export function customStories(state: PooleanState, key: StoryKey): string[] | nu
   const lines = CUSTOM[key]
   return lines && lines.length && filmed(state) <= CUSTOM.filmedGames ? lines : null
 }
+// How many games have been filmed since the hand-written headlines were last rewritten.
+export const headlinesBehind = (state: PooleanState) => Math.max(0, filmed(state) - CUSTOM.filmedGames)
 export const customNight = (date: string) => CUSTOM.nights?.[date] ?? null
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)

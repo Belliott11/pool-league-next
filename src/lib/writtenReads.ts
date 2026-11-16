@@ -13,6 +13,8 @@ export const writtenRead = (id: string): WrittenRead | null => WRITTEN.players[i
 
 const filmedGames = (state: PooleanState) => state.games.filter((g) => !g.liveInProgress && g.scoringEvents.length > 0).length
 
+export const readsBehind = (state: PooleanState) => Math.max(0, filmedGames(state) - WRITTEN.filmedGames)
+
 // "Written Nov 15 from 10 filmed games.", plus how far behind it is once newer games are filmed.
 export function writtenNote(state: PooleanState): string {
   const since = filmedGames(state) - WRITTEN.filmedGames

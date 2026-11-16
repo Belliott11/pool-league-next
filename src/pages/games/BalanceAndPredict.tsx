@@ -2,6 +2,7 @@ import { useState } from "react"
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
 import { BalanceTeams } from "./BalanceTeams"
+import { DraftHelper } from "./DraftHelper"
 import { MatchupPredictor } from "./MatchupPredictor"
 import { PartyPlanner } from "./PartyPlanner"
 
@@ -22,6 +23,7 @@ export function BalanceAndPredict({
   return (
     <div className="flex flex-col gap-4">
       <BalanceTeams state={state} update={update} attendees={balanceIds} setAttendees={setBalanceIds} onCreated={onCreated} />
+      <DraftHelper state={state} attendees={balanceIds} />
       <MatchupPredictor state={state} />
       <PartyPlanner state={state} attendees={plannerIds} setAttendees={setPlannerIds} balanceAttendees={balanceIds} />
     </div>

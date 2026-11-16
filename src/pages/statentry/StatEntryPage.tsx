@@ -18,6 +18,7 @@ import type { Game, PooleanState } from "@/lib/types"
 import { EventForm, type Apply, type Draft } from "./EventForm"
 import { QuickAdd } from "./QuickAdd"
 import { EventLog } from "./EventLog"
+import { tagsLeft } from "@/lib/tagQueue"
 import { ExtraEntry } from "./ExtraForms"
 import { MatchupEntry } from "./MatchupEntry"
 
@@ -103,6 +104,7 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
     )
   }
 
+  const left = tagsLeft(state, game.id)
   return (
     <div data-no-swipe className="anim-page flex flex-col gap-4">
       <div className="flex flex-col gap-3">
@@ -110,7 +112,10 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
           <ArrowLeft /> Back
         </Button>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-lg font-semibold">{formatDateDisplay(game.date)}</h2>
+          <h2 className="font-display text-lg font-semibold">
+            {formatDateDisplay(game.date)}
+            {left > 0 && <span className="ml-2 text-sm font-medium text-muted-foreground">{left} {left === 1 ? "tag" : "tags"} missing</span>}
+          </h2>
           <label className="flex min-h-11 items-center gap-2 text-sm">
             <Switch checked={game.stoppedEarly === true} onCheckedChange={(v) => apply((g) => setStoppedEarly(g, v))} aria-label="Game was stopped early" />
             Stopped early

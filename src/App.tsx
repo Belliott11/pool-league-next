@@ -11,6 +11,8 @@ import { APPROVED, HIDDEN, LabelsContext } from "@/lib/labelsContext"
 import { lineKey, setApprovedLines, setHiddenLines, setLineNames, stripRetired } from "@/lib/labels"
 import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
 import { Ticker } from "@/components/Ticker"
+import { headlinesBehind } from "@/lib/published"
+import { readsBehind } from "@/lib/writtenReads"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
 import { ArrowLeft } from "lucide-react"
@@ -366,6 +368,11 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
             Overwrite the cloud with mine
           </Button>
         </div>
+      )}
+      {mode === "admin" && view.sub === "" && Math.max(headlinesBehind(state), readsBehind(state)) > 0 && (
+        <p className="rounded-xl border border-gold bg-card p-3 text-sm">
+          {Math.max(headlinesBehind(state), readsBehind(state))} filmed {Math.max(headlinesBehind(state), readsBehind(state)) === 1 ? "game" : "games"} since the written reads and headlines were last rewritten. Ask Claude to "rerun the reads" and "rerun the headlines". Only you see this note.
+        </p>
       )}
       {mode === "admin" && cloud && cloud.loaded && !cloud.remote && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3 text-sm">
