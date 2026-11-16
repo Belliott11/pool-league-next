@@ -181,7 +181,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
         ].map(([k, v]) => (
           <Card key={k}>
             <CardContent className="py-4">
-              <div className="font-led text-3xl font-bold tabular-nums">{typeof v === "number" ? <CountUp value={v} /> : v}</div>
+              <div className={`${typeof v === "number" ? "font-led" : "font-display"} text-3xl font-bold tabular-nums`}>{typeof v === "number" ? <CountUp value={v} /> : v}</div>
               <div className="text-xs text-muted-foreground">{k}</div>
             </CardContent>
           </Card>

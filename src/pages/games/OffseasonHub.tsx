@@ -64,7 +64,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
           {o.time && <span className="whitespace-nowrap text-muted-foreground">, {formatTime(o.time)}</span>}
         </h3>
         <p className="text-xs text-muted-foreground">Cherry Hill time.</p>
-        <Countdown date={o.date} time={o.time} className="font-led text-xl font-bold tabular-nums text-accent" />
+        <Countdown date={o.date} time={o.time} className="font-display text-xl font-bold tabular-nums text-accent" />
         {weather && (
           <p className="text-sm text-muted-foreground">
             Cherry Hill, {hourLabel(weather.from)} to {hourLabel(weather.to)}: {weather.label}, <span className="tabular-nums">{weather.tempF}°F</span>, <span className="tabular-nums">{weather.rainPct}%</span> chance of rain
