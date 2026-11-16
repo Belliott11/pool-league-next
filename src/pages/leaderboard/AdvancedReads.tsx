@@ -1,6 +1,7 @@
 import { BookOpenText } from "lucide-react"
 import { useMemo } from "react"
 import { Section } from "@/components/Section"
+import { Terms } from "@/components/Terms"
 import { advancedReads, EARLY_GAMES, READ_MIN_GAMES, type Read, type Tone } from "@/lib/advancedReads"
 import { isSeasonOnly } from "@/lib/season"
 import type { PooleanState } from "@/lib/types"
@@ -42,6 +43,7 @@ function Card({ r, state, onOpenPlayer }: { r: Read; state: PooleanState; onOpen
               <p key={i}>{t}</p>
             ))}
           </div>
+          <Terms texts={[mine.headline, ...mine.text]} />
           <details className="group/n">
             <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">The numbers, as of now</summary>
             <div className="mt-2">{numbers}</div>

@@ -1,4 +1,5 @@
 import { Panel } from "@/components/Panel"
+import { Terms } from "@/components/Terms"
 import type { PooleanState } from "@/lib/types"
 import { writtenNote, writtenRead } from "@/lib/writtenReads"
 
@@ -14,6 +15,7 @@ export function PlayerRead({ state, pid }: { state: PooleanState; pid: string })
           <p key={i}>{t}</p>
         ))}
       </div>
+      <Terms texts={[r.headline, ...r.text]} open />
     </Panel>
   )
 }
