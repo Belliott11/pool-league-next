@@ -104,7 +104,7 @@ export function PanelGroup({ title, section, tabs, frame }: { title: string; sec
       <summary className="flex cursor-pointer list-none items-center gap-2 p-4 [&::-webkit-details-marker]:hidden">
         <ChevronRight aria-hidden className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
         <IconChip icon={panelIcon(tabs[0].title, section)} />
-        <h3 className="font-display text-base font-bold">{title}</h3>
+        <h3 className="chyron font-display text-base font-bold">{title}</h3>
       </summary>
       <div className="flex min-w-0 flex-col gap-3 p-4 pt-0">{body}</div>
     </details>

@@ -448,3 +448,18 @@ body {
   .ticker-tag { animation: ticker-in 280ms ease-out; }
   .ticker-line { animation: line-in 320ms ease-out; }
 }
+
+/* Broadcast panels: every stat panel's title is an angled accent tab flush with the card's top-left corner, the same shape as
+   the headline bar's tag. The panel body stays plain so dense tables read cleanly. */
+[data-panel] { padding-top: 0; }
+[data-panel] > [data-slot="card-header"] { padding-left: 0; gap: 0.6rem; }
+[data-panel] > [data-slot="card-header"] > :not([data-slot="card-title"]) { padding-left: var(--card-spacing); }
+[data-panel] [data-slot="card-title"] {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.45rem 1.5rem 0.45rem var(--card-spacing);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.7rem) 100%, 0 100%);
+}
+[data-panel] [data-slot="card-title"] > span[aria-hidden] { background: transparent; color: inherit; width: auto; height: auto; }
