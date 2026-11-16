@@ -381,13 +381,19 @@ html { overscroll-behavior-y: contain; }
    Pool deck: the page sits on a faint tile floor with light coming through the water at the top, and the header ends in a
    lane rope. Scoreboard: big numbers are set in a dot-matrix face with a soft glow. Broadcast: a headline bar and angled
    title blocks on the headline cards. Every color comes from the tokens, so all accents and both themes keep working. */
-body {
+/* The floor is its own fixed layer behind the page. A fixed background on body itself makes the browser repaint the whole
+   page on every scroll step, which is what made scrolling lag; a separate layer is painted once and just stays put. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
     radial-gradient(120% 60% at 50% -10%, color-mix(in srgb, var(--team-a) 16%, transparent), transparent 70%),
     linear-gradient(color-mix(in srgb, var(--border) 35%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--border) 35%, transparent) 1px, transparent 1px);
   background-size: 100% 100%, 32px 32px, 32px 32px;
-  background-attachment: fixed;
 }
 .lane-rope {
   height: 4px;
