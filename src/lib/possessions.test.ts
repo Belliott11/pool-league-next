@@ -57,3 +57,10 @@ test("per-game rates: the same line in a long, sloppy game counts for less than 
   expect(gamePace({ ...(short as object), scoringEvents: [] } as never, 8)).toBe(8)
   setPaceGames([])
 })
+
+test("a double team splits the shot between its defenders, so each carries half", async () => {
+  const { gameDefenseStats } = await import("@/lib/stats")
+  const g = { id: "d", teamA: ["a"], teamB: ["b", "c"], scoringEvents: [shot("a", true, { defenderIds: ["b", "c"] }), shot("a", false, { defenderIds: ["b"] })] } as never
+  expect(gameDefenseStats(g, "b")).toMatchObject({ timesBeaten: 0.5, stops: 1, ptsAllowed: 1 })
+  expect(gameDefenseStats(g, "c")).toMatchObject({ timesBeaten: 0.5, stops: 0, ptsAllowed: 1 })
+})

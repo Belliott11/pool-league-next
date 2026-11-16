@@ -10,6 +10,7 @@
 //     calibration state this slice doesn't load) -- fgm/fga/tpm/tpa/ftm/fta are unaffected.
 // Every formula that IS included is unchanged from app.js, not reimplemented from memory.
 
+import { defenderShare } from "@/lib/beatRate"
 import { PER, gamePace } from "@/lib/per"
 import type { Game, Player, PlayerGameStats, PooleanState } from "./types"
 
@@ -98,14 +99,17 @@ export interface DefenseStats {
 export function gameDefenseStats(game: Game, playerId: string): DefenseStats {
   const against = game.scoringEvents.filter((ev) => (ev.defenderIds || []).includes(playerId))
   const madeAgainst = against.filter((ev) => ev.made !== false)
-  const timesBeaten = madeAgainst.length
-  const stops = against.filter((ev) => ev.made === false).length
-  const beatMisses = against.filter((ev) => ev.made === false && ev.contestLevel === "beat").length
+  // A double team splits each shot between its defenders (half each for two), so nobody carries a teammate's share. The classic
+  // layer does the same (see legacy-core.ts), and the two must agree or the same player gets two different scores.
+  const share = (list: typeof against) => list.reduce((n, ev) => n + defenderShare(ev), 0)
+  const timesBeaten = share(madeAgainst)
+  const stops = share(against.filter((ev) => ev.made === false))
+  const beatMisses = share(against.filter((ev) => ev.made === false && ev.contestLevel === "beat"))
   const blocksNotAlreadyStopped = game.scoringEvents.filter(
     (ev) => ev.blockerId === playerId && ev.made === false && !(ev.defenderIds || []).includes(playerId),
   ).length
   return {
-    ptsAllowed: madeAgainst.reduce((sum, ev) => sum + ev.points, 0),
+    ptsAllowed: madeAgainst.reduce((sum, ev) => sum + ev.points * defenderShare(ev), 0),
     timesBeaten,
     stops,
     beatMisses,
