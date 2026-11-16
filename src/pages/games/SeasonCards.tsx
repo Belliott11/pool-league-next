@@ -1,5 +1,5 @@
 import { Newspaper, Trophy } from "lucide-react"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
@@ -74,6 +74,7 @@ export function SeasonStoriesCard({ state, update }: { state: PooleanState; upda
   const labeled = useLabeledState(state)
   const written = useMemo(() => seasonStories(labeled, (id) => playerName(state, id)), [labeled, state])
   const stories = usePublishedStories(state, update, "season", written)
+  const [all, setAll] = useState(false)
   if (stories.length === 0) return null
   return (
     <Card>
@@ -84,7 +85,12 @@ export function SeasonStoriesCard({ state, update }: { state: PooleanState; upda
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <p className="text-xs text-muted-foreground">Counts every finished game, so records here can differ from the Standings, which count only games with a box score and even teams.</p>
-        <StoryList stories={stories} />
+        <StoryList stories={all ? stories : stories.slice(0, 3)} />
+        {stories.length > 3 && (
+          <button type="button" className="self-start text-sm font-medium text-accent hover:underline" onClick={() => setAll(!all)}>
+            {all ? "Show less" : `Show ${stories.length - 3} more`}
+          </button>
+        )}
       </CardContent>
     </Card>
   )

@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react"
+import { ViewTabs } from "@/components/PanelGroup"
 import { EmptyState } from "@/components/EmptyState"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -11,9 +11,9 @@ import { AttendanceCard, RivalriesCard } from "./RivalryCards"
 import { SeasonPredictionsCard } from "./Predictions"
 import { PredictionScorecard } from "./PredictionScorecard"
 import { RecordsCard, SeasonStoriesCard } from "./SeasonCards"
-import { distinctNumbers, formatDateDisplay } from "@/lib/format"
+import { distinctNumbers } from "@/lib/format"
 import { isOffseason } from "@/lib/offseason"
-import { computeLeaderboard, teamScore } from "@/lib/stats"
+import { computeLeaderboard } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
 
 export function Sidebar({
@@ -32,13 +32,9 @@ export function Sidebar({
   const twoWayText = distinctNumbers(rows.map((r) => r.twoWayPer25))
   // Everyone else is still listed, just not ranked until they have a box-scored game.
   const unranked = board.filter((r) => r.gp === 0)
-  const wide = typeof matchMedia !== "undefined" && matchMedia("(min-width: 1024px)").matches
-  const recent = [...state.games].sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5)
 
   return (
     <div className="flex flex-col gap-4">
-      <InjuryBoard state={state} update={update} onOpenPlayer={onOpenPlayer} />
-      <SeasonStoriesCard state={state} update={update} />
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Standings</CardTitle>
@@ -46,12 +42,13 @@ export function Sidebar({
         <CardContent>
           {rows.length > 0 && (
             <>
-              <p className="mb-2 text-xs text-muted-foreground">
-                Ranked by two-way per 25: offense plus defense per 25 points played. Only games with a box score and even teams count, so W-L here can be lower than in the season stories, which count every finished game. When two players show the same number, the exact value decides.
-              </p>
               <details className="mb-3 text-xs text-muted-foreground">
-                <summary className="cursor-pointer font-medium text-foreground">What do these numbers mean?</summary>
+                <summary className="cursor-pointer font-medium text-foreground">Ranked by two-way per 25. What do these numbers mean?</summary>
                 <dl className="mt-2 flex flex-col gap-1.5">
+                  <div>
+                    <dt className="inline font-semibold text-foreground">Which games count: </dt>
+                    <dd className="inline">only games with a box score and even teams, so W-L here can be lower than in the season stories, which count every finished game. When two players show the same number, the exact value decides.</dd>
+                  </div>
                   <div>
                     <dt className="inline font-semibold text-foreground">Two-way score: </dt>
                     <dd className="inline">a player's offense and defense in one game, added together.</dd>
@@ -137,52 +134,20 @@ export function Sidebar({
           )}
         </CardContent>
       </Card>
+      <SeasonStoriesCard state={state} update={update} />
       <AwardRaceCard state={state} onOpenPlayer={onOpenPlayer} />
       {state.openingNight && !isOffseason(state) && <SeasonPredictionsCard state={state} />}
-      {/* On a phone these sit under one fold so the page is not ten screens long; beside the list on a wide screen they are always open. */}
-      <details open={wide || undefined} className="group/more flex flex-col">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl border bg-card px-4 font-display font-bold lg:hidden [&::-webkit-details-marker]:hidden">
-          <ChevronRight aria-hidden className="size-4 text-muted-foreground transition-transform group-open/more:rotate-90" />
-          More: predictions record, head to head, rivalries, attendance, records
-        </summary>
-        <div className="flex flex-col gap-4 max-lg:mt-4">
-          <PredictionScorecard state={state} onOpenGame={onOpenGame} />
-          <HeadToHeadCard state={state} onOpenGame={onOpenGame} />
-          <RivalriesCard state={state} onOpenPlayer={onOpenPlayer} />
-          <AttendanceCard state={state} onOpenPlayer={onOpenPlayer} />
-          <RecordsCard state={state} onOpenPlayer={onOpenPlayer} />
-        </div>
-      </details>
-      <Card className="max-lg:hidden">
-        <CardHeader>
-          <CardTitle className="font-display">Recent Games</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recent.length === 0 ? (
-            <EmptyState title="No games logged yet" hint="Create a game on this page and your most recent ones show here." />
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {recent.map((g) => {
-                const reviewed = g.scoringEvents.length > 0
-                return (
-                  <li key={g.id}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-muted"
-                      onClick={() => onOpenGame(g)}
-                    >
-                      <span>{formatDateDisplay(g.date)}</span>
-                      <span className={reviewed ? "font-semibold tabular-nums" : "text-muted-foreground"}>
-                        {reviewed ? `${teamScore(g, g.teamA)}–${teamScore(g, g.teamB)}` : "Not reviewed"}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <InjuryBoard state={state} update={update} onOpenPlayer={onOpenPlayer} />
+      {/* The smaller cards share one spot with a tab each, so the column is a few cards long, not ten. */}
+      <ViewTabs
+        tabs={[
+          { value: "rivals", label: "Rivalries", node: <RivalriesCard state={state} onOpenPlayer={onOpenPlayer} /> },
+          { value: "h2h", label: "Head to head", node: <HeadToHeadCard state={state} onOpenGame={onOpenGame} /> },
+          { value: "records", label: "Records", node: <RecordsCard state={state} onOpenPlayer={onOpenPlayer} /> },
+          { value: "picks", label: "Predictions", node: <PredictionScorecard state={state} onOpenGame={onOpenGame} /> },
+          { value: "attend", label: "Attendance", node: <AttendanceCard state={state} onOpenPlayer={onOpenPlayer} /> },
+        ]}
+      />
     </div>
   )
 }
