@@ -219,6 +219,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
       </div>
 
       <div className="flex flex-col gap-3 md:hidden">
+        {Object.keys(ranges).length > 0 && <p className="text-xs text-muted-foreground">The thin bar under a number shows where it sits between the lowest and highest in this list.</p>}
         {(allCards ? sorted : sorted.slice(0, PHONE_CARDS)).map((r, i) => (
           <Card key={rowKey(r, i)} className={thin(r) ? "opacity-70" : undefined} title={thin(r) ? THIN_NOTE : undefined}>
             <CardContent className="flex flex-col gap-2">

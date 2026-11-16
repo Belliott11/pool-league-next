@@ -54,7 +54,7 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
   const pos = (v: number) => ((v - lo) / span) * 100
 
   return (
-    <Panel title="Two-Way Ranking" hint="Offense plus defense per 25 combined points. Click a name for their page.">
+    <Panel title="Two-Way Ranking" hint="Offense plus defense per 25 combined points. Green bars are above zero and red bars are below it. Click a name for their page.">
       <div ref={card} className="rounded-xl border bg-card p-3">
         <div className="flex items-center gap-3 pb-1 text-[10px] text-muted-foreground">
           <span className="w-16 shrink-0 sm:w-24" />
@@ -73,7 +73,7 @@ export function LaneBars({ onOpenPlayer }: { onOpenPlayer: (id: string) => void 
           const width = Math.abs(pos(v) - zero)
           const head = pos(v)
           const anim = played ? { animationDelay: `${i * 40}ms` } : {}
-          const color = i === 0 ? "bg-primary" : v >= 0 ? "bg-pos" : "bg-neg"
+          const color = v >= 0 ? "bg-pos" : "bg-neg"
           return (
             <div key={r.player.id} className={`flex items-center gap-3 border-b border-dashed border-border py-1.5 last:border-b-0 ${i >= PHONE_ROWS && !showAll ? "max-sm:hidden" : ""}`}>
               <button

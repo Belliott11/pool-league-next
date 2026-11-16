@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react"
 import { EmptyState } from "@/components/EmptyState"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -31,6 +32,7 @@ export function Sidebar({
   const twoWayText = distinctNumbers(rows.map((r) => r.twoWayPer25))
   // Everyone else is still listed, just not ranked until they have a box-scored game.
   const unranked = board.filter((r) => r.gp === 0)
+  const wide = typeof matchMedia !== "undefined" && matchMedia("(min-width: 1024px)").matches
   const recent = [...state.games].sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5)
 
   return (
@@ -135,14 +137,23 @@ export function Sidebar({
           )}
         </CardContent>
       </Card>
-      <PredictionScorecard state={state} onOpenGame={onOpenGame} />
-      <HeadToHeadCard state={state} onOpenGame={onOpenGame} />
       <AwardRaceCard state={state} onOpenPlayer={onOpenPlayer} />
       {state.openingNight && !isOffseason(state) && <SeasonPredictionsCard state={state} />}
-      <RivalriesCard state={state} onOpenPlayer={onOpenPlayer} />
-      <AttendanceCard state={state} onOpenPlayer={onOpenPlayer} />
-      <RecordsCard state={state} onOpenPlayer={onOpenPlayer} />
-      <Card>
+      {/* On a phone these sit under one fold so the page is not ten screens long; beside the list on a wide screen they are always open. */}
+      <details open={wide || undefined} className="group/more flex flex-col">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl border bg-card px-4 font-display font-bold lg:hidden [&::-webkit-details-marker]:hidden">
+          <ChevronRight aria-hidden className="size-4 text-muted-foreground transition-transform group-open/more:rotate-90" />
+          More: predictions record, head to head, rivalries, attendance, records
+        </summary>
+        <div className="flex flex-col gap-4 max-lg:mt-4">
+          <PredictionScorecard state={state} onOpenGame={onOpenGame} />
+          <HeadToHeadCard state={state} onOpenGame={onOpenGame} />
+          <RivalriesCard state={state} onOpenPlayer={onOpenPlayer} />
+          <AttendanceCard state={state} onOpenPlayer={onOpenPlayer} />
+          <RecordsCard state={state} onOpenPlayer={onOpenPlayer} />
+        </div>
+      </details>
+      <Card className="max-lg:hidden">
         <CardHeader>
           <CardTitle className="font-display">Recent Games</CardTitle>
         </CardHeader>

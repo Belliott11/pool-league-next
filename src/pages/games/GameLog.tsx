@@ -250,6 +250,8 @@ function AdvancedFilters({
   )
 }
 
+const FIRST_GAMES = 5
+
 export function GameLog({
   state,
   update,
@@ -269,6 +271,8 @@ export function GameLog({
   const readOnly = useReadOnly()
   const [filters, setFilters] = useState<GameFilters>(EMPTY_FILTERS)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  // The newest few games show first so the rest of the page is within reach; a search always shows every match.
+  const [showAll, setShowAll] = useState(false)
 
   const games = useMemo(
     () =>
@@ -337,7 +341,7 @@ export function GameLog({
       ) : games.length === 0 ? (
         <EmptyState title="No games match those filters" hint="Loosen or clear the filters to see more games." />
       ) : (
-        games.map((g) => (
+        (showAll || JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS) ? games : games.slice(0, FIRST_GAMES)).map((g) => (
           <GameCard
             key={g.id}
             state={state}
@@ -350,6 +354,11 @@ export function GameLog({
             }}
           />
         ))
+      )}
+      {games.length > FIRST_GAMES && JSON.stringify(filters) === JSON.stringify(EMPTY_FILTERS) && (
+        <Button variant="outline" onClick={() => setShowAll(!showAll)}>
+          {showAll ? "Show fewer games" : `Show all ${games.length} games`}
+        </Button>
       )}
     </div>
   )
