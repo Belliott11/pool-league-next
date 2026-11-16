@@ -1,3 +1,4 @@
+import { PlayerRead } from "@/pages/PlayerRead"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
 import { seasonView } from "@/lib/season"
 import { Fragment, useEffect, useMemo, useState } from "react"
@@ -283,6 +284,7 @@ export function PlayerDetailPage({
 
       <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />
       <Panels section="overview" pid={pid} version={version} />
+      <PlayerRead state={state} pid={pid} />
       <ScoutingCard state={season} pid={pid} update={update} />
 
       {SECTIONS.map((s) => (

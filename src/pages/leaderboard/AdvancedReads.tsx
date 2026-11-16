@@ -4,7 +4,7 @@ import { Section } from "@/components/Section"
 import { advancedReads, EARLY_GAMES, READ_MIN_GAMES, type Read, type Tone } from "@/lib/advancedReads"
 import { isSeasonOnly } from "@/lib/season"
 import type { PooleanState } from "@/lib/types"
-import written from "@/data/advanced-reads.json"
+import { WRITTEN, writtenNote } from "@/lib/writtenReads"
 import { Grid, Hint, Who } from "./parts"
 
 const TONE: Record<string, string> = { good: "text-pos font-semibold", bad: "text-neg font-semibold" }
@@ -12,10 +12,7 @@ const cls = (t: Tone) => (t ? TONE[t] : "")
 const pc = (v: number | null) => (v === null ? "-" : `${Math.round(v * 100)}%`)
 const sg = (v: number | null, d = 2) => (v === null ? "-" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`)
 
-// Reads written by hand from the numbers, saved with the site and rewritten on request. The computed lines stay underneath.
-const WRITTEN = written as { writtenAt: string; filmedGames: number; players: Record<string, { headline: string; text: string[] }> }
-const filmedGames = (state: PooleanState) => state.games.filter((g) => !g.liveInProgress && g.scoringEvents.length > 0).length
-
+// The written read when there is one (see writtenReads.ts), with the computed lines underneath.
 function Card({ r, state, onOpenPlayer }: { r: Read; state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const mine = WRITTEN.players[r.id]
   const numbers = (
@@ -73,15 +70,7 @@ export function AdvancedReads({ state, all = state, onOpenPlayer }: { state: Poo
         <Hint>Shows up once players have {READ_MIN_GAMES} filmed even-team games.</Hint>
       ) : (
         <>
-          {(() => {
-            const since = filmedGames(all) - WRITTEN.filmedGames
-            const when = new Date(WRITTEN.writtenAt + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })
-            return (
-              <Hint>
-                Written {when} from {WRITTEN.filmedGames} filmed games.{since > 0 ? ` ${since} more ${since === 1 ? "game has" : "games have"} been filmed since, so the written reads are behind the numbers until they are rewritten.` : ""}
-              </Hint>
-            )
-          })()}
+          <Hint>{writtenNote(all)}</Hint>
           {fallback && <Hint>Nobody has {READ_MIN_GAMES} filmed games this season yet, so these reads still include past seasons.</Hint>}
           <Hint>
             Every player with {READ_MIN_GAMES} or more filmed even-team games, written from the current data. Rates are per 25 combined points and every number is set against the league middle. Green and red mark clear gaps. Under {EARLY_GAMES} games is an early read.
