@@ -10,6 +10,7 @@ import { setPronouns } from "@/lib/pronouns"
 import { APPROVED, HIDDEN, LabelsContext } from "@/lib/labelsContext"
 import { lineKey, setApprovedLines, setHiddenLines, setLineNames, stripRetired } from "@/lib/labels"
 import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
+import { Ticker } from "@/components/Ticker"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
 import { ArrowLeft } from "lucide-react"
@@ -343,6 +344,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           <ColorMenu />
         </div>
       </div>
+      <div aria-hidden className="lane-rope -mt-2" />
       <WhoPrompt state={state} />
       {mode === "admin" && cloud && cloud.sync === "conflict" && (
         <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-neg bg-card p-3 text-sm">
@@ -379,6 +381,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           onOpen={() => setSub("live")}
         />
       )}
+      {view.sub === "" && <Ticker state={state} />}
       {cloud && <PullToRefresh onRefresh={cloud.refresh} />}
       <main id="main" tabIndex={-1} className="outline-none">
       <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>

@@ -15,7 +15,7 @@ function Record({ title, note, s, onOpenGame }: { title: string; note: string; s
     <section className="flex flex-col gap-2" aria-label={title}>
       <h4 className="text-sm font-semibold">{title}</h4>
       <p>
-        <span className="font-display text-3xl font-bold tabular-nums">
+        <span className="font-led text-3xl font-bold tabular-nums">
           <CountUp value={s.correct} /> of {s.called}
         </span>{" "}
         <span className="text-sm text-muted-foreground">favorites won ({s.pct}%). {note}</span>

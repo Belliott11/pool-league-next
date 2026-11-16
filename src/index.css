@@ -376,3 +376,75 @@ html { overscroll-behavior-y: contain; }
     [data-slot="card"]:hover { --tw-ring-color: color-mix(in srgb, var(--accent) 35%, transparent); }
   }
 }
+
+/* ---- The look: a pool deck at night, an arena scoreboard, a sports broadcast. ----
+   Pool deck: the page sits on a faint tile floor with light coming through the water at the top, and the header ends in a
+   lane rope. Scoreboard: big numbers are set in a dot-matrix face with a soft glow. Broadcast: a headline bar and angled
+   title blocks on the headline cards. Every color comes from the tokens, so all accents and both themes keep working. */
+body {
+  background-image:
+    radial-gradient(120% 60% at 50% -10%, color-mix(in srgb, var(--team-a) 16%, transparent), transparent 70%),
+    linear-gradient(color-mix(in srgb, var(--border) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--border) 35%, transparent) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+  background-attachment: fixed;
+}
+.lane-rope {
+  height: 4px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(90deg, var(--team-a) 0 14px, var(--card) 14px 20px, var(--team-b) 20px 34px, var(--card) 34px 40px);
+  opacity: 0.8;
+}
+.font-led {
+  font-family: "Doto", "Anybody", ui-monospace, monospace;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+.dark .font-led { text-shadow: 0 0 12px color-mix(in srgb, currentColor 45%, transparent); }
+
+.ticker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding-right: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.ticker-tag {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 0 1.1rem 0 0.85rem;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-family: var(--font-display);
+  font-stretch: 112%;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.6rem) 100%, 0 100%);
+}
+.chyron { position: relative; padding-left: 0.85rem; }
+.chyron::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.1em;
+  bottom: 0.1em;
+  width: 0.35rem;
+  background: var(--accent);
+  transform: skewX(-14deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ticker-in { from { opacity: 0; transform: translateY(70%); } to { opacity: 1; transform: none; } }
+  .ticker-tag { animation: ticker-in 280ms ease-out; }
+  .ticker-line { animation: line-in 320ms ease-out; }
+}

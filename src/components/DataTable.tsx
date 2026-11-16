@@ -227,7 +227,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
               {hero && hero.key !== first.key && (
                 <div className="flex items-baseline justify-between rounded-md bg-accent/10 px-3 py-2">
                   <span className="text-xs text-muted-foreground">{hero.label}</span>
-                  <span className="font-display text-2xl font-bold tabular-nums text-accent"><Cell col={hero} r={r} hideLow={hideLow} /></span>
+                  <span className="font-led text-2xl font-bold tabular-nums text-accent"><Cell col={hero} r={r} hideLow={hideLow} /></span>
                 </div>
               )}
               {(() => {

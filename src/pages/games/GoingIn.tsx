@@ -22,7 +22,7 @@ export function GoingIn({ state, update }: { state: PooleanState; update?: Updat
   const shown = all ? stories : stories.slice(0, SHOWN)
   return (
     <section className="flex flex-col gap-2 rounded-xl border bg-card p-4" aria-label="Going into the next night">
-      <h3 className="flex items-center gap-2 font-display text-lg font-bold">
+      <h3 className="chyron flex items-center gap-2 font-display text-lg font-bold">
         <Newspaper aria-hidden className="size-4 text-accent" /> Going into the next night
       </h3>
       <StoryList stories={shown} />

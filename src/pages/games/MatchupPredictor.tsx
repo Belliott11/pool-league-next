@@ -108,12 +108,12 @@ export function MatchupPredictor({ state }: { state: PooleanState }) {
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between gap-4">
                   <div>
-                    <div className="font-display text-4xl font-bold tabular-nums">{pA}%</div>
+                    <div className="font-led text-4xl font-bold tabular-nums">{pA}%</div>
                     <div className="text-sm">Team A</div>
                     <div className="text-sm text-muted-foreground">{names(teamA)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-display text-4xl font-bold tabular-nums">{100 - pA}%</div>
+                    <div className="font-led text-4xl font-bold tabular-nums">{100 - pA}%</div>
                     <div className="text-sm">Team B</div>
                     <div className="text-sm text-muted-foreground">{names(teamB)}</div>
                   </div>

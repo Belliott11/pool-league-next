@@ -181,7 +181,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
         ].map(([k, v]) => (
           <Card key={k}>
             <CardContent className="py-4">
-              <div className="font-display text-3xl font-bold tabular-nums">{typeof v === "number" ? <CountUp value={v} /> : v}</div>
+              <div className="font-led text-3xl font-bold tabular-nums">{typeof v === "number" ? <CountUp value={v} /> : v}</div>
               <div className="text-xs text-muted-foreground">{k}</div>
             </CardContent>
           </Card>
@@ -194,7 +194,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
           <button key={g.id} type="button" onClick={() => onOpenGame(g.id)} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border bg-card p-3 text-left active:scale-[0.99]">
             <span className={cn("min-w-0 truncate text-sm", g.winner === "A" ? "font-semibold" : "text-muted-foreground")}>{names(g.teamA)}</span>
             <span className="flex flex-col items-center">
-              <span className="font-display text-2xl font-bold tabular-nums">
+              <span className="font-led text-2xl font-bold tabular-nums">
                 <span className={TEAM.A.text}>{g.scoreA}</span>
                 <span className="px-1 text-muted-foreground">-</span>
                 <span className={TEAM.B.text}>{g.scoreB}</span>

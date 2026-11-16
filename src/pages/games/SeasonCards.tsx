@@ -78,7 +78,7 @@ export function SeasonStoriesCard({ state, update }: { state: PooleanState; upda
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-display">
+        <CardTitle className="chyron flex items-center gap-2 font-display">
           <Newspaper aria-hidden className="size-4 text-accent" /> The season so far
         </CardTitle>
       </CardHeader>
