@@ -24,9 +24,11 @@ test("a shot is clutch only when late and close", () => {
   expect(rows.find((r) => r.id === "b")!.clutch).toMatchObject({ made: 3, att: 3, pts: 6 })
 })
 
-test("snake draft: weaker captain first, then two picks each", () => {
-  const r: Record<string, number> = { A: 5, B: 1, p1: 9, p2: 8, p3: 7, p4: 6 }
+test("draft: close captains snake, a clear gap gives the weaker captain every other pick", () => {
+  const r: Record<string, number> = { A: 5, B: 4, p1: 9, p2: 8, p3: 7, p4: 6 }
   const d = snakeDraft("A", "B", Object.keys(r), (id) => r[id])
   expect(d.order.map((o) => o.to)).toEqual(["B", "A", "A", "B"])
   expect(d.b).toEqual(["B", "p1", "p4"])
+  r.B = 1
+  expect(snakeDraft("A", "B", Object.keys(r), (id) => r[id]).order.map((o) => o.to)).toEqual(["B", "A", "B", "A"])
 })

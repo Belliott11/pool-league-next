@@ -24,7 +24,7 @@ export function DraftHelper({ state, attendees }: { state: PooleanState; attende
         <p className="text-sm text-muted-foreground">Pick at least 4 players in Balance Teams above, then choose two captains here.</p>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">Picks go in snake order (first, second, second, first), and the captain with the lower rating picks first. Each pick is the best player left by two-way per 25, or by reputation for players with no filmed games.</p>
+          <p className="text-sm text-muted-foreground">The captain with the lower rating picks first. Close captains pick in snake order (first, second, second, first); when one captain is clearly better, the other gets every other pick, which is what keeps the teams even. Each pick is the best player left by two-way per 25, or by reputation for players with no filmed games.</p>
           <div className="flex flex-wrap gap-2">
             {([["Captain A", capA, setCapA], ["Captain B", capB, setCapB]] as const).map(([label, v, set]) => (
               <select key={label} aria-label={label} className={pick} value={v} onChange={(e) => set(e.target.value)}>
