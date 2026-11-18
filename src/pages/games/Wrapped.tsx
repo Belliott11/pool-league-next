@@ -1,6 +1,8 @@
 import { Share2, X } from "lucide-react"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { ClipBackdrop } from "@/components/ClipBackdrop"
+import { bestClips } from "@/lib/clips"
+import { seasonState } from "@/lib/offseason"
 import { FlipDigits } from "@/components/FlipDigits"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
@@ -132,6 +134,7 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
   const id = requested && ids.includes(requested.id) ? requested.id : playerId ? undefined : (myPlayerId(who, state.players) ?? ids[0])
   const slides = useMemo(() => (id ? wrappedFor(state, id) : []), [state, id])
   const [i, setI] = useState(0)
+  const pool = useMemo(() => (id ? bestClips(seasonState(state), { pid: id, limit: 8, perGame: 3 }) : []), [state, id])
   const [shared, setShared] = useState("")
   const at = Math.min(i, Math.max(0, slides.length - 1))
   const name = id ? playerName(state, id) : ""
@@ -169,6 +172,8 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
     )
   }
   const s = slides[at]
+  // Every slide gets a different play of theirs behind it; the best game slide keeps the play from that game.
+  const bg = s.kind === "best" && s.clip ? s.clip : pool[at % (pool.length || 1)]
   const share = async () => {
     const intro = slides.find((x) => x.kind === "intro")
     const totals = slides.find((x) => x.kind === "totals")
@@ -206,7 +211,7 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
         </button>
       </div>
       <div className="relative min-h-0 flex-1">
-        {s.kind === "best" && s.clip && <ClipBackdrop key={`${id}-clip`} state={state} clip={s.clip} scrim="bg-background/70" cellularOk className="absolute inset-0" />}
+        {bg && <ClipBackdrop key={`${id}-${at}`} state={state} clip={bg} scrim="bg-background/70" cellularOk className="absolute inset-0" />}
         <section key={`${id}-${at}`} aria-live="polite" className="anim-rise mx-auto flex h-full max-w-lg flex-col justify-center gap-5 px-6">
           <SlideBody s={s} state={state} name={name} />
           {s.kind === "summary" && (
