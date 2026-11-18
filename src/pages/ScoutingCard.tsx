@@ -5,7 +5,6 @@ import { useReadOnly } from "@/lib/mode"
 import { metricsFor, scoutCard, type BoardRow } from "@/lib/scouting"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
-import { writtenRead } from "@/lib/writtenReads"
 
 type Key = "strengths" | "workOn" | "guard" | "sample"
 
@@ -37,14 +36,10 @@ export function ScoutingCard({ state, pid, update }: { state: PooleanState; pid:
   const notes = player.scout ?? {}
   const save = (k: Key) => (v: string) =>
     update?.((s) => ({ ...s, players: s.players.map((p) => (p.id === pid ? { ...p, scout: { ...p.scout, [k]: v.trim() || undefined } } : p)) }))
-  // The hand-written line for a section (see writtenReads.ts), shown above the player's own notes.
-  const mine = writtenRead(pid)
-  const written: Partial<Record<Key, string>> = { strengths: mine?.strengths, workOn: mine?.workOn?.join(" "), guard: mine?.guard }
   const block = (k: Key, title: string, body: React.ReactNode) => (
     <section key={k} className="flex flex-col gap-2">
       <h3 className="font-display text-sm font-semibold">{title}</h3>
       {body}
-      {written[k] && <p className="rounded-md border-l-2 border-primary bg-muted/40 px-3 py-2 text-sm">{written[k]}</p>}
       <Note key={`${pid}-${k}`} value={notes[k] ?? ""} editable={!readOnly && !!update} onSave={save(k)} />
     </section>
   )
