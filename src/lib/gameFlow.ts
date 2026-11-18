@@ -1,3 +1,4 @@
+import { sizeAllowed } from "@/lib/filters"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 // When in a game and a night people score and shoot, built only from shots that carry a video time. A game is timed when
@@ -92,7 +93,7 @@ interface Timed {
 
 // The game's shots in time order, or null when it cannot be placed in time.
 export function timedGame(game: Game): Timed | null {
-  if (game.liveInProgress || game.scoringEvents.length < MIN_GAME_SHOTS) return null
+  if (game.liveInProgress || game.scoringEvents.length < MIN_GAME_SHOTS || !sizeAllowed(game)) return null
   if (game.scoringEvents.some((e) => typeof e.videoTime !== "number")) return null
   const shots = game.scoringEvents.map((e) => ({ ...e, t: e.videoTime as number })).sort((a, b) => a.t - b.t)
   const start = shots[0].t

@@ -1,4 +1,4 @@
-import { isBalancedGame } from "@/lib/stats"
+import { sizeAllowed } from "@/lib/filters"
 import type { Game, PooleanState } from "@/lib/types"
 
 // Beat Rate: how often a defender was the one beaten, out of every shot they were tagged on. A "beat" shot is a scoring event
@@ -19,7 +19,7 @@ export interface BeatRow {
 }
 
 // The same games as the other per-game defensive rates: balanced teams, not stopped early, a real shot log.
-export const countsForBeatRate = (g: Game) => !g.liveInProgress && !g.stoppedEarly && g.scoringEvents.length > 0 && isBalancedGame(g)
+export const countsForBeatRate = (g: Game) => !g.liveInProgress && !g.stoppedEarly && g.scoringEvents.length > 0 && sizeAllowed(g)
 
 // Whether a shot came straight off a turnover or steal: the latest logged event before it (a shot, turnover or steal, in video
 // time) was one of those, within TRANSITION_SECONDS. A turnover that is the shot itself (a stolen or blocked shot) is not before it.

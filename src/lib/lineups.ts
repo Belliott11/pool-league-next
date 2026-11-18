@@ -1,3 +1,4 @@
+import { filters } from "@/lib/filters"
 import { results, type Result } from "@/lib/winImpact"
 import type { PooleanState } from "@/lib/types"
 
@@ -32,4 +33,5 @@ export function lineups(rows: Result[], size: 2 | 3, min = size === 2 ? PAIR_MIN
     .sort((a, b) => b.rate - a.rate || b.gp - a.gp)
 }
 
-export const leagueLineups = (state: PooleanState, size: 2 | 3) => lineups(results(state), size)
+// Uneven games are left out unless the Include imbalanced games filter is on (a 3 against 2 result says little about who played well).
+export const leagueLineups = (state: PooleanState, size: 2 | 3) => lineups(results(state).filter((r) => filters().imbalanced || r.a.length === r.b.length), size)

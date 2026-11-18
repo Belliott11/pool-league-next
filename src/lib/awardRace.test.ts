@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, afterAll } from "vitest"
 import { awardRace } from "@/lib/awardRace"
 import type { Game, PooleanState } from "@/lib/types"
+import { DEFAULT_FILTERS, setFilters } from "@/lib/filters"
+
+// These fixtures use uneven teams on purpose, so the Include imbalanced games filter is on for them.
+setFilters({ imbalanced: true }) // set now, not in beforeAll, because some of these answers are worked out while the file loads
+afterAll(() => setFilters(DEFAULT_FILTERS))
 
 const base = { stats: [], scoringEvents: [], turnoverEvents: [], stealEvents: [], foulEvents: [] }
 const game = (id: string, date: string, a: string[], b: string[], scores: [string, number][]): Game => ({ ...base, id, date, teamA: a, teamB: b, liveScores: scores.map(([pid, points]) => ({ pid, points })) })

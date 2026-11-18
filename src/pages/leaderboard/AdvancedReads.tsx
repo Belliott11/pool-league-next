@@ -43,7 +43,17 @@ function Card({ r, state, onOpenPlayer }: { r: Read; state: PooleanState; onOpen
               <p key={i}>{t}</p>
             ))}
           </div>
-          <Terms texts={[mine.headline, ...mine.text]} />
+          {mine.workOn && mine.workOn.length > 0 && (
+            <div className="flex max-w-prose flex-col gap-1.5 text-sm">
+              <h4 className="font-display font-semibold">Work on</h4>
+              <ul className="flex list-disc flex-col gap-1.5 pl-5">
+                {mine.workOn.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <Terms texts={[mine.headline, ...mine.text, ...(mine.workOn ?? [])]} />
           <details className="group/n">
             <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">The numbers, as of now</summary>
             <div className="mt-2">{numbers}</div>

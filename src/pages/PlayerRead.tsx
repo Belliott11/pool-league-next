@@ -15,7 +15,17 @@ export function PlayerRead({ state, pid }: { state: PooleanState; pid: string })
           <p key={i}>{t}</p>
         ))}
       </div>
-      <Terms texts={[r.headline, ...r.text]} open />
+      {r.workOn && r.workOn.length > 0 && (
+        <div className="flex max-w-prose flex-col gap-1.5 text-sm">
+          <h4 className="font-display font-semibold">Work on</h4>
+          <ul className="flex list-disc flex-col gap-1.5 pl-5">
+            {r.workOn.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <Terms texts={[r.headline, ...r.text, ...(r.workOn ?? [])]} open />
     </Panel>
   )
 }

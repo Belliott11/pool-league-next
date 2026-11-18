@@ -32,6 +32,7 @@ const Lazy = ({ children }: { children: ReactNode }) => <Suspense fallback={<Pag
 
 export function GamesPage({
   state,
+  pastSeasons = false,
   update,
   onOpenPlayer,
   sub,
@@ -40,6 +41,7 @@ export function GamesPage({
   openRequest,
 }: {
   state: PooleanState
+  pastSeasons?: boolean
   update: Update
   onOpenPlayer: (id: string) => void
   // Which screen is open inside Games ("" is the list), kept in the address bar by App.
@@ -146,7 +148,7 @@ export function GamesPage({
           </>
         )}
       </div>
-      <Sidebar state={state} update={update} onOpenPlayer={onOpenPlayer} onOpenGame={open} />
+      <Sidebar state={state} pastSeasons={pastSeasons} update={update} onOpenPlayer={onOpenPlayer} onOpenGame={open} />
     </div>
   )
 }

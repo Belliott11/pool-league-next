@@ -1,5 +1,5 @@
 {
-  "writtenAt": "2026-11-16",
+  "writtenAt": "2026-11-18",
   "filmedGames": 10,
   "going": [
     "League memo: Ben leads in two-way score at 6.1 per game. Evan is second at 5.2 and has asked for a recount.",
@@ -7,16 +7,16 @@
     "Ben's best game is 10, two short of the record of 12 that Zach and Adam share. Both check on it the way other people check the weather.",
     "Status update: Viraj's first filmed win remains pending. The league thanks him for his patience.",
     "Evan has won 3 straight. Captains now flip a coin for him, and the loser keeps the coin.",
-    "Reilly's passes are worth 1.08 points a shot, the best in the league, and he gives the ball away 3.4 times a game, the most. Generous in every direction."
+    "Reilly leads the league with 2.3 assists a game and gives the ball away 3.4 times a game, also the most. Generous in every direction."
   ],
   "season": [
     "Official standings: Adam, 6-3, first. Adam has requested a copy for the fridge.",
     "Zach leads with 52 points, on enough shots to lower the water level.",
     "Records office: the biggest blowout was 19-6. Ben and Sean declined to comment, then commented for twenty minutes.",
     "Adam won 4 straight, the longest streak of the season. It has its own spot on the pool deck now.",
-    "Ben leads the MVP race with 43.6. Adam is second at 20.5, and the gap is bigger than Adam's whole total.",
-    "Most improved: Zach, up 3.8 a game from his early nights to his late ones. The league has asked him to confirm which one was the real Zach.",
-    "Last place: Alex, 2-4. The league notes there is plenty of room to move up and nothing in the way.",
+    "Ben leads the MVP race with 23.4 over 5 games. Evan is second at 16.5 over 3, which is a lot of Evan per game.",
+    "Most improved: Ian, up 3.3 a game from his early games to his late ones. The league would like to hear what happened in between.",
+    "Records office: Adam and Zach are 2-11 as teammates. Captains have been asked to read this twice.",
     "Alex gives the ball away 4.8 times a game, enough that the other team counts him in their passing stats."
   ],
   "nights": {
@@ -84,5 +84,6 @@
         "Ben turned it over 13 times and still won MVP. Imagine the night if he had kept the ball."
       ]
     }
-  }
+  },
+  "formula": 3
 }

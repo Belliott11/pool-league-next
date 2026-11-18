@@ -1,3 +1,4 @@
+import { sizeAllowed } from "@/lib/filters"
 import { targetOf } from "@/lib/insight"
 import type { PooleanState } from "@/lib/types"
 
@@ -17,7 +18,7 @@ export function clutchSplits(state: PooleanState): ClutchRow[] {
   const z = () => ({ made: 0, att: 0, pts: 0 })
   for (const g of state.games) {
     const target = targetOf(g)
-    if (g.liveInProgress || !target || g.scoringEvents.length === 0) continue
+    if (g.liveInProgress || !target || g.scoringEvents.length === 0 || !sizeAllowed(g)) continue
     let a = 0
     let b = 0
     for (const e of g.scoringEvents) {

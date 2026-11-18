@@ -1,3 +1,4 @@
+import { sizeAllowed } from "@/lib/filters"
 import { PER, gamePace } from "@/lib/per"
 import { raceWin } from "@/lib/race"
 import { allGamesOf } from "@/lib/season"
@@ -18,7 +19,7 @@ const liveTurnovers = (g: Game) => {
 }
 
 function usable(g: Game): boolean {
-  if (g.liveInProgress || g.stoppedEarly || g.scoringEvents.length === 0 || g.teamA.length === 0 || g.teamB.length === 0) return false
+  if (g.liveInProgress || g.stoppedEarly || g.scoringEvents.length === 0 || g.teamA.length === 0 || g.teamB.length === 0 || !sizeAllowed(g)) return false
   const s = score(g)
   return s[0] !== s[1]
 }

@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
 import custom from "@/data/custom-headlines.json"
+import { FORMULA_VERSION } from "@/lib/formulaVersion"
 import type { PooleanState } from "@/lib/types"
 
 // Headlines can use private player labels, but visitors never get the labels. So when the editor looks at a story
@@ -11,15 +12,17 @@ export type StoryKey = "going" | "season" | "preview"
 
 // Headlines written by hand and saved with the site, rewritten on request. They show for everyone in place of the template lines.
 // A night's lines never go stale; the going-in and season lists step aside once newer games are filmed, until they are rewritten.
-const CUSTOM = custom as { writtenAt: string; filmedGames: number; going?: string[]; season?: string[]; preview?: string[]; nights?: Record<string, { quick: string[]; full: string[] }> }
+const CUSTOM = custom as { writtenAt: string; filmedGames: number; formula?: number; going?: string[]; season?: string[]; preview?: string[]; nights?: Record<string, { quick: string[]; full: string[] }> }
 const filmed = (state: PooleanState) => state.games.filter((g) => !g.liveInProgress && g.scoringEvents.length > 0).length
+// True when a stat formula or filter rule changed after these were written, so the numbers in them may be wrong.
+export const headlinesFormulaStale = () => (CUSTOM.formula ?? 0) < FORMULA_VERSION
 export function customStories(state: PooleanState, key: StoryKey): string[] | null {
   const lines = CUSTOM[key]
-  return lines && lines.length && filmed(state) <= CUSTOM.filmedGames ? lines : null
+  return lines && lines.length && filmed(state) <= CUSTOM.filmedGames && !headlinesFormulaStale() ? lines : null
 }
 // How many games have been filmed since the hand-written headlines were last rewritten.
 export const headlinesBehind = (state: PooleanState) => Math.max(0, filmed(state) - CUSTOM.filmedGames)
-export const customNight = (date: string) => CUSTOM.nights?.[date] ?? null
+export const customNight = (date: string) => (headlinesFormulaStale() ? null : (CUSTOM.nights?.[date] ?? null))
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 

@@ -14,21 +14,25 @@ import { PredictionScorecard } from "./PredictionScorecard"
 import { RecordsCard, SeasonStoriesCard } from "./SeasonCards"
 import { distinctNumbers } from "@/lib/format"
 import { isOffseason } from "@/lib/offseason"
+import { seasonView } from "@/lib/season"
 import { computeLeaderboard } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
 
 export function Sidebar({
   state,
+  pastSeasons = false,
   onOpenPlayer,
   onOpenGame,
   update,
 }: {
   update: Update
   state: PooleanState
+  pastSeasons?: boolean
   onOpenPlayer: (id: string) => void
   onOpenGame: (g: Game) => void
 }) {
-  const board = computeLeaderboard(state)
+  // The standings follow the Include past seasons filter (this season, plus a few recent games while it is young).
+  const board = computeLeaderboard(seasonView(state, pastSeasons))
   const rows = board.filter((r) => r.gp > 0).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
   const twoWayText = distinctNumbers(rows.map((r) => r.twoWayPer25))
   // Everyone else is still listed, just not ranked until they have a box-scored game.

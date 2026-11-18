@@ -1,3 +1,4 @@
+import { sizeAllowed } from "@/lib/filters"
 import { playerLine } from "@/lib/nightRecap"
 import { defensiveRating, gameDefenseStats, getGameStats, isCurrentSeasonGame } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
@@ -44,7 +45,7 @@ function rng(seed: number) {
 }
 
 export function projectSeason(state: PooleanState, more = 20, sims = 2000): Season {
-  const games = state.games.filter((g) => !g.liveInProgress && g.date && isCurrentSeasonGame(state, g) && g.scoringEvents.length > 0)
+  const games = state.games.filter((g) => !g.liveInProgress && g.date && isCurrentSeasonGame(state, g) && g.scoringEvents.length > 0 && sizeAllowed(g))
   const lines = new Map<string, { twoWay: number; defense: number; pts: number }[]>()
   for (const g of games) {
     for (const id of [...g.teamA, ...g.teamB]) {

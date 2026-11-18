@@ -110,6 +110,8 @@ function SlideBody({ s, state, name }: { s: Slide; state: PooleanState; name: st
         </ul>,
         <>Nobody did better in one game this season.</>,
       )
+    case "words":
+      return frame("The season in a sentence", <span className="font-display text-5xl font-extrabold">{name}</span>, s.text)
     case "summary":
       return frame(
         "That was your season",

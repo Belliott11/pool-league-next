@@ -1,3 +1,4 @@
+import { sizeAllowed } from "@/lib/filters"
 import { distinctNumbers } from "@/lib/format"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
 import { computeLeaderboard, defensiveRating, gameDefenseStats, getGameStats, isCurrentSeasonGame } from "@/lib/stats"
@@ -19,7 +20,7 @@ export interface RaceRow {
 const MIN_GAMES = 3
 
 export function awardRace(state: PooleanState): RaceRow[] {
-  const games = state.games.filter((g) => !g.liveInProgress && g.date && isCurrentSeasonGame(state, g)).sort((a, b) => a.date.localeCompare(b.date))
+  const games = state.games.filter((g) => !g.liveInProgress && g.date && isCurrentSeasonGame(state, g) && sizeAllowed(g)).sort((a, b) => a.date.localeCompare(b.date))
   if (games.length === 0) return []
   const season = { ...state, games }
   const rows: RaceRow[] = []

@@ -11,6 +11,7 @@
 // Every formula that IS included is unchanged from app.js, not reimplemented from memory.
 
 import { defenderShare } from "@/lib/beatRate"
+import { OUTLIER_MIN_GAMES, filters, insideFences, sizeAllowed } from "@/lib/filters"
 import { PER, gamePace } from "@/lib/per"
 import type { Game, Player, PlayerGameStats, PooleanState } from "./types"
 
@@ -18,14 +19,22 @@ export function isBalancedGame(game: Game): boolean {
   return game.teamA.length === game.teamB.length
 }
 
+// A game with a box score whose team sizes the Include imbalanced games filter allows (see filters.ts).
 export function isQualifyingGame(game: Game): boolean {
-  return game.scoringEvents.length > 0 && isBalancedGame(game)
+  return game.scoringEvents.length > 0 && sizeAllowed(game)
 }
 
+// A player's games for their rates. When Include outlier games is off and they have enough games, the ones whose two-way score sits
+// outside the usual range for that player are left out. Same rule as the classic layer (legacy-core.ts).
 export function qualifyingGamesForPlayer(state: PooleanState, playerId: string): Game[] {
-  return state.games.filter(
-    (g) => isQualifyingGame(g) && (g.teamA.includes(playerId) || g.teamB.includes(playerId)),
-  )
+  const base = state.games.filter((g) => isQualifyingGame(g) && (g.teamA.includes(playerId) || g.teamB.includes(playerId)))
+  if (filters().outliers || base.length < OUTLIER_MIN_GAMES) return base
+  const per = base.map((g) => {
+    const s = getGameStats(g, playerId)
+    return (twoWayScore(s, shootingStats(g, playerId), gameDefenseStats(g, playerId)) / paceOf(g)) * PER
+  })
+  const inside = insideFences(per)
+  return base.filter((_, i) => inside[i])
 }
 
 export function teamScore(game: Game, playerIds: string[]): number {

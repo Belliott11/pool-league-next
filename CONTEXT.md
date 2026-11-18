@@ -76,6 +76,10 @@ A player's offense and defense in one game, added together. The MVP award adds i
 The two-way score scaled to an average game's worth of trips, so short and long games compare fairly. Every other "per game" or "/G" number is scaled the same way (`src/lib/per.ts`). Not a plain per-game average. Standings rank by it, and so does "Best player".
 _Avoid_: Two-way rating
 
+**Filters**:
+The Filters menu in the header: include imbalanced games, include outlier games, include past seasons. Every panel and stat follows them (`src/lib/filters.ts`), except analyses about team size itself (By format, the bigger-team rule), which always use every game.
+_Avoid_: Toggles, settings
+
 **Trip**:
 One turn with the ball. It ends in a make, a shot the other team gets, or a live-ball turnover; a miss the shooting team rebounds keeps the same trip going. Worked out from the shot log (`src/lib/possessions.ts`), never logged by hand.
 _Avoid_: Possession, play

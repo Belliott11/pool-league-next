@@ -1,3 +1,4 @@
+import { isEvenGame, sizeAllowed } from "@/lib/filters"
 import type { Game, PooleanState } from "@/lib/types"
 
 // Per-trip numbers, worked out from the shot log with no extra logging. A trip is one turn with the ball: it ends in a shot the
@@ -23,7 +24,8 @@ interface Side {
   ends: number
 }
 
-const counts = (g: Game) => g.scoringEvents.length > 0 && g.teamA.length === g.teamB.length && !g.liveInProgress && !g.stoppedEarly
+const finishedBox = (g: Game) => g.scoringEvents.length > 0 && !g.liveInProgress && !g.stoppedEarly
+const counts = (g: Game) => finishedBox(g) && sizeAllowed(g)
 
 export function gameSides(g: Game): { a: Side; b: Side; used: Map<string, { used: number; pts: number; tov: number }> } {
   const a = { trips: 0, pts: 0, ends: 0 }
@@ -65,9 +67,10 @@ export const gameTrips = (g: Game) => {
   return a.trips + b.trips
 }
 
-// A full game's trips, on average: filmed, finished games with even teams. null until there is one.
+// A full game's trips, on average: filmed, finished games with even teams, whatever the filters say, so the scale never shifts when a
+// filter is turned on. null until there is one.
 export function averageTrips(games: Game[]): number | null {
-  const full = games.filter(counts).map(gameTrips).filter((t) => t > 0)
+  const full = games.filter((g) => finishedBox(g) && isEvenGame(g)).map(gameTrips).filter((t) => t > 0)
   return full.length ? full.reduce((a, b) => a + b, 0) / full.length : null
 }
 

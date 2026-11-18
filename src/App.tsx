@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { setAppGames } from "@/lib/matchup"
 import { setPaceGames } from "@/lib/per"
 import { AccountMenu } from "@/components/AccountMenu"
@@ -12,13 +12,15 @@ import { APPROVED, HIDDEN, LabelsContext } from "@/lib/labelsContext"
 import { lineKey, setApprovedLines, setHiddenLines, setLineNames, stripRetired } from "@/lib/labels"
 import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
 import { Ticker } from "@/components/Ticker"
-import { headlinesBehind } from "@/lib/published"
-import { readsBehind } from "@/lib/writtenReads"
+import { headlinesBehind, headlinesFormulaStale } from "@/lib/published"
+import { readsBehind, readsFormulaStale } from "@/lib/writtenReads"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
 import { ArrowLeft } from "lucide-react"
 import { DEFAULT_VIEW, hashToView, sameView, viewToHash, type View } from "@/lib/nav"
 import { ColorMenu } from "@/components/ColorMenu"
+import { FiltersMenu } from "@/components/FiltersMenu"
+import { setFilters } from "@/lib/filters"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -265,6 +267,10 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     saveToggles(t)
     setTogglesState(t)
   }
+  // Every panel and stat reads the same filters (see filters.ts). They are set here, before anything below renders, and the pages are
+  // handed a fresh copy of the data whenever one changes, so cards that remember their answer work it out again.
+  setFilters({ imbalanced: toggles.imbalanced, outliers: toggles.outliers })
+  const shown = useMemo(() => ({ ...state }), [state, toggles.imbalanced, toggles.outliers, toggles.pastSeasons])
   // The classic panels announce "open this player" through a window event.
   useEffect(() => {
     const onPlayer = (e: Event) => {
@@ -353,6 +359,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
               }}
             />
           )}
+          <FiltersMenu toggles={toggles} setToggles={setToggles} />
           <ColorMenu />
         </div>
       </div>
@@ -379,9 +386,13 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           </Button>
         </div>
       )}
-      {mode === "admin" && view.sub === "" && Math.max(headlinesBehind(state), readsBehind(state)) > 0 && (
+      {mode === "admin" && view.sub === "" && (Math.max(headlinesBehind(state), readsBehind(state)) > 0 || readsFormulaStale() || headlinesFormulaStale()) && (
         <p className="rounded-xl border border-gold bg-card p-3 text-sm">
-          {Math.max(headlinesBehind(state), readsBehind(state))} filmed {Math.max(headlinesBehind(state), readsBehind(state)) === 1 ? "game" : "games"} since the written reads and headlines were last rewritten. Ask Claude to "rerun the reads" and "rerun the headlines". Only you see this note.
+          {Math.max(headlinesBehind(state), readsBehind(state)) > 0 && (
+            <>{Math.max(headlinesBehind(state), readsBehind(state))} filmed {Math.max(headlinesBehind(state), readsBehind(state)) === 1 ? "game" : "games"} since the written reads and headlines were last rewritten. </>
+          )}
+          {(readsFormulaStale() || headlinesFormulaStale()) && <>A stat formula changed since they were written, so numbers in them may be off, and the written headlines are hidden until rewritten. </>}
+          Ask Claude to "rerun the reads" and "rerun the headlines". Only you see this note.
         </p>
       )}
       {mode === "admin" && cloud && cloud.loaded && !cloud.remote && (
@@ -398,7 +409,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           onOpen={() => setSub("live")}
         />
       )}
-      {view.sub === "" && <Ticker state={state} />}
+      {view.sub === "" && <Ticker state={shown} />}
       {cloud && <PullToRefresh onRefresh={cloud.refresh} />}
       <main id="main" tabIndex={-1} className="outline-none">
       <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>
@@ -411,7 +422,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         </TabsList>
         <TabsContent value="games">
           <GamesPage
-            state={state}
+            state={shown}
+            pastSeasons={toggles.pastSeasons}
             update={update}
             sub={view.tab === "games" ? view.sub : ""}
             go={setSub}
@@ -421,10 +433,10 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           />
         </TabsContent>
         <TabsContent value="leaderboard" keepMounted>
-          {visited.current.has("leaderboard") && <Frozen active={tab === "leaderboard"} keys={[state, toggles]}>
+          {visited.current.has("leaderboard") && <Frozen active={tab === "leaderboard"} keys={[shown, toggles]}>
           <Suspense fallback={<PageSkeleton label="Loading leaderboard" />}>
             <LeaderboardPage
-            state={state}
+            state={shown}
             toggles={toggles}
             setToggles={setToggles}
             onOpenPlayer={openPlayer}
@@ -433,9 +445,9 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           </Frozen>}
         </TabsContent>
         <TabsContent value="player" keepMounted>
-          {visited.current.has("player") && <Frozen active={tab === "player"} keys={[state, toggles, playerId]}>
+          {visited.current.has("player") && <Frozen active={tab === "player"} keys={[shown, toggles, playerId]}>
           <Suspense fallback={<PageSkeleton label="Loading player" />}>
-            <PlayerDetailPage state={state} toggles={toggles} setToggles={setToggles} playerId={playerId} update={update} onChangePlayer={(id) => {
+            <PlayerDetailPage state={shown} toggles={toggles} setToggles={setToggles} playerId={playerId} update={update} onChangePlayer={(id) => {
               setPlayerId(id)
               go({ player: id }, true)
             }} />
