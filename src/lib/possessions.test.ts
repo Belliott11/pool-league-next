@@ -64,3 +64,17 @@ test("a double team splits the shot between its defenders, so each carries half"
   expect(gameDefenseStats(g, "b")).toMatchObject({ timesBeaten: 0.5, stops: 1, ptsAllowed: 1 })
   expect(gameDefenseStats(g, "c")).toMatchObject({ timesBeaten: 0.5, stops: 0, ptsAllowed: 1 })
 })
+
+test("projection: sample ballots give the vote to the clear leader most of the time, and shares add up to 1", () => {
+  const ids = ["a", "b", "c", "d"]
+  const game = (i: number) => ({
+    id: `v${i}`, date: `2026-02-0${i + 1}`, teamA: ["a", "b"], teamB: ["c", "d"],
+    stats: ids.map((id) => stat(id, id === "a" ? 8 : 2)),
+    scoringEvents: [shot("a"), shot("a"), shot("a"), shot("a"), shot("b"), shot("c"), shot("d")],
+    turnoverEvents: [],
+  })
+  const s = projectSeason({ players: [], games: [0, 1, 2, 3].map(game) } as unknown as PooleanState, 5, 200)
+  expect(s.mvp.reduce((t, p) => t + p.vote, 0)).toBeCloseTo(1)
+  expect(s.mvp.find((p) => p.id === "a")!.vote).toBeGreaterThan(0.5)
+  expect(s.mvp.every((p) => p.vote >= 0 && p.vote <= 1)).toBe(true)
+})

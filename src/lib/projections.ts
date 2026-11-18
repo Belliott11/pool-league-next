@@ -18,6 +18,7 @@ export interface Projection {
   lo: number // 1 run in 10 ends below this
   hi: number // 1 run in 10 ends above this
   win: number // share of runs that end first, 0 to 1
+  vote: number // share of sample ballots they win, 0 to 1 (see sampleVote)
 }
 export interface Milestone {
   id: string
@@ -42,6 +43,34 @@ function rng(seed: number) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+}
+
+// Awards are voted, not counted. This runs sample ballots on the totals so far: each regular (3 or more games) ranks three others, never
+// themselves, 3-2-1 points, seeing each player's total in standard deviations plus noise of one. The share of ballots a player wins
+// (a tie splits) is the vote line. Last season's real ballots were close to this shape: about 8 voters, winners on 38% to 44% of the points.
+// ponytail: the noise size is a guess, not fitted to anything; the old-site ballots carry no stats to fit it against.
+const VOTE_NOISE = 1
+const BALLOTS = 2000
+function sampleVote(ids: string[], totals: number[], voters: string[]): number[] {
+  const mean = totals.reduce((n, v) => n + v, 0) / totals.length
+  const sd = Math.sqrt(totals.reduce((n, v) => n + (v - mean) ** 2, 0) / totals.length) || 1
+  const rand = rng(7)
+  const gauss = () => Math.sqrt(-2 * Math.log(rand() + 1e-12)) * Math.cos(2 * Math.PI * rand())
+  const won = ids.map(() => 0)
+  for (let k = 0; k < BALLOTS; k++) {
+    const pts = ids.map(() => 0)
+    for (const voter of voters) {
+      ids
+        .map((id, i) => ({ i, s: id === voter ? -Infinity : (totals[i] - mean) / sd + VOTE_NOISE * gauss() }))
+        .sort((a, b) => b.s - a.s)
+        .slice(0, 3)
+        .forEach((x, place) => x.s > -Infinity && (pts[x.i] += 3 - place))
+    }
+    const top = Math.max(...pts)
+    const tied = pts.flatMap((p, i) => (p === top ? [i] : []))
+    for (const i of tied) won[i] += 1 / tied.length
+  }
+  return won.map((w) => w / BALLOTS)
 }
 
 export function projectSeason(state: PooleanState, more = 20, sims = 2000): Season {
@@ -80,12 +109,14 @@ export function projectSeason(state: PooleanState, more = 20, sims = 2000): Seas
     })
     for (const j of [0, 1]) wins[j][who[j]]++
   }
+  const voters = [...lines.keys()].filter((id) => lines.get(id)!.length >= 3)
+  const vote = [0, 1].map((j) => sampleVote(ids, now.map((n) => n[j]), voters))
   const at = (xs: Float64Array, q: number) => xs[Math.min(xs.length - 1, Math.floor(q * xs.length))]
   const table = (j: number): Projection[] =>
     ids
       .map((id, i) => {
         const xs = out[j][i].slice().sort()
-        return { id, now: now[i][j], mid: at(xs, 0.5), lo: at(xs, 0.1), hi: at(xs, 0.9), win: wins[j][i] / sims }
+        return { id, now: now[i][j], mid: at(xs, 0.5), lo: at(xs, 0.1), hi: at(xs, 0.9), win: wins[j][i] / sims, vote: vote[j][i] }
       })
       .sort((a, b) => b.win - a.win || b.mid - a.mid)
   const milestones = ids

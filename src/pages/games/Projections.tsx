@@ -36,6 +36,10 @@ export function ProjectionsCard({ state, onOpenPlayer }: { state: PooleanState; 
           <span className="w-16 text-right tabular-nums">{chance(r.win)}</span>
         </div>
       ))}
+      <p className="text-xs text-muted-foreground">
+        Projected vote:{" "}
+        {[...rows].sort((a, b) => b.vote - a.vote).filter((r) => r.vote >= 0.01).slice(0, 3).map((r) => `${playerName(state, r.id)} ${chance(r.vote)}`).join(", ") || "too close to call"}
+      </p>
     </section>
   )
   const near = s.milestones.slice(0, SHOWN)
@@ -74,7 +78,7 @@ export function ProjectionsCard({ state, onOpenPlayer }: { state: PooleanState; 
         <details className="text-xs text-muted-foreground">
           <summary className="cursor-pointer font-medium text-foreground">How this is worked out</summary>
           <p className="mt-1">
-            From the {s.games} filmed {s.games === 1 ? "game" : "games"} this season. {over ? "The extra games are" : "The rest of the season is"} played out 2,000 times: in each made-up game a player shows up as often as they have so far and repeats one of their own past games. The percentage is the share of those seasons they finish with the top stats. Awards are voted, so it shows who is best placed for the vote, not who will win it. It knows nothing about injuries, new players or anyone getting better, and a player with only a few games is a rough guess.
+            From the {s.games} filmed {s.games === 1 ? "game" : "games"} this season. {over ? "The extra games are" : "The rest of the season is"} played out 2,000 times: in each made-up game a player shows up as often as they have so far and repeats one of their own past games. The percentage is the share of those seasons they finish with the top stats. The projected vote runs 2,000 sample ballots on the totals so far: every player with 3 or more games ranks three others (never themselves) for 3, 2 and 1 points, with some disagreement built in, and the line shows how often each player wins. How much voters disagree is a guess. Awards are voted, so it shows who is best placed for the vote, not who will win it. It knows nothing about injuries, new players or anyone getting better, and a player with only a few games is a rough guess.
           </p>
         </details>
       </CardContent>
