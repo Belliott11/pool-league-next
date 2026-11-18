@@ -1,5 +1,6 @@
 import { sizeAllowed } from "@/lib/filters"
 import { playerLine } from "@/lib/nightRecap"
+import { MIN_GAMES } from "@/lib/ratings"
 import { defensiveRating, gameDefenseStats, getGameStats, isCurrentSeasonGame } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 
@@ -9,7 +10,7 @@ import type { PooleanState } from "@/lib/types"
 // ponytail: replays a player's own games, so two or three games understate how much they could change. Pull thin samples toward
 // the league before trusting a long shot.
 export const MILESTONE = 50 // season points milestones come in steps of this
-const MIN_GAMES = 2 // the same bar as the award race
+// Players need MIN_GAMES games (the same bar as ratings, standings and the award race) to be in a projection.
 
 export interface Projection {
   id: string

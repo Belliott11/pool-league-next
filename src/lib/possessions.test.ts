@@ -24,21 +24,33 @@ test("a trip is a shot or a live-ball turnover, and an offensive rebound keeps i
 })
 
 test("projection: the player who scores more and shows up more is the favorite, and odds add up to 1", () => {
+  // Ten games: a is in all of them, b in the first five and c in the last five, so all three clear the five-game bar.
   const game = (i: number, withB: boolean) => ({
-    id: `g${i}`, date: `2026-01-0${i + 1}`, teamA: ["a"], teamB: [withB ? "b" : "c"],
+    id: `g${i}`, date: `2026-01-${String(i + 1).padStart(2, "0")}`, teamA: ["a"], teamB: [withB ? "b" : "c"],
     stats: [stat("a", 6), stat(withB ? "b" : "c", 2)],
     scoringEvents: [shot("a"), shot("a"), shot("a"), shot(withB ? "b" : "c")],
     turnoverEvents: [],
   })
-  const s = projectSeason({ players: [], games: [game(0, true), game(1, true), game(2, false), game(3, false)] } as unknown as PooleanState, 10, 300)
-  expect(s.games).toBe(4)
+  const s = projectSeason({ players: [], games: Array.from({ length: 10 }, (_, i) => game(i, i < 5)) } as unknown as PooleanState, 10, 300)
+  expect(s.games).toBe(10)
   expect(s.mvp[0].id).toBe("a")
   expect(s.mvp[0].win).toBeGreaterThan(0.9)
   expect(s.mvp.reduce((t, p) => t + p.win, 0)).toBeCloseTo(1)
   const a = s.milestones.find((m) => m.id === "a")!
-  expect(a).toMatchObject({ pts: 24, next: 50 })
-  expect(a.chance).toBeGreaterThan(0.9) // 24 now plus 6 a game over 10 games
+  expect(a).toMatchObject({ pts: 60, next: 100 })
+  expect(a.chance).toBeGreaterThan(0.9) // 60 now plus 6 a game over 10 games
   expect(s.mvp[0].lo).toBeLessThanOrEqual(s.mvp[0].mid)
+})
+
+test("a newcomer under five games is left out of the projection", () => {
+  // Even teams throughout: a, b and c play all six, "new" plays the first three and "old" the last three.
+  const game = (i: number) => ({
+    id: `n${i}`, date: `2026-01-${String(i + 1).padStart(2, "0")}`, teamA: ["a", i < 3 ? "new" : "old"], teamB: ["b", "c"],
+    stats: [stat("a", 4), stat("b", 2), stat("c", 2), stat(i < 3 ? "new" : "old", 2)],
+    scoringEvents: [shot("a"), shot("a"), shot("b"), shot("c"), shot(i < 3 ? "new" : "old")], turnoverEvents: [],
+  })
+  const s = projectSeason({ players: [], games: Array.from({ length: 6 }, (_, i) => game(i)) } as unknown as PooleanState, 5, 100)
+  expect(s.mvp.map((p) => p.id).sort()).toEqual(["a", "b", "c"])
 })
 
 test("per-game rates: the same line in a long, sloppy game counts for less than in a short one", async () => {
@@ -73,7 +85,7 @@ test("projection: sample ballots give the vote to the clear leader most of the t
     scoringEvents: [shot("a"), shot("a"), shot("a"), shot("a"), shot("b"), shot("c"), shot("d")],
     turnoverEvents: [],
   })
-  const s = projectSeason({ players: [], games: [0, 1, 2, 3].map(game) } as unknown as PooleanState, 5, 200)
+  const s = projectSeason({ players: [], games: [0, 1, 2, 3, 4, 5].map(game) } as unknown as PooleanState, 5, 200)
   expect(s.mvp.reduce((t, p) => t + p.vote, 0)).toBeCloseTo(1)
   expect(s.mvp.find((p) => p.id === "a")!.vote).toBeGreaterThan(0.5)
   expect(s.mvp.every((p) => p.vote >= 0 && p.vote <= 1)).toBe(true)

@@ -14,6 +14,7 @@ import { PredictionScorecard } from "./PredictionScorecard"
 import { RecordsCard, SeasonStoriesCard } from "./SeasonCards"
 import { distinctNumbers } from "@/lib/format"
 import { isOffseason } from "@/lib/offseason"
+import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
 import { seasonView } from "@/lib/season"
 import { computeLeaderboard } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
@@ -33,10 +34,10 @@ export function Sidebar({
 }) {
   // The standings follow the Include past seasons filter (this season, plus a few recent games while it is young).
   const board = computeLeaderboard(seasonView(state, pastSeasons))
-  const rows = board.filter((r) => r.gp > 0).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
+  const rows = board.filter((r) => r.gp >= MIN_RANKED).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
   const twoWayText = distinctNumbers(rows.map((r) => r.twoWayPer25))
-  // Everyone else is still listed, just not ranked until they have a box-scored game.
-  const unranked = board.filter((r) => r.gp === 0)
+  // Everyone else is still listed, just not ranked until they have played enough games for a rank to mean something.
+  const unranked = board.filter((r) => r.gp < MIN_RANKED)
 
   return (
     <div className="flex flex-col gap-4">
@@ -75,7 +76,7 @@ export function Sidebar({
             </>
           )}
           {rows.length === 0 ? (
-            <EmptyState title="No standings yet" hint="Standings fill in once a game is logged with players." />
+            <EmptyState title="No standings yet" hint={`Standings fill in once someone has ${MIN_RANKED} filmed games with even teams.`} />
           ) : (
             <Table>
               <TableHeader>
@@ -121,12 +122,12 @@ export function Sidebar({
               </TableBody>
             </Table>
           )}
-          {rows.length > 0 && unranked.length > 0 && (
+          {unranked.length > 0 && (
             <details className="mt-3 text-sm">
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
                 {unranked.length} more {unranked.length === 1 ? "player" : "players"}, not ranked yet
               </summary>
-              <p className="mt-1 text-xs text-muted-foreground">They need a game with a box score and even teams to be ranked.</p>
+              <p className="mt-1 text-xs text-muted-foreground">They need {MIN_RANKED} games with a box score and even teams to be ranked. Their pages and stats are all still there.</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {unranked.map((r) => (
                   <button key={r.player.id} type="button" className="flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 hover:bg-muted" onClick={() => onOpenPlayer(r.player.id)}>

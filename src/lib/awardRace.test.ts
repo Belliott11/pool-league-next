@@ -13,13 +13,10 @@ const state = (games: Game[], season?: string): PooleanState => ({ players: [{ i
 
 describe("season award race", () => {
   it("ranks wins and finds the best duo from this season's games", () => {
-    const games = [
-      game("g1", "2026-10-01", ["x", "y"], ["z"], [["x", 6], ["z", 2]]),
-      game("g2", "2026-10-08", ["x", "y"], ["z"], [["x", 5], ["z", 3]]),
-      game("g3", "2026-10-15", ["x", "y"], ["z"], [["y", 7], ["z", 1]]),
-    ]
+    // Five games together, so both clear the bar every award race has for games played.
+    const games = Array.from({ length: 5 }, (_, i) => game(`g${i}`, `2026-10-0${i + 1}`, ["x", "y"], ["z"], [[i % 2 ? "y" : "x", 6], ["z", 2]]))
     const rows = awardRace(state(games))
-    expect(rows.find((r) => r.key === "best-duo")!.leaders[0]).toMatchObject({ ids: ["x", "y"], value: "3-0 together" })
+    expect(rows.find((r) => r.key === "best-duo")!.leaders[0]).toMatchObject({ ids: ["x", "y"], value: "5-0 together" })
   })
 
   it("gives MVP to total two-way score over the season, from box-scored games", () => {
@@ -35,12 +32,28 @@ describe("season award race", () => {
         { playerId: "y", pts: yPts, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 },
       ],
     })
-    const rows = awardRace(state([box("a", "2026-10-01", 10, 2), box("b", "2026-10-08", 9, 3)]))
+    const rows = awardRace(state(Array.from({ length: 5 }, (_, i) => box(`b${i}`, `2026-10-0${i + 1}`, i % 2 ? 9 : 10, 2))))
     const mvp = rows.find((r) => r.key === "mvp")!
     expect(mvp.basis).toBe("Total two-way score")
     expect(mvp.leaders[0].ids).toEqual(["x"])
-    expect(mvp.leaders[0].value).toMatch(/over 2 games/)
+    expect(mvp.leaders[0].value).toMatch(/over 5 games/)
     expect(rows.find((r) => r.key === "dpoy")!.basis).toBe("Total defensive score")
+  })
+
+  it("keeps a newcomer out of every award until they have five games", () => {
+    const box = (id: string, date: string, withY: boolean): Game => ({
+      ...base, id, date, teamA: ["x"], teamB: [withY ? "y" : "z"], scoringEvents: [{ id: "e" + id } as never],
+      stats: [
+        { playerId: "x", pts: 9, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 },
+        { playerId: withY ? "y" : "z", pts: 20, oreb: 0, dreb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 },
+      ],
+    })
+    // x plays all five. y scores a lot in 2 games and z has 3, so neither is on the board.
+    const rows = awardRace(state(Array.from({ length: 5 }, (_, i) => box(`n${i}`, `2026-10-0${i + 1}`, i < 2))))
+    const ids = rows.flatMap((r) => r.leaders.flatMap((l) => l.ids))
+    expect(ids).toContain("x")
+    expect(ids).not.toContain("y")
+    expect(ids).not.toContain("z")
   })
 
   it("leaves out games from before the season started", () => {

@@ -10,6 +10,7 @@ import { isOffseason } from "@/lib/offseason"
 import { playerName } from "@/lib/players"
 import { projectSeason } from "@/lib/projections"
 import { rivalries } from "@/lib/rivalries"
+import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
 import { computeLeaderboard } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
 
@@ -19,7 +20,7 @@ export function MyCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPla
   const me = myPlayerId(useWho(), state.players)
   const d = useMemo(() => {
     if (!me) return null
-    const board = computeLeaderboard(state).filter((r) => r.gp > 0)
+    const board = computeLeaderboard(state).filter((r) => r.gp >= MIN_RANKED)
     const row = board.find((r) => r.player.id === me)
     const season = projectSeason(state)
     const rival = rivalries(state, 200).find((r) => r.a === me || r.b === me)
@@ -37,7 +38,7 @@ export function MyCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPla
   if (!me || !d) return null
   const lines: string[] = []
   if (d.row && d.rank) lines.push(`You are ${ordinal(d.rank)} of ${d.ranked} in the standings at ${d.row.twoWayPer25.toFixed(1)} two-way per game, with a ${d.row.wins}-${d.row.losses} record.`)
-  else lines.push("You are not ranked yet. That takes one filmed game with even teams.")
+  else lines.push(`You are not ranked yet. That takes ${MIN_RANKED} filmed games with even teams, and your page has everything so far.`)
   const over = isOffseason(state)
   if (d.mvp >= 0 && over) lines.push(`You finished ${ordinal(d.mvp + 1)} in the MVP race.`)
   if (d.milestone && !over) lines.push(`You are ${d.milestone.next - d.milestone.pts} points from ${d.milestone.next} this season.`)

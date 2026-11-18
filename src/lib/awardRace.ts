@@ -1,6 +1,7 @@
 import { sizeAllowed } from "@/lib/filters"
 import { distinctNumbers } from "@/lib/format"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
+import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
 import { computeLeaderboard, defensiveRating, gameDefenseStats, getGameStats, isCurrentSeasonGame } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -17,7 +18,9 @@ export interface RaceRow {
   leaders: Leader[]
 }
 
-const MIN_GAMES = 3
+const MIN_GAMES = 3 // games a duo needs together
+// Nobody is in an award race until they have played MIN_RANKED games (the same bar as ratings and the standings), so a newcomer's first
+// good night is not a headline about them.
 
 export function awardRace(state: PooleanState): RaceRow[] {
   const games = state.games.filter((g) => !g.liveInProgress && g.date && isCurrentSeasonGame(state, g) && sizeAllowed(g)).sort((a, b) => a.date.localeCompare(b.date))
@@ -25,7 +28,10 @@ export function awardRace(state: PooleanState): RaceRow[] {
   const season = { ...state, games }
   const rows: RaceRow[] = []
   const top = (xs: { ids: string[]; value: string }[]) => xs.slice(0, 3)
-  const board = computeLeaderboard(season).filter((r) => r.gp >= Math.min(MIN_GAMES, 2))
+  const board = computeLeaderboard(season)
+  const played = new Map<string, number>()
+  for (const g of games) for (const id of [...g.teamA, ...g.teamB]) played.set(id, (played.get(id) ?? 0) + 1)
+  const eligible = (id: string) => (played.get(id) ?? 0) >= MIN_RANKED
   const nameOf = (id: string) => id
 
   // MVP is total two-way score over the season, and the defender award is total defensive score: both need a box
@@ -43,12 +49,12 @@ export function awardRace(state: PooleanState): RaceRow[] {
       totals.set(id, t)
     }
   }
-  const boxed = [...totals.entries()].filter(([, t]) => t.gp >= 2)
+  const boxed = [...totals.entries()].filter(([id, t]) => t.gp >= 2 && eligible(id))
   const byTotal = [...boxed].sort((x, y) => y[1].twoWay - x[1].twoWay)
   if (byTotal.length) rows.push({ key: "mvp", label: "MVP race", basis: "Total two-way score", leaders: top(byTotal.map(([id, t]) => ({ ids: [id], value: `${t.twoWay.toFixed(1)} over ${t.gp} games` }))) })
 
   // Best all-around: two-way per game, the same number as the standings.
-  const byTwoWay = board.filter((r) => r.gp >= MIN_GAMES).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
+  const byTwoWay = board.filter((r) => eligible(r.player.id)).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
   if (byTwoWay.length) {
     const text = distinctNumbers(byTwoWay.map((r) => r.twoWayPer25))
     rows.push({ key: "best-player", label: "Best player", basis: "Two-way per game", leaders: top(byTwoWay.map((r, i) => ({ ids: [r.player.id], value: `${text[i]} per game` }))) })
@@ -71,7 +77,7 @@ export function awardRace(state: PooleanState): RaceRow[] {
       close.set(id, c)
     }
   }
-  const clutch = [...close.entries()].filter(([, c]) => c.gp >= 2).sort((x, y) => (y[1].w + 1) / (y[1].gp + 2) - (x[1].w + 1) / (x[1].gp + 2) || y[1].gp - x[1].gp)
+  const clutch = [...close.entries()].filter(([id, c]) => c.gp >= 2 && eligible(id)).sort((x, y) => (y[1].w + 1) / (y[1].gp + 2) - (x[1].w + 1) / (x[1].gp + 2) || y[1].gp - x[1].gp)
   if (clutch.length) rows.push({ key: "clutch", label: "Clutch", basis: "Record in games decided by 3 or fewer", leaders: top(clutch.map(([id, c]) => ({ ids: [id], value: `${c.w}-${c.gp - c.w} in close games` }))) })
 
   // Most improved: two-way per game in a player's later games against their earlier ones, at least 4 box-scored games.
@@ -81,7 +87,7 @@ export function awardRace(state: PooleanState): RaceRow[] {
     if (l.twoWay !== null) lines.set(id, [...(lines.get(id) ?? []), l.twoWay])
   }
   const improved = [...lines.entries()]
-    .filter(([, v]) => v.length >= 4)
+    .filter(([id, v]) => v.length >= 4 && eligible(id))
     .map(([id, v]) => {
       const h = Math.floor(v.length / 2)
       const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
@@ -110,11 +116,11 @@ export function awardRace(state: PooleanState): RaceRow[] {
     together(g, g.teamA, a > b)
     together(g, g.teamB, b > a)
   }
-  const pairs = [...duos.values()].filter((d) => d.gp >= MIN_GAMES).map((d) => ({ ...d, rate: (d.w + 2.5) / (d.gp + 5) }))
+  const pairs = [...duos.values()].filter((d) => d.gp >= MIN_GAMES && d.ids.every(eligible)).map((d) => ({ ...d, rate: (d.w + 2.5) / (d.gp + 5) }))
   const fmt = (d: (typeof pairs)[number]): Leader => ({ ids: d.ids, value: `${d.w}-${d.gp - d.w} together` })
   if (pairs.length) {
-    rows.push({ key: "best-duo", label: "Best duo", basis: `Record together, ${MIN_GAMES}+ games`, leaders: top([...pairs].sort((a, b) => b.rate - a.rate || b.gp - a.gp).map(fmt)) })
-    rows.push({ key: "worst-duo", label: "Rough-patch duo", basis: `Record together, ${MIN_GAMES}+ games`, leaders: top([...pairs].sort((a, b) => a.rate - b.rate || b.gp - a.gp).map(fmt)) })
+    rows.push({ key: "best-duo", label: "Best duo", basis: `Record together, ${MIN_GAMES}+ games, both with ${MIN_RANKED}+`, leaders: top([...pairs].sort((a, b) => b.rate - a.rate || b.gp - a.gp).map(fmt)) })
+    rows.push({ key: "worst-duo", label: "Rough-patch duo", basis: `Record together, ${MIN_GAMES}+ games, both with ${MIN_RANKED}+`, leaders: top([...pairs].sort((a, b) => a.rate - b.rate || b.gp - a.gp).map(fmt)) })
   }
   void nameOf
   return rows
