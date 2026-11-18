@@ -10,7 +10,8 @@ const HORIZONS = [10, 20, 40]
 const SHOWN = 4
 export const chance = (p: number) => (p >= 0.995 ? "99%+" : p < 0.005 ? "under 1%" : `${Math.round(p * 100)}%`)
 
-// Award odds and points milestones if the season keeps going the way it has.
+// Projected award standings and points milestones if the season keeps going the way it has. Awards are voted, so what is projected is who
+// would lead the stats (the case a voter sees), never who wins.
 export function ProjectionsCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const [more, setMore] = useState(20)
   const s = useMemo(() => projectSeason(state, more), [state, more])
@@ -22,13 +23,14 @@ export function ProjectionsCard({ state, onOpenPlayer }: { state: PooleanState; 
       {playerName(state, id)}
     </button>
   )
-  const odds = (title: string, rows: Projection[]) => (
+  const odds = (title: string, note: string, rows: Projection[]) => (
     <section aria-label={title} className="flex flex-col gap-1">
       <h4 className="text-sm font-semibold">{title}</h4>
+      <p className="text-xs text-muted-foreground">{note}</p>
       {rows.slice(0, SHOWN).map((r) => (
         <div key={r.id} className="flex items-center gap-2 text-sm">
           <span className="flex w-24 min-w-0">{who(r.id)}</span>
-          <div role="img" aria-label={`${chance(r.win)} chance`} className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+          <div role="img" aria-label={`${chance(r.win)} of projected seasons`} className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
             <span className="block h-full bg-accent" style={{ width: `${r.win * 100}%` }} />
           </div>
           <span className="w-16 text-right tabular-nums">{chance(r.win)}</span>
@@ -41,7 +43,7 @@ export function ProjectionsCard({ state, onOpenPlayer }: { state: PooleanState; 
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-display">
-          <TrendingUp aria-hidden className="size-4 text-accent" /> {over ? "If the season had kept going" : "Where the season is heading"}
+          <TrendingUp aria-hidden className="size-4 text-accent" /> {over ? "Projected finish, had the season kept going" : "Projected season"}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -54,8 +56,8 @@ export function ProjectionsCard({ state, onOpenPlayer }: { state: PooleanState; 
           </select>
           more filmed games
         </label>
-        {odds(over ? "Chance to end up MVP" : "Chance to win MVP", s.mvp)}
-        {odds(over ? "Chance to end up Defender" : "Chance to win Defender", s.defender)}
+        {odds("Projected MVP race", "Share of projected seasons they lead the total two-way score. MVP is voted, so this is who is best placed.", s.mvp)}
+        {odds("Projected Defender race", "Share of projected seasons they lead the total defensive score. Defender is voted too.", s.defender)}
         {!over && (
         <section aria-label="Points milestones" className="flex flex-col gap-1">
           <h4 className="text-sm font-semibold">Next points milestone</h4>
@@ -72,7 +74,7 @@ export function ProjectionsCard({ state, onOpenPlayer }: { state: PooleanState; 
         <details className="text-xs text-muted-foreground">
           <summary className="cursor-pointer font-medium text-foreground">How this is worked out</summary>
           <p className="mt-1">
-            From the {s.games} filmed {s.games === 1 ? "game" : "games"} this season. {over ? "The extra games are" : "The rest of the season is"} played out 2,000 times: in each made-up game a player shows up as often as they have so far and repeats one of their own past games. The percentage is the share of those seasons they finish first. It knows nothing about injuries, new players or anyone getting better, and a player with only a few games is a rough guess.
+            From the {s.games} filmed {s.games === 1 ? "game" : "games"} this season. {over ? "The extra games are" : "The rest of the season is"} played out 2,000 times: in each made-up game a player shows up as often as they have so far and repeats one of their own past games. The percentage is the share of those seasons they finish with the top stats. Awards are voted, so it shows who is best placed for the vote, not who will win it. It knows nothing about injuries, new players or anyone getting better, and a player with only a few games is a rough guess.
           </p>
         </details>
       </CardContent>

@@ -21,3 +21,12 @@ test("clips rank dunks and blocks over plain buckets, skip games with no video, 
   expect(bestClips(s, { limit: 10, perGame: 2 })).toHaveLength(2)
   expect(bestClips(s, { pid: "b", limit: 5 }).map((c) => c.kind).sort()).toEqual(["block", "steal"])
 })
+
+test("a strip mixes kinds of play instead of taking the top three of one", () => {
+  const s = {
+    players: [{ id: "a", name: "A" }, { id: "b", name: "B" }],
+    games: [game("g1", "2026-01-01", [ev("1", "a", 10, { dunk: true }), ev("2", "a", 20, { dunk: true }), ev("3", "a", 30, { dunk: true }), ev("4", "a", 40, { points: 3 }), ev("5", "a", 50, { made: false, blockerId: "b" })])],
+  } as unknown as PooleanState
+  const kinds = bestClips(s, { pid: "a", limit: 3, perGame: 5 }).map((c) => c.kind)
+  expect(new Set(kinds).size).toBeGreaterThan(1)
+})

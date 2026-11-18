@@ -42,7 +42,7 @@ export function MyCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPla
   else lines.push("You are not ranked yet. That takes one filmed game with even teams.")
   const over = isOffseason(state)
   if (d.mvp >= 0 && over) lines.push(`You finished ${ordinal(d.mvp + 1)} in the MVP race.`)
-  if (d.mvp >= 0 && !over) lines.push(`MVP race: ${ordinal(d.mvp + 1)}, with a ${chance(d.mvpWin!)} chance to win it if the season runs 20 more filmed games.`)
+  if (d.mvp >= 0 && !over) lines.push(`MVP race: ${ordinal(d.mvp + 1)} on the stats, and projected to lead them in ${chance(d.mvpWin!)} of seasons if it runs 20 more filmed games. The award itself is voted.`)
   if (d.milestone && !over) lines.push(`You are ${d.milestone.next - d.milestone.pts} points from ${d.milestone.next} this season.`)
   if (d.rival) {
     const mine = d.rival.a === me ? d.rival.aWins : d.rival.bWins

@@ -80,11 +80,11 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
 }
 
 // A small film button that opens a clip in a dialog, for places with no room for a tile (the ticker, a headline line).
-export function ClipButton({ state, clip, label = "Watch the play" }: { state: PooleanState; clip: Clip; label?: string }) {
+export function ClipButton({ state, clip, label = "Watch the play", compact = false }: { state: PooleanState; clip: Clip; label?: string; compact?: boolean }) {
   return (
     <Dialog>
-      <DialogTrigger render={<button type="button" className="inline-grid size-9 shrink-0 place-items-center text-primary" aria-label={label} title={label} />}>
-        <Film className="size-4" />
+      <DialogTrigger render={<button type="button" className={cn("inline-grid shrink-0 place-items-center align-middle text-primary", compact ? "-my-0.5 ml-1.5 size-5" : "size-9")} aria-label={label} title={label} />}>
+        <Film className={compact ? "size-3.5" : "size-4"} />
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogTitle>{clip.label}</DialogTitle>

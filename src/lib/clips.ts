@@ -42,22 +42,27 @@ export function gameClips(state: PooleanState, g: Game): Clip[] {
   return out
 }
 
-// The best few across games, newest game first on a tie, and never more than `perGame` from one game so a strip is not one night.
-export function bestClips(state: PooleanState, opts: { pid?: string; gameIds?: string[]; limit?: number; perGame?: number } = {}): Clip[] {
-  const { pid, gameIds, limit = 3, perGame = 2 } = opts
-  const all = state.games
+export const clipKey = (c: Clip) => `${c.gameId}|${c.time}|${c.playerId}`
+
+// The best few across games, picked one at a time so the set is varied: each pick costs the next ones of the same kind of play and
+// the same player a little, so a strip is not three blocks or one player's whole night. At most `perGame` from one game. `kinds`
+// limits what counts, and `skip` holds clips already used elsewhere on the page.
+export function bestClips(state: PooleanState, opts: { pid?: string; gameIds?: string[]; limit?: number; perGame?: number; kinds?: Clip["kind"][]; skip?: Set<string> } = {}): Clip[] {
+  const { pid, gameIds, limit = 3, perGame = 2, kinds, skip } = opts
+  let pool = state.games
     .filter((g) => !gameIds || gameIds.includes(g.id))
     .flatMap((g) => gameClips(state, g))
-    .filter((c) => !pid || c.playerId === pid)
+    .filter((c) => (!pid || c.playerId === pid) && (!kinds || kinds.includes(c.kind)) && !skip?.has(clipKey(c)))
     .sort((a, b) => b.score - a.score || b.date.localeCompare(a.date) || a.time - b.time)
-  const taken = new Map<string, number>()
   const out: Clip[] = []
-  for (const c of all) {
-    const n = taken.get(c.gameId) ?? 0
-    if (n >= perGame) continue
-    taken.set(c.gameId, n + 1)
-    out.push(c)
-    if (out.length === limit) break
+  const count = (f: (c: Clip) => boolean) => out.filter(f).length
+  while (out.length < limit && pool.length) {
+    const open = pool.filter((c) => count((o) => o.gameId === c.gameId) < perGame)
+    if (!open.length) break
+    // Earlier in the sorted pool wins a tie, so the order above still decides between equals.
+    const pick = open.reduce((best, c) => (c.score - 2 * count((o) => o.kind === c.kind) - 1.5 * count((o) => o.playerId === c.playerId) > best.score - 2 * count((o) => o.kind === best.kind) - 1.5 * count((o) => o.playerId === best.playerId) ? c : best))
+    out.push(pick)
+    pool = pool.filter((c) => c !== pick)
   }
   return out
 }
