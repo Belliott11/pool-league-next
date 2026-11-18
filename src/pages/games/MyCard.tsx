@@ -12,7 +12,6 @@ import { projectSeason } from "@/lib/projections"
 import { rivalries } from "@/lib/rivalries"
 import { computeLeaderboard } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
-import { chance } from "./Projections"
 
 // The top of the Games page for someone who has said who they are: where they stand, what they are close to, who their rival is
 // and whether they are down for the next night. Nothing here is new data; it is the league's numbers with the reader picked out.
@@ -31,7 +30,6 @@ export function MyCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPla
       milestone: season.milestones.find((m) => m.id === me),
       // Place in the race as it stands, by total so far (the projection list is ordered by chance instead).
       mvp: season.mvp.some((p) => p.id === me) ? season.mvp.filter((p) => p.now > season.mvp.find((x) => x.id === me)!.now).length : -1,
-      mvpWin: season.mvp.find((p) => p.id === me)?.win,
       rival,
       next: upcomingRsvp(state),
     }
@@ -42,7 +40,6 @@ export function MyCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPla
   else lines.push("You are not ranked yet. That takes one filmed game with even teams.")
   const over = isOffseason(state)
   if (d.mvp >= 0 && over) lines.push(`You finished ${ordinal(d.mvp + 1)} in the MVP race.`)
-  if (d.mvp >= 0 && !over) lines.push(`MVP race: ${ordinal(d.mvp + 1)} on the stats, and projected to lead them in ${chance(d.mvpWin!)} of seasons if it runs 20 more filmed games. The award itself is voted.`)
   if (d.milestone && !over) lines.push(`You are ${d.milestone.next - d.milestone.pts} points from ${d.milestone.next} this season.`)
   if (d.rival) {
     const mine = d.rival.a === me ? d.rival.aWins : d.rival.bWins

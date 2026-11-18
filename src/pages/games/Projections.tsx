@@ -1,6 +1,7 @@
 import { TrendingUp } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useReadOnly } from "@/lib/mode"
 import { isOffseason } from "@/lib/offseason"
 import { playerName } from "@/lib/players"
 import { projectSeason, type Projection } from "@/lib/projections"
@@ -14,8 +15,10 @@ export const chance = (p: number) => (p >= 0.995 ? "99%+" : p < 0.005 ? "under 1
 // would lead the stats (the case a voter sees), never who wins.
 export function ProjectionsCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const [more, setMore] = useState(20)
-  const s = useMemo(() => projectSeason(state, more), [state, more])
-  if (s.mvp.length < 2) return null
+  // Editors only. Odds on who wins an award are a lot to put in front of the people being ranked, so visitors never see them.
+  const visitor = useReadOnly()
+  const s = useMemo(() => (visitor ? null : projectSeason(state, more)), [state, more, visitor])
+  if (!s || s.mvp.length < 2) return null
   // Between seasons the same sum answers a different question: how safe the final standings were.
   const over = isOffseason(state)
   const who = (id: string) => (
