@@ -1,16 +1,20 @@
 import { IdCard, Share2 } from "lucide-react"
+import { ClipBackdrop } from "@/components/ClipBackdrop"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { JerseyStat } from "@/components/JerseyStat"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
+import type { Clip } from "@/lib/clips"
+import type { PooleanState } from "@/lib/types"
 
 type Stats = { twoWay: string; record: string; pts: string; off: string }
 
 // Trading-card style header for the Player page. #playerRankPill is filled by the classic renderPlayerRankPill.
-export function PlayerHero({ pid, name, stats, form = [], onShare, onCard }: { pid: string; name: string; stats: Stats | null; form?: ("W" | "L" | "T")[]; onShare: () => void; onCard: () => void }) {
+export function PlayerHero({ pid, name, stats, form = [], onShare, onCard, state, clip }: { pid: string; name: string; stats: Stats | null; form?: ("W" | "L" | "T")[]; onShare: () => void; onCard: () => void; state?: PooleanState; clip?: Clip }) {
   return (
-    <Card className="tile overflow-hidden">
-      <CardContent className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
+    <Card className="tile relative overflow-hidden">
+      {state && clip && <ClipBackdrop state={state} clip={clip} scrim="bg-card/80" className="absolute inset-0" />}
+      <CardContent className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
         <PlayerAvatar
           id={pid}
           name={name}

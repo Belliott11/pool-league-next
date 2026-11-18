@@ -182,7 +182,7 @@ export function PlayerDetailPage({
   const unknownLink = !!playerId && !resolved
   const player = resolved ?? (playerId ? null : (state.players[0] ?? null))
   const pid = player?.id ?? null
-  const clips = useMemo(() => (pid ? bestClips(season, { pid }) : []), [season, pid])
+  const clips = useMemo(() => (pid ? bestClips(season, { pid, limit: 4 }) : []), [season, pid])
   const row = pid ? (computeLeaderboard() as { player: { id: string }; wins: number; losses: number; ties: number; rate: { pts: number }; offRatingPer25: number; twoWayPer25: number }[]).find((r) => r.player.id === pid) : null
   // Result of each of the last ten counted games, oldest first, for the form strip in the header.
   const form: ("W" | "L" | "T")[] = pid
@@ -259,9 +259,11 @@ export function PlayerDetailPage({
         stats={row ? { twoWay: fmtRate(row.twoWayPer25), record: record!, pts: fmtRate(row.rate.pts), off: fmtRate(row.offRatingPer25) } : null}
         onShare={share}
         onCard={() => downloadTradingCard(pid)}
+        state={season}
+        clip={clips[0]}
       />
 
-      <ClipStrip state={season} clips={clips} />
+      <ClipStrip state={season} clips={clips.slice(1)} />
 
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">

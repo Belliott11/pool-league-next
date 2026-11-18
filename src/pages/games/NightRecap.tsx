@@ -1,3 +1,4 @@
+import { ClipBackdrop } from "@/components/ClipBackdrop"
 import { ClipStrip } from "@/components/ClipTile"
 import { bestClips } from "@/lib/clips"
 import { ChevronDown, ChevronUp, Copy, Share2, Trophy } from "lucide-react"
@@ -64,7 +65,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
   const quick = (pick ?? (hasBox ? "full" : "quick")) === "quick"
   const s = useMemo(() => (quick ? { ...full, mvp: null } : full), [full, quick])
   const allCallouts = useMemo(() => nightCallouts(state, date), [state, date])
-  const clips = useMemo(() => bestClips(state, { gameIds: state.games.filter((g) => g.date === date).map((g) => g.id) }), [state, date])
+  const clips = useMemo(() => bestClips(state, { gameIds: state.games.filter((g) => g.date === date).map((g) => g.id), limit: 4 }), [state, date])
   const callouts = useMemo(() => (quick ? allCallouts.filter((c) => c.key === "pts") : allCallouts), [allCallouts, quick])
   const book = useMemo(() => recordBook(state), [state])
   // Both versions are written here with the editor's private labels, and saved with the night so visitors read the
@@ -193,8 +194,13 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
 
       {clips.length > 0 && (
         <section className="flex flex-col gap-2" aria-label="Plays of the night">
-          <h3 className="font-display text-lg font-bold">Plays of the night</h3>
-          <ClipStrip state={state} clips={clips} />
+          <ClipBackdrop state={state} clip={clips[0]} scrim="bg-gradient-to-t from-background via-background/40 to-transparent" className="rounded-xl border">
+            <div className="flex h-40 flex-col justify-end p-4 sm:h-52">
+              <h3 className="font-display text-lg font-bold">Plays of the night</h3>
+              <p className="text-sm text-muted-foreground">{clips[0].label}, {playerName(state, clips[0].playerId)}</p>
+            </div>
+          </ClipBackdrop>
+          <ClipStrip state={state} clips={clips.slice(1)} />
         </section>
       )}
 

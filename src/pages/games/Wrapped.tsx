@@ -1,6 +1,6 @@
 import { Share2, X } from "lucide-react"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { ClipTile } from "@/components/ClipTile"
+import { ClipBackdrop } from "@/components/ClipBackdrop"
 import { FlipDigits } from "@/components/FlipDigits"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
@@ -65,7 +65,6 @@ function SlideBody({ s, state, name }: { s: Slide; state: PooleanState; name: st
               .map((x) => `, ${x}`)
               .join("")}
           .
-          {s.clip && <ClipTile state={state} clip={s.clip} className="mx-auto mt-4 w-72 max-w-full text-left" />}
         </>,
       )
     case "teammate":
@@ -207,6 +206,7 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
         </button>
       </div>
       <div className="relative min-h-0 flex-1">
+        {s.kind === "best" && s.clip && <ClipBackdrop key={`${id}-clip`} state={state} clip={s.clip} scrim="bg-background/70" className="absolute inset-0" />}
         <section key={`${id}-${at}`} aria-live="polite" className="anim-rise mx-auto flex h-full max-w-lg flex-col justify-center gap-5 px-6">
           <SlideBody s={s} state={state} name={name} />
           {s.kind === "summary" && (
