@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { PanelGroup } from "@/components/PanelGroup"
 import { arrange, PLAYER_GROUPS, placeOf } from "@/lib/panelGroups"
+import { ClipStrip } from "@/components/ClipTile"
 import { PlayerHero } from "@/components/PlayerHero"
+import { bestClips } from "@/lib/clips"
 import { PlayerGameFlow } from "@/pages/PlayerGameFlow"
 import { PlayerInsight } from "@/pages/PlayerInsight"
 import { PlayerBeatRate } from "@/pages/leaderboard/BeatRatePanel"
@@ -180,6 +182,7 @@ export function PlayerDetailPage({
   const unknownLink = !!playerId && !resolved
   const player = resolved ?? (playerId ? null : (state.players[0] ?? null))
   const pid = player?.id ?? null
+  const clips = useMemo(() => (pid ? bestClips(season, { pid }) : []), [season, pid])
   const row = pid ? (computeLeaderboard() as { player: { id: string }; wins: number; losses: number; ties: number; rate: { pts: number }; offRatingPer25: number; twoWayPer25: number }[]).find((r) => r.player.id === pid) : null
   // Result of each of the last ten counted games, oldest first, for the form strip in the header.
   const form: ("W" | "L" | "T")[] = pid
@@ -257,6 +260,8 @@ export function PlayerDetailPage({
         onShare={share}
         onCard={() => downloadTradingCard(pid)}
       />
+
+      <ClipStrip state={season} clips={clips} />
 
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">

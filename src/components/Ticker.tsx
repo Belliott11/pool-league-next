@@ -1,5 +1,6 @@
 import { Pause, Play } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { ClipButton } from "@/components/ClipTile"
 import { tickerItems } from "@/lib/ticker"
 import type { PooleanState } from "@/lib/types"
 
@@ -52,6 +53,7 @@ export function Ticker({ state }: { state: PooleanState }) {
       <span className="shrink-0 text-xs tabular-nums text-muted-foreground" aria-hidden>
         {at + 1}/{n}
       </span>
+      {item.clip && <ClipButton state={state} clip={item.clip} label="Watch the play of the night" />}
       <button type="button" className="grid size-9 shrink-0 place-items-center text-muted-foreground" aria-label={paused ? "Play headlines" : "Pause headlines"} onClick={() => setPaused(!paused)}>
         {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
       </button>

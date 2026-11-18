@@ -1,3 +1,4 @@
+import { bestClips, type Clip } from "@/lib/clips"
 import { formatDateDisplay } from "@/lib/format"
 import { customNight, customStories } from "@/lib/published"
 import type { PooleanState } from "@/lib/types"
@@ -5,6 +6,7 @@ import type { PooleanState } from "@/lib/types"
 export interface TickerItem {
   tag: string
   text: string
+  clip?: Clip // a play from that night, for items about the night
 }
 
 // The headlines for the scrolling bar: the latest night, then what is coming, then the season. It only reads lines that are
@@ -17,8 +19,9 @@ export function tickerItems(state: PooleanState): TickerItem[] {
     .at(-1)
   const night = last ? (customNight(last) ?? state.publishedStories?.nights?.[last]) : null
   const list = (key: "going" | "season") => customStories(state, key) ?? state.publishedStories?.[key] ?? []
+  const clip = last ? bestClips(state, { gameIds: state.games.filter((g) => g.date === last).map((g) => g.id), limit: 1 })[0] : undefined
   return [
-    ...(night?.quick.length ? night.quick : (night?.full ?? [])).map((text) => ({ tag: formatDateDisplay(last), text })),
+    ...(night?.quick.length ? night.quick : (night?.full ?? [])).map((text) => ({ tag: formatDateDisplay(last), text, clip })),
     ...list("going").map((text) => ({ tag: "Up next", text })),
     ...list("season").map((text) => ({ tag: "Season", text })),
   ]

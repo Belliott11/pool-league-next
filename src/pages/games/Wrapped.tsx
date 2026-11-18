@@ -1,5 +1,6 @@
 import { Share2, X } from "lucide-react"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { ClipTile } from "@/components/ClipTile"
 import { FlipDigits } from "@/components/FlipDigits"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
@@ -64,6 +65,7 @@ function SlideBody({ s, state, name }: { s: Slide; state: PooleanState; name: st
               .map((x) => `, ${x}`)
               .join("")}
           .
+          {s.clip && <ClipTile state={state} clip={s.clip} className="mx-auto mt-4 w-72 max-w-full text-left" />}
         </>,
       )
     case "teammate":

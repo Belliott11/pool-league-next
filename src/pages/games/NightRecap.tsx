@@ -1,3 +1,5 @@
+import { ClipStrip } from "@/components/ClipTile"
+import { bestClips } from "@/lib/clips"
 import { ChevronDown, ChevronUp, Copy, Share2, Trophy } from "lucide-react"
 import { useMemo, useState } from "react"
 import { EmptyState } from "@/components/EmptyState"
@@ -62,6 +64,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
   const quick = (pick ?? (hasBox ? "full" : "quick")) === "quick"
   const s = useMemo(() => (quick ? { ...full, mvp: null } : full), [full, quick])
   const allCallouts = useMemo(() => nightCallouts(state, date), [state, date])
+  const clips = useMemo(() => bestClips(state, { gameIds: state.games.filter((g) => g.date === date).map((g) => g.id) }), [state, date])
   const callouts = useMemo(() => (quick ? allCallouts.filter((c) => c.key === "pts") : allCallouts), [allCallouts, quick])
   const book = useMemo(() => recordBook(state), [state])
   // Both versions are written here with the editor's private labels, and saved with the night so visitors read the
@@ -187,6 +190,13 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
           </Card>
         ))}
       </div>
+
+      {clips.length > 0 && (
+        <section className="flex flex-col gap-2" aria-label="Plays of the night">
+          <h3 className="font-display text-lg font-bold">Plays of the night</h3>
+          <ClipStrip state={state} clips={clips} />
+        </section>
+      )}
 
       <section className="flex flex-col gap-2" aria-label="Results">
         <h3 className="font-display text-lg font-bold">Results</h3>

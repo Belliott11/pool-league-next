@@ -1,3 +1,4 @@
+import { bestClips, type Clip } from "@/lib/clips"
 import { awardRace } from "@/lib/awardRace"
 import { playerLine, type PlayerLine } from "@/lib/nightRecap"
 import { seasonState } from "@/lib/offseason"
@@ -12,7 +13,7 @@ import { writtenRead } from "@/lib/writtenReads"
 export type Slide =
   | { kind: "intro"; gp: number; nights: number; totalNights: number; w: number; l: number }
   | { kind: "totals"; pts: number; ptsRank: number; twoWay: number | null; twoWayRank: number | null; players: number }
-  | { kind: "best"; gameId: string; date: string; line: PlayerLine }
+  | { kind: "best"; gameId: string; date: string; line: PlayerLine; clip?: Clip }
   | { kind: "teammate"; id: string; w: number; l: number }
   | { kind: "rival"; id: string; w: number; l: number }
   | { kind: "awards"; finishes: { label: string; place: string }[] }
@@ -86,7 +87,7 @@ export function wrappedFor(full: PooleanState, id: string, old: RealGame[] = sea
     players: all.length,
   })
 
-  if (best) slides.push({ kind: "best", gameId: best.gameId, date: best.date, line: best.line })
+  if (best) slides.push({ kind: "best", gameId: best.gameId, date: best.date, line: best.line, clip: bestClips(state, { pid: id, gameIds: [best.gameId], limit: 1 })[0] })
 
   // Best teammate: best record together over at least 3 games, pulled toward even by 5 phantom games (as the duo award).
   const mate = [...mates.entries()].filter(([, r]) => r.w + r.l >= 3).sort((x, y) => shrunk(y[1]) - shrunk(x[1]) || y[1].w + y[1].l - (x[1].w + x[1].l))[0]
