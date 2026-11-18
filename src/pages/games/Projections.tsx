@@ -43,7 +43,7 @@ export function ProjectionsCard({ state, onOpenPlayer }: { state: PooleanState; 
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-display">
-          <TrendingUp aria-hidden className="size-4 text-accent" /> {over ? "Projected finish, had the season kept going" : "Projected season"}
+          <TrendingUp aria-hidden className="size-6 shrink-0 text-accent" /> {over ? "Projected finish, had the season kept going" : "Projected season"}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
