@@ -9,10 +9,17 @@ const AFTER = 4 // and after it, then the clip loops
 const MAX_PLAYING = 2 // backdrops playing at once on a page; the rest hold their still frame
 
 const playing = new Set<HTMLVideoElement>()
+type Conn = { saveData?: boolean; type?: string; effectiveType?: string }
+const onMobileData = () => {
+  const c = (navigator as Navigator & { connection?: Conn }).connection
+  return c?.type === "cellular" || c?.effectiveType === "slow-2g" || c?.effectiveType === "2g" || c?.effectiveType === "3g"
+}
 
 // A play looping silently behind content. It only plays while it is on screen and the tab is showing, never more than two at once,
-// and not at all (a still frame instead) with reduced motion or Data Saver on. A scrim keeps whatever sits on top readable.
-export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; children?: ReactNode }) {
+// and not at all (a still frame instead) with reduced motion or Data Saver on. On mobile data only a backdrop marked `cellularOk` plays (one
+// place on the site, Wrapped); the rest wait for Wi-Fi. ponytail: only browsers that report the connection type can tell (Chrome on Android);
+// Safari on iPhone says nothing, so there the backdrops play as on Wi-Fi. A scrim keeps whatever sits on top readable.
+export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", cellularOk = false, children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; cellularOk?: boolean; children?: ReactNode }) {
   const game = state.games.find((g) => g.id === clip.gameId)
   const url = game ? gameVideoUrl(state, game) : ""
   const file = isDirectVideoUrl(url)
@@ -24,10 +31,11 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     const el = box.current
     const v = video.current
     if (!el || !v || !file) return
-    const calm = matchMedia("(prefers-reduced-motion: reduce)").matches || (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true
+    const saver = (navigator as Navigator & { connection?: Conn }).connection?.saveData === true
+    const calm = matchMedia("(prefers-reduced-motion: reduce)").matches || saver
     let visible = false
     const sync = () => {
-      if (visible && !document.hidden && !calm && (playing.has(v) || [...playing].filter((o) => !o.paused).length < MAX_PLAYING)) {
+      if (visible && !document.hidden && !calm && (cellularOk || !onMobileData()) && (playing.has(v) || [...playing].filter((o) => !o.paused).length < MAX_PLAYING)) {
         playing.add(v)
         void v.play().catch(() => playing.delete(v))
       } else {
@@ -53,7 +61,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
       v.pause()
       playing.delete(v)
     }
-  }, [url, file, start, end])
+  }, [url, file, start, end, cellularOk])
   return (
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
