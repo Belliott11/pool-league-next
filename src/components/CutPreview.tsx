@@ -46,7 +46,7 @@ export function CutPreview({ state, game, time, frame, from, to, still, onFrom, 
         <span className="w-12 shrink-0 text-right">{fmt(now)}</span>
       </div>
       {still ? (
-        <Button size="sm" variant="outline" className="self-start" onClick={() => onTime?.(now)}>Use this frame</Button>
+        <Button size="sm" variant="outline" className="self-start" onClick={() => onTime?.(now)}>Set this frame</Button>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2 text-xs">

@@ -117,3 +117,8 @@ test("keeping a rough clip without a look keeps it rough, and marking the player
   const good = { ...g, clipReviews: [{ key: lowKey, verdict: "keep", looks: { b: "good" } }] }
   expect(gameClips(st(good), good as never).find((c) => c.kind === "lowlight")?.rough).toEqual([])
 })
+
+test("a still made from a clip's frame has its own key, so it does not replace that clip's review", () => {
+  expect(reviewKey({ time: 33.4, playerId: "a", kind: "still" })).toBe("still|33|a")
+  expect(reviewKey({ time: 33.4, playerId: "a", kind: "dunk" })).toBe("33|a")
+})

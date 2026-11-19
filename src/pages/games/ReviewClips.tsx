@@ -37,7 +37,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
   const [from, setFrom] = useState(review?.from ?? clip.from ?? Math.max(0, clip.time - 2))
   const [to, setTo] = useState(review?.to ?? clip.to ?? clip.time + 4)
   const [at, setAt] = useState(clip.time) // a still's moment, once moved
-  const key = clip.kind === "still" ? reviewKey({ time: at, playerId: clip.playerId }) : was
+  const key = clip.kind === "still" ? reviewKey({ time: at, playerId: clip.playerId, kind: "still" }) : was
   const [note, setNote] = useState(review?.note ?? "")
   const [who, setWho] = useState<string[]>(review?.who ?? [clip.playerId])
   const [looks, setLooks] = useState<Record<string, "good" | "bad">>(review?.looks ?? {})
@@ -54,7 +54,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
         <CutPreview state={state} game={game} time={at} frame={frame} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} onStillFrom={(t) => makeStill({ ...clip, time: t, kind: "still", label: "Still", from: undefined, to: undefined, score: 18 })} />
         <div className="flex min-w-0 flex-col gap-2 text-sm">
           <p className="text-sm font-medium">{original(state, game, clip)}</p>
-          <p className="text-xs text-muted-foreground">{done ? `${done}. Change it below and save again.` : still ? "A still you picked." : "Not reviewed yet."}</p>
+          <p className="text-xs text-muted-foreground">{done ? `${done}. Change it below and save again.` : still ? (review ? "A still you picked, saved." : "Not saved yet. Press Save this still to keep it.") : "Not reviewed yet."}</p>
           <label className="flex flex-col gap-1 text-xs font-medium">
             Describe it
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Two-handed dunk over Ben, everyone reacts" className="h-9 rounded-md border bg-background px-2 text-sm font-normal" />
@@ -90,7 +90,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
             </fieldset>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(clip.kind === "still" ? { still: { time: at, playerId: clip.playerId } } : { from, to }), ...(note.trim() ? { note: note.trim() } : {}), ...(frame ? { frame } : {}), who, looks }, was)}>Keep this clip</Button>
+            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(clip.kind === "still" ? { still: { time: at, playerId: clip.playerId } } : { from, to }), ...(note.trim() ? { note: note.trim() } : {}), ...(frame ? { frame } : {}), who, looks }, was)}>{clip.kind === "still" ? "Save this still" : "Keep this clip"}</Button>
             <Button size="sm" variant="outline" onClick={() => save({ key: was, verdict: "skip", ...(clip.kind === "still" ? { still: { time: clip.time, playerId: clip.playerId } } : {}) })}>{clip.kind === "still" ? "Remove" : "Skip"}</Button>
           </div>
         </div>
@@ -104,6 +104,7 @@ function StillPicker({ state, game, pick }: { state: PooleanState; game: Game; p
   const url = gameVideoUrl(state, game)
   const video = useRef<HTMLVideoElement>(null)
   const [who, setWho] = useState(game.teamA[0] ?? "")
+  const [added, setAdded] = useState(false)
   if (!isDirectVideoUrl(url)) return <p className="text-xs text-muted-foreground">Stills need the game's video as a direct file, not a link to a page.</p>
   const people = [...game.teamA, ...game.teamB]
   return (
@@ -116,7 +117,8 @@ function StillPicker({ state, game, pick }: { state: PooleanState; game: Game; p
             {people.map((id) => <option key={id} value={id}>{playerName(state, id)}</option>)}
           </select>
         </label>
-        <Button size="sm" disabled={!who} onClick={() => video.current && pick({ gameId: game.id, date: game.date, time: video.current.currentTime, playerId: who, kind: "still", label: "Still", score: 18 })}>Use this frame</Button>
+        <Button size="sm" disabled={!who} onClick={() => video.current && (pick({ gameId: game.id, date: game.date, time: video.current.currentTime, playerId: who, kind: "still", label: "Still", score: 18 }), setAdded(true))}>Start a still from this frame</Button>
+        {added && <span className="text-xs text-muted-foreground">A still card is at the top of the list below. Press Save this still there.</span>}
       </div>
     </div>
   )

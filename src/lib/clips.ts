@@ -32,7 +32,8 @@ const hasVideo = (state: PooleanState, g: Game) => !!gameVideoUrl(state, g)
 const STOP = new Set(["the", "and", "with", "from", "that", "this", "for", "his", "her", "their", "was", "were", "has", "have", "had", "over", "after", "into"])
 export const words = (t: string) => [...new Set((t.toLowerCase().match(/[a-z]{4,}/g) ?? []).filter((w) => !STOP.has(w)))]
 
-export const reviewKey = (c: { time: number; playerId: string }) => `${Math.round(c.time)}|${c.playerId}`
+// A still has its own keys, so one made from a clip's frame never overwrites that clip's review.
+export const reviewKey = (c: { time: number; playerId: string; kind?: string }) => `${c.kind === "still" ? "still|" : ""}${Math.round(c.time)}|${c.playerId}`
 
 // Every clip in one game, each tied to a player, with the editor's reviews applied: skipped ones gone, kept ones crowned and cropped.
 export function gameClips(state: PooleanState, g: Game): Clip[] {
