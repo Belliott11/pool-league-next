@@ -217,7 +217,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     else history.pushState({ n: n + 1, y: 0 }, "", viewToHash(v))
     viewRef.current = v
     setView(v)
-    window.scrollTo(0, 0)
+    // Again on the next frames, once the new page is drawn: on a phone the first jump can land before the page grows and be undone.
+    for (const ms of [0, 60, 200]) setTimeout(() => viewRef.current === v && window.scrollTo(0, 0), ms)
   }, [])
   // Back goes to the screen before, or up one level when this page was opened directly from a link.
   const goBack = useCallback(() => {
