@@ -73,8 +73,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
-          {saved && <img src={saved} alt="" aria-hidden style={frameStyle(frame)} className="pointer-events-none absolute inset-0 size-full object-cover" />}
-          <video ref={video} style={frameStyle(frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className="pointer-events-none absolute inset-0 size-full object-cover" />
+          {saved && <img src={saved} alt="" aria-hidden style={frameStyle(clip.frame ?? frame)} className="pointer-events-none absolute inset-0 size-full object-cover" />}
+          <video ref={video} style={frameStyle(clip.frame ?? frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className="pointer-events-none absolute inset-0 size-full object-cover" />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
         </>
       )}

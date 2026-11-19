@@ -1,5 +1,6 @@
 import { playerName } from "@/lib/players"
 import type { Game, PooleanState } from "@/lib/types"
+import type { Frame } from "@/lib/stillCache"
 import { gameVideoUrl } from "@/lib/video"
 
 // Plays worth showing: logged moments (made shots, blocks, steals) in games that have a recording, ranked by how much they look like a
@@ -15,14 +16,33 @@ export interface Clip {
   to?: number
   label: string // "Dunk", "Block on Ben"
   score: number
+  reviewed?: boolean // an editor looked at it and kept it
+  frame?: Frame // the crop the editor set
+  who?: string[] // others in the shot, so it can show on their pages too
+  good?: string[] // players it flatters: ranks higher for them
+  hide?: string[] // players it should not appear for
 }
 
 const SCORE = { marked: 20, dunk: 6, block: 5, three: 4, beat: 4, steal: 3, shot: 1 } as const
 
 const hasVideo = (state: PooleanState, g: Game) => !!gameVideoUrl(state, g)
 
-// Every clip in one game, each tied to a player: the scorer, the blocker or the thief.
+export const reviewKey = (c: { time: number; playerId: string }) => `${Math.round(c.time)}|${c.playerId}`
+
+// Every clip in one game, each tied to a player, with the editor's reviews applied: skipped ones gone, kept ones crowned and cropped.
 export function gameClips(state: PooleanState, g: Game): Clip[] {
+  const reviews = new Map((g.clipReviews ?? []).map((r) => [r.key, r]))
+  return rawClips(state, g).flatMap((c) => {
+    const r = reviews.get(reviewKey(c))
+    if (!r) return [c]
+    if (r.verdict === "skip" || r.looks?.[c.playerId] === "bad") return []
+    const looks = Object.entries(r.looks ?? {})
+    return [{ ...c, reviewed: true, frame: r.frame, who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), hide: looks.filter(([, v]) => v === "bad").map(([id]) => id) }]
+  })
+}
+
+// Every candidate in one game before any review: the scorer, the blocker or the thief.
+export function rawClips(state: PooleanState, g: Game): Clip[] {
   if (!hasVideo(state, g) || g.liveInProgress) return []
   const out: Clip[] = []
   const base = { gameId: g.id, date: g.date }
@@ -62,7 +82,7 @@ export function bestClips(state: PooleanState, opts: { pid?: string; gameIds?: s
   let pool = state.games
     .filter((g) => !gameIds || gameIds.includes(g.id))
     .flatMap((g) => gameClips(state, g))
-    .filter((c) => (!pid || c.playerId === pid) && (!kinds || kinds.includes(c.kind)) && !skip?.has(clipKey(c)))
+    .filter((c) => (!pid || c.playerId === pid || c.who?.includes(pid)) && !(pid && c.hide?.includes(pid)) && (!kinds || kinds.includes(c.kind)) && !skip?.has(clipKey(c)))
     .sort((a, b) => b.score - a.score || b.date.localeCompare(a.date) || a.time - b.time)
   const out: Clip[] = []
   const count = (f: (c: Clip) => boolean) => out.filter(f).length
@@ -70,7 +90,7 @@ export function bestClips(state: PooleanState, opts: { pid?: string; gameIds?: s
     const open = pool.filter((c) => count((o) => o.gameId === c.gameId) < perGame)
     if (!open.length) break
     // Earlier in the sorted pool wins a tie, so the order above still decides between equals.
-    const worth = (c: Clip) => c.score + (c.marked ? 100 : 0) - 2 * count((o) => o.kind === c.kind) - 1.5 * count((o) => o.playerId === c.playerId)
+    const worth = (c: Clip) => c.score + (c.marked ? 100 : c.reviewed ? 60 : 0) + (pid && c.good?.includes(pid) ? 8 : 0) - 2 * count((o) => o.kind === c.kind) - 1.5 * count((o) => o.playerId === c.playerId)
     const pick = open.reduce((best, c) => (worth(c) > worth(best) ? c : best))
     out.push(pick)
     pool = pool.filter((c) => c !== pick)

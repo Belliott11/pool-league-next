@@ -72,11 +72,11 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
             playsInline
             preload="metadata"
             className="size-full object-cover"
-            style={playing ? undefined : frameStyle(frame)} // zoomed onto the pool at rest; whole picture once playing, so the controls show
+            style={playing ? undefined : frameStyle(clip.frame ?? frame)} // zoomed onto the pool at rest; whole picture once playing, so the controls show
             aria-label={`${clip.label}, ${name}`}
           />
         ) : null}
-        {still && !playing && <img src={still} alt="" style={frameStyle(frame)} className="absolute inset-0 size-full object-cover" />}
+        {still && !playing && <img src={still} alt="" style={frameStyle(clip.frame ?? frame)} className="absolute inset-0 size-full object-cover" />}
         {!playing && (
           <button type="button" onClick={file ? play : () => setPlaying(true)} className="absolute inset-0 grid place-items-center bg-black/25 text-white transition-colors hover:bg-black/35 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary" aria-label={`Play: ${clip.label}, ${name}`}>
             <span className="grid size-12 place-items-center rounded-full bg-black/55 backdrop-blur-sm">

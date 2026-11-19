@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { bestClips } from "@/lib/clips"
+import { bestClips, gameClips, reviewKey } from "@/lib/clips"
 import type { PooleanState } from "@/lib/types"
 
 const ev = (id: string, scorerId: string, t: number, extra: object = {}) => ({ id, scorerId, points: 2 as const, made: true, videoTime: t, ...extra })
@@ -38,4 +38,23 @@ test("a highlight the editor marked comes first, and its automatic twin is dropp
   expect(out[0]).toMatchObject({ marked: true, kind: "marked", from: 98, label: "Marked highlight" })
   expect(out.filter((c) => c.kind === "dunk")).toHaveLength(0)
   expect(out.some((c) => c.kind === "three")).toBe(true)
+})
+
+const reviewed = (reviews: object[]) => {
+  const g = { ...game("r1", "2026-10-01", [ev("1", "a", 10, { dunk: true }), ev("2", "a", 20)]), clipReviews: reviews }
+  return { players: [{ id: "a", name: "A" }, { id: "b", name: "B" }], games: [g] } as unknown as PooleanState
+}
+const dunk = (s: PooleanState) => gameClips(s, s.games[0]).find((c) => c.kind === "dunk")!
+
+test("a kept clip is marked reviewed and leads, a skipped one is gone", () => {
+  const key = reviewKey(dunk(reviewed([])))
+  expect(dunk(reviewed([{ key, verdict: "keep", who: ["a"] }]))).toMatchObject({ reviewed: true })
+  expect(gameClips(reviewed([{ key, verdict: "skip" }]), reviewed([{ key, verdict: "skip" }]).games[0]).some((c) => c.kind === "dunk")).toBe(false)
+})
+
+test("a clip marked rough for a player stays off their pages but shows for others in the shot", () => {
+  const key = reviewKey(dunk(reviewed([])))
+  const s = reviewed([{ key, verdict: "keep", who: ["a", "b"], looks: { b: "bad" } }])
+  expect(bestClips(s, { pid: "b" }).some((c) => c.kind === "dunk")).toBe(false)
+  expect(bestClips(s, { pid: "a" }).some((c) => c.kind === "dunk")).toBe(true)
 })

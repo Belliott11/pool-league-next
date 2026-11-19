@@ -58,6 +58,15 @@ export interface TurnoverEvent {
   turnoverType?: string | null
 }
 
+// An editor's call on one candidate clip, from the Review clips list. `key` is clips.ts reviewKey (when and who).
+export interface ClipReview {
+  key: string
+  verdict: "keep" | "skip"
+  frame?: { z: number; x: number; y: number } // the crop, as stillCache.ts Frame
+  who?: string[] // everyone in the shot
+  looks?: Record<string, "good" | "bad"> // how a player comes across in it; "bad" keeps it off that player's own pages
+}
+
 export interface Game {
   id: string
   date: string
@@ -86,6 +95,7 @@ export interface Game {
   // Baskets added by friends using the scorekeeper code; folded into liveScores when the game is finished.
   scorekeeperScores?: { pid: string; points: number; bid?: string }[]
   matchups?: { id: string; defenderId: string; offenderId: string; note?: string; videoTime?: number | null }[]
+  clipReviews?: ClipReview[]
   plays?: { id: string; type: "highlight" | "lowlight"; start: number; end: number; playerId?: string | null; note?: string }[]
   // every other field (matchups, plays, videoUrl, masterVideoId, …) round-trips via this index
   [key: string]: unknown

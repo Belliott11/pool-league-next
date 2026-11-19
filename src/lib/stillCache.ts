@@ -63,7 +63,7 @@ export function waterFrame(px: Uint8ClampedArray, w: number, h: number): Frame |
 }
 // The scale and origin that put the focus point mid-picture at that zoom, without showing past the edges.
 export function frameStyle(f: Frame | null): { transform: string; transformOrigin: string } | undefined {
-  if (!f) return undefined
+  if (!f || f.z < 1.02) return undefined
   const o = (p: number) => Math.max(0, Math.min(1, (f.z * p - 0.5) / (f.z - 1))) * 100
   return { transform: `scale(${f.z.toFixed(3)})`, transformOrigin: `${o(f.x).toFixed(1)}% ${o(f.y).toFixed(1)}%` }
 }

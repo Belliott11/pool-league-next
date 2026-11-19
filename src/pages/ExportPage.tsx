@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { FixBlanks } from "@/pages/games/FixBlanks"
+import { ReviewClips } from "@/pages/games/ReviewClips"
 import { UnfilledList } from "@/pages/games/UnfilledList"
 import { TagQueue } from "@/pages/games/TagQueue"
 import { LightRecheck } from "@/pages/games/LightRecheck"
@@ -133,6 +134,9 @@ export function ExportPage({ state, toggles, update }: { state: PooleanState; to
               </BackfillPanel>
               <BackfillPanel title="Fix blanks" hint="Plays still missing a tag. Watch the clip and fill it in here, and a fixed play drops off the list.">
                 <FixBlanks state={state} update={update} />
+              </BackfillPanel>
+              <BackfillPanel title="Review clips" hint="Plays that could make a good clip. Keep or skip each, crop it, say who is in it and who looks good or rough. Kept clips lead on the site.">
+                <ReviewClips state={state} update={update} />
               </BackfillPanel>
               <BackfillPanel title="Still unfilled" hint="Each filmed game and what it still needs for the newer stats: tip-off matchups and a contest level on defended shots.">
                 <UnfilledList state={state} />
