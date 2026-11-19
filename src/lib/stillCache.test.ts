@@ -7,13 +7,13 @@ afterEach(() => store.clear())
 
 test("a still is keyed by recording and moment, and the oldest go when too many are kept", () => {
   expect(stillKey("https://h.dev/videos/abc/file.mp4?sig=1#t=5", 12.4)).toBe(stillKey("https://h.dev/videos/abc/file.mp4", 12))
-  for (let i = 0; i < 85; i++) writeStill(`k${i}`, `d${i}`)
+  for (let i = 0; i < 45; i++) writeStill(`k${i}`, `d${i}`)
   expect(readStill("k0")).toBeNull() // dropped
   expect(readStill("k4")).toBeNull()
   expect(readStill("k5")).toBe("d5")
-  expect(readStill("k84")).toBe("d84")
-  writeStill("k84", "again") // rewriting moves it to newest, not a duplicate
-  expect(readStill("k84")).toBe("again")
+  expect(readStill("k44")).toBe("d44")
+  writeStill("k44", "again") // rewriting moves it to newest, not a duplicate
+  expect(readStill("k44")).toBe("again")
 })
 
 test("storage that throws is skipped quietly", () => {

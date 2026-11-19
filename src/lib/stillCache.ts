@@ -3,8 +3,8 @@
 // the host refuses, loaded again the plain way: the clip still plays, it just isn't saved.
 const PREFIX = "clipStill:"
 const INDEX = "clipStill:index"
-const MAX = 80 // frames kept, oldest dropped first; about 10 to 20 KB each
-const WIDTH = 480
+const MAX = 40 // frames kept, oldest dropped first; about 15 KB each, so well under the 5 MB a site gets
+const WIDTH = 400
 
 // Same recording and moment, however the URL is signed or fragmented.
 export const stillKey = (url: string, time: number) => `${url.split(/[?#]/)[0].split("/").slice(-2).join("/")}|${Math.round(time)}`
@@ -40,7 +40,7 @@ export function loadWithStill(v: HTMLVideoElement, src: string, key: string, at:
       c.width = WIDTH
       c.height = Math.round((WIDTH * v.videoHeight) / v.videoWidth)
       c.getContext("2d")!.drawImage(v, 0, 0, c.width, c.height)
-      const data = c.toDataURL("image/jpeg", 0.72)
+      const data = c.toDataURL("image/jpeg", 0.65)
       saved = true
       writeStill(key, data)
       onStill?.(data)
