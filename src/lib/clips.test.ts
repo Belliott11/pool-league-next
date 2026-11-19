@@ -78,3 +78,13 @@ test("a headline gets a good clip for good news, a rough one for bad news, and n
   expect(headlineClip(rough, "A struggled all night")?.kind).toBe("dunk")
   expect(headlineClip(rough, "A scored from everywhere")?.kind).not.toBe("dunk")
 })
+
+test("a hand-picked still is a clip of its own, held as a still, and removing it takes it away", () => {
+  const pick = { key: "33|a", verdict: "keep", still: { time: 33.4, playerId: "a" }, note: "Adam hugs Ben after the win", frame: { z: 1.5, x: 0.4, y: 0.4 } }
+  const s = reviewed([pick])
+  const still = gameClips(s, s.games[0]).find((c) => c.kind === "still")!
+  expect(still).toMatchObject({ playerId: "a", time: 33.4, label: "Adam hugs Ben after the win", reviewed: true, frame: { z: 1.5, x: 0.4, y: 0.4 } })
+  expect(bestClips(s, { pid: "a", limit: 1 })[0].kind).toBe("still")
+  const gone = reviewed([{ ...pick, verdict: "skip" }])
+  expect(gameClips(gone, gone.games[0]).some((c) => c.kind === "still")).toBe(false)
+})

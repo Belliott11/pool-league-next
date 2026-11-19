@@ -36,7 +36,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     const v = video.current
     if (!el || !v || !file) return
     const saver = (navigator as Navigator & { connection?: Conn }).connection?.saveData === true
-    const calm = still || matchMedia("(prefers-reduced-motion: reduce)").matches || saver // `still`: hold the frame, never play
+    const calm = still || clip.kind === "still" || matchMedia("(prefers-reduced-motion: reduce)").matches || saver // `still`: hold the frame, never play
     let visible = false
     const sync = () => {
       if (visible && !document.hidden && !calm && (cellularOk || !onMobileData()) && (playing.has(v) || [...playing].filter((o) => !o.paused).length < MAX_PLAYING)) {

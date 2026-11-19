@@ -1,5 +1,5 @@
 import { playerName } from "@/lib/players"
-import type { Game, PooleanState } from "@/lib/types"
+import type { ClipReview, Game, PooleanState } from "@/lib/types"
 import type { Frame } from "@/lib/stillCache"
 import { gameVideoUrl } from "@/lib/video"
 
@@ -10,7 +10,7 @@ export interface Clip {
   date: string
   time: number // seconds into the game's video
   playerId: string
-  kind: "marked" | "lowlight" | "dunk" | "three" | "block" | "steal" | "beat" | "shot"
+  kind: "marked" | "still" | "lowlight" | "dunk" | "three" | "block" | "steal" | "beat" | "shot"
   marked?: boolean // an editor flagged it as a good clip (a highlight on the game's reel)
   from?: number // for a marked clip, the stretch the editor cut, in seconds
   to?: number
@@ -23,7 +23,7 @@ export interface Clip {
   rough?: string[] // players it goes badly for: shown with stories about that, never on their highlights
 }
 
-const SCORE = { marked: 20, lowlight: 8, dunk: 6, block: 5, three: 4, beat: 4, steal: 3, shot: 1 } as const
+const SCORE = { marked: 20, still: 18, lowlight: 8, dunk: 6, block: 5, three: 4, beat: 4, steal: 3, shot: 1 } as const
 
 const hasVideo = (state: PooleanState, g: Game) => !!gameVideoUrl(state, g)
 
@@ -35,14 +35,21 @@ export const reviewKey = (c: { time: number; playerId: string }) => `${Math.roun
 
 // Every clip in one game, each tied to a player, with the editor's reviews applied: skipped ones gone, kept ones crowned and cropped.
 export function gameClips(state: PooleanState, g: Game): Clip[] {
-  const reviews = new Map((g.clipReviews ?? []).map((r) => [r.key, r]))
-  return rawClips(state, g).flatMap((c) => {
+  if (!hasVideo(state, g) || g.liveInProgress) return []
+  const reviews = new Map((g.clipReviews ?? []).filter((r) => !r.still).map((r) => [r.key, r]))
+  // A frame an editor picked by hand is a clip in its own right, held as a still.
+  const stills: Clip[] = (g.clipReviews ?? []).filter((r) => r.still && r.verdict === "keep").map((r) => reviewed({ gameId: g.id, date: g.date, time: r.still!.time, playerId: r.still!.playerId, kind: "still", label: "Still", score: SCORE.still }, r))
+  return [...stills, ...rawClips(state, g).flatMap((c) => {
     const r = reviews.get(reviewKey(c))
     if (!r) return [c]
     if (r.verdict === "skip") return []
-    const looks = Object.entries(r.looks ?? {})
-    return [{ ...c, label: r.note?.trim() || c.label, reviewed: true, frame: r.frame, who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), rough: looks.filter(([, v]) => v === "bad").map(([id]) => id) }]
-  })
+    return [reviewed(c, r)]
+  })]
+}
+
+const reviewed = (c: Clip, r: ClipReview): Clip => {
+  const looks = Object.entries(r.looks ?? {})
+  return { ...c, label: r.note?.trim() || c.label, reviewed: true, frame: r.frame, who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), rough: looks.filter(([, v]) => v === "bad").map(([id]) => id) }
 }
 
 // Every candidate in one game before any review: the scorer, the blocker or the thief.
