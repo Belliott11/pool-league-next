@@ -140,7 +140,13 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
   const saved = gameClips(state, open.g).filter((c) => c.kind === "still")
   const fresh = drafts.filter((d) => d.gameId === open.g.id && !reviewed(open.g).has(reviewKey(d)))
   const rows = [...saved, ...fresh, ...[...open.all].sort((a, b) => Number(reviewed(open.g).has(reviewKey(a))) - Number(reviewed(open.g).has(reviewKey(b))) || b.score - a.score)]
-  const save = (r: ClipReview, was?: string) => update((s) => ({ ...s, games: s.games.map((g) => (g.id === open.g.id ? { ...g, clipReviews: [...(g.clipReviews ?? []).filter((x) => x.key !== r.key && x.key !== was), r] } : g)) }))
+  const save = (r: ClipReview, was?: string) => {
+    // The card that was just saved (or removed) stops being a draft, whatever frame it was moved to.
+    setDrafts((d) => d.filter((x) => ![r.key, was].includes(reviewKey(x))))
+    // Removing a still deletes it, rather than leaving a "skip" behind.
+    const entry = r.still && r.verdict === "skip" ? [] : [r]
+    update((s) => ({ ...s, games: s.games.map((g) => (g.id === open.g.id ? { ...g, clipReviews: [...(g.clipReviews ?? []).filter((x) => x.key !== r.key && x.key !== was), ...entry] } : g)) }))
+  }
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
