@@ -19,6 +19,7 @@ import { BottomNav } from "@/components/BottomNav"
 import { ArrowLeft } from "lucide-react"
 import { DEFAULT_VIEW, hashToView, sameView, viewToHash, type View } from "@/lib/nav"
 import { ColorMenu } from "@/components/ColorMenu"
+import { setArt } from "@/lib/emptyArt"
 import { FiltersMenu } from "@/components/FiltersMenu"
 import { setFilters } from "@/lib/filters"
 import { PageSkeleton } from "@/components/PageSkeleton"
@@ -97,6 +98,7 @@ type Mode = "local" | "viewer" | "admin"
 function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode; cloud?: Cloud }) {
   const readOnly = mode === "viewer"
   const [state, setState] = useState(initial)
+  setArt(state) // stills for empty panels (see emptyArt.ts); cheap when the state has not changed
   setAppGames(state.games)
   setPaceGames(state.games)
   // Private player labels: editor only, and never part of the shared league data.

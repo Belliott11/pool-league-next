@@ -5,7 +5,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import type { Clip } from "@/lib/clips"
 import { preconnect } from "@/lib/mediaGate"
-import { loadWithStill, readStill, stillKey } from "@/lib/stillCache"
+import { frameStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
@@ -26,6 +26,7 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
   const [near, setNear] = useState(false)
   const key = stillKey(url, clip.time)
   const [still, setStill] = useState<string | null>(() => readStill(key)) // the saved frame, once there is one
+  const [frame, setFrame] = useState(() => readFrame(url)) // the crop onto the pool, once a frame has been looked at
   const [shown, setShown] = useState(false) // the recording's own frame is in
   const [playing, setPlaying] = useState(false)
   useEffect(() => {
@@ -39,7 +40,7 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
     const v = video.current
     if (!near || !file || !url || still || !v || v.getAttribute("src")) return
     preconnect(url)
-    loadWithStill(v, `${url.split("#")[0]}#t=${clip.time}`, key, clip.time, setStill)
+    loadWithStill(v, `${url.split("#")[0]}#t=${clip.time}`, key, clip.time, (d) => (setStill(d), setFrame(readFrame(url))))
   }, [near, file, url, still, key, clip.time])
   if (!game || !url) return null
   const play = () => {
@@ -71,10 +72,11 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
             playsInline
             preload="metadata"
             className="size-full object-cover"
+            style={playing ? undefined : frameStyle(frame)} // zoomed onto the pool at rest; whole picture once playing, so the controls show
             aria-label={`${clip.label}, ${name}`}
           />
         ) : null}
-        {still && !playing && <img src={still} alt="" className="absolute inset-0 size-full object-cover" />}
+        {still && !playing && <img src={still} alt="" style={frameStyle(frame)} className="absolute inset-0 size-full object-cover" />}
         {!playing && (
           <button type="button" onClick={file ? play : () => setPlaying(true)} className="absolute inset-0 grid place-items-center bg-black/25 text-white transition-colors hover:bg-black/35 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary" aria-label={`Play: ${clip.label}, ${name}`}>
             <span className="grid size-12 place-items-center rounded-full bg-black/55 backdrop-blur-sm">

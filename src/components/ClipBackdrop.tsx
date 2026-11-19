@@ -1,7 +1,7 @@
-import { useEffect, useRef, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import type { Clip } from "@/lib/clips"
 import { preconnect } from "@/lib/mediaGate"
-import { loadWithStill, readStill, stillKey } from "@/lib/stillCache"
+import { frameStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
 import type { PooleanState } from "@/lib/types"
 import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
 import { cn } from "@/lib/utils"
@@ -21,13 +21,14 @@ const onMobileData = () => {
 // and not at all (a still frame instead) with reduced motion or Data Saver on. On mobile data only a backdrop marked `cellularOk` plays (one
 // place on the site, Wrapped); the rest wait for Wi-Fi. ponytail: only browsers that report the connection type can tell (Chrome on Android);
 // Safari on iPhone says nothing, so there the backdrops play as on Wi-Fi. A scrim keeps whatever sits on top readable.
-export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", cellularOk = false, children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; cellularOk?: boolean; children?: ReactNode }) {
+export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", cellularOk = false, still = false, children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; cellularOk?: boolean; still?: boolean; children?: ReactNode }) {
   const game = state.games.find((g) => g.id === clip.gameId)
   const url = game ? gameVideoUrl(state, game) : ""
   const file = isDirectVideoUrl(url)
   const box = useRef<HTMLDivElement>(null)
   const saved = file ? readStill(stillKey(url, Math.max(0, clip.from ?? clip.time - BEFORE))) : null // the frame from a past visit, shown while the video loads
   const video = useRef<HTMLVideoElement>(null)
+  const [frame, setFrame] = useState(() => (file ? readFrame(url) : null)) // crop onto the pool
   const start = Math.max(0, clip.from ?? clip.time - BEFORE)
   const end = clip.to ?? clip.time + AFTER
   useEffect(() => {
@@ -35,7 +36,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     const v = video.current
     if (!el || !v || !file) return
     const saver = (navigator as Navigator & { connection?: Conn }).connection?.saveData === true
-    const calm = matchMedia("(prefers-reduced-motion: reduce)").matches || saver
+    const calm = still || matchMedia("(prefers-reduced-motion: reduce)").matches || saver // `still`: hold the frame, never play
     let visible = false
     const sync = () => {
       if (visible && !document.hidden && !calm && (cellularOk || !onMobileData()) && (playing.has(v) || [...playing].filter((o) => !o.paused).length < MAX_PLAYING)) {
@@ -50,7 +51,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
       visible = e.isIntersecting
       if (visible && !v.getAttribute("src")) {
         preconnect(url)
-        loadWithStill(v, `${url.split("#")[0]}#t=${start}`, stillKey(url, start), start)
+        loadWithStill(v, `${url.split("#")[0]}#t=${start}`, stillKey(url, start), start, () => setFrame(readFrame(url)))
       }
       sync()
     }, { threshold: 0.25 })
@@ -67,13 +68,13 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
       v.pause()
       playing.delete(v)
     }
-  }, [url, file, start, end, cellularOk])
+  }, [url, file, start, end, cellularOk, still])
   return (
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
-          {saved && <img src={saved} alt="" aria-hidden className="pointer-events-none absolute inset-0 size-full object-cover" />}
-          <video ref={video} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className="pointer-events-none absolute inset-0 size-full object-cover" />
+          {saved && <img src={saved} alt="" aria-hidden style={frameStyle(frame)} className="pointer-events-none absolute inset-0 size-full object-cover" />}
+          <video ref={video} style={frameStyle(frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className="pointer-events-none absolute inset-0 size-full object-cover" />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
         </>
       )}
