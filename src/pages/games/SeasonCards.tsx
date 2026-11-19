@@ -85,7 +85,7 @@ export function SeasonStoriesCard({ state, update }: { state: PooleanState; upda
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <p className="text-xs text-muted-foreground">Counts every finished game, so records here can differ from the Standings, which count only games with a box score and even teams.</p>
-        <StoryList stories={all ? stories : stories.slice(0, 3)} />
+        <StoryList stories={all ? stories : stories.slice(0, 3)} state={state} />
         {stories.length > 3 && (
           <button type="button" className="self-start text-sm font-medium text-accent hover:underline" onClick={() => setAll(!all)}>
             {all ? "Show less" : `Show ${stories.length - 3} more`}

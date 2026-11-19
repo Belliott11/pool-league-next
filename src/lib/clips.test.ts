@@ -58,3 +58,23 @@ test("a clip marked rough for a player stays off their pages but shows for other
   expect(bestClips(s, { pid: "b" }).some((c) => c.kind === "dunk")).toBe(false)
   expect(bestClips(s, { pid: "a" }).some((c) => c.kind === "dunk")).toBe(true)
 })
+
+test("a rough clip is used for bad news about that player and a described clip is matched to the headline", () => {
+  const key = reviewKey(dunk(reviewed([])))
+  const s = reviewed([{ key, verdict: "keep", who: ["a", "b"], looks: { b: "bad" }, note: "Ben gets dunked on" }])
+  expect(bestClips(s, { pid: "b", mood: "bad" })[0]).toMatchObject({ kind: "dunk", label: "Ben gets dunked on" })
+  expect(bestClips(s, { pid: "a", mood: "bad" })).toHaveLength(0)
+  const t = reviewed([{ key, verdict: "keep", note: "Left hand finish at the rim" }])
+  expect(bestClips(t, { pid: "a", about: "Adam finished at the rim all night", limit: 1 })[0].label).toBe("Left hand finish at the rim")
+})
+
+test("a headline gets a good clip for good news, a rough one for bad news, and none when nothing rough exists", async () => {
+  const { headlineClip } = await import("@/lib/headlineClips")
+  const key = reviewKey(dunk(reviewed([])))
+  const none = reviewed([])
+  expect(headlineClip(none, "A scored from everywhere")?.kind).toBeDefined()
+  expect(headlineClip(none, "A struggled all night")).toBeUndefined()
+  const rough = reviewed([{ key, verdict: "keep", who: ["a"], looks: { a: "bad" } }])
+  expect(headlineClip(rough, "A struggled all night")?.kind).toBe("dunk")
+  expect(headlineClip(rough, "A scored from everywhere")?.kind).not.toBe("dunk")
+})

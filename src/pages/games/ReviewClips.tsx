@@ -12,13 +12,14 @@ import { Chip } from "@/pages/statentry/parts"
 
 // Editors only: the plays that could make a good clip, game by game, newest first, the ones nobody has looked at on top. For each one: keep it
 // or skip it, crop the picture, say who is in it and whether anyone looks good or rough. Kept clips rank first on the site, skipped ones
-// are gone, and a player marked rough stays out of their own pages for that clip.
+// are gone, and a clip marked rough for a player is kept off their own highlights and used only with stories about something going badly for them.
 const WORTH = new Set<Clip["kind"]>(["marked", "dunk", "block", "three", "beat", "steal"])
 
 function Card({ state, game, clip, review, save }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview) => void }) {
   const url = gameVideoUrl(state, game)
   const key = reviewKey(clip)
   const [frame, setFrame] = useState<Frame | undefined>(review?.frame)
+  const [note, setNote] = useState(review?.note ?? "")
   const [who, setWho] = useState<string[]>(review?.who ?? [clip.playerId])
   const [looks, setLooks] = useState<Record<string, "good" | "bad">>(review?.looks ?? {})
   const start = frame ?? readFrame(url) ?? { z: 1, x: 0.5, y: 0.5 }
@@ -33,6 +34,11 @@ function Card({ state, game, clip, review, save }: { state: PooleanState; game: 
         <ClipTile state={state} clip={{ ...clip, frame }} className="w-64 max-w-full" />
         <div className="flex min-w-0 flex-col gap-2 text-sm">
           <p className="text-xs text-muted-foreground">{done ? `${done}. Change it below and save again.` : "Not reviewed yet."}</p>
+          <label className="flex flex-col gap-1 text-xs font-medium">
+            Describe it
+            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Two-handed dunk over Ben, everyone reacts" className="h-9 rounded-md border bg-background px-2 text-sm font-normal" />
+            <span className="font-normal text-muted-foreground">Becomes the caption, and headlines that use the same words pick this clip.</span>
+          </label>
           <fieldset className="flex flex-col gap-1">
             <legend className="text-xs font-medium">Crop</legend>
             {([["z", "Zoom", 1, 2.5], ["x", "Across", 0, 1], ["y", "Down", 0, 1]] as const).map(([k, label, min, max]) => (
@@ -62,7 +68,7 @@ function Card({ state, game, clip, review, save }: { state: PooleanState; game: 
             </fieldset>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(frame ? { frame } : {}), who, looks })}>Keep this clip</Button>
+            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(note.trim() ? { note: note.trim() } : {}), ...(frame ? { frame } : {}), who, looks })}>Keep this clip</Button>
             <Button size="sm" variant="outline" onClick={() => save({ key, verdict: "skip" })}>Skip</Button>
           </div>
         </div>

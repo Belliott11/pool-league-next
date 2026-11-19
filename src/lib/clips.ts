@@ -10,7 +10,7 @@ export interface Clip {
   date: string
   time: number // seconds into the game's video
   playerId: string
-  kind: "marked" | "dunk" | "three" | "block" | "steal" | "beat" | "shot"
+  kind: "marked" | "lowlight" | "dunk" | "three" | "block" | "steal" | "beat" | "shot"
   marked?: boolean // an editor flagged it as a good clip (a highlight on the game's reel)
   from?: number // for a marked clip, the stretch the editor cut, in seconds
   to?: number
@@ -20,12 +20,16 @@ export interface Clip {
   frame?: Frame // the crop the editor set
   who?: string[] // others in the shot, so it can show on their pages too
   good?: string[] // players it flatters: ranks higher for them
-  hide?: string[] // players it should not appear for
+  rough?: string[] // players it goes badly for: shown with stories about that, never on their highlights
 }
 
-const SCORE = { marked: 20, dunk: 6, block: 5, three: 4, beat: 4, steal: 3, shot: 1 } as const
+const SCORE = { marked: 20, lowlight: 8, dunk: 6, block: 5, three: 4, beat: 4, steal: 3, shot: 1 } as const
 
 const hasVideo = (state: PooleanState, g: Game) => !!gameVideoUrl(state, g)
+
+// The meaningful words in a line, for matching a headline to what a clip shows.
+const STOP = new Set(["the", "and", "with", "from", "that", "this", "for", "his", "her", "their", "was", "were", "has", "have", "had", "over", "after", "into"])
+export const words = (t: string) => [...new Set((t.toLowerCase().match(/[a-z]{4,}/g) ?? []).filter((w) => !STOP.has(w)))]
 
 export const reviewKey = (c: { time: number; playerId: string }) => `${Math.round(c.time)}|${c.playerId}`
 
@@ -35,9 +39,9 @@ export function gameClips(state: PooleanState, g: Game): Clip[] {
   return rawClips(state, g).flatMap((c) => {
     const r = reviews.get(reviewKey(c))
     if (!r) return [c]
-    if (r.verdict === "skip" || r.looks?.[c.playerId] === "bad") return []
+    if (r.verdict === "skip") return []
     const looks = Object.entries(r.looks ?? {})
-    return [{ ...c, reviewed: true, frame: r.frame, who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), hide: looks.filter(([, v]) => v === "bad").map(([id]) => id) }]
+    return [{ ...c, label: r.note?.trim() || c.label, reviewed: true, frame: r.frame, who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), rough: looks.filter(([, v]) => v === "bad").map(([id]) => id) }]
   })
 }
 
@@ -50,7 +54,11 @@ export function rawClips(state: PooleanState, g: Game): Clip[] {
   const marked: Clip[] = (g.plays ?? [])
     .filter((p) => p.type === "highlight" && p.playerId && p.end > p.start)
     .map((p) => ({ ...base, time: p.start + Math.min(5, (p.end - p.start) / 2), from: p.start, to: Math.min(p.end, p.start + 12), playerId: p.playerId!, kind: "marked" as const, marked: true, label: p.note?.trim() || "Marked highlight", score: SCORE.marked }))
-  out.push(...marked)
+  // A play an editor flagged as a lowlight is the same thing the other way round: a rough moment, for stories about things going badly.
+  const low: Clip[] = (g.plays ?? [])
+    .filter((p) => p.type === "lowlight" && p.playerId && p.end > p.start)
+    .map((p) => ({ ...base, time: p.start + Math.min(5, (p.end - p.start) / 2), from: p.start, to: Math.min(p.end, p.start + 12), playerId: p.playerId!, kind: "lowlight" as const, label: p.note?.trim() || "Rough moment", score: SCORE.lowlight, rough: [p.playerId!] }))
+  out.push(...marked, ...low)
   const taken = (t: number, id: string) => marked.some((m) => m.playerId === id && t >= m.from! - 3 && t <= m.to! + 3)
   for (const e of g.scoringEvents) {
     if (typeof e.videoTime !== "number") continue
@@ -77,12 +85,12 @@ export const clipKey = (c: Clip) => `${c.gameId}|${c.time}|${c.playerId}`
 // The best few across games (a clip an editor marked always outranks the rest), picked one at a time so the set is varied: each pick costs the next ones of the same kind of play and
 // the same player a little, so a strip is not three blocks or one player's whole night. At most `perGame` from one game. `kinds`
 // limits what counts, and `skip` holds clips already used elsewhere on the page.
-export function bestClips(state: PooleanState, opts: { pid?: string; gameIds?: string[]; limit?: number; perGame?: number; kinds?: Clip["kind"][]; skip?: Set<string> } = {}): Clip[] {
-  const { pid, gameIds, limit = 3, perGame = 2, kinds, skip } = opts
+export function bestClips(state: PooleanState, opts: { pid?: string; mood?: "bad"; about?: string; gameIds?: string[]; limit?: number; perGame?: number; kinds?: Clip["kind"][]; skip?: Set<string> } = {}): Clip[] {
+  const { pid, gameIds, limit = 3, perGame = 2, kinds, skip, mood, about } = opts
   let pool = state.games
     .filter((g) => !gameIds || gameIds.includes(g.id))
     .flatMap((g) => gameClips(state, g))
-    .filter((c) => (!pid || c.playerId === pid || c.who?.includes(pid)) && !(pid && c.hide?.includes(pid)) && (!kinds || kinds.includes(c.kind)) && !skip?.has(clipKey(c)))
+    .filter((c) => (!pid || c.playerId === pid || c.who?.includes(pid)) && (mood === "bad" ? !!pid && !!c.rough?.includes(pid) : !c.rough?.some((r) => r === pid || r === c.playerId)) && (!kinds || kinds.includes(c.kind)) && !skip?.has(clipKey(c)))
     .sort((a, b) => b.score - a.score || b.date.localeCompare(a.date) || a.time - b.time)
   const out: Clip[] = []
   const count = (f: (c: Clip) => boolean) => out.filter(f).length
@@ -90,7 +98,8 @@ export function bestClips(state: PooleanState, opts: { pid?: string; gameIds?: s
     const open = pool.filter((c) => count((o) => o.gameId === c.gameId) < perGame)
     if (!open.length) break
     // Earlier in the sorted pool wins a tie, so the order above still decides between equals.
-    const worth = (c: Clip) => c.score + (c.marked ? 100 : c.reviewed ? 60 : 0) + (pid && c.good?.includes(pid) ? 8 : 0) - 2 * count((o) => o.kind === c.kind) - 1.5 * count((o) => o.playerId === c.playerId)
+    const said = about ? words(about) : null
+    const worth = (c: Clip) => (said ? 5 * words(c.label).filter((w) => said.includes(w)).length : 0) + c.score + (c.marked ? 100 : c.reviewed ? 60 : 0) + (pid && c.good?.includes(pid) ? 8 : 0) - 2 * count((o) => o.kind === c.kind) - 1.5 * count((o) => o.playerId === c.playerId)
     const pick = open.reduce((best, c) => (worth(c) > worth(best) ? c : best))
     out.push(pick)
     pool = pool.filter((c) => c !== pick)

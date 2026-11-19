@@ -135,7 +135,7 @@ export function ExportPage({ state, toggles, update }: { state: PooleanState; to
               <BackfillPanel title="Fix blanks" hint="Plays still missing a tag. Watch the clip and fill it in here, and a fixed play drops off the list.">
                 <FixBlanks state={state} update={update} />
               </BackfillPanel>
-              <BackfillPanel title="Review clips" hint="Plays that could make a good clip. Keep or skip each, crop it, say who is in it and who looks good or rough. Kept clips lead on the site.">
+              <BackfillPanel title="Review clips" hint="Plays that could make a good clip. Keep or skip each, crop it, describe it, say who is in it and who looks good or rough. Kept clips lead on the site, and rough ones go with stories about things going badly.">
                 <ReviewClips state={state} update={update} />
               </BackfillPanel>
               <BackfillPanel title="Still unfilled" hint="Each filmed game and what it still needs for the newer stats: tip-off matchups and a contest level on defended shots.">

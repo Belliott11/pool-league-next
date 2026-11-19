@@ -25,7 +25,7 @@ export function GoingIn({ state, update }: { state: PooleanState; update?: Updat
       <h3 className="chyron flex items-center gap-2 font-display text-lg font-bold">
         <Newspaper aria-hidden className="size-4 text-accent" /> Going into the next night
       </h3>
-      <StoryList stories={shown} />
+      <StoryList stories={shown} state={state} />
       {stories.length > SHOWN && (
         <button type="button" className="self-start text-sm font-medium text-accent hover:underline" onClick={() => setAll(!all)}>
           {all ? "Show less" : `Show ${stories.length - SHOWN} more`}

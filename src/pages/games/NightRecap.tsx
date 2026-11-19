@@ -54,6 +54,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
   const labeled = useLabeledState(state)
   const days = useMemo(() => gameDays(state), [state])
   const [date, setDate] = useState(initialDate && days.includes(initialDate) ? initialDate : (days[0] ?? ""))
+  const nightIds = useMemo(() => state.games.filter((g) => g.date === date).map((g) => g.id), [state.games, date])
   const [copied, setCopied] = useState(false)
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "pts", dir: "desc" })
   const full = useMemo(() => summarizeNight(state, date), [state, date])
@@ -266,7 +267,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
       {stories.length > 0 && (
         <section className="flex flex-col gap-2 rounded-xl border bg-card p-4" aria-label="Storylines">
           <h3 className="font-display text-lg font-bold">The story of the night</h3>
-          <StoryList stories={stories} />
+          <StoryList stories={stories} state={state} gameIds={nightIds} />
         </section>
       )}
 

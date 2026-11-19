@@ -63,6 +63,7 @@ export interface ClipReview {
   key: string
   verdict: "keep" | "skip"
   frame?: { z: number; x: number; y: number } // the crop, as stillCache.ts Frame
+  note?: string // what happens in it, in the editor's words: the caption, and what a headline is matched against
   who?: string[] // everyone in the shot
   looks?: Record<string, "good" | "bad"> // how a player comes across in it; "bad" keeps it off that player's own pages
 }

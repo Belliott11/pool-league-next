@@ -60,7 +60,7 @@ export function NightPreviewCard({ state, update }: { state: PooleanState; updat
       <p className="text-sm text-muted-foreground">
         {t.teams}.{t.missing.length > 0 && ` Regulars not on the list: ${t.missing.map((id) => playerName(state, id)).join(", ")}.`}
       </p>
-      {stories.length > 0 && <StoryList stories={stories} />}
+      {stories.length > 0 && <StoryList stories={stories} state={state} />}
       <Button
         size="sm"
         variant="outline"
