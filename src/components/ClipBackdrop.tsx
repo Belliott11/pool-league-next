@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react"
 import type { Clip } from "@/lib/clips"
+import { preconnect } from "@/lib/mediaGate"
 import type { PooleanState } from "@/lib/types"
 import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
 import { cn } from "@/lib/utils"
@@ -45,7 +46,10 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     }
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting
-      if (visible && !v.getAttribute("src")) v.src = `${url.split("#")[0]}#t=${start}`
+      if (visible && !v.getAttribute("src")) {
+        preconnect(url)
+        v.src = `${url.split("#")[0]}#t=${start}`
+      }
       sync()
     }, { threshold: 0.25 })
     io.observe(el)

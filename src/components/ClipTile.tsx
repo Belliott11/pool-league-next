@@ -4,6 +4,7 @@ import { InlineClip } from "@/components/InlineClip"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import type { Clip } from "@/lib/clips"
+import { preconnect } from "@/lib/mediaGate"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
@@ -21,14 +22,19 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
   const box = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
   const [near, setNear] = useState(false)
+  const [shown, setShown] = useState(false) // the still frame is in
   const [playing, setPlaying] = useState(false)
   useEffect(() => {
     const el = box.current
     if (!el || typeof IntersectionObserver === "undefined") return setNear(true)
-    const io = new IntersectionObserver(([e]) => e.isIntersecting && (setNear(true), io.disconnect()), { rootMargin: "300px" })
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && (setNear(true), io.disconnect()), { rootMargin: "150px" })
     io.observe(el)
     return () => io.disconnect()
   }, [])
+  useEffect(() => {
+    if (!near || !file || !url) return
+    preconnect(url)
+  }, [near, file, url])
   if (!game || !url) return null
   const play = () => {
     const v = video.current
@@ -44,13 +50,14 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
   const name = playerName(state, clip.playerId)
   return (
     <figure className={cn("flex min-w-0 flex-col gap-2", className)}>
-      <div ref={box} className="relative aspect-video overflow-hidden rounded-xl bg-muted">
+      <div ref={box} className={cn("relative aspect-video overflow-hidden rounded-xl bg-muted", file && near && !shown && !playing && "motion-safe:animate-pulse")}>
         {playing && !file ? (
           <InlineClip state={state} game={game} time={clip.time} />
         ) : file ? (
           <video
             ref={video}
             src={near ? `${url.split("#")[0]}#t=${clip.time}` : undefined}
+            onLoadedData={() => setShown(true)}
             muted
             playsInline
             preload={near ? "metadata" : "none"}
