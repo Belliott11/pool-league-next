@@ -26,7 +26,7 @@ function Card({ state, game, clip, review, save }: { state: PooleanState; game: 
   const [note, setNote] = useState(review?.note ?? "")
   const [who, setWho] = useState<string[]>(review?.who ?? [clip.playerId])
   const [looks, setLooks] = useState<Record<string, "good" | "bad">>(review?.looks ?? {})
-  const start = frame ?? readFrame(url) ?? { z: 1, x: 0.5, y: 0.5 }
+  const start = frame ?? readFrame(url) ?? { z: 1.5, x: 0.5, y: 0.5 } // zoomed a little to start, because Across and Down move nothing at zoom 1
   const set = (patch: Partial<Frame>) => setFrame({ ...start, ...patch })
   const people = [...game.teamA, ...game.teamB]
   const still = clip.kind === "still"
@@ -50,6 +50,7 @@ function Card({ state, game, clip, review, save }: { state: PooleanState; game: 
               <label key={k} className="flex items-center gap-2 text-xs">
                 <span className="w-12 text-muted-foreground">{label}</span>
                 <input type="range" min={min} max={max} step={0.02} value={start[k]} onChange={(e) => set({ [k]: Number(e.target.value) })} className="min-w-0 flex-1" />
+                <span className="w-9 text-right tabular-nums text-muted-foreground">{k === "z" ? `${start.z.toFixed(1)}x` : `${Math.round(start[k] * 100)}%`}</span>
               </label>
             ))}
             {frame && <button type="button" className="self-start text-xs text-muted-foreground underline" onClick={() => setFrame(undefined)}>Back to the automatic crop</button>}
