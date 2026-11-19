@@ -108,3 +108,12 @@ test("a contested bucket is a candidate of its own kind, and a miss out of bound
   expect(clips.find((c) => c.kind === "contested")?.label).toBe("Contested bucket")
   expect(clips.filter((c) => c.kind === "lowlight")).toMatchObject([{ playerId: "b", label: "Missed shot out of bounds", rough: ["b"] }])
 })
+
+test("keeping a rough clip without a look keeps it rough, and marking the player good turns it positive", () => {
+  const g = full([ev("1", "b", 20, { made: false }), ev("2", "a", 30), ev("3", "a", 40), ev("4", "a", 50)], { stealEvents: [], turnoverEvents: [{ id: "t", playerId: "b", missEventId: "1" }] })
+  const lowKey = reviewKey(gameClips(st(g), g as never).find((c) => c.kind === "lowlight")!)
+  const kept = { ...g, clipReviews: [{ key: lowKey, verdict: "keep", note: "skyhook" }] }
+  expect(gameClips(st(kept), kept as never).find((c) => c.kind === "lowlight")?.rough).toEqual(["b"])
+  const good = { ...g, clipReviews: [{ key: lowKey, verdict: "keep", looks: { b: "good" } }] }
+  expect(gameClips(st(good), good as never).find((c) => c.kind === "lowlight")?.rough).toEqual([])
+})
