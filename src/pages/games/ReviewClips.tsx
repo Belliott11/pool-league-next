@@ -15,6 +15,21 @@ import { Chip } from "@/pages/statentry/parts"
 // are gone, and a clip marked rough for a player is kept off their own highlights and used only with stories about something going badly for them.
 const WORTH = new Set<Clip["kind"]>(["marked", "dunk", "block", "three", "beat", "steal"])
 
+const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`
+
+// What the logged play is, before any description of yours: the label, who, when in the recording, and what was tagged on it.
+function original(state: PooleanState, game: Game, clip: Clip): string {
+  if (clip.kind === "still") return `A frame you picked, of ${playerName(state, clip.playerId)}, at ${clock(clip.time)} in the recording.`
+  const e = game.scoringEvents.find((x) => x.videoTime === clip.time && (x.scorerId === clip.playerId || x.blockerId === clip.playerId))
+  const bits = [
+    e?.points ? `${e.points} points${e.made === false ? ", missed" : ""}` : null,
+    e?.shotType ? `${e.shotType.replace(/_/g, " ")}` : null,
+    e?.contestLevel ? `${e.contestLevel} contest` : null,
+    e?.assistId ? `assist by ${playerName(state, e.assistId)}` : null,
+  ].filter(Boolean)
+  return `${clip.label} by ${playerName(state, clip.playerId)}, at ${clock(clip.time)} in the recording${bits.length ? `. Logged as ${bits.join(", ")}` : ""}.`
+}
+
 function Card({ state, game, clip, review, save }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview, was?: string) => void }) {
   const url = gameVideoUrl(state, game)
   const was = reviewKey(clip)
@@ -38,6 +53,7 @@ function Card({ state, game, clip, review, save }: { state: PooleanState; game: 
       <div className="grid gap-3 sm:grid-cols-[minmax(0,28rem)_1fr]">
         <CutPreview state={state} game={game} time={at} frame={frame} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} />
         <div className="flex min-w-0 flex-col gap-2 text-sm">
+          <p className="text-sm font-medium">{original(state, game, clip)}</p>
           <p className="text-xs text-muted-foreground">{done ? `${done}. Change it below and save again.` : still ? "A still you picked." : "Not reviewed yet."}</p>
           <label className="flex flex-col gap-1 text-xs font-medium">
             Describe it
