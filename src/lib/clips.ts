@@ -10,7 +10,7 @@ export interface Clip {
   date: string
   time: number // seconds into the game's video
   playerId: string
-  kind: "marked" | "still" | "lowlight" | "dunk" | "three" | "block" | "steal" | "beat" | "shot"
+  kind: "marked" | "winner" | "still" | "lowlight" | "contested" | "dunk" | "three" | "block" | "steal" | "beat" | "shot"
   marked?: boolean // an editor flagged it as a good clip (a highlight on the game's reel)
   from?: number // for a marked clip, the stretch the editor cut, in seconds
   to?: number
@@ -23,8 +23,9 @@ export interface Clip {
   rough?: string[] // players it goes badly for: shown with stories about that, never on their highlights
 }
 
-const SCORE = { marked: 20, still: 18, lowlight: 8, dunk: 6, block: 5, three: 4, beat: 4, steal: 3, shot: 1 } as const
+const SCORE = { marked: 20, winner: 14, still: 18, contested: 5, lowlight: 8, dunk: 6, block: 5, three: 4, beat: 4, steal: 3, shot: 1 } as const
 
+const STEAL_SCORE_WITHIN = 10 // seconds
 const hasVideo = (state: PooleanState, g: Game) => !!gameVideoUrl(state, g)
 
 // The meaningful words in a line, for matching a headline to what a clip shows.
@@ -66,6 +67,15 @@ export function rawClips(state: PooleanState, g: Game): Clip[] {
     .filter((p) => p.type === "lowlight" && p.playerId && p.end > p.start)
     .map((p) => ({ ...base, time: p.start + Math.min(5, (p.end - p.start) / 2), from: p.start, to: Math.min(p.end, p.start + 12), playerId: p.playerId!, kind: "lowlight" as const, label: p.note?.trim() || "Rough moment", score: SCORE.lowlight, rough: [p.playerId!] }))
   out.push(...marked, ...low)
+  const teamOf = (id: string) => (g.teamA.includes(id) ? "A" : g.teamB.includes(id) ? "B" : null)
+  // The game winner: the last made basket of a close game, by the team that won it, if it put them ahead (it broke a tie or took the lead).
+  let winnerId: string | null = null
+  const made = g.scoringEvents.filter((e) => e.made !== false && typeof e.videoTime === "number").sort((a, b) => a.videoTime! - b.videoTime!)
+  const total = { A: 0, B: 0 }
+  for (const e of made) { const t = teamOf(e.scorerId); if (t) total[t] += e.points }
+  const last = made.at(-1)
+  const lastTeam = last ? teamOf(last.scorerId) : null
+  if (last && lastTeam && total[lastTeam] > total[lastTeam === "A" ? "B" : "A"] && total[lastTeam] - total[lastTeam === "A" ? "B" : "A"] <= 3 && total[lastTeam] - last.points <= total[lastTeam === "A" ? "B" : "A"]) winnerId = last.id
   const taken = (t: number, id: string) => marked.some((m) => m.playerId === id && t >= m.from! - 3 && t <= m.to! + 3)
   for (const e of g.scoringEvents) {
     if (typeof e.videoTime !== "number") continue
@@ -76,13 +86,25 @@ export function rawClips(state: PooleanState, g: Game): Clip[] {
     }
     if (!made) continue
     const heavy = e.contestLevel === "heavy" || e.contestLevel === "medium"
-    const kind: Clip["kind"] = e.dunk ? "dunk" : e.points === 3 ? "three" : e.contestLevel === "beat" ? "beat" : "shot"
-    const label = e.dunk ? "Dunk" : e.points === 3 ? (heavy ? "Contested three" : "Three") : e.contestLevel === "beat" ? "Beat the defender and finished" : heavy ? "Contested bucket" : "Bucket"
-    out.push({ ...base, time: e.videoTime, playerId: e.scorerId, kind, label, score: SCORE[kind] + (heavy ? 2 : 0) + (e.assistId ? 0.5 : 0) })
+    const kind: Clip["kind"] = e.id === winnerId ? "winner" : e.dunk ? "dunk" : e.points === 3 ? "three" : e.contestLevel === "beat" ? "beat" : heavy ? "contested" : "shot"
+    const label = e.id === winnerId ? "Game winner" : e.dunk ? "Dunk" : e.points === 3 ? (heavy ? "Contested three" : "Three") : e.contestLevel === "beat" ? "Beat the defender and finished" : heavy ? "Contested bucket" : "Bucket"
+    out.push({ ...base, time: e.videoTime, playerId: e.scorerId, kind, label, score: SCORE[kind] + (heavy ? 3 : 0) + (e.assistId ? 0.5 : 0) })
   }
+  // A steal is only a clip when the thief's team scores right after it.
   for (const s of g.stealEvents) {
     if (typeof s.videoTime !== "number" || taken(s.videoTime, s.playerId)) continue
-    out.push({ ...base, time: s.videoTime, playerId: s.playerId, kind: "steal", label: `Steal from ${playerName(state, s.opponentId)}`, score: SCORE.steal })
+    const t = teamOf(s.playerId)
+    const goal = made.find((e) => teamOf(e.scorerId) === t && e.videoTime! > s.videoTime! && e.videoTime! - s.videoTime! <= STEAL_SCORE_WITHIN)
+    if (!goal) continue
+    out.push({ ...base, time: s.videoTime, playerId: s.playerId, kind: "steal", label: `Steal from ${playerName(state, s.opponentId)}, then ${playerName(state, goal.scorerId)} scores`, score: SCORE.steal + 2 })
+  }
+  // A couple of bad ones: a shot that missed and went out of bounds, for stories about things going badly.
+  let oob = 0
+  for (const e of g.scoringEvents) {
+    if (oob >= 2) break
+    if (e.made !== false || typeof e.videoTime !== "number" || !g.turnoverEvents.some((t) => t.missEventId === e.id)) continue
+    out.push({ ...base, time: e.videoTime, playerId: e.scorerId, kind: "lowlight", label: "Missed shot out of bounds", score: SCORE.lowlight, rough: [e.scorerId] })
+    oob++
   }
   return out
 }

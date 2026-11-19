@@ -8,7 +8,7 @@ import type { PooleanState } from "@/lib/types"
 export function PlayerShot({ state, pid, scrim = "bg-card/80" }: { state: PooleanState; pid: string; scrim?: string }) {
   const clip = useMemo(() => {
     const pick = (kinds?: Clip["kind"][]) => bestClips(state, { pid, limit: 1, kinds })[0]
-    return pick(["marked", "dunk", "block", "beat"]) ?? pick()
+    return pick(["marked", "winner", "dunk", "contested", "block", "beat"]) ?? pick()
   }, [state, pid])
   if (!clip) return null
   return <ClipBackdrop state={state} clip={clip} still scrim={scrim} className="absolute inset-0" />

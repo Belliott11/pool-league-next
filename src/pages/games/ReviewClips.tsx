@@ -13,7 +13,7 @@ import { Chip } from "@/pages/statentry/parts"
 // Editors only: the plays that could make a good clip, game by game, newest first, the ones nobody has looked at on top. For each one: keep it
 // or skip it, crop the picture, say who is in it and whether anyone looks good or rough. Kept clips rank first on the site, skipped ones
 // are gone, and a clip marked rough for a player is kept off their own highlights and used only with stories about something going badly for them.
-const WORTH = new Set<Clip["kind"]>(["marked", "dunk", "block", "three", "beat", "steal"])
+const WORTH = new Set<Clip["kind"]>(["marked", "winner", "dunk", "contested", "block", "three", "beat", "steal", "lowlight"])
 
 const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`
 

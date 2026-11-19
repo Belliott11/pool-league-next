@@ -11,7 +11,7 @@ export function setArt(state: PooleanState) {
   last = state
   // The plays that look like moments: dunks, shots on someone (blocks, beating a defender), and marked highlights, which are where the
   // celebrations are. Falls back to anything with a recording when a league has none of those yet.
-  const show = bestClips(state, { limit: 6, perGame: 1, kinds: ["marked", "dunk", "block", "beat"] })
+  const show = bestClips(state, { limit: 6, perGame: 1, kinds: ["marked", "winner", "dunk", "contested", "block", "beat"] })
   const clips = show.length ? show : bestClips(state, { limit: 6, perGame: 1 })
   art = clips.length ? { state, clips } : null
 }
