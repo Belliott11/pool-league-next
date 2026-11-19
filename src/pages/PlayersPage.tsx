@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
+import { PlayerShot } from "@/components/PlayerShot"
 import { BUILD_LABELS, EFFORT_LABELS, getPlayerPhysicalData, PHYSICAL_ROLE_LABELS, type PhysicalData } from "@/lib/balance"
 import { uid } from "@/lib/format"
 import type { Update } from "@/lib/store"
@@ -190,7 +191,8 @@ export function PlayersPage({
                 const build = phys ? BUILD_LABELS[phys.build] : null
                 return (
                   <div key={p.id} className={`flex flex-col gap-3 ${editing === p.id ? "sm:col-span-2" : ""}`}>
-                    <div className="tile flex flex-col gap-3 rounded-xl border p-3">
+                    <div className="tile relative flex flex-col gap-3 overflow-hidden rounded-xl border p-3 [&>*:not(:first-child)]:relative">
+                      <PlayerShot state={state} pid={p.id} />
                       <div className="flex items-center gap-3">
                         <PlayerAvatar id={p.id} name={p.name} size="lg" />
                         <div className="min-w-0">
