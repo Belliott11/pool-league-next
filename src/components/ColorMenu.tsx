@@ -16,7 +16,7 @@ const KEY = [
   { cls: "bg-pos", name: "Aqua", means: "Better than average, a good result" },
   { cls: "bg-neg", name: "Crimson", means: "Worse than average, a bad result" },
   { cls: "bg-gold", name: "Gold", means: "First place and awards" },
-  { cls: "bg-team-a", name: "Team A", means: "Blue with the red accent, and opposite the accent on the color wheel with the others" },
+  { cls: "bg-team-a", name: "Team A", means: "Opposite the accent on the color wheel (blue with the red accent)" },
   { cls: "bg-chart-4", name: "Chart colors", means: "Only to tell lines or players apart; they shift with the accent" },
 ]
 
