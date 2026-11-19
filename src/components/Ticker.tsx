@@ -50,7 +50,7 @@ export function Ticker({ state }: { state: PooleanState }) {
           {item.text}
         </span>
       </div>
-      <span className="shrink-0 text-xs tabular-nums text-muted-foreground" aria-hidden>
+      <span className="shrink-0 text-xs tabular-nums text-muted-foreground max-sm:hidden" aria-hidden>
         {at + 1}/{n}
       </span>
       {item.clip && <ClipButton state={state} clip={item.clip} label="Watch the play of the night" />}

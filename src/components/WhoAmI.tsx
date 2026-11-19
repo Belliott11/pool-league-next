@@ -68,9 +68,10 @@ export function WhoPrompt({ state }: { state: PooleanState }) {
   const who = useWho()
   if (who !== null) return null
   return (
-    <div className="flex items-center gap-2 rounded-xl border bg-card px-3 py-1.5 text-sm">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-1.5 text-sm">
       <UserRound aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-      <span className="flex-1 max-sm:sr-only">Who are you? The Player tab will open on you.</span>
+      <span className="flex-1 max-sm:hidden">Who are you? The Player tab will open on you.</span>
+      <span className="flex-1 font-medium sm:hidden">Who are you?</span>
       <div className="min-w-0 flex-1 sm:w-44 sm:flex-none">
         <WhoSelect state={state} />
       </div>

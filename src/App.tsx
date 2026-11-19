@@ -341,12 +341,12 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
               <ArrowLeft />
             </Button>
           )}
-          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className={`mr-2 shrink-0 rounded-lg transition-[width,height] ${view.sub !== "" || view.tab !== "games" ? "max-sm:hidden" : ""} ${scrolled ? "size-6" : "size-7 sm:size-8"}`} />
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className={`mr-2 shrink-0 rounded-lg transition-[width,height] max-sm:hidden ${view.sub !== "" || view.tab !== "games" ? "max-sm:hidden" : ""} ${scrolled ? "size-6" : "size-7 sm:size-8"}`} />
           <h1 className={`min-w-0 truncate font-display font-extrabold uppercase whitespace-nowrap sm:tracking-wide transition-[font-size] ${scrolled ? "text-sm sm:text-lg" : "text-base sm:text-2xl"}`}>
             Poolean <span className="text-accent">Intel</span>
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 max-sm:gap-1.5">
           {cloud && mode === "admin" && <SyncChip cloud={cloud} />}
           <WhoAmI state={state} />
           {cloud && (
