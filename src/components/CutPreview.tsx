@@ -9,7 +9,7 @@ const fmt = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart
 
 // The clip as it will look: the recording with the crop applied, and a scrubber to find the moment. "Start here" and "End here" take the
 // time the picture is showing. "Play the cut" plays just that stretch. A still has no cut, only a frame to find.
-export function CutPreview({ state, game, time, frame, from, to, still, onFrom, onTo, onTime }: { state: PooleanState; game: Game; time: number; frame?: Frame; from: number; to: number; still: boolean; onFrom: (t: number) => void; onTo: (t: number) => void; onTime?: (t: number) => void }) {
+export function CutPreview({ state, game, time, frame, from, to, still, onFrom, onTo, onTime, onStillFrom }: { state: PooleanState; game: Game; time: number; frame?: Frame; from: number; to: number; still: boolean; onFrom: (t: number) => void; onTo: (t: number) => void; onTime?: (t: number) => void; onStillFrom?: (t: number) => void }) {
   const url = gameVideoUrl(state, game).split("#")[0]
   const v = useRef<HTMLVideoElement>(null)
   const [now, setNow] = useState(still ? time : from)
@@ -53,6 +53,7 @@ export function CutPreview({ state, game, time, frame, from, to, still, onFrom, 
             <Button size="sm" variant="outline" onClick={() => onFrom(Math.min(now, to - 0.5))}>Start here</Button>
             <Button size="sm" variant="outline" onClick={() => onTo(Math.max(now, from + 0.5))}>End here</Button>
             <Button size="sm" onClick={playCut}>Play the cut</Button>
+            {onStillFrom && <Button size="sm" variant="outline" onClick={() => onStillFrom(now)}>Make a still from this frame</Button>}
           </div>
           <p className="text-xs text-muted-foreground">Starts at {fmt(from)}, ends at {fmt(to)} ({(to - from).toFixed(1)} seconds). The play itself is at {fmt(time)}.</p>
         </>

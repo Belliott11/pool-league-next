@@ -30,7 +30,7 @@ function original(state: PooleanState, game: Game, clip: Clip): string {
   return `${clip.label} by ${playerName(state, clip.playerId)}, at ${clock(clip.time)} in the recording${bits.length ? `. Logged as ${bits.join(", ")}` : ""}.`
 }
 
-function Card({ state, game, clip, review, save }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview, was?: string) => void }) {
+function Card({ state, game, clip, review, save, makeStill }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview, was?: string) => void; makeStill: (c: Clip) => void }) {
   const url = gameVideoUrl(state, game)
   const was = reviewKey(clip)
   const [frame, setFrame] = useState<Frame | undefined>(review?.frame)
@@ -51,7 +51,7 @@ function Card({ state, game, clip, review, save }: { state: PooleanState; game: 
   return (
     <li className="flex flex-col gap-3 border-t pt-3">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,28rem)_1fr]">
-        <CutPreview state={state} game={game} time={at} frame={frame} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} />
+        <CutPreview state={state} game={game} time={at} frame={frame} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} onStillFrom={(t) => makeStill({ ...clip, time: t, kind: "still", label: "Still", from: undefined, to: undefined, score: 18 })} />
         <div className="flex min-w-0 flex-col gap-2 text-sm">
           <p className="text-sm font-medium">{original(state, game, clip)}</p>
           <p className="text-xs text-muted-foreground">{done ? `${done}. Change it below and save again.` : still ? "A still you picked." : "Not reviewed yet."}</p>
@@ -154,7 +154,7 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
         <div className="mt-2"><StillPicker state={state} game={open.g} pick={(c) => setDrafts((d) => [...d, c])} /></div>
       </details>
       <ul className="flex flex-col gap-3">
-        {rows.slice(0, 30).map((c) => <Card key={`${open.g.id}-${reviewKey(c)}`} state={state} game={open.g} clip={c} review={reviewed(open.g).get(reviewKey(c))} save={save} />)}
+        {rows.slice(0, 30).map((c) => <Card key={`${open.g.id}-${reviewKey(c)}`} state={state} game={open.g} clip={c} review={reviewed(open.g).get(reviewKey(c))} save={save} makeStill={(s) => setDrafts((d) => [...d, s])} />)}
       </ul>
       {rows.length > 30 && <p className="text-xs text-muted-foreground">Showing the first 30 of {rows.length}; review these and the rest come up.</p>}
     </div>
