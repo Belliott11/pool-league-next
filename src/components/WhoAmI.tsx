@@ -72,7 +72,7 @@ export function WhoPrompt({ state }: { state: PooleanState }) {
       <UserRound aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       <span className="flex-1 max-sm:hidden">Who are you? The Player tab will open on you.</span>
       <span className="flex-1 font-medium sm:hidden">Who are you?</span>
-      <div className="min-w-0 flex-1 sm:w-44 sm:flex-none">
+      <div className="min-w-0 max-sm:order-last max-sm:basis-full sm:w-44 sm:flex-none">
         <WhoSelect state={state} />
       </div>
       <button type="button" className="min-h-10 shrink-0 px-2 text-xs text-muted-foreground underline" onClick={() => setWho(GUEST)}>
