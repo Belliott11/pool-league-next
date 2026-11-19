@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react"
 import type { Clip } from "@/lib/clips"
 import { preconnect } from "@/lib/mediaGate"
+import { loadWithStill, readStill, stillKey } from "@/lib/stillCache"
 import type { PooleanState } from "@/lib/types"
 import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
 import { cn } from "@/lib/utils"
@@ -25,6 +26,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   const url = game ? gameVideoUrl(state, game) : ""
   const file = isDirectVideoUrl(url)
   const box = useRef<HTMLDivElement>(null)
+  const saved = file ? readStill(stillKey(url, Math.max(0, clip.from ?? clip.time - BEFORE))) : null // the frame from a past visit, shown while the video loads
   const video = useRef<HTMLVideoElement>(null)
   const start = Math.max(0, clip.from ?? clip.time - BEFORE)
   const end = clip.to ?? clip.time + AFTER
@@ -48,7 +50,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
       visible = e.isIntersecting
       if (visible && !v.getAttribute("src")) {
         preconnect(url)
-        v.src = `${url.split("#")[0]}#t=${start}`
+        loadWithStill(v, `${url.split("#")[0]}#t=${start}`, stillKey(url, start), start)
       }
       sync()
     }, { threshold: 0.25 })
@@ -70,6 +72,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
+          {saved && <img src={saved} alt="" aria-hidden className="pointer-events-none absolute inset-0 size-full object-cover" />}
           <video ref={video} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className="pointer-events-none absolute inset-0 size-full object-cover" />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
         </>

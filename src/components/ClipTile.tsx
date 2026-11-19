@@ -5,6 +5,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import type { Clip } from "@/lib/clips"
 import { preconnect } from "@/lib/mediaGate"
+import { loadWithStill, readStill, stillKey } from "@/lib/stillCache"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
@@ -13,8 +14,9 @@ import { cn } from "@/lib/utils"
 
 const LEAD = 5 // seconds of run-up before the play, as the game page's Watch buttons
 
-// One play from a game. At rest it is a still frame of the moment (a recording file only starts loading when the tile nears the
-// screen, and only its first frame), so a row of them costs little. A tap plays it, from a few seconds before, and stops any other.
+// One play from a game. At rest it is a still frame of the moment. The first visit loads the frame from the recording (only when the tile
+// nears the screen) and keeps it on the device, so after that the tile shows at once and the recording is not touched until a tap plays
+// it, from a few seconds before, stopping any other.
 export function ClipTile({ state, clip, className, caption = true }: { state: PooleanState; clip: Clip; className?: string; caption?: boolean }) {
   const game = state.games.find((g) => g.id === clip.gameId)
   const url = game ? gameVideoUrl(state, game) : ""
@@ -22,7 +24,9 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
   const box = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
   const [near, setNear] = useState(false)
-  const [shown, setShown] = useState(false) // the still frame is in
+  const key = stillKey(url, clip.time)
+  const [still, setStill] = useState<string | null>(() => readStill(key)) // the saved frame, once there is one
+  const [shown, setShown] = useState(false) // the recording's own frame is in
   const [playing, setPlaying] = useState(false)
   useEffect(() => {
     const el = box.current
@@ -32,39 +36,45 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
     return () => io.disconnect()
   }, [])
   useEffect(() => {
-    if (!near || !file || !url) return
+    const v = video.current
+    if (!near || !file || !url || still || !v || v.getAttribute("src")) return
     preconnect(url)
-  }, [near, file, url])
+    loadWithStill(v, `${url.split("#")[0]}#t=${clip.time}`, key, clip.time, setStill)
+  }, [near, file, url, still, key, clip.time])
   if (!game || !url) return null
   const play = () => {
     const v = video.current
     setPlaying(true)
     if (!v) return
     document.querySelectorAll("video").forEach((o) => o !== v && o.pause())
-    if (!v.getAttribute("src")) v.src = url.split("#")[0]
+    const go = () => {
+      v.currentTime = Math.max(0, clip.time - LEAD)
+      void v.play().catch(() => {})
+    }
     v.controls = true
     v.muted = false
-    v.currentTime = Math.max(0, clip.time - LEAD)
-    void v.play().catch(() => {})
+    if (!v.getAttribute("src")) v.src = url.split("#")[0]
+    if (v.readyState >= 1) go()
+    else v.addEventListener("loadedmetadata", go, { once: true })
   }
   const name = playerName(state, clip.playerId)
   return (
     <figure className={cn("flex min-w-0 flex-col gap-2", className)}>
-      <div ref={box} className={cn("relative aspect-video overflow-hidden rounded-xl bg-muted", file && near && !shown && !playing && "motion-safe:animate-pulse")}>
+      <div ref={box} className={cn("relative aspect-video overflow-hidden rounded-xl bg-muted", file && near && !still && !shown && !playing && "motion-safe:animate-pulse")}>
         {playing && !file ? (
           <InlineClip state={state} game={game} time={clip.time} />
         ) : file ? (
           <video
             ref={video}
-            src={near ? `${url.split("#")[0]}#t=${clip.time}` : undefined}
             onLoadedData={() => setShown(true)}
             muted
             playsInline
-            preload={near ? "metadata" : "none"}
+            preload="metadata"
             className="size-full object-cover"
             aria-label={`${clip.label}, ${name}`}
           />
         ) : null}
+        {still && !playing && <img src={still} alt="" className="absolute inset-0 size-full object-cover" />}
         {!playing && (
           <button type="button" onClick={file ? play : () => setPlaying(true)} className="absolute inset-0 grid place-items-center bg-black/25 text-white transition-colors hover:bg-black/35 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary" aria-label={`Play: ${clip.label}, ${name}`}>
             <span className="grid size-12 place-items-center rounded-full bg-black/55 backdrop-blur-sm">
