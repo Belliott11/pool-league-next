@@ -49,7 +49,8 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
     if (!v) return
     document.querySelectorAll("video").forEach((o) => o !== v && o.pause())
     const go = () => {
-      v.currentTime = Math.max(0, clip.time - LEAD)
+      v.currentTime = Math.max(0, clip.from ?? clip.time - LEAD)
+      if (clip.to !== undefined) v.addEventListener("timeupdate", () => v.currentTime >= clip.to! && v.pause()) // stop where the editor cut it
       void v.play().catch(() => {})
     }
     v.controls = true

@@ -64,6 +64,8 @@ export interface ClipReview {
   verdict: "keep" | "skip"
   still?: { time: number; playerId: string } // a frame the editor picked by hand, not one of the logged plays
   frame?: { z: number; x: number; y: number } // the crop, as stillCache.ts Frame
+  from?: number // where the clip starts and ends in the recording, in seconds, when the editor trimmed it
+  to?: number
   note?: string // what happens in it, in the editor's words: the caption, and what a headline is matched against
   who?: string[] // everyone in the shot
   looks?: Record<string, "good" | "bad"> // how a player comes across in it; "bad" keeps it off that player's own pages

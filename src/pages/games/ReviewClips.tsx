@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react"
-import { ClipTile } from "@/components/ClipTile"
+import { CutPreview } from "@/components/CutPreview"
 import { Button } from "@/components/ui/button"
 import { gameClips, rawClips, reviewKey, type Clip } from "@/lib/clips"
 import { formatDateDisplay } from "@/lib/format"
@@ -15,10 +15,14 @@ import { Chip } from "@/pages/statentry/parts"
 // are gone, and a clip marked rough for a player is kept off their own highlights and used only with stories about something going badly for them.
 const WORTH = new Set<Clip["kind"]>(["marked", "dunk", "block", "three", "beat", "steal"])
 
-function Card({ state, game, clip, review, save }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview) => void }) {
+function Card({ state, game, clip, review, save }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview, was?: string) => void }) {
   const url = gameVideoUrl(state, game)
-  const key = reviewKey(clip)
+  const was = reviewKey(clip)
   const [frame, setFrame] = useState<Frame | undefined>(review?.frame)
+  const [from, setFrom] = useState(review?.from ?? clip.from ?? Math.max(0, clip.time - 2))
+  const [to, setTo] = useState(review?.to ?? clip.to ?? clip.time + 4)
+  const [at, setAt] = useState(clip.time) // a still's moment, once moved
+  const key = clip.kind === "still" ? reviewKey({ time: at, playerId: clip.playerId }) : was
   const [note, setNote] = useState(review?.note ?? "")
   const [who, setWho] = useState<string[]>(review?.who ?? [clip.playerId])
   const [looks, setLooks] = useState<Record<string, "good" | "bad">>(review?.looks ?? {})
@@ -31,8 +35,8 @@ function Card({ state, game, clip, review, save }: { state: PooleanState; game: 
   const look = (id: string, v: "good" | "bad") => setLooks((l) => { const n = { ...l }; if (n[id] === v) delete n[id]; else n[id] = v; return n })
   return (
     <li className="flex flex-col gap-3 border-t pt-3">
-      <div className="grid gap-3 sm:grid-cols-[16rem_1fr]">
-        <ClipTile state={state} clip={{ ...clip, frame }} className="w-64 max-w-full" />
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,28rem)_1fr]">
+        <CutPreview state={state} game={game} time={at} frame={frame} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} />
         <div className="flex min-w-0 flex-col gap-2 text-sm">
           <p className="text-xs text-muted-foreground">{done ? `${done}. Change it below and save again.` : still ? "A still you picked." : "Not reviewed yet."}</p>
           <label className="flex flex-col gap-1 text-xs font-medium">
@@ -69,8 +73,8 @@ function Card({ state, game, clip, review, save }: { state: PooleanState; game: 
             </fieldset>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(clip.kind === "still" ? { still: { time: clip.time, playerId: clip.playerId } } : {}), ...(note.trim() ? { note: note.trim() } : {}), ...(frame ? { frame } : {}), who, looks })}>Keep this clip</Button>
-            <Button size="sm" variant="outline" onClick={() => save({ key, verdict: "skip", ...(clip.kind === "still" ? { still: { time: clip.time, playerId: clip.playerId } } : {}) })}>{clip.kind === "still" ? "Remove" : "Skip"}</Button>
+            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(clip.kind === "still" ? { still: { time: at, playerId: clip.playerId } } : { from, to }), ...(note.trim() ? { note: note.trim() } : {}), ...(frame ? { frame } : {}), who, looks }, was)}>Keep this clip</Button>
+            <Button size="sm" variant="outline" onClick={() => save({ key: was, verdict: "skip", ...(clip.kind === "still" ? { still: { time: clip.time, playerId: clip.playerId } } : {}) })}>{clip.kind === "still" ? "Remove" : "Skip"}</Button>
           </div>
         </div>
       </div>
@@ -117,7 +121,7 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
   const saved = gameClips(state, open.g).filter((c) => c.kind === "still")
   const fresh = drafts.filter((d) => d.gameId === open.g.id && !reviewed(open.g).has(reviewKey(d)))
   const rows = [...saved, ...fresh, ...[...open.all].sort((a, b) => Number(reviewed(open.g).has(reviewKey(a))) - Number(reviewed(open.g).has(reviewKey(b))) || b.score - a.score)]
-  const save = (r: ClipReview) => update((s) => ({ ...s, games: s.games.map((g) => (g.id === open.g.id ? { ...g, clipReviews: [...(g.clipReviews ?? []).filter((x) => x.key !== r.key), r] } : g)) }))
+  const save = (r: ClipReview, was?: string) => update((s) => ({ ...s, games: s.games.map((g) => (g.id === open.g.id ? { ...g, clipReviews: [...(g.clipReviews ?? []).filter((x) => x.key !== r.key && x.key !== was), r] } : g)) }))
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
