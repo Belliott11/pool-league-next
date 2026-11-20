@@ -16,6 +16,7 @@ export interface Clip {
   to?: number
   label: string // "Dunk", "Block on Ben"
   score: number
+  note?: string // the editor's description: never shown, only matched against headlines
   reviewed?: boolean // an editor looked at it and kept it
   frame?: Frame // the crop the editor set
   who?: string[] // others in the shot, so it can show on their pages too
@@ -51,7 +52,7 @@ export function gameClips(state: PooleanState, g: Game): Clip[] {
 
 const reviewed = (c: Clip, r: ClipReview): Clip => {
   const looks = Object.entries(r.looks ?? {})
-  return { ...c, label: r.note?.trim() || c.label, reviewed: true, frame: r.frame, ...(r.from !== undefined && r.to !== undefined && r.to > r.from ? { from: r.from, to: r.to } : {}), who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), rough: [...new Set([...(c.rough ?? []).filter((id) => r.looks?.[id] !== "good"), ...looks.filter(([, v]) => v === "bad").map(([id]) => id)])] }
+  return { ...c, ...(r.note?.trim() ? { note: r.note.trim() } : {}), reviewed: true, frame: r.frame, ...(r.from !== undefined && r.to !== undefined && r.to > r.from ? { from: r.from, to: r.to } : {}), who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), rough: [...new Set([...(c.rough ?? []).filter((id) => r.looks?.[id] !== "good"), ...looks.filter(([, v]) => v === "bad").map(([id]) => id)])] }
 }
 
 // Every candidate in one game before any review: the scorer, the blocker or the thief.
@@ -129,7 +130,7 @@ export function bestClips(state: PooleanState, opts: { pid?: string; mood?: "bad
     if (!open.length) break
     // Earlier in the sorted pool wins a tie, so the order above still decides between equals.
     const said = about ? words(about) : null
-    const worth = (c: Clip) => (said ? 5 * words(c.label).filter((w) => said.includes(w)).length : 0) + c.score + (c.marked ? 100 : c.reviewed ? 60 : 0) + (pid && c.good?.includes(pid) ? 8 : 0) - 2 * count((o) => o.kind === c.kind) - 1.5 * count((o) => o.playerId === c.playerId)
+    const worth = (c: Clip) => (said ? 5 * words(`${c.label} ${c.note ?? ""}`).filter((w) => said.includes(w)).length : 0) + c.score + (c.marked ? 100 : c.reviewed ? 60 : 0) + (pid && c.good?.includes(pid) ? 8 : 0) - 2 * count((o) => o.kind === c.kind) - 1.5 * count((o) => o.playerId === c.playerId)
     const pick = open.reduce((best, c) => (worth(c) > worth(best) ? c : best))
     out.push(pick)
     pool = pool.filter((c) => c !== pick)

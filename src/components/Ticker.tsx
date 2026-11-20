@@ -1,4 +1,4 @@
-import { Pause, Play } from "lucide-react"
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ClipBackdrop, clipSpan } from "@/components/ClipBackdrop"
 import { ClipButton } from "@/components/ClipTile"
@@ -47,6 +47,9 @@ export function Ticker({ state }: { state: PooleanState }) {
     if (c) setOnAir(c)
   }, [items, at])
 
+  const step = (by: number) => setI(at + n + by) // the timer restarts on the new headline
+  const swipe = useRef(0)
+
   if (!n) return null
   const item = items[at]
   const live = !!item.clip
@@ -60,7 +63,15 @@ export function Ticker({ state }: { state: PooleanState }) {
         </div>
       </div>
     )}
-    <div className="ticker" role="group" aria-label="League headlines">
+    <div
+      className="ticker"
+      role="group"
+      aria-label="League headlines"
+      tabIndex={0}
+      onKeyDown={(e) => (e.key === "ArrowLeft" ? step(-1) : e.key === "ArrowRight" ? step(1) : undefined)}
+      onTouchStart={(e) => { swipe.current = e.touches[0].clientX }}
+      onTouchEnd={(e) => { const d = e.changedTouches[0].clientX - swipe.current; if (Math.abs(d) > 40) step(d < 0 ? 1 : -1) }}
+    >
       <span key={item.tag} className="ticker-tag">
         {item.tag}
       </span>
@@ -77,6 +88,12 @@ export function Ticker({ state }: { state: PooleanState }) {
       <span className="shrink-0 text-xs tabular-nums text-muted-foreground max-sm:hidden" aria-hidden>
         {at + 1}/{n}
       </span>
+      <button type="button" className="grid size-9 shrink-0 place-items-center text-muted-foreground max-sm:hidden" aria-label="Previous headline" onClick={() => step(-1)}>
+        <ChevronLeft className="size-4" />
+      </button>
+      <button type="button" className="-ml-2 grid size-9 shrink-0 place-items-center text-muted-foreground max-sm:hidden" aria-label="Next headline" onClick={() => step(1)}>
+        <ChevronRight className="size-4" />
+      </button>
       {item.clip && <ClipButton state={state} clip={item.clip} label="Watch the play of the night" />}
       <button type="button" className="grid size-9 shrink-0 place-items-center text-muted-foreground" aria-label={paused ? "Play headlines" : "Pause headlines"} onClick={() => setPaused(!paused)}>
         {paused ? <Play className="size-4" /> : <Pause className="size-4" />}

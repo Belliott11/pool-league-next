@@ -62,10 +62,10 @@ test("a clip marked rough for a player stays off their pages but shows for other
 test("a rough clip is used for bad news about that player and a described clip is matched to the headline", () => {
   const key = reviewKey(dunk(reviewed([])))
   const s = reviewed([{ key, verdict: "keep", who: ["a", "b"], looks: { b: "bad" }, note: "Ben gets dunked on" }])
-  expect(bestClips(s, { pid: "b", mood: "bad" })[0]).toMatchObject({ kind: "dunk", label: "Ben gets dunked on" })
+  expect(bestClips(s, { pid: "b", mood: "bad" })[0]).toMatchObject({ kind: "dunk", label: "Dunk", note: "Ben gets dunked on" })
   expect(bestClips(s, { pid: "a", mood: "bad" })).toHaveLength(0)
   const t = reviewed([{ key, verdict: "keep", note: "Left hand finish at the rim" }])
-  expect(bestClips(t, { pid: "a", about: "Adam finished at the rim all night", limit: 1 })[0].label).toBe("Left hand finish at the rim")
+  expect(bestClips(t, { pid: "a", about: "Adam finished at the rim all night", limit: 1 })[0].note).toBe("Left hand finish at the rim")
 })
 
 test("a headline gets the clip its judged tone calls for: good for good news, rough for bad news, none when unlisted", async () => {

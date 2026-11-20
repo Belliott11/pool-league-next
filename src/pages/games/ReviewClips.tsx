@@ -58,7 +58,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
           <label className="flex flex-col gap-1 text-xs font-medium">
             Describe it
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Two-handed dunk over Ben, everyone reacts" className="h-9 rounded-md border bg-background px-2 text-sm font-normal" />
-            <span className="font-normal text-muted-foreground">Becomes the caption, and headlines that use the same words pick this clip.</span>
+            <span className="font-normal text-muted-foreground">Not shown on the site. Headlines that use the same words pick this clip.</span>
           </label>
           <fieldset className="flex flex-col gap-1">
             <legend className="text-xs font-medium">Crop</legend>
