@@ -53,8 +53,8 @@ export function Ticker({ state }: { state: PooleanState }) {
   return (
     <div className="flex flex-col gap-2">
     {desktop && onAir && (
-      <div className="relative h-44 w-full overflow-hidden rounded-xl border bg-muted" aria-label="Clip from the headlines">
-        <ClipBackdrop key={clipKey(onAir)} state={state} clip={onAir} still={!live} scrim="bg-black/10" className={`absolute inset-0 transition-opacity ${live ? "" : "opacity-50"}`} />
+      <div className="relative h-80 w-full overflow-hidden rounded-xl border bg-black" aria-label="Clip from the headlines">
+        <ClipBackdrop key={clipKey(onAir)} state={state} clip={onAir} still={!live} contain scrim="bg-transparent" className={`absolute inset-0 transition-opacity ${live ? "" : "opacity-50"}`} />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6 text-xs text-white">
           <span className="font-semibold">{onAir.label}</span>, {playerName(state, onAir.playerId)}
         </div>

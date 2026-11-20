@@ -24,7 +24,7 @@ const onMobileData = () => {
 // and not at all (a still frame instead) with reduced motion or Data Saver on. On mobile data only a backdrop marked `cellularOk` plays (one
 // place on the site, Wrapped); the rest wait for Wi-Fi. ponytail: only browsers that report the connection type can tell (Chrome on Android);
 // Safari on iPhone says nothing, so there the backdrops play as on Wi-Fi. A scrim keeps whatever sits on top readable.
-export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", cellularOk = false, still = false, children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; cellularOk?: boolean; still?: boolean; children?: ReactNode }) {
+export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", cellularOk = false, still = false, contain = false, children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; cellularOk?: boolean; still?: boolean; contain?: boolean; children?: ReactNode }) {
   const game = state.games.find((g) => g.id === clip.gameId)
   const url = game ? gameVideoUrl(state, game) : ""
   const file = isDirectVideoUrl(url)
@@ -76,8 +76,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
-          {saved && <img src={saved} alt="" aria-hidden style={frameStyle(clip.frame ?? frame)} className="pointer-events-none absolute inset-0 size-full object-cover" />}
-          <video ref={video} style={frameStyle(clip.frame ?? frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className="pointer-events-none absolute inset-0 size-full object-cover" />
+          {saved && <img src={saved} alt="" aria-hidden style={contain ? undefined : frameStyle(clip.frame ?? frame)} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />}
+          <video ref={video} style={contain ? undefined : frameStyle(clip.frame ?? frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
         </>
       )}
