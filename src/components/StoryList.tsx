@@ -13,7 +13,10 @@ import { useMemo } from "react";
 export function StoryList({ stories, state, gameIds }: { stories: string[]; state?: PooleanState; gameIds?: string[] }) {
   const readOnly = useReadOnly();
   const { hideLine } = useLabels();
-  const clips = useMemo(() => stories.map((x) => (state ? headlineClip(state, x, gameIds) : undefined)), [stories, state, gameIds]);
+  const clips = useMemo(() => {
+    const used = new Set<string>(); // each clip once within the list
+    return stories.map((x) => (state ? headlineClip(state, x, gameIds, undefined, used) : undefined));
+  }, [stories, state, gameIds]);
   return (
     <>
       <ul className="flex flex-col gap-2 text-sm">

@@ -122,3 +122,14 @@ test("a still made from a clip's frame has its own key, so it does not replace t
   expect(reviewKey({ time: 33.4, playerId: "a", kind: "still" })).toBe("still|33|a")
   expect(reviewKey({ time: 33.4, playerId: "a", kind: "dunk" })).toBe("33|a")
 })
+
+test("headlines shown together never reuse a clip: the extra ones get none", async () => {
+  const { headlineClip } = await import("@/lib/headlineClips")
+  const g = full([ev("1", "a", 10, { dunk: true }), ev("2", "a", 20, { points: 3 })], { stealEvents: [] })
+  const s = st(g)
+  const tones = { one: ["a", "good"], two: ["a", "good"], three: ["a", "good"] } as never
+  const used = new Set<string>()
+  const got = ["one", "two", "three"].map((t) => headlineClip(s, t, undefined, tones, used))
+  expect(got.filter(Boolean)).toHaveLength(2)
+  expect(new Set(got.filter(Boolean).map((c) => c!.time)).size).toBe(2)
+})

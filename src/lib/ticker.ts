@@ -20,10 +20,11 @@ export function tickerItems(state: PooleanState): TickerItem[] {
     .at(-1)
   const night = last ? (customNight(last) ?? state.publishedStories?.nights?.[last]) : null
   const list = (key: "going" | "season") => customStories(state, key) ?? state.publishedStories?.[key] ?? []
+  const used = new Set<string>() // no clip is used for two headlines
   const nightIds = state.games.filter((g) => g.date === last).map((g) => g.id)
   return [
-    ...(night?.quick.length ? night.quick : (night?.full ?? [])).map((text) => ({ tag: formatDateDisplay(last), text, clip: headlineClip(state, text, nightIds) })),
-    ...list("going").map((text) => ({ tag: "Up next", text, clip: headlineClip(state, text) })),
-    ...list("season").map((text) => ({ tag: "Season", text, clip: headlineClip(state, text) })),
+    ...(night?.quick.length ? night.quick : (night?.full ?? [])).map((text) => ({ tag: formatDateDisplay(last), text, clip: headlineClip(state, text, nightIds, undefined, used) })),
+    ...list("going").map((text) => ({ tag: "Up next", text, clip: headlineClip(state, text, undefined, undefined, used) })),
+    ...list("season").map((text) => ({ tag: "Season", text, clip: headlineClip(state, text, undefined, undefined, used) })),
   ]
 }
