@@ -103,7 +103,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
 function StillPicker({ state, game, pick }: { state: PooleanState; game: Game; pick: (c: Clip) => void }) {
   const url = gameVideoUrl(state, game)
   const video = useRef<HTMLVideoElement>(null)
-  const [who, setWho] = useState(game.teamA[0] ?? "")
+  const [who, setWho] = useState("")
   const [added, setAdded] = useState(false)
   if (!isDirectVideoUrl(url)) return <p className="text-xs text-muted-foreground">Stills need the game's video as a direct file, not a link to a page.</p>
   const people = [...game.teamA, ...game.teamB]
@@ -114,6 +114,7 @@ function StillPicker({ state, game, pick }: { state: PooleanState; game: Game; p
         <label className="flex items-center gap-1.5">
           Of
           <select className="h-9 rounded-md border bg-background px-2 text-sm" value={who} onChange={(e) => setWho(e.target.value)}>
+            <option value="" disabled>Choose a player</option>
             {people.map((id) => <option key={id} value={id}>{playerName(state, id)}</option>)}
           </select>
         </label>
@@ -138,7 +139,7 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
   const todo = (x: (typeof games)[number]) => x.all.filter((c) => !reviewed(x.g).has(reviewKey(c))).length
   // Stills already saved on this game come first, then the frame just picked, then the logged plays.
   const saved = gameClips(state, open.g).filter((c) => c.kind === "still")
-  const fresh = drafts.filter((d) => d.gameId === open.g.id && !reviewed(open.g).has(reviewKey(d)))
+  const fresh = drafts.filter((d) => d.gameId === open.g.id && reviewed(open.g).get(reviewKey(d))?.verdict !== "keep") // an old "skip" left by an earlier Remove must not hide a new still
   const rows = [...saved, ...fresh, ...[...open.all].sort((a, b) => Number(reviewed(open.g).has(reviewKey(a))) - Number(reviewed(open.g).has(reviewKey(b))) || b.score - a.score)]
   const save = (r: ClipReview, was?: string) => {
     // The card that was just saved (or removed) stops being a draft, whatever frame it was moved to.
@@ -162,7 +163,7 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
         <div className="mt-2"><StillPicker state={state} game={open.g} pick={(c) => setDrafts((d) => [...d, c])} /></div>
       </details>
       <ul className="flex flex-col gap-3">
-        {rows.slice(0, 30).map((c) => <Card key={`${open.g.id}-${reviewKey(c)}`} state={state} game={open.g} clip={c} review={reviewed(open.g).get(reviewKey(c))} save={save} makeStill={(s) => setDrafts((d) => [...d, s])} />)}
+        {rows.slice(0, 30).map((c) => <Card key={`${open.g.id}-${reviewKey(c)}`} state={state} game={open.g} clip={c} review={c.kind === "still" && reviewed(open.g).get(reviewKey(c))?.verdict !== "keep" ? undefined : reviewed(open.g).get(reviewKey(c))} save={save} makeStill={(s) => setDrafts((d) => [...d, s])} />)}
       </ul>
       {rows.length > 30 && <p className="text-xs text-muted-foreground">Showing the first 30 of {rows.length}; review these and the rest come up.</p>}
     </div>
