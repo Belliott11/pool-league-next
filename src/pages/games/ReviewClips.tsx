@@ -154,7 +154,7 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
   const [gameId, setGameId] = useState<string | null>(null)
   const [ordinary, setOrdinary] = useState(false)
   const [drafts, setDrafts] = useState<Clip[]>([])
-  const [showSkipped, setShowSkipped] = useState(false)
+  const [showReviewed, setShowReviewed] = useState(false)
   const games = useMemo(
     () => state.games.filter((g) => gameVideoUrl(state, g) && !g.liveInProgress).map((g) => ({ g, all: rawClips(state, g).filter((c) => ordinary || WORTH.has(c.kind)) })).filter((x) => x.all.length).sort((a, b) => b.g.date.localeCompare(a.g.date)),
     [state, ordinary],
@@ -166,8 +166,8 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
   // Stills already saved on this game come first, then the frame just picked, then the logged plays.
   const saved = gameClips(state, open.g).filter((c) => c.kind === "still")
   const fresh = drafts.filter((d) => d.gameId === open.g.id && reviewed(open.g).get(reviewKey(d))?.verdict !== "keep") // an old "skip" left by an earlier Remove must not hide a new still
-  const skipped = (c: Clip) => reviewed(open.g).get(reviewKey(c))?.verdict === "skip" // a skipped play leaves the list
-  const rows = [...saved, ...fresh, ...[...open.all].filter((c) => showSkipped || !skipped(c)).sort((a, b) => Number(reviewed(open.g).has(reviewKey(a))) - Number(reviewed(open.g).has(reviewKey(b))) || b.score - a.score)]
+  // Once a play is kept or skipped, or a still saved, it leaves this list (it is on the player's card on the Players page); "Show reviewed" brings them back.
+  const rows = [...(showReviewed ? saved : []), ...fresh, ...[...open.all].filter((c) => showReviewed || !reviewed(open.g).has(reviewKey(c))).sort((a, b) => Number(reviewed(open.g).has(reviewKey(a))) - Number(reviewed(open.g).has(reviewKey(b))) || b.score - a.score)]
   const save = (r: ClipReview, was?: string) => {
     // The card that was just saved (or removed) stops being a draft, whatever frame it was moved to.
     setDrafts((d) => d.filter((x) => ![r.key, was].includes(reviewKey(x))))
@@ -183,7 +183,7 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
           <input type="checkbox" checked={ordinary} onChange={(e) => setOrdinary(e.target.checked)} /> Include ordinary buckets
         </label>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <input type="checkbox" checked={showSkipped} onChange={(e) => setShowSkipped(e.target.checked)} /> Show skipped
+          <input type="checkbox" checked={showReviewed} onChange={(e) => setShowReviewed(e.target.checked)} /> Show reviewed
         </label>
       </div>
       <details className="rounded-lg border p-3">
