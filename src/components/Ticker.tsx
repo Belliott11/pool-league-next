@@ -1,6 +1,10 @@
 import { Pause, Play } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { ClipBackdrop } from "@/components/ClipBackdrop"
 import { ClipButton } from "@/components/ClipTile"
+import { clipKey, type Clip } from "@/lib/clips"
+import { playerName } from "@/lib/players"
+import { useDesktop } from "@/lib/useDesktop"
 import { tickerItems } from "@/lib/ticker"
 import type { PooleanState } from "@/lib/types"
 
@@ -18,6 +22,8 @@ export function Ticker({ state }: { state: PooleanState }) {
   const line = useRef<HTMLSpanElement>(null)
   const still = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches
   const n = items.length
+  const desktop = useDesktop()
+  const [onAir, setOnAir] = useState<Clip | null>(null) // the last clip shown; held, dimmed, while a headline has none, so the window does not jump
   const at = n ? i % n : 0
 
   useEffect(() => {
@@ -33,9 +39,24 @@ export function Ticker({ state }: { state: PooleanState }) {
     }
   }, [at, n, paused, still])
 
+  useEffect(() => {
+    const c = items[at]?.clip
+    if (c) setOnAir(c)
+  }, [items, at])
+
   if (!n) return null
   const item = items[at]
+  const live = !!item.clip
   return (
+    <div className="flex flex-col gap-2">
+    {desktop && onAir && (
+      <div className="relative ml-auto aspect-video w-80 overflow-hidden rounded-xl border bg-muted" aria-label="Clip from the headlines">
+        <ClipBackdrop key={clipKey(onAir)} state={state} clip={onAir} still={!live} scrim="bg-black/10" className={`absolute inset-0 transition-opacity ${live ? "" : "opacity-50"}`} />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6 text-xs text-white">
+          <span className="font-semibold">{onAir.label}</span>, {playerName(state, onAir.playerId)}
+        </div>
+      </div>
+    )}
     <div className="ticker" role="group" aria-label="League headlines">
       <span key={item.tag} className="ticker-tag">
         {item.tag}
@@ -57,6 +78,7 @@ export function Ticker({ state }: { state: PooleanState }) {
       <button type="button" className="grid size-9 shrink-0 place-items-center text-muted-foreground" aria-label={paused ? "Play headlines" : "Pause headlines"} onClick={() => setPaused(!paused)}>
         {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
       </button>
+    </div>
     </div>
   )
 }
