@@ -30,7 +30,7 @@ function original(state: PooleanState, game: Game, clip: Clip): string {
   return `${clip.label} by ${playerName(state, clip.playerId)}, at ${clock(clip.time)} in the recording${bits.length ? `. Logged as ${bits.join(", ")}` : ""}.`
 }
 
-function Card({ state, game, clip, review, save, makeStill }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview, was?: string) => void; makeStill: (c: Clip) => void }) {
+function Card({ state, game, clip, review, save, makeStill }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview, was?: string) => void; makeStill?: (c: Clip) => void }) {
   const url = gameVideoUrl(state, game)
   const was = reviewKey(clip)
   const [frame, setFrame] = useState<Frame | undefined>(review?.frame)
@@ -51,7 +51,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
   return (
     <li className="flex flex-col gap-3 border-t pt-3">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,28rem)_1fr]">
-        <CutPreview state={state} game={game} time={at} frame={frame} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} onStillFrom={(t) => makeStill({ ...clip, time: t, kind: "still", label: "Still", from: undefined, to: undefined, score: 18 })} />
+        <CutPreview state={state} game={game} time={at} frame={frame} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} onStillFrom={makeStill && ((t) => makeStill({ ...clip, time: t, kind: "still", label: "Still", from: undefined, to: undefined, score: 18 }))} />
         <div className="flex min-w-0 flex-col gap-2 text-sm">
           <p className="text-sm font-medium">{original(state, game, clip)}</p>
           <p className="text-xs text-muted-foreground">{done ? `${done}. Change it below and save again.` : still ? (review ? "A still you picked, saved." : "Not saved yet. Press Save this still to keep it.") : "Not reviewed yet."}</p>
@@ -125,10 +125,36 @@ function StillPicker({ state, game, pick }: { state: PooleanState; game: Game; p
   )
 }
 
+// Writes one review onto its game. Removing a still deletes it, rather than leaving a "skip" behind.
+function saveReview(update: Update, gameId: string, r: ClipReview, was?: string) {
+  const entry = r.still && r.verdict === "skip" ? [] : [r]
+  update((s) => ({ ...s, games: s.games.map((g) => (g.id === gameId ? { ...g, clipReviews: [...(g.clipReviews ?? []).filter((x) => x.key !== r.key && x.key !== was), ...entry] } : g)) }))
+}
+
+// One player's clips and stills, to look at and edit: everything kept, rough or marked in which they are the player or are in the shot.
+const playerItems = (state: PooleanState, pid: string) =>
+  state.games.flatMap((g) => gameClips(state, g).filter((c) => (c.reviewed || c.marked || c.kind === "lowlight") && (c.playerId === pid || c.who?.includes(pid))).map((c) => ({ g, c })))
+
+export function PlayerClipsPanel({ state, update, pid }: { state: PooleanState; update: Update; pid: string }) {
+  const [open, setOpen] = useState(false)
+  const items = useMemo(() => playerItems(state, pid), [state, pid])
+  return (
+    <details className="rounded-lg border p-2" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="cursor-pointer text-sm font-medium">Clips and stills ({items.length})</summary>
+      {open && (items.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">None yet. Keep a clip or pick a still in Review clips on the Export tab.</p> : (
+        <ul className="mt-2 flex flex-col gap-3">
+          {items.map(({ g, c }) => <Card key={`${g.id}-${reviewKey(c)}`} state={state} game={g} clip={c} review={(g.clipReviews ?? []).find((r) => r.key === reviewKey(c))} save={(r, was) => saveReview(update, g.id, r, was)} />)}
+        </ul>
+      ))}
+    </details>
+  )
+}
+
 export function ReviewClips({ state, update }: { state: PooleanState; update: Update }) {
   const [gameId, setGameId] = useState<string | null>(null)
   const [ordinary, setOrdinary] = useState(false)
   const [drafts, setDrafts] = useState<Clip[]>([])
+  const [showSkipped, setShowSkipped] = useState(false)
   const games = useMemo(
     () => state.games.filter((g) => gameVideoUrl(state, g) && !g.liveInProgress).map((g) => ({ g, all: rawClips(state, g).filter((c) => ordinary || WORTH.has(c.kind)) })).filter((x) => x.all.length).sort((a, b) => b.g.date.localeCompare(a.g.date)),
     [state, ordinary],
@@ -140,13 +166,12 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
   // Stills already saved on this game come first, then the frame just picked, then the logged plays.
   const saved = gameClips(state, open.g).filter((c) => c.kind === "still")
   const fresh = drafts.filter((d) => d.gameId === open.g.id && reviewed(open.g).get(reviewKey(d))?.verdict !== "keep") // an old "skip" left by an earlier Remove must not hide a new still
-  const rows = [...saved, ...fresh, ...[...open.all].sort((a, b) => Number(reviewed(open.g).has(reviewKey(a))) - Number(reviewed(open.g).has(reviewKey(b))) || b.score - a.score)]
+  const skipped = (c: Clip) => reviewed(open.g).get(reviewKey(c))?.verdict === "skip" // a skipped play leaves the list
+  const rows = [...saved, ...fresh, ...[...open.all].filter((c) => showSkipped || !skipped(c)).sort((a, b) => Number(reviewed(open.g).has(reviewKey(a))) - Number(reviewed(open.g).has(reviewKey(b))) || b.score - a.score)]
   const save = (r: ClipReview, was?: string) => {
     // The card that was just saved (or removed) stops being a draft, whatever frame it was moved to.
     setDrafts((d) => d.filter((x) => ![r.key, was].includes(reviewKey(x))))
-    // Removing a still deletes it, rather than leaving a "skip" behind.
-    const entry = r.still && r.verdict === "skip" ? [] : [r]
-    update((s) => ({ ...s, games: s.games.map((g) => (g.id === open.g.id ? { ...g, clipReviews: [...(g.clipReviews ?? []).filter((x) => x.key !== r.key && x.key !== was), ...entry] } : g)) }))
+    saveReview(update, open.g.id, r, was)
   }
   return (
     <div className="flex flex-col gap-3">
@@ -156,6 +181,9 @@ export function ReviewClips({ state, update }: { state: PooleanState; update: Up
         </select>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <input type="checkbox" checked={ordinary} onChange={(e) => setOrdinary(e.target.checked)} /> Include ordinary buckets
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <input type="checkbox" checked={showSkipped} onChange={(e) => setShowSkipped(e.target.checked)} /> Show skipped
         </label>
       </div>
       <details className="rounded-lg border p-3">

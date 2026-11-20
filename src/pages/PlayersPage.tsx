@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { PlayerShot } from "@/components/PlayerShot"
+import { PlayerClipsPanel } from "@/pages/games/ReviewClips"
 import { BUILD_LABELS, EFFORT_LABELS, getPlayerPhysicalData, PHYSICAL_ROLE_LABELS, type PhysicalData } from "@/lib/balance"
 import { uid } from "@/lib/format"
 import type { Update } from "@/lib/store"
@@ -206,6 +207,7 @@ export function PlayersPage({
                           )}
                         </div>
                       </div>
+                      {!readOnly && <PlayerClipsPanel state={state} update={update} pid={p.id} />}
                       {(phys?.roles ?? []).length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {(phys?.roles ?? []).map((r) => (

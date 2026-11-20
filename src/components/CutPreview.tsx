@@ -30,7 +30,7 @@ export function CutPreview({ state, game, time, frame, from, to, still, onFrom, 
           src={`${url}#t=${still ? time : from}`}
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           style={frameStyle(frame ?? readFrame(url))}
           className="size-full object-cover"
           onTimeUpdate={(e) => { const t = e.currentTarget.currentTime; setNow(t); if (!still && !e.currentTarget.paused && t >= to) e.currentTarget.pause() }}
