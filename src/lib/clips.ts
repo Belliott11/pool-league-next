@@ -63,11 +63,11 @@ export function rawClips(state: PooleanState, g: Game): Clip[] {
   // Highlights the editor marked on the game's reel come first, and an automatic clip of the same moment is dropped.
   const marked: Clip[] = (g.plays ?? [])
     .filter((p) => p.type === "highlight" && p.playerId && p.end > p.start)
-    .map((p) => ({ ...base, time: p.start + Math.min(5, (p.end - p.start) / 2), from: p.start, to: Math.min(p.end, p.start + 12), playerId: p.playerId!, kind: "marked" as const, marked: true, label: p.note?.trim() || "Marked highlight", score: SCORE.marked }))
+    .map((p) => ({ ...base, time: p.start + Math.min(5, (p.end - p.start) / 2), from: p.start, to: Math.min(p.end, p.start + 12), playerId: p.playerId!, kind: "marked" as const, marked: true, label: "Marked highlight", ...(p.note?.trim() ? { note: p.note.trim() } : {}), score: SCORE.marked }))
   // A play an editor flagged as a lowlight is the same thing the other way round: a rough moment, for stories about things going badly.
   const low: Clip[] = (g.plays ?? [])
     .filter((p) => p.type === "lowlight" && p.playerId && p.end > p.start)
-    .map((p) => ({ ...base, time: p.start + Math.min(5, (p.end - p.start) / 2), from: p.start, to: Math.min(p.end, p.start + 12), playerId: p.playerId!, kind: "lowlight" as const, label: p.note?.trim() || "Rough moment", score: SCORE.lowlight, rough: [p.playerId!] }))
+    .map((p) => ({ ...base, time: p.start + Math.min(5, (p.end - p.start) / 2), from: p.start, to: Math.min(p.end, p.start + 12), playerId: p.playerId!, kind: "lowlight" as const, label: "Rough moment", ...(p.note?.trim() ? { note: p.note.trim() } : {}), score: SCORE.lowlight, rough: [p.playerId!] }))
   out.push(...marked, ...low)
   const teamOf = (id: string) => (g.teamA.includes(id) ? "A" : g.teamB.includes(id) ? "B" : null)
   // The game winner: the last made basket of a close game, by the team that won it, if it put them ahead (it broke a tie or took the lead).

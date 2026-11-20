@@ -1,4 +1,4 @@
-import { bestClips, type Clip } from "@/lib/clips"
+import { bestClips, words, type Clip } from "@/lib/clips"
 import TONES from "@/data/headline-tones.json"
 import type { PooleanState } from "@/lib/types"
 
@@ -12,5 +12,15 @@ export type Tones = Record<string, [string, "good" | "bad"]>
 export function headlineClip(state: PooleanState, text: string, gameIds?: string[], tones: Tones = TONES as unknown as Tones): Clip | undefined {
   const t = tones[text]
   if (!t) return undefined
-  return bestClips(state, { pid: t[0], gameIds, limit: 1, about: text, mood: t[1] === "bad" ? "bad" : undefined })[0]
+  const top = bestClips(state, { pid: t[0], gameIds, limit: 3, about: text, mood: t[1] === "bad" ? "bad" : undefined })
+  if (top.length < 2) return top[0]
+  // A clip described with the headline's words wins. Otherwise the headline picks among the player's best few, so five headlines about
+  // one player do not all show the same play.
+  const said = words(text)
+  const overlap = (c: Clip) => words(`${c.label} ${c.note ?? ""}`).filter((w) => said.includes(w)).length
+  const best = top.reduce((m, c) => Math.max(m, overlap(c)), 0)
+  if (best > 0) return top.find((c) => overlap(c) === best)
+  let h = 0
+  for (const ch of text) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return top[h % top.length]
 }
