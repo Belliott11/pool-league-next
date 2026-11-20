@@ -1,6 +1,6 @@
 import { Pause, Play } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ClipBackdrop } from "@/components/ClipBackdrop"
+import { ClipBackdrop, clipSpan } from "@/components/ClipBackdrop"
 import { ClipButton } from "@/components/ClipTile"
 import { clipKey, type Clip } from "@/lib/clips"
 import { playerName } from "@/lib/players"
@@ -32,12 +32,15 @@ export function Ticker({ state }: { state: PooleanState }) {
     const travel = (over / SPEED) * 1000
     setShift(0)
     const start = setTimeout(() => setShift(over), HOLD)
-    const next = setTimeout(() => setI((x) => x + 1), HOLD + travel + HOLD + (still ? 3000 : 0))
+    // A headline stays up at least as long as its clip, so the clip is never cut off by the next headline.
+    const clip = desktop ? items[at]?.clip : undefined
+    const clipMs = clip ? (clipSpan(clip) + 1) * 1000 : 0
+    const next = setTimeout(() => setI((x) => x + 1), Math.max(HOLD + travel + HOLD + (still ? 3000 : 0), clipMs))
     return () => {
       clearTimeout(start)
       clearTimeout(next)
     }
-  }, [at, n, paused, still])
+  }, [at, n, paused, still, desktop, items])
 
   useEffect(() => {
     const c = items[at]?.clip
@@ -50,7 +53,7 @@ export function Ticker({ state }: { state: PooleanState }) {
   return (
     <div className="flex flex-col gap-2">
     {desktop && onAir && (
-      <div className="relative ml-auto aspect-video w-80 overflow-hidden rounded-xl border bg-muted" aria-label="Clip from the headlines">
+      <div className="relative h-44 w-full overflow-hidden rounded-xl border bg-muted" aria-label="Clip from the headlines">
         <ClipBackdrop key={clipKey(onAir)} state={state} clip={onAir} still={!live} scrim="bg-black/10" className={`absolute inset-0 transition-opacity ${live ? "" : "opacity-50"}`} />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6 text-xs text-white">
           <span className="font-semibold">{onAir.label}</span>, {playerName(state, onAir.playerId)}

@@ -6,8 +6,11 @@ import type { PooleanState } from "@/lib/types"
 import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
 import { cn } from "@/lib/utils"
 
-const BEFORE = 2 // seconds of run-up shown before the play
-const AFTER = 4 // and after it, then the clip loops
+const BEFORE = 3 // seconds of run-up shown before the play
+const AFTER = 6 // and after it, then the clip loops
+
+// How many seconds one pass of a backdrop lasts.
+export const clipSpan = (c: Clip) => (c.to ?? c.time + AFTER) - Math.max(0, c.from ?? c.time - BEFORE)
 const MAX_PLAYING = 2 // backdrops playing at once on a page; the rest hold their still frame
 
 const playing = new Set<HTMLVideoElement>()
