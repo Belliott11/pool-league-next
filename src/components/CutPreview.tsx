@@ -46,33 +46,46 @@ export function CutPreview({ state, game, time, frame, from, to, still, track, o
     const rw = el.videoWidth * s, rh = el.videoHeight * s
     return { b, ox: (b.width - rw) / 2, oy: (b.height - rh) / 2, rw, rh }
   }
-  const tap = (e: React.MouseEvent) => {
-    if (!v.current?.videoWidth || !onTrack) return
-    const { b, ox, oy, rw, rh } = shown()
-    const x = Math.min(1, Math.max(0, (e.clientX - b.left - ox) / rw)), y = Math.min(1, Math.max(0, (e.clientY - b.top - oy) / rh))
-    onTrack(sortTrack([...path.filter((p) => Math.abs(p.t - now) > 0.05), { t: now, x, y }]))
-  }
-  const here = tapping && v.current?.videoWidth && path.length ? atTime(path, now) : null
-  const dot = here && box.current ? (() => { const { b, ox, oy, rw, rh } = shown(); return { left: ((ox + here.x * rw) / b.width) * 100, top: ((oy + here.y * rh) / b.height) * 100 } })() : null
-
-  const followOn = async () => {
+  // One tap does it: the tap marks the ball or player, and it is followed on to the end of the cut automatically. A tap later on corrects it
+  // (what was tracked after that point is tracked again). The result plays straight away.
+  const run = async (anchor: TrackPoint, base: TrackPoint[]) => {
     const el = v.current
-    const last = path[path.length - 1]
-    if (!el || !last || !onTrack) return
+    if (!el || !onTrack) return
     stop.current = { stopped: false }
     el.pause()
-    setBusy("Following...")
+    setBusy("Following 0%")
     try {
-      const found = await followFrom(el, last, to, { signal: stop.current, onPoint: (p) => setBusy(`Following... ${Math.round(((p.t - last.t) / Math.max(0.1, to - last.t)) * 100)}%`) })
-      onTrack(smooth(sortTrack([...path, ...found])))
-      seek(last.t)
+      const found = await followFrom(el, anchor, to, { signal: stop.current, onPoint: (p) => setBusy(`Following ${Math.round(((p.t - anchor.t) / Math.max(0.1, to - anchor.t)) * 100)}%`) })
+      onTrack(smooth(sortTrack([...base, ...found])))
     } catch {
-      setBusy("Could not follow it here. Tap points by hand instead.")
+      setBusy("It could not follow on its own here, so tap it again every second or so.")
       setCors(false)
       return
     }
     setBusy(null)
+    setTapping(false)
+    el.currentTime = from
+    void el.play().catch(() => {})
   }
+  const tap = (e: React.MouseEvent) => {
+    if (!v.current?.videoWidth || !onTrack || busy) return
+    const { b, ox, oy, rw, rh } = shown()
+    const x = Math.min(1, Math.max(0, (e.clientX - b.left - ox) / rw)), y = Math.min(1, Math.max(0, (e.clientY - b.top - oy) / rh))
+    const point = { t: now, x, y }
+    const base = sortTrack([...path.filter((p) => p.t < now - 0.05), point])
+    onTrack(base)
+    if (cors) void run(point, base)
+  }
+  // Where a point sits on the box, as a percentage, for the dots drawn while tapping.
+  const at = (p: { x: number; y: number }) => {
+    if (!box.current || !v.current?.videoWidth) return null
+    const { b, ox, oy, rw, rh } = shown()
+    return { left: ((ox + p.x * rw) / b.width) * 100, top: ((oy + p.y * rh) / b.height) * 100 }
+  }
+  const here = tapping && path.length ? atTime(path, now) : null
+  const dot = here ? at(here) : null
+  const trail = tapping ? path.map(at).filter((d): d is { left: number; top: number } => !!d) : []
+
   return (
     <div className="flex w-full max-w-md flex-col gap-1.5">
       <div ref={box} className="relative aspect-video overflow-hidden rounded-xl bg-muted">
@@ -93,6 +106,7 @@ export function CutPreview({ state, game, time, frame, from, to, still, track, o
         />
         {tapping && (
           <button type="button" aria-label="Tap the ball or player" className="absolute inset-0 cursor-crosshair" onClick={tap}>
+            {trail.map((d, k) => <span key={k} className="absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/70" style={{ left: `${d.left}%`, top: `${d.top}%` }} />)}
             {dot && <span className="absolute size-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow ring-2 ring-black/50" style={{ left: `${dot.left}%`, top: `${dot.top}%` }} />}
           </button>
         )}
@@ -119,19 +133,24 @@ export function CutPreview({ state, game, time, frame, from, to, still, track, o
             <div className="flex flex-col gap-1.5 rounded-lg border p-2 text-xs">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">Follow a ball or player</span>
-                <Button size="sm" variant={tapping ? "default" : "outline"} onClick={() => { v.current?.pause(); setTapping(!tapping) }}>{tapping ? "Done tapping" : "Tap it on this frame"}</Button>
-                {path.length > 0 && !busy && <Button size="sm" variant="outline" onClick={followOn} disabled={!cors}>Follow it on to the end</Button>}
-                {busy?.startsWith("Following...") && <Button size="sm" variant="outline" onClick={() => (stop.current.stopped = true)}>Stop</Button>}
-                {path.length > 0 && <button type="button" className="underline text-muted-foreground" onClick={() => onTrack([])}>Clear</button>}
+                {busy?.startsWith("Following") ? (
+                  <Button size="sm" variant="outline" onClick={() => (stop.current.stopped = true)}>Stop</Button>
+                ) : tapping ? (
+                  <Button size="sm" variant="outline" onClick={() => setTapping(false)}>Cancel</Button>
+                ) : (
+                  <Button size="sm" onClick={() => { v.current?.pause(); if (!path.length) seek(from); setTapping(true) }}>{path.length ? "Fix it" : "Follow something"}</Button>
+                )}
+                {path.length > 0 && !busy && !tapping && <button type="button" className="underline text-muted-foreground" onClick={() => onTrack([])}>Clear</button>}
               </div>
               <p className="text-muted-foreground">
                 {busy ?? (tapping
-                  ? "Scrub to a frame and tap the ball or the player. Tap again further on to correct it, or when you want to switch from the ball to the player."
+                  ? "Scrub to the moment you want, then tap the ball or the player once. It follows from there on its own and plays."
                   : path.length
-                    ? `${path.length} point${path.length === 1 ? "" : "s"}. The camera zooms to ${zoom.toFixed(1)}x (the Zoom slider) and follows. Play the cut to see it.`
-                    : "Tap the ball or a player, and the picture will zoom in and follow them while the clip plays.")}
-                {!cors && !busy && " Following on its own needs the video host to allow it, which it does on the live site. Your taps still work, and the picture glides between them."}
+                    ? `Following. Zoom is ${zoom.toFixed(1)}x (the Zoom slider). Not right? Press Fix it, scrub to where it slipped, and tap it again.`
+                    : "Press Follow something, tap the ball or a player, and the picture zooms in and follows them while the clip plays.")}
+                {!cors && !busy && " Following on its own needs the video host to allow it, which it does on the live site. Here, tap it every second or so and the picture glides between your taps."}
               </p>
+              {tapping && !cors && <Button size="sm" className="self-start" onClick={() => setTapping(false)}>Done tapping</Button>}
             </div>
           )}
         </>
