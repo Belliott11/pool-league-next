@@ -4,6 +4,7 @@ import { InlineClip } from "@/components/InlineClip"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import type { Clip } from "@/lib/clips"
+import { clipSource } from "@/lib/clipCuts"
 import { preconnect } from "@/lib/mediaGate"
 import { frameStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
 import { formatDateDisplay } from "@/lib/format"
@@ -21,6 +22,8 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
   const game = state.games.find((g) => g.id === clip.gameId)
   const url = game ? gameVideoUrl(state, game) : ""
   const file = isDirectVideoUrl(url)
+  const source = clipSource(url, clip) // the clip's short cut when there is one (recording time = cut time + offset)
+  const offset = source.offset
   const box = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
   const [near, setNear] = useState(false)
@@ -39,9 +42,9 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
   useEffect(() => {
     const v = video.current
     if (!near || !file || !url || still || !v || v.getAttribute("src")) return
-    preconnect(url)
-    loadWithStill(v, `${url.split("#")[0]}#t=${clip.time}`, key, clip.time, (d) => (setStill(d), setFrame(readFrame(url))))
-  }, [near, file, url, still, key, clip.time])
+    preconnect(source.src)
+    loadWithStill(v, `${source.src}#t=${clip.time - offset}`, key, clip.time - offset, (d) => (setStill(d), setFrame(readFrame(url))), url)
+  }, [near, file, url, still, key, clip.time, source.src, offset])
   if (!game || !url) return null
   const play = () => {
     const v = video.current
@@ -49,13 +52,13 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
     if (!v) return
     document.querySelectorAll("video").forEach((o) => o !== v && o.pause())
     const go = () => {
-      v.currentTime = Math.max(0, clip.from ?? clip.time - LEAD)
-      if (clip.to !== undefined) v.addEventListener("timeupdate", () => v.currentTime >= clip.to! && v.pause()) // stop where the editor cut it
+      v.currentTime = Math.max(0, (clip.from ?? clip.time - LEAD) - offset)
+      if (clip.to !== undefined) v.addEventListener("timeupdate", () => v.currentTime >= clip.to! - offset && v.pause()) // stop where the editor cut it
       void v.play().catch(() => {})
     }
     v.controls = true
     v.muted = false
-    if (!v.getAttribute("src")) v.src = url.split("#")[0]
+    if (!v.getAttribute("src")) v.src = source.src
     if (v.readyState >= 1) go()
     else v.addEventListener("loadedmetadata", go, { once: true })
   }

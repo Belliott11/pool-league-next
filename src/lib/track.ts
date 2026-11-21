@@ -109,11 +109,12 @@ export async function followFrom(v: HTMLVideoElement, from: TrackPoint, to: numb
 }
 
 // While a clip plays, keeps the camera on its path: zoomed on the target and eased toward it. Returns a stop function.
-export function followPlayback(v: HTMLVideoElement, track: TrackPoint[], zoom: number): () => void {
+// `offset`: the recording time the video's first frame is at, when it plays a short cut of the recording rather than the whole thing.
+export function followPlayback(v: HTMLVideoElement, track: TrackPoint[], zoom: number, offset = 0): () => void {
   let raf = 0
   let cur: { x: number; y: number } | null = null
   const tick = () => {
-    const p = atTime(track, v.currentTime)
+    const p = atTime(track, v.currentTime + offset)
     if (p) {
       cur = cur ? { x: cur.x + (p.x - cur.x) * 0.2, y: cur.y + (p.y - cur.y) * 0.2 } : p
       const box = v.parentElement! // the box that crops the picture, not the picture

@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "compare-models": "node scripts/compare-models.mjs",
+    "cut-clips": "node scripts/cut-clips.mjs",
     "audit-headlines": "vitest run src/lib/headlineAudit.test.ts --reporter=verbose",
     "preview": "vite preview"
   },

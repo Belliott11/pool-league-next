@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import type { Clip } from "@/lib/clips"
+import { clipSource } from "@/lib/clipCuts"
 import { preconnect } from "@/lib/mediaGate"
 import { followPlayback } from "@/lib/track"
 import { coverStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
@@ -32,6 +33,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   const game = state.games.find((g) => g.id === clip.gameId)
   const url = game ? gameVideoUrl(state, game) : ""
   const file = isDirectVideoUrl(url)
+  const source = clipSource(url, clip) // the clip's short cut when there is one; times below are in the recording, less `offset` in the cut
+  const offset = source.offset
   const box = useRef<HTMLDivElement>(null)
   const saved = file ? readStill(stillKey(url, Math.max(0, clip.from ?? clip.time - BEFORE))) : null // the frame from a past visit, shown while the video loads
   const video = useRef<HTMLVideoElement>(null)
@@ -61,8 +64,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   useEffect(() => {
     const v = video.current
     if (!v || !following) return
-    return followPlayback(v, clip.track!, clip.frame?.z ?? 2) // the camera follows the ball or player while it plays
-  }, [following, clip.track, clip.frame?.z])
+    return followPlayback(v, clip.track!, clip.frame?.z ?? 2, offset) // the camera follows the ball or player while it plays
+  }, [following, clip.track, clip.frame?.z, offset])
   useEffect(() => {
     const el = box.current
     const v = video.current
@@ -83,26 +86,29 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting
       if (visible && !v.getAttribute("src")) {
-        preconnect(url)
-        loadWithStill(v, `${url.split("#")[0]}#t=${start}`, stillKey(url, start), start, () => setFrame(readFrame(url)))
+        preconnect(source.src)
+        loadWithStill(v, `${source.src}#t=${start - offset}`, stillKey(url, start), start - offset, () => setFrame(readFrame(url)), url)
       }
       sync()
     }, { threshold: 0.25 })
     io.observe(el)
     document.addEventListener("visibilitychange", sync)
     const loop = () => {
-      if (v.currentTime >= end || v.currentTime < start - 0.5) v.currentTime = start
+      if (v.currentTime >= end - offset || v.currentTime < start - offset - 0.5) v.currentTime = start - offset
     }
+    const again = () => ((v.currentTime = start - offset), sync()) // a cut can end before the last timeupdate reaches `end`
     v.addEventListener("timeupdate", loop)
+    v.addEventListener("ended", again)
     return () => {
       io.disconnect()
       document.removeEventListener("visibilitychange", sync)
       document.removeEventListener("pointerdown", sync)
       v.removeEventListener("timeupdate", loop)
+      v.removeEventListener("ended", again)
       v.pause()
       playing.delete(v)
     }
-  }, [url, file, start, end, cellularOk, still, forced])
+  }, [url, source.src, offset, file, start, end, cellularOk, still, forced])
   return (
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (

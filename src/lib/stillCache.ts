@@ -85,8 +85,9 @@ export function coverStyle(f: Frame | null, W: number, H: number, vw = 1280, vh 
 }
 
 // Points the video at `src` with CORS on, saves the frame at `at` seconds once it shows (and tells `onStill`), and falls back to a plain
-// load when the host does not allow it.
-export function loadWithStill(v: HTMLVideoElement, src: string, key: string, at: number, onStill?: (data: string) => void) {
+// load when the host does not allow it. `recording` is the full game recording when `src` is a short cut of it, so the pool crop found
+// from the frame is kept for the recording either way.
+export function loadWithStill(v: HTMLVideoElement, src: string, key: string, at: number, onStill?: (data: string) => void, recording = src) {
   let saved = false
   const grab = () => {
     if (saved || v.readyState < 2 || Math.abs(v.currentTime - at) > 1.5 || !v.videoWidth) return
@@ -97,9 +98,9 @@ export function loadWithStill(v: HTMLVideoElement, src: string, key: string, at:
       c.getContext("2d")!.drawImage(v, 0, 0, c.width, c.height)
       const ctx = c.getContext("2d")!
       const data = c.toDataURL("image/jpeg", 0.65)
-      if (!readFrame(src)) {
+      if (!readFrame(recording)) {
         const f = waterFrame(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height)
-        try { localStorage.setItem(FRAME + recordingOf(src), JSON.stringify(f)) } catch { /* skip */ }
+        try { localStorage.setItem(FRAME + recordingOf(recording), JSON.stringify(f)) } catch { /* skip */ }
       }
       saved = true
       writeStill(key, data)
