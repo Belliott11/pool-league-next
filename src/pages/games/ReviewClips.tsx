@@ -5,6 +5,7 @@ import { gameClips, rawClips, reviewKey, type Clip } from "@/lib/clips"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import { readFrame, type Frame } from "@/lib/stillCache"
+import type { TrackPoint } from "@/lib/track"
 import type { Update } from "@/lib/store"
 import type { ClipReview, Game, PooleanState } from "@/lib/types"
 import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
@@ -34,6 +35,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
   const url = gameVideoUrl(state, game)
   const was = reviewKey(clip)
   const [frame, setFrame] = useState<Frame | undefined>(review?.frame)
+  const [track, setTrack] = useState<TrackPoint[]>(review?.track ?? [])
   const [from, setFrom] = useState(review?.from ?? clip.from ?? Math.max(0, clip.time - 2))
   const [to, setTo] = useState(review?.to ?? clip.to ?? clip.time + 4)
   const [at, setAt] = useState(clip.time) // a still's moment, once moved
@@ -41,7 +43,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
   const [note, setNote] = useState(review?.note ?? "")
   const [who, setWho] = useState<string[]>(review?.who ?? [clip.playerId])
   const [looks, setLooks] = useState<Record<string, "good" | "bad">>(review?.looks ?? {})
-  const start = frame ?? readFrame(url) ?? { z: 1.5, x: 0.5, y: 0.5 } // zoomed a little to start, because Across and Down move nothing at zoom 1
+  const start = frame ?? readFrame(url) ?? { z: track.length ? 2 : 1.5, x: 0.5, y: 0.5 } // zoomed a little to start, because Across and Down move nothing at zoom 1
   const set = (patch: Partial<Frame>) => setFrame({ ...start, ...patch })
   const people = [...game.teamA, ...game.teamB]
   const still = clip.kind === "still"
@@ -51,7 +53,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
   return (
     <li className="flex flex-col gap-3 border-t pt-3">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,28rem)_1fr]">
-        <CutPreview state={state} game={game} time={at} frame={frame} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} onStillFrom={makeStill && ((t) => makeStill({ ...clip, time: t, kind: "still", label: "Still", from: undefined, to: undefined, score: 18 }))} />
+        <CutPreview state={state} game={game} time={at} frame={frame} track={track} onTrack={clip.kind === "still" ? undefined : setTrack} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} onStillFrom={makeStill && ((t) => makeStill({ ...clip, time: t, kind: "still", label: "Still", from: undefined, to: undefined, score: 18 }))} />
         <div className="flex min-w-0 flex-col gap-2 text-sm">
           <p className="text-sm font-medium">{original(state, game, clip)}</p>
           <p className="text-xs text-muted-foreground">{done ? `${done}. Change it below and save again.` : still ? (review ? "A still you picked, saved." : "Not saved yet. Press Save this still to keep it.") : "Not reviewed yet."}</p>
@@ -62,7 +64,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
           </label>
           <fieldset className="flex flex-col gap-1">
             <legend className="text-xs font-medium">Crop</legend>
-            {([["z", "Zoom", 1, 2.5], ["x", "Across", 0, 1], ["y", "Down", 0, 1]] as const).map(([k, label, min, max]) => (
+            {([["z", "Zoom", 1, 2.5], ["x", "Across", 0, 1], ["y", "Down", 0, 1]] as const).filter(([k]) => k === "z" || !track.length).map(([k, label, min, max]) => (
               <label key={k} className="flex items-center gap-2 text-xs">
                 <span className="w-12 text-muted-foreground">{label}</span>
                 <input type="range" min={min} max={max} step={0.02} value={start[k]} onChange={(e) => set({ [k]: Number(e.target.value) })} className="min-w-0 flex-1" />
@@ -90,7 +92,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
             </fieldset>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(clip.kind === "still" ? { still: { time: at, playerId: clip.playerId } } : { from, to }), ...(note.trim() ? { note: note.trim() } : {}), ...(frame ? { frame } : {}), who, looks }, was)}>{clip.kind === "still" ? "Save this still" : "Keep this clip"}</Button>
+            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(clip.kind === "still" ? { still: { time: at, playerId: clip.playerId } } : { from, to }), ...(note.trim() ? { note: note.trim() } : {}), ...(frame || track.length ? { frame: frame ?? { z: 2, x: 0.5, y: 0.5 } } : {}), ...(track.length ? { track } : {}), who, looks }, was)}>{clip.kind === "still" ? "Save this still" : "Keep this clip"}</Button>
             <Button size="sm" variant="outline" onClick={() => save({ key: was, verdict: "skip", ...(clip.kind === "still" ? { still: { time: clip.time, playerId: clip.playerId } } : {}) })}>{clip.kind === "still" ? "Remove" : "Skip"}</Button>
           </div>
         </div>

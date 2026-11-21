@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import type { Clip } from "@/lib/clips"
 import { preconnect } from "@/lib/mediaGate"
+import { followPlayback } from "@/lib/track"
 import { frameStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
 import type { PooleanState } from "@/lib/types"
 import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
@@ -33,7 +34,14 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   const video = useRef<HTMLVideoElement>(null)
   const [frame, setFrame] = useState(() => (file ? readFrame(url) : null)) // crop onto the pool
   const start = Math.max(0, clip.from ?? clip.time - BEFORE)
+  const following = !contain && !!clip.track?.length
+  const staticFrame = following ? { z: clip.frame?.z ?? 2, x: clip.track![0].x, y: clip.track![0].y } : (clip.frame ?? frame) // a followed clip rests on where it starts
   const end = clip.to ?? clip.time + AFTER
+  useEffect(() => {
+    const v = video.current
+    if (!v || !following) return
+    return followPlayback(v, clip.track!, clip.frame?.z ?? 2) // the camera follows the ball or player while it plays
+  }, [following, clip.track, clip.frame?.z])
   useEffect(() => {
     const el = box.current
     const v = video.current
@@ -44,7 +52,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     const sync = () => {
       if (visible && !document.hidden && !calm && (cellularOk || !onMobileData()) && (playing.has(v) || [...playing].filter((o) => !o.paused).length < MAX_PLAYING)) {
         playing.add(v)
-        void v.play().catch(() => playing.delete(v))
+        // iPhones in Low Power Mode refuse to autoplay until the person touches the page; the first touch tries again.
+        void v.play().catch(() => (playing.delete(v), document.addEventListener("pointerdown", sync, { once: true })))
       } else {
         v.pause()
         playing.delete(v)
@@ -67,6 +76,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     return () => {
       io.disconnect()
       document.removeEventListener("visibilitychange", sync)
+      document.removeEventListener("pointerdown", sync)
       v.removeEventListener("timeupdate", loop)
       v.pause()
       playing.delete(v)
@@ -76,8 +86,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
-          {saved && <img src={saved} alt="" aria-hidden style={contain ? undefined : frameStyle(clip.frame ?? frame)} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />}
-          <video ref={video} style={contain ? undefined : frameStyle(clip.frame ?? frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />
+          {saved && <img src={saved} alt="" aria-hidden style={contain ? undefined : frameStyle(staticFrame)} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />}
+          <video ref={video} style={contain || following ? undefined : frameStyle(clip.frame ?? frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
         </>
       )}

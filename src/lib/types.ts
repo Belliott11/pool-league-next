@@ -64,6 +64,7 @@ export interface ClipReview {
   verdict: "keep" | "skip"
   still?: { time: number; playerId: string } // a frame the editor picked by hand, not one of the logged plays
   frame?: { z: number; x: number; y: number } // the crop, as stillCache.ts Frame
+  track?: { t: number; x: number; y: number }[] // where the ball or player is through the clip (0..1 of the picture); the camera follows it, zoomed to frame.z
   from?: number // where the clip starts and ends in the recording, in seconds, when the editor trimmed it
   to?: number
   note?: string // what happens in it, in the editor's words: the caption, and what a headline is matched against

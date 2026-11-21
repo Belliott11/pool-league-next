@@ -1,6 +1,7 @@
 import { playerName } from "@/lib/players"
 import type { ClipReview, Game, PooleanState } from "@/lib/types"
 import type { Frame } from "@/lib/stillCache"
+import type { TrackPoint } from "@/lib/track"
 import { gameVideoUrl } from "@/lib/video"
 
 // Plays worth showing: logged moments (made shots, blocks, steals) in games that have a recording, ranked by how much they look like a
@@ -19,6 +20,7 @@ export interface Clip {
   note?: string // the editor's description: never shown, only matched against headlines
   reviewed?: boolean // an editor looked at it and kept it
   frame?: Frame // the crop the editor set
+  track?: TrackPoint[] // the path of what to follow; the zoom is frame.z
   who?: string[] // others in the shot, so it can show on their pages too
   good?: string[] // players it flatters: ranks higher for them
   rough?: string[] // players it goes badly for: shown with stories about that, never on their highlights
@@ -52,7 +54,7 @@ export function gameClips(state: PooleanState, g: Game): Clip[] {
 
 const reviewed = (c: Clip, r: ClipReview): Clip => {
   const looks = Object.entries(r.looks ?? {})
-  return { ...c, ...(r.note?.trim() ? { note: r.note.trim() } : {}), reviewed: true, frame: r.frame, ...(r.from !== undefined && r.to !== undefined && r.to > r.from ? { from: r.from, to: r.to } : {}), who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), rough: [...new Set([...(c.rough ?? []).filter((id) => r.looks?.[id] !== "good"), ...looks.filter(([, v]) => v === "bad").map(([id]) => id)])] }
+  return { ...c, ...(r.note?.trim() ? { note: r.note.trim() } : {}), reviewed: true, frame: r.frame, ...(r.track?.length ? { track: r.track } : {}), ...(r.from !== undefined && r.to !== undefined && r.to > r.from ? { from: r.from, to: r.to } : {}), who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), rough: [...new Set([...(c.rough ?? []).filter((id) => r.looks?.[id] !== "good"), ...looks.filter(([, v]) => v === "bad").map(([id]) => id)])] }
 }
 
 // Every candidate in one game before any review: the scorer, the blocker or the thief.
