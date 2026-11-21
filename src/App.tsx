@@ -337,7 +337,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       >
         Skip to content
       </a>
-      <div className={`sticky top-0 z-20 -mx-4 flex items-center justify-between gap-3 bg-background/90 px-4 backdrop-blur transition-[padding] sm:-mx-6 sm:px-6 ${scrolled ? "py-1.5" : "py-3"}`}>
+      <div className={`sticky top-0 z-30 -mx-4 flex items-center justify-between gap-3 bg-background/90 px-4 backdrop-blur transition-[padding] sm:-mx-6 sm:px-6 ${scrolled ? "py-1.5" : "py-3"}`}>
         <div className="flex min-w-0 flex-1 items-center gap-1">
           {(view.sub !== "" || view.tab !== "games") && (
             <Button size="icon" variant="ghost" className="-ml-2 size-9 shrink-0" aria-label="Back" onClick={goBack}>
