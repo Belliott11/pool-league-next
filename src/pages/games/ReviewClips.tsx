@@ -31,7 +31,7 @@ function original(state: PooleanState, game: Game, clip: Clip): string {
   return `${clip.label} by ${playerName(state, clip.playerId)}, at ${clock(clip.time)} in the recording${bits.length ? `. Logged as ${bits.join(", ")}` : ""}.`
 }
 
-function Card({ state, game, clip, review, save, makeStill }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview, was?: string) => void; makeStill?: (c: Clip) => void }) {
+function Card({ state, game, clip, review, save, makeStill, followMode }: { state: PooleanState; game: Game; clip: Clip; review?: ClipReview; save: (r: ClipReview, was?: string) => void; makeStill?: (c: Clip) => void; followMode?: boolean }) {
   const url = gameVideoUrl(state, game)
   const was = reviewKey(clip)
   const [frame, setFrame] = useState<Frame | undefined>(review?.frame)
@@ -92,7 +92,7 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
             </fieldset>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(clip.kind === "still" ? { still: { time: at, playerId: clip.playerId } } : { from, to }), ...(note.trim() ? { note: note.trim() } : {}), ...(frame || track.length ? { frame: frame ?? { z: 2, x: 0.5, y: 0.5 } } : {}), ...(track.length ? { track } : {}), who, looks }, was)}>{clip.kind === "still" ? "Save this still" : "Keep this clip"}</Button>
+            <Button size="sm" onClick={() => save({ key, verdict: "keep", ...(clip.kind === "still" ? { still: { time: at, playerId: clip.playerId } } : { from, to }), ...(note.trim() ? { note: note.trim() } : {}), ...(frame || track.length ? { frame: frame ?? { z: 2, x: 0.5, y: 0.5 } } : {}), ...(track.length || followMode ? { track } : {}), who, looks }, was)}>{clip.kind === "still" ? "Save this still" : followMode ? "Save and mark done" : "Keep this clip"}</Button>
             <Button size="sm" variant="outline" onClick={() => save({ key: was, verdict: "skip", ...(clip.kind === "still" ? { still: { time: clip.time, playerId: clip.playerId } } : {}) })}>{clip.kind === "still" ? "Remove" : "Skip"}</Button>
           </div>
         </div>
@@ -152,7 +152,41 @@ export function PlayerClipsPanel({ state, update, pid }: { state: PooleanState; 
   )
 }
 
+// Kept clips that have not been looked at for following yet: tap the ball or player and follow it, or save to say none is needed. Either
+// way the clip leaves this list.
+function FollowBackfill({ state, update }: { state: PooleanState; update: Update }) {
+  const rows = useMemo(
+    () => state.games.flatMap((g) => gameClips(state, g).filter((c) => c.reviewed && c.kind !== "still" && (g.clipReviews ?? []).find((r) => r.key === reviewKey(c))?.track === undefined).map((c) => ({ g, c }))),
+    [state],
+  )
+  if (rows.length === 0) return <p className="text-sm text-muted-foreground">Every kept clip has been looked at for following.</p>
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground">{rows.length} kept clip{rows.length === 1 ? "" : "s"} to look at. Scrub to the ball or player, tap it, press "Follow it on to the end", watch it with "Play the cut", then "Save and mark done". Save without tapping when no following is needed.</p>
+      <ul className="flex flex-col gap-3">
+        {rows.slice(0, 20).map(({ g, c }) => <Card key={`${g.id}-${reviewKey(c)}`} state={state} game={g} clip={c} review={(g.clipReviews ?? []).find((r) => r.key === reviewKey(c))} save={(r, was) => saveReview(update, g.id, r, was)} followMode />)}
+      </ul>
+      {rows.length > 20 && <p className="text-xs text-muted-foreground">Showing the first 20 of {rows.length}.</p>}
+    </div>
+  )
+}
+
 export function ReviewClips({ state, update }: { state: PooleanState; update: Update }) {
+  const [view, setView] = useState<"new" | "follow">("new")
+  if (view === "follow") return <div className="flex flex-col gap-3"><ViewSwitch view={view} setView={setView} /><FollowBackfill state={state} update={update} /></div>
+  return <div className="flex flex-col gap-3"><ViewSwitch view={view} setView={setView} /><ReviewList state={state} update={update} /></div>
+}
+
+function ViewSwitch({ view, setView }: { view: "new" | "follow"; setView: (v: "new" | "follow") => void }) {
+  return (
+    <div className="flex gap-2" role="group" aria-label="What to review">
+      <Chip selected={view === "new"} onClick={() => setView("new")}>Plays to review</Chip>
+      <Chip selected={view === "follow"} onClick={() => setView("follow")}>Kept clips to follow</Chip>
+    </div>
+  )
+}
+
+function ReviewList({ state, update }: { state: PooleanState; update: Update }) {
   const [gameId, setGameId] = useState<string | null>(null)
   const [ordinary, setOrdinary] = useState(false)
   const [drafts, setDrafts] = useState<Clip[]>([])
