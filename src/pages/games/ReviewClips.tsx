@@ -162,7 +162,7 @@ function FollowBackfill({ state, update }: { state: PooleanState; update: Update
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">Every kept clip has been looked at for following.</p>
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-muted-foreground">{rows.length} kept clip{rows.length === 1 ? "" : "s"} to look at. Press "Follow something", scrub to the ball or a player, and tap it once. It follows on its own and plays the result. Tap "Fix it" if it slips, then "Save and mark done". Save without tapping when no following is needed.</p>
+      <p className="text-xs text-muted-foreground">{rows.length} kept clip{rows.length === 1 ? "" : "s"} to look at. For a player: press "Follow a player", scrub to them, and tap once. It follows on its own and plays the result. For the ball: press "Follow the ball by hand" and tap where it is every half second; "Done" plays it. Tap "Fix it" if it slips, then "Save and mark done". Save without tapping when no following is needed.</p>
       <ul className="flex flex-col gap-3">
         {rows.slice(0, 20).map(({ g, c }) => <Card key={`${g.id}-${reviewKey(c)}`} state={state} game={g} clip={c} review={(g.clipReviews ?? []).find((r) => r.key === reviewKey(c))} save={(r, was) => saveReview(update, g.id, r, was)} followMode />)}
       </ul>
