@@ -25,7 +25,7 @@ const onMobileData = () => {
 // and not at all (a still frame instead) with reduced motion or Data Saver on. On mobile data only a backdrop marked `cellularOk` plays (one
 // place on the site, Wrapped); the rest wait for Wi-Fi. ponytail: only browsers that report the connection type can tell (Chrome on Android);
 // Safari on iPhone says nothing, so there the backdrops play as on Wi-Fi. A scrim keeps whatever sits on top readable.
-export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", cellularOk = false, still = false, contain = false, children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; cellularOk?: boolean; still?: boolean; contain?: boolean; children?: ReactNode }) {
+export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", cellularOk = false, still = false, contain = false, manual = false, children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; cellularOk?: boolean; still?: boolean; contain?: boolean; manual?: boolean; children?: ReactNode }) {
   const game = state.games.find((g) => g.id === clip.gameId)
   const url = game ? gameVideoUrl(state, game) : ""
   const file = isDirectVideoUrl(url)
@@ -33,6 +33,9 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   const saved = file ? readStill(stillKey(url, Math.max(0, clip.from ?? clip.time - BEFORE))) : null // the frame from a past visit, shown while the video loads
   const video = useRef<HTMLVideoElement>(null)
   const [frame, setFrame] = useState(() => (file ? readFrame(url) : null)) // crop onto the pool
+  // Reduced motion or Data Saver holds a backdrop still. With `manual`, a Play button lets the person start it anyway.
+  const prefsCalm = typeof matchMedia !== "undefined" && (matchMedia("(prefers-reduced-motion: reduce)").matches || (navigator as Navigator & { connection?: Conn }).connection?.saveData === true)
+  const [forced, setForced] = useState(false)
   const start = Math.max(0, clip.from ?? clip.time - BEFORE)
   const following = !contain && !!clip.track?.length
   const staticFrame = following ? { z: clip.frame?.z ?? 2, x: clip.track![0].x, y: clip.track![0].y } : (clip.frame ?? frame) // a followed clip rests on where it starts
@@ -47,7 +50,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     const v = video.current
     if (!el || !v || !file) return
     const saver = (navigator as Navigator & { connection?: Conn }).connection?.saveData === true
-    const calm = still || clip.kind === "still" || matchMedia("(prefers-reduced-motion: reduce)").matches || saver // `still`: hold the frame, never play
+    const calm = still || clip.kind === "still" || ((matchMedia("(prefers-reduced-motion: reduce)").matches || saver) && !forced) // `still`: hold the frame, never play
     let visible = false
     const sync = () => {
       if (visible && !document.hidden && !calm && (cellularOk || !onMobileData()) && (playing.has(v) || [...playing].filter((o) => !o.paused).length < MAX_PLAYING)) {
@@ -81,7 +84,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
       v.pause()
       playing.delete(v)
     }
-  }, [url, file, start, end, cellularOk, still])
+  }, [url, file, start, end, cellularOk, still, forced])
   return (
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
@@ -89,6 +92,11 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
           {saved && <img src={saved} alt="" aria-hidden style={contain ? undefined : frameStyle(staticFrame)} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />}
           <video ref={video} style={contain || following ? undefined : frameStyle(clip.frame ?? frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
+          {manual && prefsCalm && !forced && !still && (
+            <button type="button" onClick={() => setForced(true)} className="absolute inset-0 z-10 grid place-items-center bg-black/20 text-white" aria-label="Play the clip">
+              <span className="grid size-14 place-items-center rounded-full bg-black/60 text-2xl">▶</span>
+            </button>
+          )}
         </>
       )}
       {children && <div className="relative">{children}</div>}
