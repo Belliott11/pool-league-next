@@ -87,16 +87,16 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
       visible = e.isIntersecting
       if (visible && !v.getAttribute("src")) {
         preconnect(source.src)
-        loadWithStill(v, `${source.src}#t=${start - offset}`, stillKey(url, start), start - offset, () => setFrame(readFrame(url)), url)
+        loadWithStill(v, `${source.src}#t=${Math.max(0, start - offset)}`, stillKey(url, start), Math.max(0, start - offset), () => setFrame(readFrame(url)), url)
       }
       sync()
     }, { threshold: 0.25 })
     io.observe(el)
     document.addEventListener("visibilitychange", sync)
     const loop = () => {
-      if (v.currentTime >= end - offset || v.currentTime < start - offset - 0.5) v.currentTime = start - offset
+      if (v.currentTime >= end - offset || v.currentTime < start - offset - 0.5) v.currentTime = Math.max(0, start - offset)
     }
-    const again = () => ((v.currentTime = start - offset), sync()) // a cut can end before the last timeupdate reaches `end`
+    const again = () => ((v.currentTime = Math.max(0, start - offset)), sync()) // a cut can end before the last timeupdate reaches `end`
     v.addEventListener("timeupdate", loop)
     v.addEventListener("ended", again)
     return () => {

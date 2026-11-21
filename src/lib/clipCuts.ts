@@ -18,7 +18,7 @@ export const cutKey = (url: string, w: { start: number; end: number }) => `${url
 const table = cuts as Record<string, string>
 
 // Where to play a clip from: its cut when there is one (with `offset`, the recording time the cut's first frame is at), else the recording.
-// Times in the recording become times in the cut by taking away `offset`.
+// Times in the recording become times in the cut by taking away `offset` (callers keep the result at 0 or more: the stretch is rounded).
 export function clipSource(url: string, clip: { time: number; from?: number; to?: number }): { src: string; offset: number; cut: boolean } {
   const bare = url.split("#")[0]
   const w = cutWindow(clip)

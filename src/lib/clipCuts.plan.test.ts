@@ -18,7 +18,6 @@ describe.skipIf(!stateFile || !planFile)("clip cut plan", () => {
       const url = gameVideoUrl(state, g)
       if (!isDirectVideoUrl(url)) continue
       for (const c of gameClips(state, g)) {
-        if (c.kind === "still") continue // a still never plays
         const w = cutWindow(c)
         const key = cutKey(url, w)
         plan.set(key, { key, url: url.split("#")[0], ...w })

@@ -43,7 +43,7 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
     const v = video.current
     if (!near || !file || !url || still || !v || v.getAttribute("src")) return
     preconnect(source.src)
-    loadWithStill(v, `${source.src}#t=${clip.time - offset}`, key, clip.time - offset, (d) => (setStill(d), setFrame(readFrame(url))), url)
+    loadWithStill(v, `${source.src}#t=${Math.max(0, clip.time - offset)}`, key, Math.max(0, clip.time - offset), (d) => (setStill(d), setFrame(readFrame(url))), url)
   }, [near, file, url, still, key, clip.time, source.src, offset])
   if (!game || !url) return null
   const play = () => {
