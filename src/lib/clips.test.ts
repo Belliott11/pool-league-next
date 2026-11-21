@@ -81,6 +81,18 @@ test("a headline gets the clip its judged tone calls for: good for good news, ro
   expect(headlineClip(rough, "A scored from everywhere", undefined, tones)?.kind).not.toBe("dunk")
 })
 
+test("the editor's mark on a headline wins over the data file, and marking it no clip removes the clip", async () => {
+  const { headlineClip, namedIn, toneOf } = await import("@/lib/headlineClips")
+  const tones = { "A scored from everywhere": ["a", "good"] } as never
+  const s = reviewed([])
+  expect(headlineClip({ ...s, headlineTones: { "A scored from everywhere": null } }, "A scored from everywhere", undefined, tones)).toBeUndefined()
+  expect(headlineClip({ ...s, headlineTones: { "Written since about A": ["a", "good"] } }, "Written since about A", undefined, tones)?.playerId).toBe("a")
+  expect(toneOf({ ...s, headlineTones: { "A scored from everywhere": ["b", "bad"] } }, "A scored from everywhere", tones)).toEqual(["b", "bad"])
+  expect(toneOf({ ...s, headlineTones: {} }, "A scored from everywhere", tones)).toEqual(["a", "good"])
+  const named = { players: [{ id: "ben", name: "Ben" }, { id: "zach", name: "Zach Q" }, { id: "al", name: "Al" }], games: [] } as unknown as PooleanState
+  expect(namedIn(named, "Zach passed to Ben's left. Also, totally normal.")).toEqual(["zach", "ben"])
+})
+
 const full = (events: object[], extra: object = {}) => ({ ...game("w1", "2026-10-01", events), ...extra })
 const st = (g: object) => ({ players: [{ id: "a", name: "A" }, { id: "b", name: "B" }], games: [g] }) as unknown as PooleanState
 

@@ -3,6 +3,7 @@ import { useLabels } from "@/lib/labelsContext";
 import { useReadOnly } from "@/lib/mode";
 import { Terms } from "@/components/Terms";
 import { ClipButton } from "@/components/ClipTile";
+import { HeadlineTone } from "@/components/HeadlineTone";
 import { headlineClip } from "@/lib/headlineClips";
 import type { PooleanState } from "@/lib/types";
 import { useMemo } from "react";
@@ -10,6 +11,7 @@ import { useMemo } from "react";
 // A list of finished headlines. The editor gets a thumbs-down on each one: it removes that wording and the
 // headline is written again with another one (or dropped if there is none).
 // With `state`, a headline that names a player gets a film button: a good clip for good news, a rough one for bad news, nothing otherwise.
+// The editor also gets a clapperboard on each one to mark who it is about and whether it is good or bad news, which picks that clip.
 export function StoryList({ stories, state, gameIds }: { stories: string[]; state?: PooleanState; gameIds?: string[] }) {
   const readOnly = useReadOnly();
   const { hideLine } = useLabels();
@@ -34,6 +36,7 @@ export function StoryList({ stories, state, gameIds }: { stories: string[]; stat
               {x}
               {state && clips[i] && <ClipButton state={state} clip={clips[i]} compact />}
             </span>
+            {!readOnly && state && <HeadlineTone state={state} text={x} gameIds={gameIds} />}
             {!readOnly && (
               <button
                 type="button"

@@ -31,7 +31,7 @@ import { adoptScorekeeperScores, findLiveGame } from "@/lib/live"
 import { isOpeningNight } from "@/lib/offseason"
 import { syncWinnerFlags } from "@/lib/winner"
 import { useTabSwipe } from "@/lib/useSwipe"
-import { ReadOnlyContext } from "@/lib/mode"
+import { ReadOnlyContext, UpdateContext } from "@/lib/mode"
 import { LiveMiniBar } from "@/pages/live/LiveMiniBar"
 import { useCloud, type Cloud } from "@/lib/useCloud"
 import { installStackTables } from "@/lib/stackTables"
@@ -343,6 +343,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
 
   return (
     <ReadOnlyContext.Provider value={readOnly}>
+    <UpdateContext.Provider value={readOnly ? null : update}>
     <LabelsContext.Provider value={{ labels, setPlayerLabels, hideLine: (t) => setPlayerLabels(HIDDEN, (cur) => (cur.includes(t) ? cur : [...cur, t])), restoreHidden: () => setPlayerLabels(HIDDEN, () => []), reviewLine: (t, verdict) => { const k = lineKey(t); const drop = (cur: string[]) => cur.filter((x) => lineKey(x) !== k); setPlayerLabels(HIDDEN, (cur) => (verdict === "no" ? [...drop(cur), t] : drop(cur))); setPlayerLabels(APPROVED, (cur) => (verdict === "ok" ? [...drop(cur), t] : drop(cur))) } }}>
     {!readOnly && <StoryPublisher state={state} update={update} />}
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 pb-24 sm:p-6 sm:pb-6">
@@ -498,6 +499,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       </p>
     </div>
     </LabelsContext.Provider>
+    </UpdateContext.Provider>
     </ReadOnlyContext.Provider>
   )
 }
