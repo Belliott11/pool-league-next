@@ -51,8 +51,8 @@ function Card({ state, game, clip, review, save, makeStill }: { state: PooleanSt
   const toggle = (id: string) => setWho((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]))
   const look = (id: string, v: "good" | "bad") => setLooks((l) => { const n = { ...l }; if (n[id] === v) delete n[id]; else n[id] = v; return n })
   return (
-    <li className="flex flex-col gap-3 border-t pt-3">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,28rem)_1fr]">
+    <li className="@container flex flex-col gap-3 border-t pt-3">
+      <div className="grid gap-3 @3xl:grid-cols-[minmax(0,28rem)_1fr]">
         <CutPreview state={state} game={game} time={at} frame={frame} track={track} onTrack={clip.kind === "still" ? undefined : setTrack} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} onStillFrom={makeStill && ((t) => makeStill({ ...clip, time: t, kind: "still", label: "Still", from: undefined, to: undefined, score: 18 }))} />
         <div className="flex min-w-0 flex-col gap-2 text-sm">
           <p className="text-sm font-medium">{original(state, game, clip)}</p>
