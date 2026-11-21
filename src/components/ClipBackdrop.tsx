@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import type { Clip } from "@/lib/clips"
 import { preconnect } from "@/lib/mediaGate"
 import { followPlayback } from "@/lib/track"
-import { frameStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
+import { coverStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
 import type { PooleanState } from "@/lib/types"
 import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
 import { cn } from "@/lib/utils"
@@ -39,11 +39,12 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   // Reduced motion or Data Saver holds a backdrop still. With `manual`, a Play button lets the person start it anyway.
   const prefsCalm = typeof matchMedia !== "undefined" && (matchMedia("(prefers-reduced-motion: reduce)").matches || (navigator as Navigator & { connection?: Conn }).connection?.saveData === true)
   const [forced, setForced] = useState(false)
-  const [small, setSmall] = useState(() => typeof window !== "undefined" && window.innerWidth < SMALL)
+  const [size, setSize] = useState({ w: typeof window !== "undefined" ? window.innerWidth : 1280, h: 0 }) // the box, to lay the crop out for its shape
+  const small = size.w < SMALL
   useEffect(() => {
     const el = box.current
     if (!el || typeof ResizeObserver === "undefined") return
-    const ro = new ResizeObserver(([e]) => setSmall(e.contentRect.width < SMALL))
+    const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }))
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
@@ -51,6 +52,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   const zoomed = small && !contain // only a shrunk backdrop is zoomed in
   const following = zoomed && !!clip.track?.length
   const staticFrame = following ? { z: clip.frame?.z ?? 2, x: clip.track![0].x, y: clip.track![0].y } : (clip.frame ?? frame) // a followed clip rests on where it starts
+  const cover = zoomed ? coverStyle(staticFrame, size.w, size.h) : undefined
   const end = clip.to ?? clip.time + AFTER
   useEffect(() => {
     const v = video.current
@@ -101,8 +103,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
-          {saved && <img src={saved} alt="" aria-hidden style={zoomed ? frameStyle(staticFrame) : undefined} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />}
-          <video ref={video} style={!zoomed || following ? undefined : frameStyle(clip.frame ?? frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />
+          {saved && <img src={saved} alt="" aria-hidden style={cover} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />}
+          <video ref={video} style={following ? undefined : cover} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
           {manual && prefsCalm && !forced && !still && (
             <button type="button" onClick={() => setForced(true)} className="absolute inset-0 z-10 grid place-items-center bg-black/20 text-white" aria-label="Play the clip">

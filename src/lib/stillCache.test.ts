@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, test, vi } from "vitest"
-import { frameStyle, readStill, stillKey, waterFrame, writeStill } from "@/lib/stillCache"
+import { coverStyle, frameStyle, readStill, stillKey, waterFrame, writeStill } from "@/lib/stillCache"
 
 const store = new Map<string, string>()
 vi.stubGlobal("localStorage", { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) })
@@ -47,5 +47,29 @@ describe("auto framing", () => {
     const { px, w, h } = pic(false)
     expect(waterFrame(px, w, h)).toBeNull()
     expect(frameStyle(null)).toBeUndefined()
+  })
+})
+
+describe("cover crop", () => {
+  // Where a point of the picture ends up in the box after the crop: (box centre) + pan + zoom * (its place laid out - centre).
+  const place = (W: number, H: number, x: number, y: number, z: number) => {
+    const st = coverStyle({ z, x, y }, W, H)!
+    const m = /translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/.exec(st.transform)!
+    const s0 = Math.max(W / 1280, H / 720), Wd = 1280 * s0, Hd = 720 * s0
+    return { px: W / 2 + Number(m[1]) + z * (( W - Wd) / 2 + x * Wd - W / 2), py: H / 2 + Number(m[2]) + z * ((H - Hd) / 2 + y * Hd - H / 2) }
+  }
+  it("keeps every point of the picture on screen in a tall phone box, at any zoom", () => {
+    for (const z of [1.1, 1.5, 2, 2.5]) for (const x of [0, 0.1, 0.5, 0.9, 1]) for (const y of [0, 0.5, 1]) {
+      const { px, py } = place(390, 700, x, y, z)
+      expect(px).toBeGreaterThanOrEqual(-0.6)
+      expect(px).toBeLessThanOrEqual(390.6)
+      expect(py).toBeGreaterThanOrEqual(-0.6)
+      expect(py).toBeLessThanOrEqual(700.6)
+    }
+  })
+  it("centres a point that can be centred, and does nothing at no zoom", () => {
+    const { px } = place(390, 700, 0.5, 0.5, 2)
+    expect(px).toBeCloseTo(195, 0)
+    expect(coverStyle({ z: 1, x: 0.2, y: 0.2 }, 390, 700)).toBeUndefined()
   })
 })

@@ -1,4 +1,4 @@
-import { frameStyle } from "@/lib/stillCache"
+import { coverStyle } from "@/lib/stillCache"
 
 // Following a ball or a player through a clip. The editor taps the thing on a frame, and the picture is followed forward by matching
 // that small patch of colour in each next frame near where it last was. What is saved is only the path (time and place, 0..1 of the
@@ -116,7 +116,7 @@ export function followPlayback(v: HTMLVideoElement, track: TrackPoint[], zoom: n
     const p = atTime(track, v.currentTime)
     if (p) {
       cur = cur ? { x: cur.x + (p.x - cur.x) * 0.2, y: cur.y + (p.y - cur.y) * 0.2 } : p
-      const s = frameStyle({ z: zoom, x: cur.x, y: cur.y })
+      const s = coverStyle({ z: zoom, x: cur.x, y: cur.y }, v.clientWidth, v.clientHeight, v.videoWidth || 1280, v.videoHeight || 720)
       v.style.transform = s?.transform ?? ""
       v.style.transformOrigin = s?.transformOrigin ?? ""
     }

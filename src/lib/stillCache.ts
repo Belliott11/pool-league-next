@@ -68,6 +68,22 @@ export function frameStyle(f: Frame | null): { transform: string; transformOrigi
   return { transform: `scale(${f.z.toFixed(3)})`, transformOrigin: `${o(f.x).toFixed(1)}% ${o(f.y).toFixed(1)}%` }
 }
 
+// The same crop for a box of any shape. A video that fills a box by cover-fit is cropped (a phone's tall box shows a thin slice of a wide
+// picture), so the focus point is worked out on the picture as it is laid out, not on the box. The picture is moved so the focus sits mid-box
+// when it can, and never so far that the box shows past the picture: a point near a side ends up at the box's edge, still on screen.
+export function coverStyle(f: Frame | null, W: number, H: number, vw = 1280, vh = 720): { transform: string; transformOrigin: string } | undefined {
+  if (!f || f.z < 1.02 || !W || !H) return undefined
+  const s0 = Math.max(W / vw, H / vh)
+  const Wd = vw * s0, Hd = vh * s0 // the picture as laid out
+  const ox = (W - Wd) / 2, oy = (H - Hd) / 2
+  const cx = W / 2, cy = H / 2
+  const pan = (target: number, c: number, o: number, D: number, size: number) =>
+    Math.min(-c - f.z * (o - c), Math.max(size - c - f.z * (o + D - c), -f.z * (target - c)))
+  const dx = pan(ox + f.x * Wd, cx, ox, Wd, W)
+  const dy = pan(oy + f.y * Hd, cy, oy, Hd, H)
+  return { transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${f.z.toFixed(3)})`, transformOrigin: "50% 50%" }
+}
+
 // Points the video at `src` with CORS on, saves the frame at `at` seconds once it shows (and tells `onStill`), and falls back to a plain
 // load when the host does not allow it.
 export function loadWithStill(v: HTMLVideoElement, src: string, key: string, at: number, onStill?: (data: string) => void) {
