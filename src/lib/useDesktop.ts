@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react"
 
-// A wide screen with a mouse: where clips play behind and above the headlines. Phones and tablets get the film button only.
-const DESKTOP = "(min-width: 1024px) and (hover: hover)"
+// A wide screen: where the clip window shows above the headlines. Phones get the film button only. (Width alone: some desktop browsers on touch
+// laptops report no hover, which wrongly hid the window.)
+const DESKTOP = "(min-width: 1024px)"
 export const useDesktop = () =>
   useSyncExternalStore(
     (cb) => {
