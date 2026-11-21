@@ -12,6 +12,9 @@ const AFTER = 6 // and after it, then the clip loops
 
 // How many seconds one pass of a backdrop lasts.
 export const clipSpan = (c: Clip) => (c.to ?? c.time + AFTER) - Math.max(0, c.from ?? c.time - BEFORE)
+// A backdrop narrower than this is shrunk (a phone, a small window): the crop onto the pool and the follow camera zoom in so the play is not tiny.
+// Wider than this the whole picture is large enough as it is.
+const SMALL = 640
 const MAX_PLAYING = 2 // backdrops playing at once on a page; the rest hold their still frame
 
 const playing = new Set<HTMLVideoElement>()
@@ -36,8 +39,17 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   // Reduced motion or Data Saver holds a backdrop still. With `manual`, a Play button lets the person start it anyway.
   const prefsCalm = typeof matchMedia !== "undefined" && (matchMedia("(prefers-reduced-motion: reduce)").matches || (navigator as Navigator & { connection?: Conn }).connection?.saveData === true)
   const [forced, setForced] = useState(false)
+  const [small, setSmall] = useState(() => typeof window !== "undefined" && window.innerWidth < SMALL)
+  useEffect(() => {
+    const el = box.current
+    if (!el || typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver(([e]) => setSmall(e.contentRect.width < SMALL))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const start = Math.max(0, clip.from ?? clip.time - BEFORE)
-  const following = !contain && !!clip.track?.length
+  const zoomed = small && !contain // only a shrunk backdrop is zoomed in
+  const following = zoomed && !!clip.track?.length
   const staticFrame = following ? { z: clip.frame?.z ?? 2, x: clip.track![0].x, y: clip.track![0].y } : (clip.frame ?? frame) // a followed clip rests on where it starts
   const end = clip.to ?? clip.time + AFTER
   useEffect(() => {
@@ -89,8 +101,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
-          {saved && <img src={saved} alt="" aria-hidden style={contain ? undefined : frameStyle(staticFrame)} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />}
-          <video ref={video} style={contain || following ? undefined : frameStyle(clip.frame ?? frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />
+          {saved && <img src={saved} alt="" aria-hidden style={zoomed ? frameStyle(staticFrame) : undefined} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />}
+          <video ref={video} style={!zoomed || following ? undefined : frameStyle(clip.frame ?? frame)} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
           {manual && prefsCalm && !forced && !still && (
             <button type="button" onClick={() => setForced(true)} className="absolute inset-0 z-10 grid place-items-center bg-black/20 text-white" aria-label="Play the clip">
