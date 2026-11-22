@@ -10,6 +10,7 @@ import { formatVideoTime, parseVideoTimeInput } from "@/lib/legacy-core"
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
 import { deleteGameVideo, gameVideoUrl, masterOf, uploadGameVideo, videoPathFromUrl } from "@/lib/video"
+import { fileDuration, placeGames, recordingStart } from "@/lib/recordingTime"
 
 // Several games can point at one recording (a whole night on one video). Each game then keeps its own
 // "starts at" time, and the file is only deleted when no other game still uses it.
@@ -17,6 +18,7 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
   const games = state.games
   const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState("")
+  const [notice, setNotice] = useState("") // what happened after an upload, such as games placed by the clock
   const [link, setLink] = useState("")
   const [startText, setStartText] = useState<string | null>(null)
   const [endText, setEndText] = useState<string | null>(null)
@@ -53,8 +55,25 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
     try {
       const old = ownPath
       const oldUrl = url
+      // When the recording started, read from the file while it uploads, to place live-scored games in it by the clock.
+      const timing = fileDuration(file).then(async (d) => ({ duration: d, start: await recordingStart(file, d ?? undefined) }))
       const res = await uploadGameVideo(file, game.id, setProgress)
       setVideo(res.url, res.path)
+      const { duration, start } = await timing
+      if (start) {
+        const recordedAt = new Date(start).toISOString()
+        let placed = 0
+        update((s) => {
+          const marked = useMaster
+            ? { ...s, masterVideos: (s.masterVideos ?? []).map((m) => (m.id === master!.id ? { ...m, recordedAt } : m)) }
+            : { ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, recordedAt } : g)) }
+          if (!duration) return marked
+          const r = placeGames(marked, (g) => (useMaster ? g.masterVideoId === master!.id && !g.videoUrl : g.id === game.id), start, duration)
+          placed = r.placed
+          return r.state
+        })
+        if (placed) setNotice(`Placed ${placed} game${placed === 1 ? "" : "s"} in the recording by the clock. Check the starts below and adjust if needed.`)
+      }
       if (old && !sharedWithOthers(oldUrl)) void deleteGameVideo(old).catch(() => {})
     } catch (e) {
       setError(e instanceof Error ? e.message : "The upload failed.")
@@ -244,6 +263,7 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
         </div>
       )}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}
     </div>
   )
 }

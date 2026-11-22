@@ -35,6 +35,14 @@ describe("importing live baskets", () => {
     expect(importLiveBaskets(g)).toBe(g)
   })
 
+  it("gives each basket its time in the recording when the recording's start is known", () => {
+    const rec = Date.UTC(2026, 9, 7, 23, 0, 0)
+    const timed: Game = { ...live, liveScores: [{ pid: "x", points: 2, at: rec + 61_500 }, { pid: "z", points: 3, at: rec + 1_000 }, { pid: "x", points: 1 }] }
+    const g = importLiveBaskets(timed, rec)
+    expect(g.scoringEvents.map((e) => e.videoTime)).toEqual([60, null, null]) // 1.5 s before the tap; none before the recording or without a time
+    expect(importLiveBaskets(timed).scoringEvents.every((e) => e.videoTime === null)).toBe(true)
+  })
+
   it("does not offer it while the game is still live", () => {
     expect(pendingBaskets({ ...live, liveInProgress: true })).toBe(0)
   })

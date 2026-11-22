@@ -100,6 +100,7 @@ export interface Game {
   // When a live game started and finished (ISO times). With a recording's own start time, these place the game in it.
   startedAt?: string
   endedAt?: string
+  recordedAt?: string // when this game's own video started recording, when it has its own file
   // Baskets added by friends using the scorekeeper code; folded into liveScores when the game is finished.
   scorekeeperScores?: { pid: string; points: number; bid?: string; at?: number }[]
   matchups?: { id: string; defenderId: string; offenderId: string; note?: string; videoTime?: number | null }[]
@@ -121,6 +122,7 @@ export interface Rsvp {
 export interface MasterVideo {
   id: string
   name: string
+  recordedAt?: string // when the recording started (from the file), for placing games and baskets by the clock
   fileName?: string | null
   url?: string
   path?: string

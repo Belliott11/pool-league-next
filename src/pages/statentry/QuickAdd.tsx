@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { playerName } from "@/lib/players"
+import { recordingStartOf } from "@/lib/recordingTime"
 import { addShot, importLiveBaskets, pendingBaskets } from "@/lib/statEntry"
 import type { Game, PooleanState } from "@/lib/types"
 import { Chip } from "./parts"
@@ -27,7 +28,7 @@ export function QuickAdd({ state, game, apply, captureTime }: { state: PooleanSt
             <p className="min-w-0 flex-1 text-sm">
               {waiting} {waiting === 1 ? "basket was" : "baskets were"} scored live. Turn {waiting === 1 ? "it" : "them"} into shots to get the box score started, then add assists, misses and the rest.
             </p>
-            <Button type="button" className="h-11" onClick={() => apply(importLiveBaskets)}>
+            <Button type="button" className="h-11" onClick={() => apply((g) => importLiveBaskets(g, recordingStartOf(state, g)))}>
               Use the live baskets
             </Button>
           </div>

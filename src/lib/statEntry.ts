@@ -81,11 +81,17 @@ export const pendingBaskets = (g: Game): number => (g.liveInProgress || g.scorin
 // Turns each live basket into a made shot by that player, so the box score has its points at once and the details
 // (assists, misses, rebounds, defenders) can be added to those shots afterward. The live list is cleared so the same
 // baskets cannot be imported twice.
-export function importLiveBaskets(game: Game): Game {
+// With the recording's start time, each basket's time in the video comes from when it was tapped (a moment after the ball went in).
+const TAP_DELAY = 1.5
+export function importLiveBaskets(game: Game, recordingStart?: number | null): Game {
   if (pendingBaskets(game) === 0) return game
   const roster = new Set([...game.teamA, ...game.teamB])
   let g = game
-  for (const b of liveBaskets(game)) if (roster.has(b.pid) && [1, 2, 3].includes(b.points)) g = addShot(g, { scorerId: b.pid, points: b.points as 1 | 2 | 3, made: true })
+  for (const b of liveBaskets(game)) {
+    if (!roster.has(b.pid) || ![1, 2, 3].includes(b.points)) continue
+    const t = recordingStart && b.at ? Math.round(((b.at - recordingStart) / 1000 - TAP_DELAY) * 10) / 10 : null
+    g = addShot(g, { scorerId: b.pid, points: b.points as 1 | 2 | 3, made: true, ...(t !== null && t >= 0 ? { videoTime: t } : {}) })
+  }
   return { ...g, liveScores: [], scorekeeperScores: [] }
 }
 

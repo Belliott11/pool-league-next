@@ -65,12 +65,12 @@ else `src/data/headline-tones.json`. Clips are never reused across headlines sho
 
 ## Recordings
 
-Placing a game inside a night's recording is done by hand (start and end as m:ss). Live games now save `startedAt`, `endedAt` and an `at`
-time on each basket (the editor's in the site, friends' in the `live-score` function, version 4, which takes the phone's tap time when it
-is within the last six hours). With a
-recording's own start time (kept in original phone files, lost in exported copies) those would place games and baskets automatically;
-not built yet. Finding game breaks from motion in the video was tried: right on one recording, wrong on one of two breaks on another,
-so it is not reliable enough to place games.
+Live games save `startedAt`, `endedAt` and an `at` time on every basket (the editor's in the site, friends' in the `live-score`
+function, version 4, which takes the phone's tap time when it is within the last six hours). Uploading a recording reads when it started
+(`src/lib/recordingTime.ts`: the MP4/MOV "mvhd" header, kept in original phone files; else the file's date less its length), saves it as
+`recordedAt` on the shared recording or game, and places each live-scored game in it by the clock (`placeGames`; a start typed by hand
+is never moved). "Use the live baskets" in stat entry then gives each shot its video time (1.5 s before the tap). Finding game breaks
+from motion in the video was tried: right on one recording, wrong on one of two breaks on another, so it is not used.
 
 ## Speed
 
