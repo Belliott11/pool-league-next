@@ -45,6 +45,19 @@ export async function connect(cfg: CloudConfig): Promise<SupabaseClient> {
   return client
 }
 
+// The league data with a plain request, no library: anyone can read it, so the first load starts this right after the config arrives,
+// while the database library is still downloading. Null when it fails (the library's own read then tries).
+export async function fetchPublic(cfg: CloudConfig): Promise<Remote | null> {
+  try {
+    const res = await fetch(`${cfg.url}/rest/v1/league_state?select=data,updated_at&id=eq.1`, { headers: { apikey: cfg.anonKey, Authorization: `Bearer ${cfg.anonKey}` } })
+    if (!res.ok) return null
+    const rows = (await res.json()) as { data: PooleanState; updated_at: string }[]
+    return rows[0] ? { state: rows[0].data, updatedAt: rows[0].updated_at } : null
+  } catch {
+    return null
+  }
+}
+
 export async function fetchRemote(c: SupabaseClient): Promise<Remote | null> {
   const { data, error } = await c.from("league_state").select("data,updated_at").eq("id", 1).maybeSingle()
   if (error) throw new Error(error.message)

@@ -591,7 +591,7 @@ function renderPlayerAvatar(player, size = "normal", ringClass = "") {
   const ring = ringClass ? ` ${ringClass}` : "";
   const photoFile = PLAYER_PHOTO_FILES[player.id];
   if (photoFile) {
-    return `<img src="photos/${photoFile}" alt="" class="player-avatar player-avatar-${size}${ring}">`;
+    return `<img src="photos/sm/${photoFile.replace(/\.[^.]+$/, ".webp")}" alt="" loading="lazy" decoding="async" class="player-avatar player-avatar-${size}${ring}">`;
   }
   const initial = (player.name.trim().charAt(0) || "?").toUpperCase();
   const hue = avatarHueForPlayer(player.id);
@@ -4644,7 +4644,7 @@ function svgAvatarDot(player, cx, cy, r = 9, label = null) {
     // rendered as a plain colored dot with the image invisibly stuck behind it.
     return `
       <clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${r}" /></clipPath>
-      <image href="photos/${photoFile}" x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice" />
+      <image href="photos/sm/${photoFile.replace(/\.[^.]+$/, ".webp")}" x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice" />
       <circle cx="${cx}" cy="${cy}" r="${r}" class="quadrant-dot-ring" />
     `;
   }

@@ -45,3 +45,10 @@ export function playerPhotoUrl(id: string): string | null {
   const file = PLAYER_PHOTO_FILES[id]
   return file ? `${import.meta.env.BASE_URL}photos/${file}` : null
 }
+
+// A 160px copy of the photo (public/photos/sm, WebP, about 5 KB) for avatars and chart labels, which show at 40px or less. The full photo
+// is kept for the classic site's panels and the share picture. Make the copies again after adding a photo (see scripts/photo-thumbs.sh).
+export function playerThumbUrl(id: string): string | null {
+  const file = PLAYER_PHOTO_FILES[id]
+  return file ? `${import.meta.env.BASE_URL}photos/sm/${file.replace(/\.[^.]+$/, ".webp")}` : null
+}

@@ -1,7 +1,7 @@
 import { EmptyState } from "@/components/EmptyState"
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { computeLeagueTsByZone, computeLeagueTsOverTime, formatDateDisplay, computeQuadrantData, computeVolumeEfficiencyData } from "@/lib/legacy-core"
-import { playerPhotoUrl } from "@/lib/players"
+import { playerThumbUrl } from "@/lib/players"
 
 type Open = (id: string) => void
 
@@ -12,7 +12,7 @@ export { axis }
 const tickText = "fill-muted-foreground text-[10px]"
 
 function PhotoDot({ id, cx, cy, r = 11 }: { id: string; cx: number; cy: number; r?: number }) {
-  const photo = playerPhotoUrl(id)
+  const photo = playerThumbUrl(id)
   return (
     <>
       <clipPath id={`dot-${id}-${Math.round(cx)}-${Math.round(cy)}`}>

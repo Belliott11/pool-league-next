@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { connect, fetchRemote, isEditor, loadCloudConfig, saveRemote, type Remote } from "./cloud"
+import { connect, fetchPublic, fetchRemote, isEditor, loadCloudConfig, saveRemote, type Remote } from "./cloud"
 import { adoptScorekeeperScores } from "./live"
 import type { PooleanState } from "./types"
 
@@ -62,11 +62,12 @@ export function useCloud() {
   const inflight = useRef(false)
   const mergeTries = useRef(0)
 
-  const refresh = useCallback(async () => {
+  // `early`: the data already fetched without the library on the first load, used instead of fetching again.
+  const refresh = useCallback(async (early?: Remote | null) => {
     const c = clientRef.current
     if (!c) return null
     try {
-      const r = await fetchRemote(c)
+      const r = early ?? (await fetchRemote(c))
       version.current = r?.updatedAt ?? null
       lsSet(VERSION_KEY, version.current)
       setRemote(r)
@@ -122,12 +123,13 @@ export function useCloud() {
         if (!dead) setStatus("off")
         return
       }
+      const early = fetchPublic(cfg) // starts now, while the library below downloads
       const c = await connect(cfg)
       clientRef.current = c
       const cachedVersion = lsGet(VERSION_KEY)
       const unsent = lsGet(UNSENT_KEY) === "1"
       await evaluateSession()
-      const first = await refresh()
+      const first = await refresh(await early)
       // Edits made while offline: keep them, and make the next save compare against the version they were
       // based on, so if the cloud changed meanwhile it shows as a conflict instead of overwriting.
       if (unsent) {
@@ -300,7 +302,8 @@ export function useCloud() {
     await refresh()
   }, [evaluateSession, refresh])
 
-  return { status, admin, email, remote, loaded, error, sync, syncMessage, recoverLocal, external, setWatchLive, refresh, push, overwrite, acceptRemote, signIn, signOut }
+  const refreshNow = useCallback(() => refresh(), [refresh]) // never handed an event or other argument by mistake
+  return { status, admin, email, remote, loaded, error, sync, syncMessage, recoverLocal, external, setWatchLive, refresh: refreshNow, push, overwrite, acceptRemote, signIn, signOut }
 }
 
 export type Cloud = ReturnType<typeof useCloud>
