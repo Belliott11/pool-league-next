@@ -96,7 +96,10 @@ export interface Game {
   liveInProgress?: boolean
   // The model's call, saved when the game was set up: team A's chance to win. Never filled in after the fact.
   prediction?: { pA: number; at: string }
-  liveScores?: { pid: string; points: number; bid?: string }[]
+  liveScores?: { pid: string; points: number; bid?: string; at?: number }[] // at: when it was scored (ms since 1970), for placing it in a recording later
+  // When a live game started and finished (ISO times). With a recording's own start time, these place the game in it.
+  startedAt?: string
+  endedAt?: string
   // Baskets added by friends using the scorekeeper code; folded into liveScores when the game is finished.
   scorekeeperScores?: { pid: string; points: number; bid?: string }[]
   matchups?: { id: string; defenderId: string; offenderId: string; note?: string; videoTime?: number | null }[]

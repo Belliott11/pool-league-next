@@ -43,11 +43,32 @@ and commits the list; it needs the `CLOUDFLARE_API_TOKEN` repository secret (an 
 tokens only work with the S3 API). In a cloud session the same token is saved on the "pool-league-next" environment for
 api.cloudflare.com.
 
+### Share links and pictures
+
+`npm run cut-clips` also saves a picture of each play (`clips/.../<name>.jpg`) and lists shareable clips in
+`src/data/clip-shares.json` (never one that goes badly for someone). The build writes `clip/<id>.html` for each (the `clipPages` plugin
+in `vite.config.ts`): the preview title and picture, then a redirect to `#/games/clip/<id>` (`src/pages/games/ClipPage.tsx`). Ids come
+from `clipId` in `src/lib/clipShare.ts`. Clip tiles have a Share button.
+
 ## Headlines and clips
 
 `src/lib/headlineClips.ts` gives a headline a clip only when it knows who the headline is about and whether it is good or bad news for
 them: the editor's mark (`state.headlineTones`, set from the clapperboard beside each headline, `src/components/HeadlineTone.tsx`),
-else `src/data/headline-tones.json`. Clips are never reused across headlines shown together.
+else `src/data/headline-tones.json`. Clips are never reused across headlines shown together. The dialog offers a guess for unmarked headlines
+(`src/lib/toneGuess.ts`, a word count over the marked ones, shown only when at least 80% sure); it is never applied by itself.
+
+## Recordings
+
+Placing a game inside a night's recording is done by hand (start and end as m:ss). Live games now save `startedAt`, `endedAt` and an `at`
+time on each of the editor's baskets (friends' baskets go through the `live-score` function, which does not add one yet). With a
+recording's own start time (kept in original phone files, lost in exported copies) those would place games and baskets automatically;
+not built yet. Finding game breaks from motion in the video was tried: right on one recording, wrong on one of two breaks on another,
+so it is not reliable enough to place games.
+
+## Speed
+
+Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
+data is fetched with a plain request (`fetchPublic` in `src/lib/cloud.ts`) while the database library loads.
 
 ## Backups
 

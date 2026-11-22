@@ -21,7 +21,7 @@ export function liveTotals(game: Game): [number, number] {
 }
 
 export function startLive(state: PooleanState, id: string, date: string, teamA: string[], teamB: string[], target: number, teamsPickedBy?: Game["teamsPickedBy"]): PooleanState {
-  const g = newGame({ id, date, teamA, teamB, liveInProgress: true, liveScores: [], liveTarget: target, teamsPickedBy, prediction: pregamePrediction(teamA, teamB) })
+  const g = newGame({ id, date, teamA, teamB, liveInProgress: true, liveScores: [], liveTarget: target, teamsPickedBy, prediction: pregamePrediction(teamA, teamB), startedAt: new Date().toISOString() })
   return { ...state, games: [...state.games, g] }
 }
 
@@ -30,7 +30,7 @@ function patch(state: PooleanState, id: string, fn: (g: Game) => Game): PooleanS
 }
 
 export function addLiveScore(state: PooleanState, id: string, pid: string, points: number): PooleanState {
-  return patch(state, id, (g) => ({ ...g, liveScores: [...(g.liveScores ?? []), { pid, points }] }))
+  return patch(state, id, (g) => ({ ...g, liveScores: [...(g.liveScores ?? []), { pid, points, at: Date.now() }] }))
 }
 
 export function undoLiveScore(state: PooleanState, id: string): PooleanState {
@@ -45,7 +45,7 @@ export function finishLive(state: PooleanState, id: string): PooleanState {
     // Friends' baskets become part of the game's score so the stats see one list.
     if (rest.scorekeeperScores?.length) rest.liveScores = [...(rest.liveScores ?? []), ...rest.scorekeeperScores]
     delete rest.scorekeeperScores
-    return { ...rest, winner: a > b ? "A" : b > a ? "B" : null }
+    return { ...rest, winner: a > b ? "A" : b > a ? "B" : null, endedAt: new Date().toISOString() }
   })
 }
 
