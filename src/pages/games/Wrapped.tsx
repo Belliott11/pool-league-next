@@ -138,7 +138,15 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
   const id = requested && ids.includes(requested.id) ? requested.id : playerId ? undefined : (myPlayerId(who, state.players) ?? ids[0])
   const slides = useMemo(() => (id ? wrappedFor(state, id) : []), [state, id])
   const [i, setI] = useState(0)
-  const pool = useMemo(() => (id ? bestClips(seasonState(state), { pid: id, limit: 16, perGame: 4 }) : []), [state, id])
+  const pool = useMemo(() => {
+    if (!id) return []
+    const season = seasonState(state)
+    const mine = bestClips(season, { pid: id, limit: 16, perGame: 4 })
+    // Once their own plays run out, plays by others from games they were in (never one that goes badly for them).
+    const theirGames = season.games.filter((g) => g.teamA.includes(id) || g.teamB.includes(id)).map((g) => g.id)
+    const around = bestClips(season, { gameIds: theirGames, limit: 40, perGame: 40 }).filter((c) => c.playerId !== id && !c.rough?.includes(id)) // ranked wide, then filtered, so one game can fill the gaps
+    return [...mine, ...around]
+  }, [state, id])
   const [shared, setShared] = useState("")
   const at = Math.min(i, Math.max(0, slides.length - 1))
   const name = id ? playerName(state, id) : ""
