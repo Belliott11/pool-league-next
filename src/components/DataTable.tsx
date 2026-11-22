@@ -70,7 +70,7 @@ function barTone(v: number, r: Range, mode: "plain" | "sorted" | "strong") {
 }
 
 // On phones each player card shows the headline stats and tucks the rest behind a tap.
-const PHONE_STATS = 6
+const PHONE_STATS = 4 // stats on a phone card before "More stats", so a list of cards stays short
 const PHONE_CARDS = 4
 
 const NAMED: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" }
