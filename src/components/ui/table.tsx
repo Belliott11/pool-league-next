@@ -3,9 +3,11 @@ import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
+    // Focusable, so a keyboard can reach a table that scrolls sideways and scroll it with the arrow keys.
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      tabIndex={0}
+      className="relative w-full overflow-x-auto rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
     >
       <table
         data-slot="table"

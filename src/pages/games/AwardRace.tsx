@@ -51,7 +51,7 @@ export function AwardRaceCard({ state, onOpenPlayer }: { state: PooleanState; on
                     {l.ids.map((id, k) => (
                       <span key={id}>
                         {k > 0 && " and "}
-                        <button type="button" className="hover:underline" onClick={() => onOpenPlayer(id)}>
+                        <button type="button" className="inline-flex min-h-6 items-center hover:underline" onClick={() => onOpenPlayer(id)}>
                           {playerName(state, id)}
                         </button>
                       </span>

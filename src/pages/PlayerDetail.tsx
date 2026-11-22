@@ -240,7 +240,7 @@ export function PlayerDetailPage({
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <Select value={pid} onValueChange={(id) => id && onChangePlayer(id)}>
-        <SelectTrigger className="w-56">
+        <SelectTrigger className="w-56" aria-label="Choose a player">
           <SelectValue placeholder="Pick a player">{player.name}</SelectValue>
         </SelectTrigger>
         <SelectContent>
