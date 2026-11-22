@@ -18,6 +18,7 @@ export function PickEmCard({ state }: { state: PooleanState }) {
   const me = myPlayerId(who, state.players)
   const [votes, setVotes] = useState<Vote[]>([])
   const [busy, setBusy] = useState(false)
+  const [refused, setRefused] = useState("") // a game whose vote another phone owns
   const open = openForVotes(state)
   const refresh = useCallback(() => {
     if (client) void loadVotes(client).then(setVotes)
@@ -36,7 +37,8 @@ export function PickEmCard({ state }: { state: PooleanState }) {
     setBusy(true)
     // Show the vote at once; the next refresh confirms it.
     setVotes((cur) => [...cur.filter((v) => !(v.gameId === gameId && v.voter === me)), { gameId, voter: me, pick }])
-    await castVote(client, gameId, me, pick)
+    const saved = await castVote(client, gameId, me, pick)
+    setRefused(saved ? "" : gameId)
     setBusy(false)
     refresh()
   }
@@ -54,6 +56,7 @@ export function PickEmCard({ state }: { state: PooleanState }) {
         return (
           <div key={g.id} className="flex flex-col gap-2 rounded-lg border p-2">
             <p className="text-xs text-muted-foreground">{formatDateDisplay(g.date)}</p>
+            {refused === g.id && <p role="alert" className="text-xs text-destructive">That vote was made on another phone, so only that phone can change it.</p>}
             <div className="grid grid-cols-2 gap-2">
               {(["A", "B"] as const).map((side) => (
                 <Button key={side} variant="outline" disabled={!me} aria-pressed={picked === side} className={cn("h-auto min-h-11 whitespace-normal py-2", picked === side && "border-primary bg-primary text-primary-foreground")} onClick={() => void vote(g.id, side)}>

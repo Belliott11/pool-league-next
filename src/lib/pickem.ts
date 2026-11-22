@@ -17,9 +17,31 @@ export async function loadVotes(client: SupabaseClient): Promise<Vote[]> {
   return data.map((r) => ({ gameId: String(r.game_id), voter: String(r.voter), pick: r.pick === "B" ? "B" : "A" }))
 }
 
+// A vote belongs to the phone that cast it: this device's private key goes with every vote, and the database keeps only its hash
+// (supabase/pickem.sql), so a vote can only be changed from the phone that made it. Without storage (private mode) a key lasts the visit.
+const KEY = "pooleanIntelVoteKey"
+let sessionKey = ""
+function deviceKey(): string {
+  try {
+    const have = localStorage.getItem(KEY)
+    if (have) return have
+  } catch {
+    /* storage blocked */
+  }
+  const key = sessionKey || Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, "0")).join("")
+  sessionKey = key
+  try {
+    localStorage.setItem(KEY, key)
+  } catch {
+    /* kept for this visit only */
+  }
+  return key
+}
+
+// False when the vote could not be saved, including a vote another phone already made for this person.
 export async function castVote(client: SupabaseClient, gameId: string, voter: string, pick: Side): Promise<boolean> {
-  const { error } = await client.from("pickem_votes").upsert({ game_id: gameId, voter, pick, updated_at: new Date().toISOString() }, { onConflict: "game_id,voter" })
-  return !error
+  const { data, error } = await client.rpc("cast_pickem_vote", { p_game_id: gameId, p_voter: voter, p_pick: pick, p_key: deviceKey() })
+  return !error && data === true
 }
 
 // A game can be voted on until it has a score or is being played live.
