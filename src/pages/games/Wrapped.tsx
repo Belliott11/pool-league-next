@@ -1,7 +1,10 @@
 import { Share2, X } from "lucide-react"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { ClipBackdrop } from "@/components/ClipBackdrop"
-import { bestClips } from "@/lib/clips"
+import { bestClips, type Clip } from "@/lib/clips"
+import { clipSource } from "@/lib/clipCuts"
+import { prefetchClip } from "@/lib/clipPrefetch"
+import { gameVideoUrl } from "@/lib/video"
 import { seasonState } from "@/lib/offseason"
 import { FlipDigits } from "@/components/FlipDigits"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -18,9 +21,10 @@ import { wrappedFor, wrappedPlayers, type Slide } from "@/lib/wrapped"
 
 const pct = (w: number, l: number) => (w + l ? Math.round((w / (w + l)) * 100) : 0)
 
-// The big number starts at 0 and flips to its value once the slide is up.
+// The big number starts as zeros, one per digit (so it is already its full width and nothing shifts), and flips to its value once the
+// slide is up.
 function Big({ value, className }: { value: string | number; className?: string }) {
-  const [shown, setShown] = useState<string | number>(0)
+  const [shown, setShown] = useState<string | number>(() => String(value).replace(/\d/g, "0"))
   useEffect(() => {
     const t = setTimeout(() => setShown(value), 250)
     return () => clearTimeout(t)
@@ -138,6 +142,20 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
   const [shared, setShared] = useState("")
   const at = Math.min(i, Math.max(0, slides.length - 1))
   const name = id ? playerName(state, id) : ""
+  // Every slide gets a different play of theirs behind it; the best game slide keeps the play from that game.
+  const clipAt = (k: number): Clip | undefined => {
+    const x = slides[k]
+    return x?.kind === "best" && x.clip ? x.clip : pool[k % (pool.length || 1)]
+  }
+  // The next two slides' clips are fetched while this one shows, so each starts the moment its slide comes up.
+  useEffect(() => {
+    for (let k = at + 1; k <= at + 2 && k < slides.length; k++) {
+      const c = clipAt(k)
+      const g = c && state.games.find((x) => x.id === c.gameId)
+      if (c && g) prefetchClip(clipSource(gameVideoUrl(state, g), c).src)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [at, slides, pool, state])
   if (playerId && !id) {
     // A link for someone who is not a player here, or who has not played this season.
     return (
@@ -172,8 +190,7 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
     )
   }
   const s = slides[at]
-  // Every slide gets a different play of theirs behind it; the best game slide keeps the play from that game.
-  const bg = s.kind === "best" && s.clip ? s.clip : pool[at % (pool.length || 1)]
+  const bg = clipAt(at)
   const share = async () => {
     const intro = slides.find((x) => x.kind === "intro")
     const totals = slides.find((x) => x.kind === "totals")

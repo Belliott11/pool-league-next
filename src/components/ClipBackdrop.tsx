@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import type { Clip } from "@/lib/clips"
 import { clipSource } from "@/lib/clipCuts"
+import { prefetched } from "@/lib/clipPrefetch"
 import { preconnect } from "@/lib/mediaGate"
 import { followPlayback } from "@/lib/track"
 import { coverStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
@@ -42,6 +43,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   // Reduced motion or Data Saver holds a backdrop still. With `manual`, a Play button lets the person start it anyway.
   const prefsCalm = typeof matchMedia !== "undefined" && (matchMedia("(prefers-reduced-motion: reduce)").matches || (navigator as Navigator & { connection?: Conn }).connection?.saveData === true)
   const [forced, setForced] = useState(false)
+  const [shown, setShown] = useState(false) // the video has a frame up: it fades in over the saved still (or the plain background)
   const [size, setSize] = useState({ w: typeof window !== "undefined" ? window.innerWidth : 1280, h: 0 }) // the box, to lay the crop out for its shape
   const small = size.w < SMALL
   useEffect(() => {
@@ -87,7 +89,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
       visible = e.isIntersecting
       if (visible && !v.getAttribute("src")) {
         preconnect(source.src)
-        loadWithStill(v, `${source.src}#t=${Math.max(0, start - offset)}`, stillKey(url, start), Math.max(0, start - offset), () => setFrame(readFrame(url)), url)
+        // A clip fetched ahead of time (Season Wrapped's next slides) plays from memory, at once.
+        loadWithStill(v, `${prefetched(source.src) ?? source.src}#t=${Math.max(0, start - offset)}`, stillKey(url, start), Math.max(0, start - offset), () => setFrame(readFrame(url)), url)
       }
       sync()
     }, { threshold: 0.25 })
@@ -114,7 +117,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
       {file && (
         <>
           {saved && <img src={saved} alt="" aria-hidden style={{ ...lay, ...cover }} className={media} />}
-          <video ref={video} style={following ? lay : { ...lay, ...cover }} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={media} />
+          <video ref={video} style={following ? lay : { ...lay, ...cover }} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} onLoadedData={() => setShown(true)} className={cn(media, "transition-opacity duration-300", shown ? "opacity-100" : "opacity-0")} />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
           {manual && prefsCalm && !forced && !still && (
             <button type="button" onClick={() => setForced(true)} className="absolute inset-0 z-10 grid place-items-center bg-black/20 text-white" aria-label="Play the clip">
