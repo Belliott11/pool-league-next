@@ -4,6 +4,8 @@
 const TERMS: [name: string, match: RegExp, def: string][] = [
   ["Per game", /[Pp]er game|\/G\b/, "Scaled to an average game's worth of possessions (turns with the ball), so it reads like points per game but stays fair when games run short or long. It is not a plain per-game average."],
   ["Two-way score", /two-way/i, `Offense plus defense in one number, per game. It adds up scoring, shooting, passing and ball security, then stops, steals and blocks against points allowed and times beaten. Higher is better.`],
+  ["Two-Way/G", /(?!)/, "Offense plus defense in one number, scaled to an average game. Positive means a player adds more than they give up; the standings rank by it."],
+  ["Backtest pick", /backtest pick/i, "What the model would have picked for a game played before picks were saved, using only the games before it. It checks the model; it never counts as a saved prediction."],
   ["TS%", /\bTS\b/, "True shooting: how many points a player scores per shot, counting threes and free throws, shown as a percentage."],
   ["Filmed game", /filmed|on film/i, "A game logged shot by shot from video. Other games only have a final score."],
   ["Results", /\d+ results|every result/i, "Every game with a recorded score, filmed or not."],
@@ -23,6 +25,11 @@ const TERMS: [name: string, match: RegExp, def: string][] = [
   ["Win chance added", /win chance added/i, "How far a player's own plays moved their team's chance of winning, in percentage points, added up over filmed games."],
   ["Win impact (points of win chance)", /win impact|points of win chance/i, "How much more or less a player's teams win than expected against an average player, with teammates and opponents held constant. It uses every result, not just filmed games."],
 ]
+
+// One term's definition by name, for an ⓘ beside a label (src/components/Explain.tsx).
+export function definitionOf(name: string): string | null {
+  return TERMS.find(([n]) => n === name)?.[2] ?? null
+}
 
 export function termsIn(texts: string[]): [string, string][] {
   const all = texts.join(" ")

@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Explain } from "@/components/Explain"
 import { TAB_LIST, TAB_TRIGGER } from "@/components/PanelGroup"
 import { TeamsTab } from "./TeamsTab"
 import { FlipDigits } from "@/components/FlipDigits"
@@ -440,7 +441,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
         </CardContent>
       </Card>
 
-      {predictionNote(game) && <p className="-mt-2 text-center text-sm text-muted-foreground">{predictionNote(game)}</p>}
+      {predictionNote(game) && <p className="-mt-2 text-center text-sm text-muted-foreground">{predictionNote(game)}{!game.prediction && <Explain term="Backtest pick" className="ml-1" />}</p>}
 
       <div ref={videoBox}>
         <GameVideoPanel state={state} game={game} update={update} readOnly={readOnly} control={control} />

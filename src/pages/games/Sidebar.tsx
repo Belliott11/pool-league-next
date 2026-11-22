@@ -1,4 +1,5 @@
 import { ViewTabs } from "@/components/PanelGroup"
+import { Explain } from "@/components/Explain"
 import { EmptyState } from "@/components/EmptyState"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -84,7 +85,7 @@ export function Sidebar({
                   <TableHead>#</TableHead>
                   <TableHead>Player</TableHead>
                   <TableHead>W-L</TableHead>
-                  <TableHead>Two-Way/G</TableHead>
+                  <TableHead>Two-Way/G <Explain term="Two-Way/G" /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
