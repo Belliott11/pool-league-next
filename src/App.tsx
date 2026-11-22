@@ -98,6 +98,21 @@ type Mode = "local" | "viewer" | "admin"
 function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode; cloud?: Cloud }) {
   const readOnly = mode === "viewer"
   const [state, setState] = useState(initial)
+  // The header menus: opening one closes the others, and touching anywhere outside closes the open one.
+  useEffect(() => {
+    const open = () => [...document.querySelectorAll<HTMLDetailsElement>("[data-header-menus] details[data-menu][open]")]
+    const onToggle = (e: Event) => {
+      const t = e.target
+      if (t instanceof HTMLDetailsElement && t.open && t.hasAttribute("data-menu")) open().forEach((d) => d !== t && (d.open = false))
+    }
+    const onDown = (e: Event) => open().forEach((d) => !d.contains(e.target as Node) && (d.open = false))
+    document.addEventListener("toggle", onToggle, true)
+    document.addEventListener("pointerdown", onDown)
+    return () => {
+      document.removeEventListener("toggle", onToggle, true)
+      document.removeEventListener("pointerdown", onDown)
+    }
+  }, [])
   setArt(state) // stills for empty panels (see emptyArt.ts); cheap when the state has not changed
   setAppGames(state.games)
   setPaceGames(state.games)
@@ -337,7 +352,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       >
         Skip to content
       </a>
-      <div className={`sticky top-0 z-30 -mx-4 flex items-center justify-between gap-3 bg-background/90 px-4 backdrop-blur transition-[padding] sm:-mx-6 sm:px-6 ${scrolled ? "py-1.5" : "py-3"}`}>
+      <div data-header-menus className={`sticky top-0 z-30 -mx-4 flex items-center justify-between gap-3 bg-background/90 px-4 backdrop-blur transition-[padding] sm:-mx-6 sm:px-6 ${scrolled ? "py-1.5" : "py-3"}`}>
         <div className="flex min-w-0 flex-1 items-center gap-1">
           {(view.sub !== "" || view.tab !== "games") && (
             <Button size="icon" variant="ghost" className="-ml-2 size-9 shrink-0" aria-label="Back" onClick={goBack}>

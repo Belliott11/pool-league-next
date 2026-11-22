@@ -14,13 +14,13 @@ const ROWS: { key: keyof Toggles; label: string; hint: string }[] = [
 export function FiltersMenu({ toggles, setToggles }: { toggles: Toggles; setToggles: (t: Toggles) => void }) {
   const changed = (toggles.imbalanced ? 1 : 0) + (toggles.outliers ? 0 : 1) + (toggles.pastSeasons ? 1 : 0)
   return (
-    <details className="relative">
+    <details data-menu className="relative max-sm:static">
       <summary className={`${buttonVariants({ variant: "outline", size: "sm" })} cursor-pointer list-none gap-1.5 [&::-webkit-details-marker]:hidden`}>
         <SlidersHorizontal aria-hidden className="size-4" />
         <span className="max-sm:sr-only">Filters</span>
         {changed > 0 && <span className="rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">{changed}</span>}
       </summary>
-      <div className="absolute right-0 z-20 mt-2 w-72 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
+      <div className="absolute right-0 z-20 mt-2 w-72 max-sm:left-4 max-sm:right-4 max-sm:w-auto max-sm:max-h-[75vh] max-sm:overflow-y-auto rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
         <div className="mb-1 font-semibold">Which games count</div>
         <ul className="flex flex-col gap-3">
           {ROWS.map((r) => (

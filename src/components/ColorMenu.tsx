@@ -74,13 +74,13 @@ export function ColorMenu() {
     setAccent(key)
   }
   return (
-    <div className="relative">
-    <details className="relative" onToggle={(e) => e.currentTarget.open && hint && dismissHint()}>
+    <div className="relative max-sm:static">
+    <details data-menu className="relative max-sm:static" onToggle={(e) => e.currentTarget.open && hint && dismissHint()}>
       <summary className={`${buttonVariants({ variant: "outline", size: "sm" })} cursor-pointer list-none gap-1.5 [&::-webkit-details-marker]:hidden`}>
         <Palette aria-hidden className="size-4" />
         <span className="max-sm:sr-only">Look</span>
       </summary>
-      <div className="absolute right-0 z-20 mt-2 w-72 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
+      <div className="absolute right-0 z-20 mt-2 w-72 max-sm:left-4 max-sm:right-4 max-sm:w-auto max-sm:max-h-[75vh] max-sm:overflow-y-auto rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
         <div className="mb-1 font-semibold">Theme</div>
         <div className="mb-3 grid grid-cols-2 gap-2" role="group" aria-label="Theme">
           {([[false, "Light", Sun], [true, "Dark", Moon]] as const).map(([value, label, Icon]) => (
@@ -125,7 +125,7 @@ export function ColorMenu() {
       </div>
     </details>
     {hint && (
-      <div role="note" className="absolute right-0 top-full z-10 mt-2 w-60 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
+      <div role="note" className="absolute right-0 top-full z-10 mt-2 w-60 max-sm:left-4 max-sm:right-4 max-sm:w-auto rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
         <p className="mb-2">Light or dark, an accent color, and what each color means.</p>
         <button type="button" onClick={dismissHint} className={buttonVariants({ size: "sm" })}>
           Got it

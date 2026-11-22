@@ -97,7 +97,7 @@ export function AccountMenu({ cloud, state, inline = false, onRestore }: { cloud
   if (inline && !cloud.admin) return <div className="w-full max-w-sm">{signInForm}</div>
 
   return (
-    <details className="relative">
+    <details data-menu className="relative max-sm:static">
       <summary className={`${buttonVariants({ variant: "outline", size: "sm" })} cursor-pointer list-none gap-2 [&::-webkit-details-marker]:hidden`}>
         {cloud.admin && (
           <span
@@ -108,7 +108,7 @@ export function AccountMenu({ cloud, state, inline = false, onRestore }: { cloud
         {cloud.admin ? <PencilLine aria-hidden className="size-4" /> : <LockKeyhole aria-hidden className="size-4" />}
         <span className="max-sm:sr-only">{cloud.admin ? "Editing" : "Editor sign-in"}</span>
       </summary>
-      <div className="absolute right-0 z-30 mt-2 w-72 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
+      <div className="absolute right-0 z-30 mt-2 w-72 max-sm:left-4 max-sm:right-4 max-sm:w-auto max-sm:max-h-[75vh] max-sm:overflow-y-auto rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
         {cloud.admin ? (
           <div className="flex flex-col gap-3">
             <div>

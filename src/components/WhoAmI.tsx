@@ -49,12 +49,12 @@ export function WhoAmI({ state }: { state: PooleanState }) {
   const me = myPlayerId(who, state.players)
   const name = me ? (state.players.find((p) => p.id === me)?.name ?? "You") : who === GUEST ? "Guest" : "Who are you?"
   return (
-    <details className="relative">
+    <details data-menu className="relative max-sm:static">
       <summary className={`${buttonVariants({ variant: "outline", size: "sm" })} cursor-pointer list-none gap-2 [&::-webkit-details-marker]:hidden`}>
         <UserRound aria-hidden className="size-4" />
         <span className="max-w-24 truncate max-sm:sr-only">{name}</span>
       </summary>
-      <div className="absolute right-0 z-30 mt-2 w-64 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
+      <div className="absolute right-0 z-30 mt-2 w-64 max-sm:left-4 max-sm:right-4 max-sm:w-auto max-sm:max-h-[75vh] max-sm:overflow-y-auto rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg">
         <div className="mb-2 font-semibold">Who are you?</div>
         <WhoSelect state={state} />
         <p className="mt-2 text-xs text-muted-foreground">No password. This only makes the Player tab open on you, and it is kept on this device.</p>

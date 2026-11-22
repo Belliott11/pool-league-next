@@ -116,7 +116,8 @@ export function followPlayback(v: HTMLVideoElement, track: TrackPoint[], zoom: n
     const p = atTime(track, v.currentTime)
     if (p) {
       cur = cur ? { x: cur.x + (p.x - cur.x) * 0.2, y: cur.y + (p.y - cur.y) * 0.2 } : p
-      const s = coverStyle({ z: zoom, x: cur.x, y: cur.y }, v.clientWidth, v.clientHeight, v.videoWidth || 1280, v.videoHeight || 720)
+      const box = v.parentElement! // the box that crops the picture, not the picture
+      const s = coverStyle({ z: zoom, x: cur.x, y: cur.y }, box.clientWidth, box.clientHeight, v.videoWidth || 1280, v.videoHeight || 720)
       v.style.transform = s?.transform ?? ""
       v.style.transformOrigin = s?.transformOrigin ?? ""
     }

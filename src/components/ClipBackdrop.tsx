@@ -52,7 +52,11 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   const zoomed = small && !contain // only a shrunk backdrop is zoomed in
   const following = zoomed && !!clip.track?.length
   const staticFrame = following ? { z: clip.frame?.z ?? 2, x: clip.track![0].x, y: clip.track![0].y } : (clip.frame ?? frame) // a followed clip rests on where it starts
+  // The picture is laid out at its full cover size (wider than a tall box), centred, and the crop moves that. (Moving a box that has already
+  // cropped the picture would show empty space beside it.)
+  const lay = zoomed && size.h ? (() => { const s0 = Math.max(size.w / 1280, size.h / 720), Wd = 1280 * s0, Hd = 720 * s0; return { width: Wd, height: Hd, left: (size.w - Wd) / 2, top: (size.h - Hd) / 2 } })() : undefined
   const cover = zoomed ? coverStyle(staticFrame, size.w, size.h) : undefined
+  const media = lay ? "pointer-events-none absolute max-w-none" : cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")
   const end = clip.to ?? clip.time + AFTER
   useEffect(() => {
     const v = video.current
@@ -103,8 +107,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
-          {saved && <img src={saved} alt="" aria-hidden style={cover} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />}
-          <video ref={video} style={following ? undefined : cover} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={cn("pointer-events-none absolute inset-0 size-full", contain ? "object-contain" : "object-cover")} />
+          {saved && <img src={saved} alt="" aria-hidden style={{ ...lay, ...cover }} className={media} />}
+          <video ref={video} style={following ? lay : { ...lay, ...cover }} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} className={media} />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
           {manual && prefsCalm && !forced && !still && (
             <button type="button" onClick={() => setForced(true)} className="absolute inset-0 z-10 grid place-items-center bg-black/20 text-white" aria-label="Play the clip">
