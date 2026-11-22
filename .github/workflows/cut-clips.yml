@@ -26,8 +26,8 @@ jobs:
       - name: Check for the Cloudflare token
         if: env.CLOUDFLARE_API_TOKEN == ''
         run: echo "::warning::Add the CLOUDFLARE_API_TOKEN repository secret to cut clips automatically." && exit 1
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
