@@ -2,6 +2,8 @@ import { Pause, Play } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { frameStyle, readFrame, type Frame } from "@/lib/stillCache"
+import { ballMoments } from "@/lib/ballCarrier"
+import { playerName } from "@/lib/players"
 import { atTime, followFrom, followPlayback, smooth, sortTrack, type TrackPoint } from "@/lib/track"
 import { gameVideoUrl } from "@/lib/video"
 import type { Game, PooleanState } from "@/lib/types"
@@ -11,7 +13,8 @@ const fmt = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart
 // The clip as it will look: the recording with the crop applied, and a scrubber to find the moment. "Start here" and "End here" take the
 // time the picture is showing. "Play the cut" plays just that stretch. A still has no cut, only a frame to find.
 // "Follow" is for a ball or a player: tap it on a frame, then "Follow it on" tracks it forward, and the camera zooms on it and follows
-// while the clip plays. Tap again anywhere to correct it.
+// while the clip plays. Tap again anywhere to correct it. "Follow whoever has the ball" chains players: tap who has it at the start, then
+// at each change the shot log lists (passes, shots, rebounds, steals), and each player is followed on their own until the next tap.
 export function CutPreview({ state, game, time, frame, from, to, still, track, onFrom, onTo, onTime, onTrack, onStillFrom }: { state: PooleanState; game: Game; time: number; frame?: Frame; from: number; to: number; still: boolean; track?: TrackPoint[]; onFrom: (t: number) => void; onTo: (t: number) => void; onTime?: (t: number) => void; onTrack?: (t: TrackPoint[]) => void; onStillFrom?: (t: number) => void }) {
   const url = gameVideoUrl(state, game).split("#")[0]
   const v = useRef<HTMLVideoElement>(null)
@@ -22,6 +25,7 @@ export function CutPreview({ state, game, time, frame, from, to, still, track, o
   const [cors, setCors] = useState(true) // pixels can be read off the video (needed to follow automatically)
   const [tapping, setTapping] = useState(false)
   const [ball, setBall] = useState(false) // the ball is too small to find on this footage, so it is followed by hand: a tap every half second or so
+  const [carrier, setCarrier] = useState(false) // following whoever has the ball: one player at a time, a tap at each change
   const [busy, setBusy] = useState<string | null>(null)
   const lo = Math.max(0, (still ? time : from) - 10), hi = (still ? time : to) + 10
   const path = track ?? []
@@ -64,10 +68,12 @@ export function CutPreview({ state, game, time, frame, from, to, still, track, o
       return
     }
     setBusy(null)
+    if (carrier) return // stay on, ready for the next change of hands
     setTapping(false)
     el.currentTime = from
     void el.play().catch(() => {})
   }
+  const hands = carrier && tapping ? ballMoments(state, game, from, to) : null
   const finish = () => {
     setTapping(false)
     const el = v.current
@@ -143,7 +149,7 @@ export function CutPreview({ state, game, time, frame, from, to, still, track, o
                 {busy?.startsWith("Following") ? (
                   <Button size="sm" variant="outline" onClick={() => (stop.current.stopped = true)}>Stop</Button>
                 ) : tapping ? (
-                  ball ? (
+                  ball || carrier ? (
                     <Button size="sm" onClick={finish}>Done</Button>
                   ) : (
                     <Button size="sm" variant="outline" onClick={() => setTapping(false)}>Cancel</Button>
@@ -153,8 +159,9 @@ export function CutPreview({ state, game, time, frame, from, to, still, track, o
                     <Button size="sm" onClick={() => { v.current?.pause(); setTapping(true) }}>Fix it</Button>
                   ) : (
                     <>
-                      <Button size="sm" onClick={() => { v.current?.pause(); seek(from); setBall(false); setTapping(true) }}>Follow a player</Button>
-                      <Button size="sm" onClick={() => { v.current?.pause(); seek(from); setBall(true); setTapping(true) }}>Follow the ball by hand</Button>
+                      <Button size="sm" onClick={() => { v.current?.pause(); seek(from); setBall(false); setCarrier(true); setTapping(true) }}>Follow whoever has the ball</Button>
+                      <Button size="sm" variant="outline" onClick={() => { v.current?.pause(); seek(from); setBall(false); setCarrier(false); setTapping(true) }}>Follow a player</Button>
+                      <Button size="sm" variant="outline" onClick={() => { v.current?.pause(); seek(from); setBall(true); setCarrier(false); setTapping(true) }}>Follow the ball by hand</Button>
                     </>
                   )
                 )}
@@ -162,12 +169,22 @@ export function CutPreview({ state, game, time, frame, from, to, still, track, o
               </div>
               <p className="text-muted-foreground">
                 {busy ?? (tapping
-                  ? (ball ? "The ball is too small for the computer to find on this footage. Tap where it is, and the picture moves on half a second for the next tap. Scrub if you need to. Press Done and the picture glides between your taps." : "Scrub to the moment you want, then tap the player once. It follows from there on its own and plays.")
+                  ? (carrier ? `Tap whoever has the ball now${hands?.start && now <= from + 0.3 ? ` (the log says ${playerName(state, hands.start)})` : ""}. It follows them on its own. Then go to each change below and tap the new player. Press Done to watch it.` : ball ? "The ball is too small for the computer to find on this footage. Tap where it is, and the picture moves on half a second for the next tap. Scrub if you need to. Press Done and the picture glides between your taps." : "Scrub to the moment you want, then tap the player once. It follows from there on its own and plays.")
                   : path.length
                     ? `Following. Zoom is ${zoom.toFixed(1)}x (the Zoom slider). Not right? Press Fix it, scrub to where it slipped, and tap it again (right on the ball, if it is the ball).`
                     : "Pick a player or the ball, tap it, and the picture zooms in and follows it while the clip plays.")}
                 {!cors && !busy && " Following on its own needs the video host to allow it, which it does on the live site. Here, tap it every second or so and the picture glides between your taps."}
               </p>
+              {hands && hands.moments.length > 0 && (
+                <ol className="flex flex-col gap-1" aria-label="When the ball changes hands">
+                  {hands.moments.map((m, k) => (
+                    <li key={k} className="flex items-center gap-2">
+                      <button type="button" className="w-12 shrink-0 rounded border px-1 py-0.5 tabular-nums hover:bg-muted" onClick={() => seek(m.t)} aria-label={`Go to ${fmt(m.t)}: ${m.label}`}>{fmt(m.t)}</button>
+                      <span className="min-w-0">{m.label}{m.about ? ", about here" : ""}{m.who ? `. Tap ${playerName(state, m.who)}.` : "."}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
               {tapping && !cors && <Button size="sm" className="self-start" onClick={() => setTapping(false)}>Done tapping</Button>}
             </div>
           )}

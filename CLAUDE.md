@@ -25,8 +25,10 @@ deployed from `main` by `.github/workflows/deploy.yml`. League terms are defined
   keep or skip, note (never shown, only matched to headlines), crop, trim, who, looks (good or bad per player), follow path, hand-picked
   stills (keys prefixed `still|`). A "bad" look makes a clip rough for that player: only shown with bad news about them.
 - Editor screens: `src/pages/games/ReviewClips.tsx`, `PlayerClipsPanel` on the Players page, `src/components/CutPreview.tsx`.
-- Following (`src/lib/track.ts`): players are followed automatically from one tap; the ball by hand, a tap every half second. The ball is
-  not visible on this footage, so do not retry automatic ball finding.
+- Following (`src/lib/track.ts`): players are followed automatically from one tap; the ball by hand, a tap every half second. Automatic
+  ball finding failed on this footage, so do not retry it. "Follow whoever has the ball" chains players: the editor taps the carrier at
+  the start and at each change of hands that `src/lib/ballCarrier.ts` lists from the shot log (pass and rebound times are estimated
+  around the logged shot). Players cannot be told apart automatically: caps vary and are not recorded.
 - Playback crop and follow only apply to backdrops narrower than 640px (`SMALL` in `ClipBackdrop.tsx`).
 - Video frames can only be read (stills, following) on the live origin: the R2 bucket's CORS allows only belliott11.github.io. Headless
   browsers run IntersectionObserver fine; the user's hidden preview pane does not.
@@ -55,5 +57,4 @@ else `src/data/headline-tones.json`. Clips are never reused across headlines sho
 
 ## Ideas not built
 
-- Follow whoever has the ball.
 - A custom domain on the R2 bucket, for caching and no rate limit (`r2.dev` is rate-limited). Needs a domain on Cloudflare.
