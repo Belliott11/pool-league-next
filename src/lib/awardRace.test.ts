@@ -1,5 +1,5 @@
 import { describe, expect, it, afterAll } from "vitest"
-import { awardRace } from "@/lib/awardRace"
+import { awardRace, shownAwards } from "@/lib/awardRace"
 import type { Game, PooleanState } from "@/lib/types"
 import { DEFAULT_FILTERS, setFilters } from "@/lib/filters"
 
@@ -12,6 +12,15 @@ const game = (id: string, date: string, a: string[], b: string[], scores: [strin
 const state = (games: Game[], season?: string): PooleanState => ({ players: [{ id: "x", name: "X" }, { id: "y", name: "Y" }, { id: "z", name: "Z" }], games, currentSeasonStartedAt: season ?? null })
 
 describe("season award race", () => {
+  it("leaves out a race with fewer than three in it, but still works it out (predictions use it)", () => {
+    const two = Array.from({ length: 5 }, (_, i) => game(`t${i}`, `2026-10-0${i + 1}`, ["x"], ["y"], [["x", 6], ["y", 2]]))
+    const rows = awardRace(state(two))
+    expect(rows.find((r) => r.key === "best-player")).toMatchObject({ field: 2 })
+    expect(shownAwards(rows).find((r) => r.key === "best-player")).toBeUndefined()
+    const three = Array.from({ length: 5 }, (_, i) => game(`h${i}`, `2026-10-0${i + 1}`, ["x", "y"], ["z"], [["x", 6], ["z", 2]]))
+    expect(shownAwards(awardRace(state(three))).find((r) => r.key === "best-player")).toMatchObject({ field: 3 })
+  })
+
   it("ranks wins and finds the best duo from this season's games", () => {
     // Five games together, so both clear the bar every award race has for games played.
     const games = Array.from({ length: 5 }, (_, i) => game(`g${i}`, `2026-10-0${i + 1}`, ["x", "y"], ["z"], [[i % 2 ? "y" : "x", 6], ["z", 2]]))

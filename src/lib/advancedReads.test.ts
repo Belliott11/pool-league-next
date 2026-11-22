@@ -1,12 +1,15 @@
-import { readFileSync } from "fs"
+import { existsSync, readFileSync } from "fs"
 import { describe, expect, it } from "vitest"
 import { advancedReads } from "@/lib/advancedReads"
 import type { PooleanState } from "@/lib/types"
 
-const data = JSON.parse(readFileSync("public/test-data.json", "utf8")) as PooleanState
+// A copy of the real league data, kept out of the repo (.gitignore). The checks that need it skip when it is not there.
+const FILE = "public/test-data.json"
+const data = (existsSync(FILE) ? JSON.parse(readFileSync(FILE, "utf8")) : { players: [], games: [] }) as PooleanState
+const real = existsSync(FILE)
 
 describe("advanced reads", () => {
-  it("writes a headline and six lines for each regular, against the league middle", () => {
+  it.skipIf(!real)("writes a headline and six lines for each regular, against the league middle", () => {
     const { reads, middle } = advancedReads(data, [])
     expect(reads.length).toBeGreaterThan(3)
     for (const r of reads) {
@@ -17,7 +20,7 @@ describe("advanced reads", () => {
     }
     expect(middle.ts).toBeGreaterThan(0)
   })
-  it("uses each player's pronouns, and they/them when none is set", () => {
+  it.skipIf(!real)("uses each player's pronouns, and they/them when none is set", () => {
     const plain: PooleanState = { ...data, players: data.players.map((p) => ({ ...p, pronouns: undefined })) }
     const text = advancedReads(plain, []).reads.flatMap((r) => r.lines.map((l) => l.text)).join(" ")
     expect(text).not.toMatch(/\b(his|him)\b/)
@@ -28,7 +31,7 @@ describe("advanced reads", () => {
 })
 
 describe("written reads", () => {
-  it("are for real players, with a headline and no em dashes", async () => {
+  it.skipIf(!real)("are for real players, with a headline and no em dashes", async () => {
     const w = (await import("@/data/advanced-reads.json")).default as { filmedGames: number; players: Record<string, { headline: string; text: string[] }> }
     const ids = new Set(data.players.map((p) => p.id))
     for (const [id, r] of Object.entries(w.players)) {

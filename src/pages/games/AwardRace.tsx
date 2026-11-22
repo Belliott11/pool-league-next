@@ -2,7 +2,7 @@ import { Medal } from "lucide-react"
 import { useMemo, useState } from "react"
 import { ClipButton } from "@/components/ClipTile"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { awardRace } from "@/lib/awardRace"
+import { awardRace, shownAwards } from "@/lib/awardRace"
 import { bestClips, clipKey, type Clip } from "@/lib/clips"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
@@ -11,7 +11,7 @@ const FIRST = 3 // awards shown before "Show all"
 
 // Who leads each award so far this season, from this season's own games.
 export function AwardRaceCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
-  const all = useMemo(() => awardRace(state), [state])
+  const all = useMemo(() => shownAwards(awardRace(state)), [state]) // races with fewer than three in them are left out
   const [open, setOpen] = useState(false)
   // The leader's best play, when a recording has one, so an award can be seen as well as read.
   const clipOf = useMemo(() => {

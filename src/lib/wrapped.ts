@@ -1,5 +1,5 @@
 import { bestClips, type Clip } from "@/lib/clips"
-import { awardRace } from "@/lib/awardRace"
+import { awardRace, shownAwards } from "@/lib/awardRace"
 import { playerLine, type PlayerLine } from "@/lib/nightRecap"
 import { seasonState } from "@/lib/offseason"
 import { allResults } from "@/lib/hallOfFame"
@@ -152,7 +152,7 @@ export function ballotFinishes(awards: Award[], id: string): { label: string; pl
 }
 
 function raceFinishes(full: PooleanState, id: string): { label: string; place: string }[] {
-  return awardRace(full)
+  return shownAwards(awardRace(full))
     .filter((r) => r.key !== "worst-duo")
     .flatMap((r) => {
       const me = r.leaders.find((l) => l.ids.includes(id))

@@ -16,7 +16,12 @@ export interface RaceRow {
   label: string
   basis: string
   leaders: Leader[]
+  field: number // how many eligible players (or duos) are in this race
 }
+
+// A race with fewer than this many in it is not shown: two people is a head-to-head, not an award. (It still counts for predictions.)
+export const MIN_FIELD = 3
+export const shownAwards = (rows: RaceRow[]) => rows.filter((r) => r.field >= MIN_FIELD)
 
 const MIN_GAMES = 3 // games a duo needs together
 // Nobody is in an award race until they have played MIN_RANKED games (the same bar as ratings and the standings), so a newcomer's first
@@ -51,18 +56,18 @@ export function awardRace(state: PooleanState): RaceRow[] {
   }
   const boxed = [...totals.entries()].filter(([id, t]) => t.gp >= 2 && eligible(id))
   const byTotal = [...boxed].sort((x, y) => y[1].twoWay - x[1].twoWay)
-  if (byTotal.length) rows.push({ key: "mvp", label: "MVP race", basis: "Total two-way score", leaders: top(byTotal.map(([id, t]) => ({ ids: [id], value: `${t.twoWay.toFixed(1)} over ${t.gp} games` }))) })
+  if (byTotal.length) rows.push({ key: "mvp", label: "MVP race", basis: "Total two-way score", field: byTotal.length, leaders: top(byTotal.map(([id, t]) => ({ ids: [id], value: `${t.twoWay.toFixed(1)} over ${t.gp} games` }))) })
 
   // Best all-around: two-way per game, the same number as the standings.
   const byTwoWay = board.filter((r) => eligible(r.player.id)).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
   if (byTwoWay.length) {
     const text = distinctNumbers(byTwoWay.map((r) => r.twoWayPer25))
-    rows.push({ key: "best-player", label: "Best player", basis: "Two-way per game", leaders: top(byTwoWay.map((r, i) => ({ ids: [r.player.id], value: `${text[i]} per game` }))) })
+    rows.push({ key: "best-player", label: "Best player", basis: "Two-way per game", field: byTwoWay.length, leaders: top(byTwoWay.map((r, i) => ({ ids: [r.player.id], value: `${text[i]} per game` }))) })
   }
 
   // Defender: total defensive score.
   const byDefense = [...boxed].sort((x, y) => y[1].defense - x[1].defense)
-  if (byDefense.length) rows.push({ key: "dpoy", label: "Defender", basis: "Total defensive score", leaders: top(byDefense.map(([id, t]) => ({ ids: [id], value: `${t.defense.toFixed(1)} over ${t.gp} games` }))) })
+  if (byDefense.length) rows.push({ key: "dpoy", label: "Defender", basis: "Total defensive score", field: byDefense.length, leaders: top(byDefense.map(([id, t]) => ({ ids: [id], value: `${t.defense.toFixed(1)} over ${t.gp} games` }))) })
 
   // Clutch: win rate in games decided by 3 or fewer, at least 2 of them.
   const close = new Map<string, { w: number; gp: number }>()
@@ -78,7 +83,7 @@ export function awardRace(state: PooleanState): RaceRow[] {
     }
   }
   const clutch = [...close.entries()].filter(([id, c]) => c.gp >= 2 && eligible(id)).sort((x, y) => (y[1].w + 1) / (y[1].gp + 2) - (x[1].w + 1) / (x[1].gp + 2) || y[1].gp - x[1].gp)
-  if (clutch.length) rows.push({ key: "clutch", label: "Clutch", basis: "Record in games decided by 3 or fewer", leaders: top(clutch.map(([id, c]) => ({ ids: [id], value: `${c.w}-${c.gp - c.w} in close games` }))) })
+  if (clutch.length) rows.push({ key: "clutch", label: "Clutch", basis: "Record in games decided by 3 or fewer", field: clutch.length, leaders: top(clutch.map(([id, c]) => ({ ids: [id], value: `${c.w}-${c.gp - c.w} in close games` }))) })
 
   // Most improved: two-way per game in a player's later games against their earlier ones, at least 4 box-scored games.
   const lines = new Map<string, number[]>()
@@ -86,8 +91,8 @@ export function awardRace(state: PooleanState): RaceRow[] {
     const l = playerLine(g, id)
     if (l.twoWay !== null) lines.set(id, [...(lines.get(id) ?? []), l.twoWay])
   }
-  const improved = [...lines.entries()]
-    .filter(([id, v]) => v.length >= 4 && eligible(id))
+  const improvers = [...lines.entries()].filter(([id, v]) => v.length >= 4 && eligible(id))
+  const improved = improvers
     .map(([id, v]) => {
       const h = Math.floor(v.length / 2)
       const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
@@ -95,7 +100,7 @@ export function awardRace(state: PooleanState): RaceRow[] {
     })
     .filter((x) => x.delta > 0)
     .sort((a, b) => b.delta - a.delta)
-  if (improved.length) rows.push({ key: "mip", label: "Most improved", basis: "Later games against earlier ones, two-way per game", leaders: top(improved.map((x) => ({ ids: [x.id], value: `up ${x.delta.toFixed(1)} a game` }))) })
+  if (improved.length) rows.push({ key: "mip", label: "Most improved", basis: "Later games against earlier ones, two-way per game", field: improvers.length, leaders: top(improved.map((x) => ({ ids: [x.id], value: `up ${x.delta.toFixed(1)} a game` }))) })
 
   // Duos: record together, pulled toward even by 5 phantom games so 9-1 beats 3-0.
   const duos = new Map<string, { w: number; gp: number; ids: string[] }>()
@@ -119,8 +124,8 @@ export function awardRace(state: PooleanState): RaceRow[] {
   const pairs = [...duos.values()].filter((d) => d.gp >= MIN_GAMES && d.ids.every(eligible)).map((d) => ({ ...d, rate: (d.w + 2.5) / (d.gp + 5) }))
   const fmt = (d: (typeof pairs)[number]): Leader => ({ ids: d.ids, value: `${d.w}-${d.gp - d.w} together` })
   if (pairs.length) {
-    rows.push({ key: "best-duo", label: "Best duo", basis: `Record together, ${MIN_GAMES}+ games, both with ${MIN_RANKED}+`, leaders: top([...pairs].sort((a, b) => b.rate - a.rate || b.gp - a.gp).map(fmt)) })
-    rows.push({ key: "worst-duo", label: "Rough-patch duo", basis: `Record together, ${MIN_GAMES}+ games, both with ${MIN_RANKED}+`, leaders: top([...pairs].sort((a, b) => a.rate - b.rate || b.gp - a.gp).map(fmt)) })
+    rows.push({ key: "best-duo", label: "Best duo", basis: `Record together, ${MIN_GAMES}+ games, both with ${MIN_RANKED}+`, field: pairs.length, leaders: top([...pairs].sort((a, b) => b.rate - a.rate || b.gp - a.gp).map(fmt)) })
+    rows.push({ key: "worst-duo", label: "Rough-patch duo", basis: `Record together, ${MIN_GAMES}+ games, both with ${MIN_RANKED}+`, field: pairs.length, leaders: top([...pairs].sort((a, b) => a.rate - b.rate || b.gp - a.gp).map(fmt)) })
   }
   void nameOf
   return rows
