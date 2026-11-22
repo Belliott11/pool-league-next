@@ -64,6 +64,27 @@ _Avoid_: Tag, trait
 **Tone**:
 How a headline is worded, such as a quip or a roast. A tone is not a separate kind of headline.
 
+**Headline mark**:
+The editor's call on who a headline is about and whether it is good or bad news for them. It picks the headline's clip: a highlight for good news, a rough clip for bad news, none if unmarked.
+_Avoid_: Headline tone (a tone is how a headline is worded)
+
+### Clips
+
+**Clip**:
+A few seconds of a game recording around one play: a made shot, block, steal, game winner, or a play the editor marked.
+_Avoid_: Highlight (a highlight is one kind of clip), video
+
+**Rough clip**:
+A clip that goes badly for a player, from an editor's "bad" look or a miss out of bounds. Shown only with bad news about that player, never on their highlights.
+_Avoid_: Lowlight in site text
+
+**Still**:
+One frame an editor picked by hand, shown as a picture instead of a playing clip.
+
+**Cut**:
+A clip saved as its own short file, so it loads without the full recording (`src/lib/clipCuts.ts`).
+_Avoid_: Trim (a trim is the editor's chosen start and end)
+
 ### Scores and predictions
 
 **Defensive score**:
@@ -83,6 +104,9 @@ _Avoid_: Toggles, settings
 **Trip**:
 One turn with the ball. It ends in a make, a shot the other team gets, or a live-ball turnover; a miss the shooting team rebounds keeps the same trip going. Worked out from the shot log (`src/lib/possessions.ts`), never logged by hand.
 _Avoid_: Possession, play
+
+**Award field**:
+How many eligible players (or duos) are in an award race. A race with fewer than three is not shown, though predictions still count it.
 
 **Projection**:
 Where an award race ends up if the season runs more games like the ones so far (`src/lib/projections.ts`). Not a prediction: it is never saved or scored.
