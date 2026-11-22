@@ -116,6 +116,11 @@ for (const [url, clips] of byRec) {
 }
 // A clip's title follows its review (a new label or player), so known ones are brought up to date.
 let renamed = 0
-for (const c of plan) if (shares[c.id] && shares[c.id].title !== c.title) (shares[c.id].title = c.title), renamed++
+for (const c of plan) {
+  if (shares[c.id] && shares[c.id].title !== c.title) {
+    shares[c.id].title = c.title
+    renamed++
+  }
+}
 if (!dry) save(SHARES, shares)
 console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts and ${needPoster.length} pictures; commit src/data/clip-cuts.json and src/data/clip-shares.json`)

@@ -156,6 +156,17 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
   const name = id ? playerName(state, id) : ""
   const bySlide = useMemo(() => slideClips(slides, pool), [slides, pool])
   const clipAt = (k: number): Clip | undefined => bySlide[k]
+  // On a keyboard: the arrow keys go back and forward, Escape closes.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return
+      if (e.key === "ArrowRight") setI((n) => Math.min(slides.length - 1, Math.min(n, slides.length - 1) + 1))
+      else if (e.key === "ArrowLeft") setI((n) => Math.max(0, Math.min(n, slides.length - 1) - 1))
+      else if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [slides.length, onClose])
   // The next two slides' clips are fetched while this one shows, so each starts the moment its slide comes up.
   useEffect(() => {
     for (let k = at + 1; k <= at + 2 && k < slides.length; k++) {
@@ -251,7 +262,7 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
         <button type="button" aria-label="Next" className={cn("absolute inset-y-0 right-0 w-2/3", s.kind === "summary" && "pointer-events-none")} onClick={() => go(1)} />
       </div>
       <p className="px-4 pb-4 text-center text-xs text-muted-foreground">
-        {at + 1} of {slides.length}. Tap the right side for next, the left side to go back.
+        {at + 1} of {slides.length}. Tap the right side for next, the left side to go back (or use the arrow keys).
       </p>
     </div>
   )

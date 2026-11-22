@@ -384,7 +384,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         </div>
       </div>
       <div aria-hidden className="lane-rope -mt-2" />
-      <WhoPrompt state={state} />
+      {/* Not on a shared play or Wrapped: the visitor came for that. */}
+      {!/^(clip|wrapped)/.test(view.sub) && <WhoPrompt state={state} />}
       {mode === "admin" && cloud && cloud.sync === "conflict" && (
         <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-neg bg-card p-3 text-sm">
           <span className="min-w-0 flex-1">The cloud has newer changes, maybe from another device. Your latest edit is not saved yet.</span>

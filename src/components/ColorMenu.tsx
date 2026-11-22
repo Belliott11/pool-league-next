@@ -21,10 +21,14 @@ const KEY = [
 ]
 
 const HINT_KEY = "pooleanIntelColorHint"
+const WHO_KEY = "pooleanIntelWho" // set once the visitor has said who they are, or chose Not now (see identity.ts)
 
+// The tip only shows on the home page (not a shared play or a deep link someone followed), and not on the first visit while the
+// "Who are you?" card is still up: one thing at a time.
 function hintUnseen() {
   try {
-    return !localStorage.getItem(HINT_KEY)
+    const home = location.hash === "" || location.hash === "#/" || location.hash === "#/games"
+    return home && !localStorage.getItem(HINT_KEY) && localStorage.getItem(WHO_KEY) !== null
   } catch {
     return false // storage blocked: never nag, we could not remember the dismissal
   }
