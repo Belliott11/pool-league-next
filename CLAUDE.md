@@ -49,6 +49,13 @@ api.cloudflare.com.
 them: the editor's mark (`state.headlineTones`, set from the clapperboard beside each headline, `src/components/HeadlineTone.tsx`),
 else `src/data/headline-tones.json`. Clips are never reused across headlines shown together.
 
+## Backups
+
+`.github/workflows/backup.yml` saves the league data row, Pick'em votes and preseason predictions every night as a run artifact kept 30
+days (Actions tab, "Back up league data", a run, Artifacts). It fails if the league data has fewer than 5 games or players. Private labels
+are not in it (editor-only). To restore league data from one: ask the user first, insert the current row into `league_state_history`
+as a snapshot, then write the backup's `data` back to `league_state` id 1, and verify the counts.
+
 ## Environment
 
 - `.mcp.json` adds the Playwright browser MCP (`scripts/playwright-mcp.sh`) for testing pages, including the live site.
