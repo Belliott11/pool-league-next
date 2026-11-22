@@ -142,10 +142,14 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
     if (!id) return []
     const season = seasonState(state)
     const mine = bestClips(season, { pid: id, limit: 16, perGame: 4 })
-    // Once their own plays run out, plays by others from games they were in (never one that goes badly for them).
+    // Once their own plays run out, borrowed plays fill in: only good moments, never one that goes badly for anyone. First plays by others
+    // from games they were in.
+    const good = (c: Clip) => !c.rough?.length
     const theirGames = season.games.filter((g) => g.teamA.includes(id) || g.teamB.includes(id)).map((g) => g.id)
-    const around = bestClips(season, { gameIds: theirGames, limit: 40, perGame: 40 }).filter((c) => c.playerId !== id && !c.rough?.includes(id)) // ranked wide, then filtered, so one game can fill the gaps
-    return [...mine, ...around]
+    const around = bestClips(season, { gameIds: theirGames, limit: 40, perGame: 40 }).filter((c) => c.playerId !== id && good(c)) // ranked wide, then filtered, so one game can fill the gaps
+    // Then the league's best plays (marked and kept highlights first, see bestClips), from this season, else any season.
+    const league = bestClips(season, { limit: 40, perGame: 6 }).filter(good)
+    return [...mine, ...around, ...(league.length ? league : bestClips(state, { limit: 40, perGame: 6 }).filter(good))]
   }, [state, id])
   const [shared, setShared] = useState("")
   const at = Math.min(i, Math.max(0, slides.length - 1))
