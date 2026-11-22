@@ -4,11 +4,26 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { headlineClip, namedIn, toneOf } from "@/lib/headlineClips"
 import { useUpdate } from "@/lib/mode"
+import { guessTone } from "@/lib/toneGuess"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 type Mark = [string, "good" | "bad"] | null
+
+// For a headline not marked yet: a guess from the wording of the headlines already marked, to confirm with one tap. Worked out only once
+// the dialog is open.
+function Suggestion({ state, text, who, onUse }: { state: PooleanState; text: string; who: string; onUse: (tone: "good" | "bad") => void }) {
+  const guess = guessTone(state, text)
+  if (!guess) return null
+  const label = `${guess.tone === "good" ? "Good" : "Bad"} news for ${playerName(state, who)}`
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-2">
+      <span className="min-w-0 flex-1">Looks like <span className="font-medium">{label}</span>, going by headlines marked before.</span>
+      <Button size="sm" onClick={() => onUse(guess.tone)}>Use it</Button>
+    </div>
+  )
+}
 
 // For the editor, beside each headline: who it is about and whether it is good or bad for them, which picks the clip shown with it
 // (a highlight for good news, a rough moment for bad news). Saved with the league data, so visitors see the clip straight away.
@@ -62,6 +77,7 @@ export function HeadlineTone({ state, text, gameIds }: { state: PooleanState; te
               </optgroup>
             </select>
           </label>
+          {!tone && !mine && who && <Suggestion state={state} text={text} who={who} onUse={(t) => set([who, t])} />}
           <div className="grid grid-cols-2 gap-2">
             <Button variant={pressed([who, "good"]) ? "secondary" : "outline"} aria-pressed={pressed([who, "good"])} disabled={!who} onClick={() => set([who, "good"])}>
               {pressed([who, "good"]) && <Check aria-hidden />}Good news
