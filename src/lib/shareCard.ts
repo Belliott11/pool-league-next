@@ -3,6 +3,9 @@ import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import { getGameStats, isLiveScoreOnly, liveScoreOf, teamScore } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
+import { bestClips, type Clip } from "@/lib/clips"
+import shares from "@/data/clip-shares.json"
+import { clipIdOf } from "@/lib/clipShare"
 
 // A post-game picture to send to the group chat: the final score in the team colors, who played, and who
 // scored most. Drawn on a canvas in the app's own colors and fonts, then shared or downloaded.
@@ -152,6 +155,25 @@ export async function shareGameCard(state: PooleanState, game: Game): Promise<vo
 }
 
 // ---- the night recap picture: every game's result and the night's top scorers.
+const VIDEO_HOST = "https://pub-fe959ca0159c462e9b4e69082ac20db5.r2.dev" // where the clip pictures are (see vite.config.ts)
+
+// The night's best play with a saved picture (src/data/clip-shares.json), never one that goes badly for anyone, and its picture. The
+// picture only loads where the video host allows it to be drawn (the live site); anywhere else the card is drawn without it.
+async function playOfTheNight(state: PooleanState, gameIds: string[]): Promise<{ clip: Clip; img: HTMLImageElement } | null> {
+  const table = shares as Record<string, { poster: string }>
+  const clip = bestClips(state, { gameIds, limit: 8, perGame: 8 }).find((c) => !c.rough?.length && table[clipIdOf(state, c) ?? ""])
+  if (!clip) return null
+  const img = new Image()
+  img.crossOrigin = "anonymous"
+  img.src = `${VIDEO_HOST}/${table[clipIdOf(state, clip)!].poster}`
+  try {
+    await img.decode()
+    return { clip, img }
+  } catch {
+    return null
+  }
+}
+
 export async function drawNightCard(state: PooleanState, s: NightSummary, dateLabel: string): Promise<HTMLCanvasElement> {
   try {
     await Promise.all([document.fonts.load("800 120px Anybody"), document.fonts.load("600 40px 'Hanken Grotesk'")])
@@ -170,6 +192,22 @@ export async function drawNightCard(state: PooleanState, s: NightSummary, dateLa
   const ctx = canvas.getContext("2d")!
   ctx.fillStyle = "#071014"
   ctx.fillRect(0, 0, W, H)
+  // The night's best play behind the title, darkened so the words stay readable.
+  const play = await playOfTheNight(state, s.games.map((g) => g.id))
+  if (play) {
+    const band = 270, scale = Math.max(W / play.img.width, band / play.img.height)
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, 0, W, band)
+    ctx.clip()
+    ctx.drawImage(play.img, (W - play.img.width * scale) / 2, (band - play.img.height * scale) / 2, play.img.width * scale, play.img.height * scale)
+    const fade = ctx.createLinearGradient(0, 0, 0, band)
+    fade.addColorStop(0, "rgba(7,16,20,0.55)")
+    fade.addColorStop(1, "rgba(7,16,20,0.95)")
+    ctx.fillStyle = fade
+    ctx.fillRect(0, 0, W, band)
+    ctx.restore()
+  }
   ctx.textBaseline = "alphabetic"
   ctx.fillStyle = fg
   ctx.font = `800 64px ${display}`
@@ -237,6 +275,11 @@ export async function drawNightCard(state: PooleanState, s: NightSummary, dateLa
   ctx.font = `500 30px ${body}`
   const bits = [s.biggestWin && `Biggest win ${s.biggestWin.scoreA}-${s.biggestWin.scoreB}`, s.closest && `Closest ${s.closest.scoreA}-${s.closest.scoreB}`].filter(Boolean)
   ctx.fillText(bits.length ? bits.join("   ·   ") : "Backyard pool basketball", 72, H - 44)
+  if (play) {
+    ctx.fillStyle = fg
+    ctx.font = `600 30px ${body}`
+    ctx.fillText(fit(ctx, `Play of the night: ${play.clip.kind === "marked" ? "Highlight" : play.clip.label}, ${playerName(state, play.clip.playerId)}`, W - 144), 72, H - 92)
+  }
   return canvas
 }
 
