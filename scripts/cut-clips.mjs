@@ -33,7 +33,8 @@ fs.writeFileSync(stateFile, JSON.stringify(rows[0].data))
 
 // 2. Which stretch of which recording each clip plays (the site's own rules, src/lib/clipCuts.ts).
 const planFile = path.join(work, "plan.json")
-execFileSync("npx", ["vitest", "run", "src/lib/clipCuts.plan.test.ts"], { cwd: root, stdio: "ignore", env: { ...process.env, CLIP_STATE: stateFile, CLIP_PLAN: planFile } })
+const trailerFile = path.join(work, "trailer-keys.json")
+execFileSync("npx", ["vitest", "run", "src/lib/clipCuts.plan.test.ts"], { cwd: root, stdio: "ignore", env: { ...process.env, CLIP_STATE: stateFile, CLIP_PLAN: planFile, CLIP_TRAILER: trailerFile } })
 const plan = JSON.parse(fs.readFileSync(planFile, "utf8"))
 const manifest = fs.existsSync(MANIFEST) ? JSON.parse(fs.readFileSync(MANIFEST, "utf8")) : {}
 const todo = plan.filter((c) => !manifest[c.key])
@@ -123,4 +124,34 @@ for (const c of plan) {
   }
 }
 if (!dry) save(SHARES, shares)
-console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts and ${needPoster.length} pictures; commit src/data/clip-cuts.json and src/data/clip-shares.json`)
+// 4. The season trailer: the season's best plays joined into one short video (no sound, a quick fade between plays), made again only
+// when the plays in it change. Listed in src/data/trailer.json for the site.
+const TRAILER = path.join(root, "src/data/trailer.json")
+const wanted = (fs.existsSync(trailerFile) ? JSON.parse(fs.readFileSync(trailerFile, "utf8")) : []).filter((k) => manifest[k])
+const had = fs.existsSync(TRAILER) ? JSON.parse(fs.readFileSync(TRAILER, "utf8")) : null
+if (!dry && wanted.length >= 3 && JSON.stringify(had?.clips) !== JSON.stringify(wanted)) {
+  const origin = new URL(plan[0].url).origin
+  const parts = wanted.map((k, i) => {
+    const local = path.join(work, `trailer-${i}.mp4`)
+    curl(["-o", local, `${origin}/${manifest[k]}`])
+    const seconds = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", local]).toString().trim())
+    return { local, seconds }
+  })
+  const FADE = 0.3
+  const filters = parts.map((p, i) => `[${i}:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,fade=t=in:st=0:d=${FADE},fade=t=out:st=${Math.max(0, p.seconds - FADE).toFixed(2)}:d=${FADE}[v${i}]`)
+  const joined = `${parts.map((_, i) => `[v${i}]`).join("")}concat=n=${parts.length}:v=1:a=0[out]`
+  const out = path.join(work, "trailer.mp4")
+  execFileSync("ffmpeg", ["-v", "error", "-y", ...parts.flatMap((p) => ["-i", p.local]), "-filter_complex", [...filters, joined].join(";"), "-map", "[out]",
+    "-c:v", "libx264", "-preset", "medium", "-crf", "27", "-maxrate", "1500k", "-bufsize", "3000k", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out])
+  let h = 0x811c9dc5
+  for (const ch of wanted.join(",")) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0
+  const key = `clips/trailer/season-${h.toString(36)}.mp4` // a new name each time, so nobody gets an old copy
+  upload(out, key, "video/mp4")
+  served(origin, key)
+  const seconds = Math.round(parts.reduce((t, p) => t + p.seconds, 0))
+  fs.writeFileSync(TRAILER, JSON.stringify({ file: key, seconds, clips: wanted }, null, 1) + "\n")
+  console.log(`\nseason trailer: ${wanted.length} plays, ${seconds} s`)
+  for (const p of parts) fs.rmSync(p.local)
+  fs.rmSync(out)
+}
+console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts and ${needPoster.length} pictures; commit src/data/clip-cuts.json, src/data/clip-shares.json and src/data/trailer.json`)

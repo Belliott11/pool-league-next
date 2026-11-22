@@ -39,13 +39,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet -- src/data/clip-cuts.json src/data/clip-shares.json; then
+          if git diff --quiet -- src/data/clip-cuts.json src/data/clip-shares.json src/data/trailer.json && ! git status --porcelain src/data/trailer.json | grep -q .; then
             echo "No new clips tonight."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add src/data/clip-cuts.json src/data/clip-shares.json
+          git add src/data/clip-cuts.json src/data/clip-shares.json src/data/trailer.json
           git commit -m "New clip cuts"
           git push
           # A push made by this workflow does not start other workflows, so the deploy is started here.

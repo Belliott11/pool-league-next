@@ -50,6 +50,12 @@ api.cloudflare.com.
 in `vite.config.ts`): the preview title and picture, then a redirect to `#/games/clip/<id>` (`src/pages/games/ClipPage.tsx`). Ids come
 from `clipId` in `src/lib/clipShare.ts`. Clip tiles have a Share button.
 
+### Season trailer
+
+The same script joins the season's 8 best plays (two per game at most, none rough) into `clips/trailer/season-<hash>.mp4`, no sound,
+quick fades, and lists it in `src/data/trailer.json`; rebuilt only when the plays change. The Top plays card on the home page
+(`src/pages/games/TopPlays.tsx`) has the button.
+
 ## Headlines and clips
 
 `src/lib/headlineClips.ts` gives a headline a clip only when it knows who the headline is about and whether it is good or bad news for
