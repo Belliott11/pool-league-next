@@ -65,7 +65,7 @@ export function rawClips(state: PooleanState, g: Game): Clip[] {
   // Highlights the editor marked on the game's reel come first, and an automatic clip of the same moment is dropped.
   const marked: Clip[] = (g.plays ?? [])
     .filter((p) => p.type === "highlight" && p.playerId && p.end > p.start)
-    .map((p) => ({ ...base, time: p.start + Math.min(5, (p.end - p.start) / 2), from: p.start, to: Math.min(p.end, p.start + 12), playerId: p.playerId!, kind: "marked" as const, marked: true, label: "Marked highlight", ...(p.note?.trim() ? { note: p.note.trim() } : {}), score: SCORE.marked }))
+    .map((p) => ({ ...base, time: p.start + Math.min(5, (p.end - p.start) / 2), from: p.start, to: Math.min(p.end, p.start + 12), playerId: p.playerId!, kind: "marked" as const, marked: true, label: "Highlight", ...(p.note?.trim() ? { note: p.note.trim() } : {}), score: SCORE.marked }))
   // A play an editor flagged as a lowlight is the same thing the other way round: a rough moment, for stories about things going badly.
   const low: Clip[] = (g.plays ?? [])
     .filter((p) => p.type === "lowlight" && p.playerId && p.end > p.start)

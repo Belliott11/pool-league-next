@@ -40,45 +40,82 @@ const todo = plan.filter((c) => !manifest[c.key])
 console.log(`${plan.length} clips, ${plan.length - todo.length} already cut, ${todo.length} to cut`)
 
 let account = process.env.CLOUDFLARE_ACCOUNT_ID || "45bdfa8bb68273ea324a958d302f5fe2" // the pooleanintel bucket's account
-if (!dry && todo.length && !account) {
+const SHARES = path.join(root, "src/data/clip-shares.json")
+const shares = fs.existsSync(SHARES) ? JSON.parse(fs.readFileSync(SHARES, "utf8")) : {}
+// Every cut clip also gets a picture of the play, for the preview of its share link (src/lib/clipShare.ts).
+// A clip that goes badly for someone is never offered for sharing.
+for (const c of plan) if (!c.shareable && shares[c.id]) delete shares[c.id]
+const needPoster = plan.filter((c) => c.shareable && !shares[c.id] && (manifest[c.key] || todo.includes(c)))
+if (!dry && (todo.length || needPoster.length) && !account) {
   const list = api("/accounts").result
   if (list.length !== 1) throw new Error(`Set CLOUDFLARE_ACCOUNT_ID: the token sees ${list.length} accounts`)
   account = list[0].id
 }
 
-// 3. One recording at a time: fetch it, cut its clips, upload them, let it go.
-const byRec = Map.groupBy(todo, (c) => c.url)
-let done = 0
-for (const [url, clips] of byRec) {
+const upload = (file, key, type) => {
+  const res = api(`/accounts/${account}/r2/buckets/${BUCKET}/objects/${key.split("/").map(encodeURIComponent).join("/")}`, ["-X", "PUT", "-H", `Content-Type: ${type}`, "--data-binary", `@${file}`])
+  if (!res.success) throw new Error(`upload of ${key} failed: ${JSON.stringify(res.errors)}`)
+}
+// It counts once the public link serves it.
+const served = (origin, key) => {
+  const head = curl(["-I", "-o", "/dev/null", "-w", "%{http_code}", `${origin}/${key}`]).toString()
+  if (head !== "200") throw new Error(`${key} uploaded but the public link answered ${head}`)
+}
+const save = (file, data) => fs.writeFileSync(file, JSON.stringify(Object.fromEntries(Object.entries(data).sort()), null, 1) + "\n")
+const sourceOf = (url) => {
   const file = decodeURIComponent(new URL(url).pathname.split("/").pop())
-  const dir = new URL(url).pathname.split("/").slice(-2, -1)[0]
   let local = process.env.CLIP_SOURCES ? path.join(process.env.CLIP_SOURCES, file) : ""
   if (!local || !fs.existsSync(local)) {
     local = path.join(work, file)
-    console.log(`downloading ${file}`)
-    curl(["-o", local, url])
-  }
-  for (const c of clips) {
-    const name = `${file.replace(/\.[^.]+$/, "")}_${c.start}-${c.end}.mp4`
-    const out = path.join(work, name)
-    // About 1 MB for 10 seconds: capped near the recordings' own bitrate, a keyframe every second so a tap seeks at once.
-    if (!fs.existsSync(out)) execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", String(c.start), "-i", local, "-t", String(Math.max(0.5, c.end - c.start)),
-      "-c:v", "libx264", "-preset", "medium", "-crf", "28", "-maxrate", "900k", "-bufsize", "1800k", "-pix_fmt", "yuv420p", "-g", "30",
-      "-c:a", "aac", "-b:a", "64k", "-movflags", "+faststart", out])
-    const key = `clips/${dir}/${name}`
-    if (!dry) {
-      const res = api(`/accounts/${account}/r2/buckets/${BUCKET}/objects/${key.split("/").map(encodeURIComponent).join("/")}`, ["-X", "PUT", "-H", "Content-Type: video/mp4", "--data-binary", `@${out}`])
-      if (!res.success) throw new Error(`upload of ${key} failed: ${JSON.stringify(res.errors)}`)
-      // It counts once the public link serves it.
-      const head = curl(["-I", "-o", "/dev/null", "-w", "%{http_code}", `${new URL(url).origin}/${key}`]).toString()
-      if (head !== "200") throw new Error(`${key} uploaded but the public link answered ${head}`)
-      manifest[c.key] = key
-      fs.writeFileSync(MANIFEST, JSON.stringify(Object.fromEntries(Object.entries(manifest).sort()), null, 1) + "\n")
-      fs.rmSync(out)
+    if (!fs.existsSync(local)) {
+      console.log(`downloading ${file}`)
+      curl(["-o", local, url])
     }
-    done++
-    process.stdout.write(`\r${done}/${todo.length}`)
+  }
+  return { file, local, dir: new URL(url).pathname.split("/").slice(-2, -1)[0], origin: new URL(url).origin }
+}
+
+// 3. One recording at a time: fetch it, cut its clips and pictures, upload them, let it go.
+const byRec = Map.groupBy([...new Set([...todo, ...needPoster])], (c) => c.url)
+let done = 0
+for (const [url, clips] of byRec) {
+  const { file, local, dir, origin } = sourceOf(url)
+  for (const c of clips) {
+    const name = `${file.replace(/\.[^.]+$/, "")}_${c.start}-${c.end}`
+    if (todo.includes(c)) {
+      const out = path.join(work, `${name}.mp4`)
+      // About 1 MB for 10 seconds: capped near the recordings' own bitrate, a keyframe every second so a tap seeks at once.
+      if (!fs.existsSync(out)) execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", String(c.start), "-i", local, "-t", String(Math.max(0.5, c.end - c.start)),
+        "-c:v", "libx264", "-preset", "medium", "-crf", "28", "-maxrate", "900k", "-bufsize", "1800k", "-pix_fmt", "yuv420p", "-g", "30",
+        "-c:a", "aac", "-b:a", "64k", "-movflags", "+faststart", out])
+      const key = `clips/${dir}/${name}.mp4`
+      if (!dry) {
+        upload(out, key, "video/mp4")
+        served(origin, key)
+        manifest[c.key] = key
+        save(MANIFEST, manifest)
+        fs.rmSync(out)
+      }
+      done++
+    }
+    if (c.shareable && !shares[c.id]) {
+      const pic = path.join(work, `${name}.jpg`)
+      execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", String(c.time), "-i", local, "-frames:v", "1", "-vf", "scale=1200:-2", "-q:v", "4", pic])
+      const key = `clips/${dir}/${name}.jpg`
+      if (!dry) {
+        upload(pic, key, "image/jpeg")
+        served(origin, key)
+        shares[c.id] = { key: c.key, title: c.title, poster: key }
+        save(SHARES, shares)
+        fs.rmSync(pic)
+      }
+    }
+    process.stdout.write(`\r${done}/${todo.length} cut`)
   }
   if (local.startsWith(work)) fs.rmSync(local)
 }
-console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done}; commit src/data/clip-cuts.json`)
+// A clip's title follows its review (a new label or player), so known ones are brought up to date.
+let renamed = 0
+for (const c of plan) if (shares[c.id] && shares[c.id].title !== c.title) (shares[c.id].title = c.title), renamed++
+if (!dry) save(SHARES, shares)
+console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts and ${needPoster.length} pictures; commit src/data/clip-cuts.json and src/data/clip-shares.json`)

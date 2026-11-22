@@ -1,10 +1,11 @@
-import { Film, Play } from "lucide-react"
+import { Check, Film, Play, Share2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { InlineClip } from "@/components/InlineClip"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import type { Clip } from "@/lib/clips"
 import { clipSource } from "@/lib/clipCuts"
+import { clipIdOf, shareLink } from "@/lib/clipShare"
 import { preconnect } from "@/lib/mediaGate"
 import { frameStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
 import { formatDateDisplay } from "@/lib/format"
@@ -63,6 +64,8 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
     else v.addEventListener("loadedmetadata", go, { once: true })
   }
   const name = playerName(state, clip.playerId)
+  // A link to this play, for any clip that is not rough on someone (those are only shown with that news, never passed around).
+  const id = clip.rough?.length ? null : clipIdOf(state, clip)
   return (
     <figure className={cn("flex min-w-0 flex-col gap-2", className)}>
       <div ref={box} className={cn("relative aspect-video overflow-hidden rounded-xl bg-muted", file && near && !still && !shown && !playing && "motion-safe:animate-pulse")}>
@@ -96,9 +99,31 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
             <span className="block truncate font-medium">{clip.label}</span>
             <span className="block truncate text-xs text-muted-foreground">{name}, {formatDateDisplay(clip.date)}</span>
           </span>
+          {id && <ShareClip id={id} title={`${clip.label}, ${name}`} />}
         </figcaption>
       )}
     </figure>
+  )
+}
+
+// Sends the link to a play: the phone's share sheet where there is one, else the link is copied.
+function ShareClip({ id, title }: { id: string; title: string }) {
+  const [copied, setCopied] = useState(false)
+  const share = async () => {
+    const url = shareLink(id)
+    try {
+      if (navigator.share) return await navigator.share({ title, url })
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* closed the share sheet, or copying was refused */
+    }
+  }
+  return (
+    <button type="button" onClick={() => void share()} className="ml-auto grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={copied ? "Link copied" : `Share this play: ${title}`} title={copied ? "Link copied" : "Share this play"}>
+      {copied ? <Check aria-hidden className="size-4" /> : <Share2 aria-hidden className="size-4" />}
+    </button>
   )
 }
 

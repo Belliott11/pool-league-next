@@ -35,7 +35,7 @@ test("a highlight the editor marked comes first, and its automatic twin is dropp
   const g = { ...game("m1", "2026-01-01", [ev("1", "a", 100, { dunk: true }), ev("2", "a", 300, { points: 3 })]), plays: [{ id: "p", type: "highlight", start: 98, end: 108, playerId: "a", note: "" }, { id: "q", type: "lowlight", start: 10, end: 20, playerId: "a" }] }
   const s = { players: [{ id: "a", name: "A" }, { id: "b", name: "B" }], games: [g] } as unknown as PooleanState
   const out = bestClips(s, { pid: "a", limit: 5, perGame: 5 })
-  expect(out[0]).toMatchObject({ marked: true, kind: "marked", from: 98, label: "Marked highlight" })
+  expect(out[0]).toMatchObject({ marked: true, kind: "marked", from: 98, label: "Highlight" })
   expect(out.filter((c) => c.kind === "dunk")).toHaveLength(0)
   expect(out.some((c) => c.kind === "three")).toBe(true)
 })

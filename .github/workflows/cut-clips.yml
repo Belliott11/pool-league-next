@@ -1,7 +1,8 @@
 name: Cut new clips
 
 # Every night, cuts any clip that does not have its short file yet (new games, newly reviewed or re-trimmed clips), uploads it to the
-# video bucket, and commits the updated list in src/data/clip-cuts.json, then deploys the site so it plays them. A night with nothing
+# video bucket with a picture of the play for its share link, and commits the updated lists (src/data/clip-cuts.json and
+# src/data/clip-shares.json), then deploys the site so it plays them. A night with nothing
 # new changes nothing. Needs the repository secret CLOUDFLARE_API_TOKEN (an R2 token with Admin Read & Write); without it the run
 # stops early and says so. Can also be started by hand from the Actions tab.
 on:
@@ -38,13 +39,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet -- src/data/clip-cuts.json; then
+          if git diff --quiet -- src/data/clip-cuts.json src/data/clip-shares.json; then
             echo "No new clips tonight."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add src/data/clip-cuts.json
+          git add src/data/clip-cuts.json src/data/clip-shares.json
           git commit -m "New clip cuts"
           git push
           # A push made by this workflow does not start other workflows, so the deploy is started here.
