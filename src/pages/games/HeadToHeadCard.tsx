@@ -1,5 +1,7 @@
 import { useState } from "react"
+import { ClipStrip } from "@/components/ClipTile"
 import { EmptyState } from "@/components/EmptyState"
+import { bestClips, type Clip } from "@/lib/clips"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
@@ -9,8 +11,23 @@ import { playerName } from "@/lib/players"
 import type { Game, PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-// Pick any two players: their record against each other, the last few meetings, how they do as teammates, and what
-// the model gives each of them in a one on one.
+// Up to three plays by either of the two from games where they were on opposite teams, taking turns so neither gets all of them, never
+// one that goes badly for anyone.
+function meetingPlays(state: PooleanState, gameIds: string[], a: string, b: string): Clip[] {
+  if (gameIds.length === 0) return []
+  const pool = bestClips(state, { gameIds, limit: 30, perGame: 30 }).filter((c) => !c.rough?.length)
+  const mine = (id: string) => pool.filter((c) => c.playerId === id)
+  const [pa, pb] = [mine(a), mine(b)]
+  const out: Clip[] = []
+  for (let i = 0; out.length < 3 && (i < pa.length || i < pb.length); i++) {
+    if (pa[i]) out.push(pa[i])
+    if (out.length < 3 && pb[i]) out.push(pb[i])
+  }
+  return out
+}
+
+// Pick any two players: their record against each other, the last few meetings with plays from them, how they do as teammates, and
+// what the model gives each of them in a one on one.
 export function HeadToHeadCard({ state, onOpenGame }: { state: PooleanState; onOpenGame: (g: Game) => void }) {
   const start = mostMetPair(state)
   const [a, setA] = useState(start?.[0] ?? "")
@@ -87,6 +104,15 @@ export function HeadToHeadCard({ state, onOpenGame }: { state: PooleanState; onO
                 </li>
               ))}
             </ul>
+            {(() => {
+              const plays = meetingPlays(state, h.meetings.map((m) => m.game.id), a, b)
+              return plays.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-medium">Plays from their meetings</p>
+                  <ClipStrip state={state} clips={plays} />
+                </div>
+              )
+            })()}
           </>
         )}
         {h && h.togetherWins + h.togetherLosses > 0 && (
