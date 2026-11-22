@@ -9,9 +9,8 @@ import type { Game, PooleanState } from "@/lib/types"
 import { GameLog } from "./games/GameLog"
 import { Section } from "@/components/Section"
 import { useReadOnly } from "@/lib/mode"
-import { SetUpTonight } from "./games/SetUpTonight"
 import { Sidebar } from "./games/Sidebar"
-import { LiveBanner, LiveWatch } from "./live/LiveWatch"
+import { LiveBanner } from "./live/LiveBanner"
 import { GoingIn } from "./games/GoingIn"
 import { NightPreviewCard } from "./games/NightPreview"
 import { PickEmCard } from "./games/PickEm"
@@ -26,6 +25,9 @@ import { TopPlays } from "./games/TopPlays"
 const BalanceAndPredict = lazyPage(() => import("./games/BalanceAndPredict").then((m) => ({ default: m.BalanceAndPredict })))
 const GamePage = lazyPage(() => import("./games/GamePage").then((m) => ({ default: m.GamePage })))
 const LiveGamePage = lazyPage(() => import("./live/LiveGamePage").then((m) => ({ default: m.LiveGamePage })))
+// The live screens and the editor's Set Up Tonight load only when opened, so a visitor's first load stays smaller.
+const LiveWatch = lazyPage(() => import("./live/LiveWatch").then((m) => ({ default: m.LiveWatch })))
+const SetUpTonight = lazyPage(() => import("./games/SetUpTonight").then((m) => ({ default: m.SetUpTonight })))
 const NightRecap = lazyPage(() => import("./games/NightRecap").then((m) => ({ default: m.NightRecap })))
 const StatEntryPage = lazyPage(() => import("./statentry/StatEntryPage").then((m) => ({ default: m.StatEntryPage })))
 const HallOfFame = lazyPage(() => import("./games/HallOfFame").then((m) => ({ default: m.HallOfFame })))
@@ -77,7 +79,7 @@ export function GamesPage({
   }
 
   if (liveOpen) {
-    return readOnly ? <LiveWatch state={state} onClose={goBack} onRecap={showRecap} /> : <Lazy><LiveGamePage state={state} update={update} onClose={goBack} onRecap={showRecap} /></Lazy>
+    return readOnly ? <Lazy><LiveWatch state={state} onClose={goBack} onRecap={showRecap} /></Lazy> : <Lazy><LiveGamePage state={state} update={update} onClose={goBack} onRecap={showRecap} /></Lazy>
   }
 
   if (recapOpen) {
@@ -148,7 +150,7 @@ export function GamesPage({
         {!readOnly && (
           <>
             <Section id="games-section-setup" title="Set Up Tonight" teaser="RSVP who's coming and log tonight's game">
-              <SetUpTonight state={state} update={update} onCreated={open} />
+              <Lazy><SetUpTonight state={state} update={update} onCreated={open} /></Lazy>
             </Section>
             <Section id="games-section-balance" title="Balance & Predict" teaser="Even splits, matchup odds, and a full night's schedule">
               <Lazy><BalanceAndPredict state={state} update={update} onCreated={open} /></Lazy>
