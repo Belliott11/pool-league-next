@@ -60,7 +60,8 @@ else `src/data/headline-tones.json`. Clips are never reused across headlines sho
 ## Recordings
 
 Placing a game inside a night's recording is done by hand (start and end as m:ss). Live games now save `startedAt`, `endedAt` and an `at`
-time on each of the editor's baskets (friends' baskets go through the `live-score` function, which does not add one yet). With a
+time on each basket (the editor's in the site, friends' in the `live-score` function, version 4, which takes the phone's tap time when it
+is within the last six hours). With a
 recording's own start time (kept in original phone files, lost in exported copies) those would place games and baskets automatically;
 not built yet. Finding game breaks from motion in the video was tried: right on one recording, wrong on one of two breaks on another,
 so it is not reliable enough to place games.

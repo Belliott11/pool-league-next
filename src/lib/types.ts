@@ -101,7 +101,7 @@ export interface Game {
   startedAt?: string
   endedAt?: string
   // Baskets added by friends using the scorekeeper code; folded into liveScores when the game is finished.
-  scorekeeperScores?: { pid: string; points: number; bid?: string }[]
+  scorekeeperScores?: { pid: string; points: number; bid?: string; at?: number }[]
   matchups?: { id: string; defenderId: string; offenderId: string; note?: string; videoTime?: number | null }[]
   clipReviews?: ClipReview[]
   plays?: { id: string; type: "highlight" | "lowlight"; start: number; end: number; playerId?: string | null; note?: string }[]

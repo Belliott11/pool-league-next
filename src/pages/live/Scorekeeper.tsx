@@ -13,7 +13,7 @@ import { TeamColumn, type Pop } from "./LiveGamePage"
 
 // For anyone watching a live game who wants to help keep score: tap Keep score, then add baskets. It shows
 // the scoreboard in place of the read-only view while it is on. No sign-in or code.
-type Pending = { bid: string; pid: string; points: number }
+type Pending = { bid: string; pid: string; points: number; at: number } // at: when it was tapped, sent along even if it goes out late
 
 export function Scorekeeper({ game, state, pops, a, b, children }: { game: Game; state: PooleanState; pops: Pop[]; a: number; b: number; children: ReactNode }) {
   const [keeping, setKeeping] = useState(false)
@@ -42,7 +42,7 @@ export function Scorekeeper({ game, state, pops, a, b, children }: { game: Game;
     if (!next) return
     sending.current = true
     let timer: ReturnType<typeof setTimeout> | undefined
-    void sendBasket(game.id, next.pid, next.points, next.bid).then((r) => {
+    void sendBasket(game.id, next.pid, next.points, next.bid, next.at).then((r) => {
       sending.current = false
       if (r.ok) {
         sentRef.current.add(next.bid)
@@ -103,7 +103,7 @@ export function Scorekeeper({ game, state, pops, a, b, children }: { game: Game;
       pops,
       add: (pid: string, pts: number) => {
         haptic(pts === 3 ? "medium" : pts === 2 ? "light" : "tick")
-        setQueue((q) => [...q, { bid: uid("b"), pid, points: pts }])
+        setQueue((q) => [...q, { bid: uid("b"), pid, points: pts, at: Date.now() }])
       },
     }
     return (

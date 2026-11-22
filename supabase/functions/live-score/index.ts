@@ -20,7 +20,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 const MAX_SCORES = 400
 
-type Score = { pid: string; points: number; bid?: string }
+type Score = { pid: string; points: number; bid?: string; at?: number } // at: when it was scored, ms since 1970
 type Game = {
   id: string
   date: string
@@ -35,10 +35,16 @@ type Game = {
   [key: string]: unknown
 }
 type State = { players: { id: string }[]; games: Game[]; [key: string]: unknown }
-type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; pA?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
+type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; at?: number; pA?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
 
 const total = (g: Game, team: string[]) => [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])].filter((s) => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0)
 const ids = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
+// When a basket was scored: the phone's own time, sent with it (a phone that lost signal sends it late), if that is within the last six
+// hours; else now. Lets a recording's start time place each basket in the video.
+const scoredAt = (v: unknown) => {
+  const now = Date.now(), t = Number(v)
+  return Number.isFinite(t) && t <= now + 60_000 && t >= now - 6 * 3600_000 ? Math.round(t) : now
+}
 
 // Applies one change to a copy of the state, or returns an error to send back.
 function apply(state: State, body: Body): { error: string; status: number } | null {
@@ -73,6 +79,7 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
       liveInProgress: true,
       liveScores: [],
       liveTarget: target,
+      startedAt: new Date().toISOString(),
       // The model's call, sent by the phone that started the game before anything was played.
       ...(Number(body.pA) > 0 && Number(body.pA) < 1 ? { prediction: { pA: Math.round(Number(body.pA) * 1000) / 1000, at: new Date().toISOString() } } : {}),
     })
@@ -92,7 +99,7 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
     // A phone that lost signal sends the same basket again; the id makes that harmless.
     const bid = String(body.bid ?? "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40)
     if (bid && scores.some((x) => x.bid === bid)) return null
-    scores.push(bid ? { pid, points, bid } : { pid, points })
+    scores.push({ pid, points, ...(bid ? { bid } : {}), at: scoredAt(body.at) })
     game.scorekeeperScores = scores
     return null
   }
@@ -110,6 +117,7 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
     delete game.scorekeeperScores
     delete game.liveInProgress
     game.winner = a > b ? "A" : b > a ? "B" : null
+    game.endedAt = new Date().toISOString()
     return null
   }
   return { error: "Unknown action.", status: 400 }
