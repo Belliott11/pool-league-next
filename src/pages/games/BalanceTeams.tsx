@@ -323,7 +323,7 @@ export function BalanceTeams({
     setRandom([ids.slice(0, size), ids.slice(size, size * 2)])
   }
 
-  function useTeams(a: string[], b: string[], teamsPickedBy: Game["teamsPickedBy"] = "balanced") {
+  function createGameWith(a: string[], b: string[], teamsPickedBy: Game["teamsPickedBy"] = "balanced") {
     const game = newGame({ id: uid("game"), date, teamA: [...a], teamB: [...b], prediction: pregamePrediction(a, b), teamsPickedBy })
     update((s) => ({ ...s, games: [...s.games, game] }))
     onCreated(game)
@@ -405,7 +405,7 @@ export function BalanceTeams({
                 Sitting out: {attendees.filter((id) => !random[0].includes(id) && !random[1].includes(id)).map((id) => playerName(state, id)).join(", ")}
               </p>
             )}
-            <Button size="sm" className="self-start" disabled={!date} title={date ? undefined : "Pick a game date first"} onClick={() => useTeams(random[0], random[1], "random")}>
+            <Button size="sm" className="self-start" disabled={!date} title={date ? undefined : "Pick a game date first"} onClick={() => createGameWith(random[0], random[1], "random")}>
               Use these teams and create the game
             </Button>
           </div>
@@ -421,7 +421,7 @@ export function BalanceTeams({
             winRateMap={winRateMap}
             qualityMap={qualityMap}
             date={date}
-            onUse={useTeams}
+            onUse={createGameWith}
           />
         ))}
         {results.length > 0 && anyEstimated && (

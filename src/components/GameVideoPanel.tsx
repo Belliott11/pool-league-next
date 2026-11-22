@@ -89,7 +89,7 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
     }
   }
 
-  function useExisting(from: string) {
+  function copyVideoFrom(from: string) {
     const src = games.find((g) => g.videoUrl === from)
     if (!src?.videoUrl) return
     setError("")
@@ -214,7 +214,7 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
       {reusable.length > 0 && (
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Or use a video another game already has</span>
-          <select className="h-10 rounded-md border bg-background px-2" value="" onChange={(e) => e.target.value && useExisting(e.target.value)} disabled={busy}>
+          <select className="h-10 rounded-md border bg-background px-2" value="" onChange={(e) => e.target.value && copyVideoFrom(e.target.value)} disabled={busy}>
             <option value="">Choose a game's video</option>
             {reusable.map((g) => (
               <option key={g.id} value={g.videoUrl}>

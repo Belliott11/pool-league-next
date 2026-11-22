@@ -1,4 +1,5 @@
-import { lazy, Suspense, type ReactNode } from "react"
+import { Suspense, type ReactNode } from "react"
+import { lazyPage } from "@/lib/lazyPage"
 import { CalendarDays, Crown, Radio } from "lucide-react"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { getClient } from "@/lib/cloud"
@@ -21,14 +22,14 @@ import { OffseasonHub } from "./games/OffseasonHub"
 import { MyCard } from "./games/MyCard"
 
 // Screens opened from the game list load when first opened, so the list itself shows up faster.
-const BalanceAndPredict = lazy(() => import("./games/BalanceAndPredict").then((m) => ({ default: m.BalanceAndPredict })))
-const GamePage = lazy(() => import("./games/GamePage").then((m) => ({ default: m.GamePage })))
-const LiveGamePage = lazy(() => import("./live/LiveGamePage").then((m) => ({ default: m.LiveGamePage })))
-const NightRecap = lazy(() => import("./games/NightRecap").then((m) => ({ default: m.NightRecap })))
-const StatEntryPage = lazy(() => import("./statentry/StatEntryPage").then((m) => ({ default: m.StatEntryPage })))
-const HallOfFame = lazy(() => import("./games/HallOfFame").then((m) => ({ default: m.HallOfFame })))
-const Wrapped = lazy(() => import("./games/Wrapped").then((m) => ({ default: m.Wrapped })))
-const ClipPage = lazy(() => import("./games/ClipPage").then((m) => ({ default: m.ClipPage })))
+const BalanceAndPredict = lazyPage(() => import("./games/BalanceAndPredict").then((m) => ({ default: m.BalanceAndPredict })))
+const GamePage = lazyPage(() => import("./games/GamePage").then((m) => ({ default: m.GamePage })))
+const LiveGamePage = lazyPage(() => import("./live/LiveGamePage").then((m) => ({ default: m.LiveGamePage })))
+const NightRecap = lazyPage(() => import("./games/NightRecap").then((m) => ({ default: m.NightRecap })))
+const StatEntryPage = lazyPage(() => import("./statentry/StatEntryPage").then((m) => ({ default: m.StatEntryPage })))
+const HallOfFame = lazyPage(() => import("./games/HallOfFame").then((m) => ({ default: m.HallOfFame })))
+const Wrapped = lazyPage(() => import("./games/Wrapped").then((m) => ({ default: m.Wrapped })))
+const ClipPage = lazyPage(() => import("./games/ClipPage").then((m) => ({ default: m.ClipPage })))
 const Lazy = ({ children }: { children: ReactNode }) => <Suspense fallback={<PageSkeleton label="Loading" />}>{children}</Suspense>
 
 export function GamesPage({

@@ -5,6 +5,7 @@ import './legacy-style.css'
 import './legacy-shadcn.css'
 import './legacy.css'
 import App from './App.tsx'
+import { AppBoundary } from './components/AppBoundary'
 
 // Works offline once it has been opened with a connection (see public/sw.js). Production only, and
 // only where service workers are allowed (https, or localhost). The files this page already loaded
@@ -33,6 +34,8 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && (location.protocol =
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AppBoundary>
+      <App />
+    </AppBoundary>
   </StrictMode>,
 )

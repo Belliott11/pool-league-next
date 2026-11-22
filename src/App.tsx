@@ -1,4 +1,5 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { lazyPage } from "@/lib/lazyPage"
 import { setAppGames } from "@/lib/matchup"
 import { setPaceGames } from "@/lib/per"
 import { AccountMenu } from "@/components/AccountMenu"
@@ -41,10 +42,10 @@ import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 import { GamesPage } from "@/pages/Games"
 
-const PlayersPage = lazy(() => import("@/pages/PlayersPage").then((m) => ({ default: m.PlayersPage })))
-const ExportPage = lazy(() => import("@/pages/ExportPage").then((m) => ({ default: m.ExportPage })))
-const PlayerDetailPage = lazy(() => import("@/pages/PlayerDetail").then((m) => ({ default: m.PlayerDetailPage })))
-const LeaderboardPage = lazy(() => import("@/pages/Leaderboard").then((m) => ({ default: m.LeaderboardPage })))
+const PlayersPage = lazyPage(() => import("@/pages/PlayersPage").then((m) => ({ default: m.PlayersPage })))
+const ExportPage = lazyPage(() => import("@/pages/ExportPage").then((m) => ({ default: m.ExportPage })))
+const PlayerDetailPage = lazyPage(() => import("@/pages/PlayerDetail").then((m) => ({ default: m.PlayerDetailPage })))
+const LeaderboardPage = lazyPage(() => import("@/pages/Leaderboard").then((m) => ({ default: m.LeaderboardPage })))
 // Once the first screen is up, load the other tabs' code while the page is idle.
 const preloadTabs = () => void Promise.all([import("@/pages/Leaderboard"), import("@/pages/PlayerDetail"), import("@/pages/ExportPage")])
 
