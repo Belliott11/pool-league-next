@@ -17,7 +17,7 @@ import { shareWrappedCard } from "@/lib/shareCard"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { joinNames } from "@/lib/format"
-import { wrappedFor, wrappedPlayers, type Slide } from "@/lib/wrapped"
+import { slideClips, wrappedFor, wrappedPlayers, type Slide } from "@/lib/wrapped"
 
 const pct = (w: number, l: number) => (w + l ? Math.round((w / (w + l)) * 100) : 0)
 
@@ -138,15 +138,12 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
   const id = requested && ids.includes(requested.id) ? requested.id : playerId ? undefined : (myPlayerId(who, state.players) ?? ids[0])
   const slides = useMemo(() => (id ? wrappedFor(state, id) : []), [state, id])
   const [i, setI] = useState(0)
-  const pool = useMemo(() => (id ? bestClips(seasonState(state), { pid: id, limit: 8, perGame: 3 }) : []), [state, id])
+  const pool = useMemo(() => (id ? bestClips(seasonState(state), { pid: id, limit: 16, perGame: 4 }) : []), [state, id])
   const [shared, setShared] = useState("")
   const at = Math.min(i, Math.max(0, slides.length - 1))
   const name = id ? playerName(state, id) : ""
-  // Every slide gets a different play of theirs behind it; the best game slide keeps the play from that game.
-  const clipAt = (k: number): Clip | undefined => {
-    const x = slides[k]
-    return x?.kind === "best" && x.clip ? x.clip : pool[k % (pool.length || 1)]
-  }
+  const bySlide = useMemo(() => slideClips(slides, pool), [slides, pool])
+  const clipAt = (k: number): Clip | undefined => bySlide[k]
   // The next two slides' clips are fetched while this one shows, so each starts the moment its slide comes up.
   useEffect(() => {
     for (let k = at + 1; k <= at + 2 && k < slides.length; k++) {

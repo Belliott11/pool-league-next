@@ -1,4 +1,4 @@
-import { bestClips, type Clip } from "@/lib/clips"
+import { bestClips, clipKey, type Clip } from "@/lib/clips"
 import { awardRace, shownAwards } from "@/lib/awardRace"
 import { playerLine, type PlayerLine } from "@/lib/nightRecap"
 import { seasonState } from "@/lib/offseason"
@@ -175,4 +175,21 @@ const shrunk = (r: { w: number; l: number }) => (r.w + 2.5) / (r.w + r.l + 5)
 export const wrappedPlayers = (full: PooleanState, old: RealGame[] = seasonOld(full)): string[] => {
   const ids = new Set(allResults(seasonState(full), old).flatMap((g) => [...g.won, ...g.lost]))
   return full.players.filter((p) => ids.has(p.id)).map((p) => p.id)
+}
+
+const SAME_MOMENT = 8 // seconds: two plays this close in one game look like the same clip
+
+// The play behind each slide, never one shown already: the best game slide keeps the play from that game, and a play within a few seconds
+// of one already used (a still of the same moment) is skipped. Once the player's plays run out, the rest of the slides have none.
+export function slideClips(slides: Slide[], pool: Clip[]): (Clip | undefined)[] {
+  const used: Clip[] = slides.flatMap((x) => (x.kind === "best" && x.clip ? [x.clip] : []))
+  const near = (c: Clip) => used.some((u) => clipKey(u) === clipKey(c) || (u.gameId === c.gameId && Math.abs(u.time - c.time) < SAME_MOMENT))
+  const rest = [...pool]
+  return slides.map((x) => {
+    if (x.kind === "best" && x.clip) return x.clip
+    while (rest.length && near(rest[0])) rest.shift()
+    const c = rest.shift()
+    if (c) used.push(c)
+    return c
+  })
 }

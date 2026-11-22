@@ -37,7 +37,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   const source = clipSource(url, clip) // the clip's short cut when there is one; times below are in the recording, less `offset` in the cut
   const offset = source.offset
   const box = useRef<HTMLDivElement>(null)
-  const saved = file ? readStill(stillKey(url, Math.max(0, clip.from ?? clip.time - BEFORE))) : null // the frame from a past visit, shown while the video loads
+  const startAt = clip.kind === "still" ? clip.time : Math.max(0, clip.from ?? clip.time - BEFORE) // a still shows the frame the editor picked
+  const saved = file ? readStill(stillKey(url, startAt)) : null // the frame from a past visit, shown while the video loads
   const video = useRef<HTMLVideoElement>(null)
   const [frame, setFrame] = useState(() => (file ? readFrame(url) : null)) // crop onto the pool
   // Reduced motion or Data Saver holds a backdrop still. With `manual`, a Play button lets the person start it anyway.
@@ -53,7 +54,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const start = Math.max(0, clip.from ?? clip.time - BEFORE)
+  const start = startAt
   const zoomed = small && !contain // only a shrunk backdrop is zoomed in
   const following = zoomed && !!clip.track?.length
   const staticFrame = following ? { z: clip.frame?.z ?? 2, x: clip.track![0].x, y: clip.track![0].y } : (clip.frame ?? frame) // a followed clip rests on where it starts
@@ -89,6 +90,7 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
       visible = e.isIntersecting
       if (visible && !v.getAttribute("src")) {
         preconnect(source.src)
+        if (calm) v.preload = "auto" // a backdrop that holds still never plays, so load its frame now (a playing one loads when it plays)
         // A clip fetched ahead of time (Season Wrapped's next slides) plays from memory, at once.
         loadWithStill(v, `${prefetched(source.src) ?? source.src}#t=${Math.max(0, start - offset)}`, stillKey(url, start), Math.max(0, start - offset), () => setFrame(readFrame(url)), url)
       }
