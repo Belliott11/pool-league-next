@@ -77,6 +77,14 @@ from motion in the video was tried: right on one recording, wrong on one of two 
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
 data is fetched with a plain request (`fetchPublic` in `src/lib/cloud.ts`) while the database library loads.
 
+## Votes and predictions
+
+Pick'em votes and preseason predictions belong to the phone that made them: `src/lib/deviceKey.ts` keeps a private key on the phone, and
+the database functions `cast_pickem_vote` and `save_season_prediction` keep only its hash (`owner_hash`) and refuse changes from another
+key (`supabase/pickem.sql`, `supabase/predictions.sql`). The old open write policies on both tables still need dropping (the drop
+statements are in those files; Supabase asks the user to confirm destructive SQL, so run it while they can answer). A test vote
+(game `zz-claude-test`, voter `test-voter`) is still in `pickem_votes` to delete at the same time.
+
 ## Backups
 
 `.github/workflows/backup.yml` saves the league data row, Pick'em votes and preseason predictions every night as a run artifact kept 30
