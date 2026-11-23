@@ -1,7 +1,7 @@
 # Working on Poolean Intel
 
-Pool basketball league stats site. React 19, Vite, TypeScript, Tailwind v4. Live at https://belliott11.github.io/pool-league-next/,
-deployed from `main` by `.github/workflows/deploy.yml`. League terms are defined in `CONTEXT.md`; use them.
+Pool basketball league stats site. React 19, Vite, TypeScript, Tailwind v4. Live at https://belliott11.github.io/pool-league-next/
+and https://intel.poolean.net (the user's domain, served from the same Pages build), deployed from `main` by `.github/workflows/deploy.yml`. League terms are defined in `CONTEXT.md`; use them.
 
 ## Rules
 
@@ -30,7 +30,8 @@ deployed from `main` by `.github/workflows/deploy.yml`. League terms are defined
   the start and at each change of hands that `src/lib/ballCarrier.ts` lists from the shot log (pass and rebound times are estimated
   around the logged shot). Players cannot be told apart automatically: caps vary and are not recorded.
 - Playback crop and follow only apply to backdrops narrower than 640px (`SMALL` in `ClipBackdrop.tsx`).
-- Video frames can only be read (stills, following) on the live origin: the R2 bucket's CORS allows only belliott11.github.io. Headless
+- Video frames can only be read (stills, following) on the live origin: the R2 bucket's CORS allows only belliott11.github.io and
+  intel.poolean.net. Headless
   browsers run IntersectionObserver fine; the user's hidden preview pane does not.
 
 ### Short clip files
