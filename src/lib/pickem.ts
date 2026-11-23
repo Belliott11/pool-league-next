@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { deviceKey } from "@/lib/deviceKey"
 import { backtestPick } from "@/lib/matchup"
 import { favoriteOf, winnerOf, type Side } from "@/lib/scorecard"
 import type { PooleanState } from "@/lib/types"
@@ -15,27 +16,6 @@ export async function loadVotes(client: SupabaseClient): Promise<Vote[]> {
   const { data, error } = await client.from("pickem_votes").select("game_id,voter,pick")
   if (error || !data) return []
   return data.map((r) => ({ gameId: String(r.game_id), voter: String(r.voter), pick: r.pick === "B" ? "B" : "A" }))
-}
-
-// A vote belongs to the phone that cast it: this device's private key goes with every vote, and the database keeps only its hash
-// (supabase/pickem.sql), so a vote can only be changed from the phone that made it. Without storage (private mode) a key lasts the visit.
-const KEY = "pooleanIntelVoteKey"
-let sessionKey = ""
-function deviceKey(): string {
-  try {
-    const have = localStorage.getItem(KEY)
-    if (have) return have
-  } catch {
-    /* storage blocked */
-  }
-  const key = sessionKey || Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, "0")).join("")
-  sessionKey = key
-  try {
-    localStorage.setItem(KEY, key)
-  } catch {
-    /* kept for this visit only */
-  }
-  return key
 }
 
 // False when the vote could not be saved, including a vote another phone already made for this person.

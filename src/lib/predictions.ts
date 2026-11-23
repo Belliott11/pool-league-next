@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { deviceKey } from "@/lib/deviceKey"
 import { awardRace } from "@/lib/awardRace"
 import { oldRanksBetween } from "@/lib/oldSite"
 import { computeLeaderboard } from "@/lib/stats"
@@ -45,9 +46,10 @@ export async function loadAllPredictions(client: SupabaseClient): Promise<(Entry
   return data.map((r) => ({ season: String(r.season), voter: String(r.voter), picks: (r.picks ?? {}) as Picks }))
 }
 
+// False when the picks could not be saved, including picks another phone already made for this person (see deviceKey).
 export async function savePrediction(client: SupabaseClient, season: string, voter: string, picks: Picks): Promise<boolean> {
-  const { error } = await client.from("season_predictions").upsert({ season, voter, picks, updated_at: new Date().toISOString() }, { onConflict: "season,voter" })
-  return !error
+  const { data, error } = await client.rpc("save_season_prediction", { p_season: season, p_voter: voter, p_picks: picks, p_key: deviceKey() })
+  return !error && data === true
 }
 
 // Who the group expects to make a jump, most picked first. A repeat on one entry counts once.

@@ -40,7 +40,7 @@ export function usePredictions(state: PooleanState) {
 }
 export type PredictionsData = ReturnType<typeof usePredictions>
 
-const SAVE_FAILED = "Could not save. Has the predictions table been set up?"
+const SAVE_FAILED = "Could not save. If these picks were made on another phone, only that phone can change them."
 
 function PlayerSelect({ state, value, onChange, label, taken = [] }: { state: PooleanState; value?: string; onChange: (v: string) => void; label: string; taken?: string[] }) {
   const roster = [...state.players].sort((a, b) => a.name.localeCompare(b.name))
