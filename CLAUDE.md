@@ -123,7 +123,7 @@ as a snapshot, then write the backup's `data` back to `league_state` id 1, and v
   libraries used (React 19, Tailwind v4, Vite 8). And Poolean (`https://poolean.net/mcp`, Adam's Worker in `AdamMirmina/poolean`, `web/src/bridge.ts`):
   read-only league data, with the tools `list_players`, `list_games`, `get_game`, `player_games` and `intel_live_game`. It reads this
   site's `public/cloud-config.json`, the `league_state` row (`games[].liveInProgress`) and the `live-score` actions (start, add, undo,
-  finish, review), so renaming any of those breaks it.
+  finish, review), so renaming any of those breaks it; `src/lib/pooleanBridge.test.ts` fails first.
 - Cloud sessions should use the "pool-league-next" environment: it allows the live site, Supabase, the R2 video host, the weather API, Context7 and poolean.net,
   and runs `npm ci` on start.
 
