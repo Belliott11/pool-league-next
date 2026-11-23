@@ -1,8 +1,9 @@
-// Lets anyone watching run a live game, with no sign-in and no code. It can do four things and nothing else:
+// Lets anyone watching run a live game, with no sign-in and no code. It can do five things and nothing else:
 //   start  a live game from players that already exist (only when no game is live)
 //   add    a basket for one of the live game's players
 //   undo   the last basket added this way
 //   finish the live game (their baskets count toward the final score)
+//   review flag a moment of the live game for a second look once the recording is up ("Review that")
 // It cannot add or remove players, edit or delete past games, or touch anything else.
 // Baskets added here go in their own list on the game (scorekeeperScores), separate from the editor's, so
 // the editor's app and this function can both write during a game without overwriting each other.
@@ -19,6 +20,7 @@ const CORS = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } })
 
 const MAX_SCORES = 400
+const MAX_REVIEWS = 60
 
 type Score = { pid: string; points: number; bid?: string; at?: number } // at: when it was scored, ms since 1970
 type Game = {
@@ -35,7 +37,7 @@ type Game = {
   [key: string]: unknown
 }
 type State = { players: { id: string }[]; games: Game[]; [key: string]: unknown }
-type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; at?: number; pA?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
+type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; at?: number; note?: string; by?: string; pA?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
 
 const total = (g: Game, team: string[]) => [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])].filter((s) => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0)
 const ids = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
@@ -101,6 +103,17 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
     if (bid && scores.some((x) => x.bid === bid)) return null
     scores.push({ pid, points, ...(bid ? { bid } : {}), at: scoredAt(body.at) })
     game.scorekeeperScores = scores
+    return null
+  }
+  if (body.action === "review") {
+    const reviews = Array.isArray(game.reviews) ? [...(game.reviews as unknown[])] : []
+    if (reviews.length >= MAX_REVIEWS) return { error: "That is a lot of reviews for one game.", status: 400 }
+    const at = scoredAt(body.at)
+    const note = String(body.note ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 140)
+    const by = String(body.by ?? "")
+    const known = state.players.some((p) => p.id === by)
+    reviews.push({ id: `rv_${at.toString(36)}${Math.random().toString(36).slice(2, 6)}`, at, ...(note ? { note } : {}), ...(known ? { by } : {}) })
+    game.reviews = reviews
     return null
   }
   if (body.action === "undo") {

@@ -100,6 +100,8 @@ export interface Game {
   // When a live game started and finished (ISO times). With a recording's own start time, these place the game in it.
   startedAt?: string
   endedAt?: string
+  // Moments someone flagged for a second look during a live game ("Review that"), lined up with the recording afterward.
+  reviews?: Review[]
   recordedAt?: string // when this game's own video started recording, when it has its own file
   // Baskets added by friends using the scorekeeper code; folded into liveScores when the game is finished.
   scorekeeperScores?: { pid: string; points: number; bid?: string; at?: number }[]
@@ -119,6 +121,15 @@ export interface Rsvp {
 }
 
 // One recording that several games share (a whole night). Each game keeps its own start and end inside it.
+export interface Review {
+  id: string
+  at: number // when it was flagged, ms since 1970
+  note?: string // what is in question, such as "Ben says goaltend"
+  by?: string // who flagged it, a player id, when known
+  videoTime?: number // set by hand when the recording's start time is not known
+  verdict?: "stands" | "overturned" // what the group decided after watching
+}
+
 export interface MasterVideo {
   id: string
   name: string

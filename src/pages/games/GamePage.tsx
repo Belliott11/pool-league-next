@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ClipboardPenLine, Play, Share2 } from "lucide-react"
 import { shareGameCard } from "@/lib/shareCard"
 import { GameVideoPanel } from "@/components/GameVideoPanel"
+import { ReviewsCard } from "./ReviewsCard"
 import { WatchContext, WatchTime } from "@/components/WatchTime"
 import type { PlayerControl } from "@/components/YouTubePlayer"
 import { JUMP_LEAD_SECONDS } from "@/lib/legacy-core"
@@ -446,6 +447,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
       <div ref={videoBox}>
         <GameVideoPanel state={state} game={game} update={update} readOnly={readOnly} control={control} />
       </div>
+      <ReviewsCard state={state} game={game} update={update} readOnly={readOnly} control={control} hasVideo={hasVideo} scrollToVideo={() => videoBox.current?.scrollIntoView({ behavior: "smooth", block: "center" })} />
 
       <Tabs defaultValue={reviewed ? "stats" : "teams"} className="gap-4">
         <TabsList {...TAB_LIST}>

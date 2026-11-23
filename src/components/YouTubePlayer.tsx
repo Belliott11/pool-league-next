@@ -7,6 +7,7 @@ export interface PlayerControl {
   seek: (t: number) => void
   pause: () => void
   play: () => void
+  rate?: (r: number) => void // playback speed, for slow motion (1 is normal)
 }
 
 interface YTPlayer {
@@ -14,6 +15,7 @@ interface YTPlayer {
   seekTo: (t: number, allowSeekAhead: boolean) => void
   playVideo: () => void
   pauseVideo: () => void
+  setPlaybackRate?: (r: number) => void
   destroy: () => void
 }
 type YTApi = { Player: new (el: HTMLElement, opts: { videoId: string; playerVars: Record<string, number>; events: { onReady: () => void } }) => YTPlayer }
@@ -70,6 +72,7 @@ export function YouTubePlayer({ id, control, className, start = 0 }: { id: strin
                 },
                 pause: () => player?.pauseVideo(),
                 play: () => player?.playVideo(),
+                rate: (r) => player?.setPlaybackRate?.(r),
               }
             },
           },

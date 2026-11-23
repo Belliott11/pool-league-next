@@ -1,4 +1,7 @@
 import { gameOver, raceLine } from "@/lib/race"
+import { ReviewThat } from "@/components/ReviewThat"
+import { addReview, newReview } from "@/lib/reviews"
+import { myPlayerId, useWho } from "@/lib/identity"
 import { FlipDigits } from "@/components/FlipDigits"
 import { useEffect, useRef, useState } from "react"
 import { Minus, Plus, Undo2, Flag, X, UserPlus, Vibrate, VibrateOff } from "lucide-react"
@@ -246,6 +249,7 @@ export function TeamColumn({ side, ids, total, other, game, state, sel, setSel, 
 function Board({ game, state, update, onClose, onRecap }: { game: Game; state: PooleanState; update: Update; onClose: () => void; onRecap?: (date: string) => void }) {
   const [sel, setSel] = useState<string | null>(null)
   const [confirm, setConfirm] = useState(false)
+  const who = useWho()
   const [a, b] = liveTotals(game)
   const target = liveTargetOf(game)
   const over = gameOver(a, b, target)
@@ -328,6 +332,7 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
         <TeamColumn side="B" ids={game.teamB} total={b} other={a} {...col} />
       </div>
       <LiveOdds game={game} />
+      <ReviewThat count={(game.reviews ?? []).length} onFlag={(at, note) => (update((s) => addReview(s, game.id, newReview(at, note, myPlayerId(who, state.players)))), true)} />
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline" className="h-12" disabled={!(game.liveScores ?? []).length} onClick={() => {
             haptic("tick")

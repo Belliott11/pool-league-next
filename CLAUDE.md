@@ -72,6 +72,15 @@ function, version 4, which takes the phone's tap time when it is within the last
 is never moved). "Use the live baskets" in stat entry then gives each shot its video time (1.5 s before the tap). Finding game breaks
 from motion in the video was tried: right on one recording, wrong on one of two breaks on another, so it is not used.
 
+## Reviews (instant replay, after the game)
+
+"Review that" on the live screens (`src/components/ReviewThat.tsx`: the editor's scoring screen saves it directly; friends' watch screen
+sends it to the `live-score` function, version 5, action `review`) saves the moment it was tapped, an optional note and who flagged it,
+in `game.reviews` (type `Review`). Once the recording's start time is known, `reviewTime` in `src/lib/reviews.ts` places each one in the
+video, and the Reviews card under the game video (`src/pages/games/ReviewsCard.tsx`) replays it from 8 s before to 3 s after, looping,
+at normal, 0.5x or 0.25x speed; the editor records "Call stands" or "Overturned". Without a recording time, the editor can set the moment
+from where the video is. A live stream with replay during the game is the next step, not built yet.
+
 ## Speed
 
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league

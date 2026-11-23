@@ -45,6 +45,9 @@ function FileVideo({ url, videoRef, className, onTimeUpdate, start, control }: {
       },
       pause: () => own.current?.pause(),
       play: () => void own.current?.play().catch(() => {}),
+      rate: (r) => {
+        if (own.current) own.current.playbackRate = r
+      },
     }
     return () => {
       control.current = null

@@ -85,6 +85,10 @@ One frame an editor picked by hand, shown as a picture instead of a playing clip
 A clip saved as its own short file, so it loads without the full recording (`src/lib/clipCuts.ts`).
 _Avoid_: Trim (a trim is the editor's chosen start and end)
 
+**Review**:
+A moment someone flagged during a live game for a second look ("Review that"). It is replayed from the recording afterward, and the group's call is kept as "Call stands" or "Overturned".
+_Avoid_: Challenge, dispute
+
 ### Scores and predictions
 
 **Defensive score**:

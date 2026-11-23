@@ -1,4 +1,7 @@
 import { gameOver, raceLine } from "@/lib/race"
+import { ReviewThat } from "@/components/ReviewThat"
+import { flagReview } from "@/lib/scorekeeper"
+import { myPlayerId, useWho } from "@/lib/identity"
 import { FlipDigits } from "@/components/FlipDigits"
 import { CalendarDays, Radio, Tv } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -56,6 +59,7 @@ function Side({ side, ids, total, other, game, state, pops }: { side: "A" | "B";
 // The live scoreboard for anyone who is not the editor: the same score, odds and effects, with no buttons.
 // It follows whatever the editor is scoring; the data refreshes every few seconds.
 export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; onClose: () => void; onRecap?: (date: string) => void }) {
+  const who = useWho() // who flagged a moment, when they have said who they are
   const live = findLiveGame(state)
   const [tv, setTv] = useState(false)
   // Remember the game so that when it ends the final score stays on screen instead of vanishing.
@@ -129,6 +133,7 @@ export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; on
         </p>
       )}
       {isLive && <LiveOdds game={game} />}
+      {isLive && <ReviewThat count={(game.reviews ?? []).length} onFlag={async (at, note) => (await flagReview(game.id, at, note, myPlayerId(who, state.players))).ok} />}
       <Button variant="outline" onClick={() => setTv(true)}>
         <Tv aria-hidden /> Big scoreboard for a TV
       </Button>

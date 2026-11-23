@@ -30,3 +30,5 @@ export const startGame = (gameId: string, date: string, teamA: string[], teamB: 
   call({ action: "start", gameId, date, teamA, teamB, target, pA })
 export const finishGame = (gameId: string): Promise<Reply> => call({ action: "finish", gameId })
 export const undoBasket = (gameId: string): Promise<Reply> => call({ action: "undo", gameId })
+// Flags a moment of the live game for a second look ("Review that"): when it was tapped, an optional note, and who flagged it.
+export const flagReview = (gameId: string, at: number, note?: string, by?: string | null): Promise<Reply> => call({ action: "review", gameId, at, ...(note ? { note } : {}), ...(by ? { by } : {}) })
