@@ -1,3 +1,4 @@
+import { SITE } from "@/lib/site"
 import shares from "@/data/clip-shares.json"
 import { gameClips, type Clip } from "@/lib/clips"
 import { cutKey, cutWindow } from "@/lib/clipCuts"
@@ -41,6 +42,5 @@ export function clipById(state: PooleanState, id: string): Clip | null {
 
 // The link to send: its preview page when the clip has one, else the site's own page for it.
 export function shareLink(id: string): string {
-  const base = `${location.origin}${import.meta.env.BASE_URL}`
-  return table[id] ? `${base}clip/${id}.html` : `${base}#/games/clip/${id}`
+  return table[id] ? `${SITE}clip/${id}.html` : `${SITE}#/games/clip/${id}`
 }

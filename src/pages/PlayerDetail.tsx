@@ -1,3 +1,4 @@
+import { SITE } from "@/lib/site"
 import { PlayerRead } from "@/pages/PlayerRead"
 import { PlayerCompare } from "@/pages/PlayerCompare"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
@@ -266,7 +267,7 @@ export function PlayerDetailPage({
   const record = row ? `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}` : null
 
   async function share() {
-    const url = `${location.origin}${location.pathname}#player=${encodeURIComponent(pid!)}`
+    const url = `${SITE}#player=${encodeURIComponent(pid!)}`
     const text = row ? `${player!.name}: ${record}, ${fmtRate(row.twoWayPer25)} Two-Way/G` : player!.name
     if (navigator.share) {
       try {

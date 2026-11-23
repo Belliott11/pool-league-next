@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { SITE } from "@/lib/site"
 // The classic site's compute layer, column definitions and dependencies, taken verbatim so the numbers match the
 // classic site exactly. It started as generated output; the generator is gone, so edit this file directly.
 import { PER, gamePace } from "@/lib/per";
@@ -897,7 +898,7 @@ function copyGameShareLink(game, btn) {
   shareOrCopy({
     title: "Poolean Intel",
     text: buildGameShareText(game),
-    url: `${location.origin}${location.pathname}#game=${encodeURIComponent(game.id)}`
+    url: `${SITE}#game=${encodeURIComponent(game.id)}`
   }, btn);
 }
 
@@ -8716,7 +8717,7 @@ function renderPlayerDetail() {
     text: row
       ? `${player.name}: ${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}, ${row.twoWayPer25.toFixed(1)} Two-Way/G`
       : player.name,
-    url: `${location.origin}${location.pathname}#player=${encodeURIComponent(player.id)}`
+    url: `${SITE}#player=${encodeURIComponent(player.id)}`
   }, shareBtn);
   const cardBtn = document.getElementById("downloadCardBtn");
   if (cardBtn) cardBtn.onclick = () => downloadTradingCard(player.id);

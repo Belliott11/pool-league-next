@@ -49,7 +49,8 @@ api.cloudflare.com.
 `npm run cut-clips` also saves a picture of each play (`clips/.../<name>.jpg`) and lists shareable clips in
 `src/data/clip-shares.json` (never one that goes badly for someone). The build writes `clip/<id>.html` for each (the `clipPages` plugin
 in `vite.config.ts`): the preview title and picture, then a redirect to `#/games/clip/<id>` (`src/pages/games/ClipPage.tsx`). Ids come
-from `clipId` in `src/lib/clipShare.ts`. Clip tiles have a Share button.
+from `clipId` in `src/lib/clipShare.ts`. Clip tiles have a Share button. Every link that is sent (share buttons, link previews) uses the public
+address in `src/lib/site.ts` (`https://intel.poolean.net/`; the clip pages' copy is `SITE` in `vite.config.ts`).
 
 ### Season trailer
 

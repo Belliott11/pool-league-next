@@ -1,3 +1,4 @@
+import { SITE } from "@/lib/site"
 import { Play } from "lucide-react"
 import { FlipDigits } from "@/components/FlipDigits"
 import { TEAM } from "@/lib/teamColors"
@@ -63,7 +64,7 @@ function bestAndWorst(state: PooleanState, game: Game) {
 
 async function shareGame(state: PooleanState, game: Game) {
   const text = `${formatDateDisplay(game.date)}: ${names(state, game.teamA, "Team A")} ${teamScore(game, game.teamA)} - ${teamScore(game, game.teamB)} ${names(state, game.teamB, "Team B")}`
-  const url = `${location.origin}${location.pathname}#game=${encodeURIComponent(game.id)}`
+  const url = `${SITE}#game=${encodeURIComponent(game.id)}`
   if (navigator.share) {
     try {
       await navigator.share({ title: "Poolean Intel", text, url })

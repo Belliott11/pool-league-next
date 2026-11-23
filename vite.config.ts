@@ -5,7 +5,7 @@ import react from "@vitejs/plugin-react"
 import { defineConfig, type Plugin } from "vite"
 
 const BASE = "/pool-league-next/"
-const SITE = "https://belliott11.github.io" + BASE
+const SITE = "https://intel.poolean.net/" // the public address links and previews use (src/lib/site.ts)
 const VIDEO_HOST = "https://pub-fe959ca0159c462e9b4e69082ac20db5.r2.dev" // the video bucket's public address (see src/lib/clipCuts.ts)
 
 // One small page per shareable clip (src/data/clip-shares.json, written by npm run cut-clips), at clip/<id>.html. It carries the title
