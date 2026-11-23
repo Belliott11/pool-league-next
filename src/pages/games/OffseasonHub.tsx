@@ -59,10 +59,10 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
     <section className="flex flex-col gap-4 rounded-xl border-2 border-accent/60 bg-card p-4" aria-label="Offseason">
       <div className="flex flex-col gap-1">
         <p className="text-xs font-semibold uppercase tracking-wider text-accent">{tonight ? "Opening night is tonight" : "Opening night"}</p>
-        <h3 className="font-display text-2xl font-bold">
+        <h2 className="font-display text-2xl font-bold">
           {formatDateLong(o.date)}
           {o.time && <span className="whitespace-nowrap text-muted-foreground">, {formatTime(o.time)}</span>}
-        </h3>
+        </h2>
         <p className="text-xs text-muted-foreground">Cherry Hill time.</p>
         <Countdown date={o.date} time={o.time} className="font-display text-xl font-bold tabular-nums text-accent" />
         {weather && (
@@ -111,7 +111,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
 
       {tonight && tonightsGames.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <h4 className="text-sm font-semibold">Tonight so far</h4>
+          <h3 className="text-sm font-semibold">Tonight so far</h3>
           {tonightsGames.map((g) => {
             const [a, b] = scoreOf(g)
             return (
@@ -135,9 +135,9 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
       )}
 
       <div className="flex flex-col gap-1.5">
-        <h4 className="flex items-center gap-2 text-sm font-semibold">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Sparkles aria-hidden className="size-4 text-gold" /> Predicted players to watch
-        </h4>
+        </h3>
         {picks.length === 0 ? (
           <p className="text-xs text-muted-foreground">Nobody has picked yet. {tonight ? "" : "Pick who makes a jump below."}</p>
         ) : (

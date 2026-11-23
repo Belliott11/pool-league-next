@@ -13,7 +13,7 @@ export function Section({ id, title, teaser, icon, children }: { id: string; tit
       <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1 p-4 [&::-webkit-details-marker]:hidden">
         <ChevronRight aria-hidden className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
         {icon && <IconChip icon={icon} />}
-        <h3 className="font-display text-lg font-bold">{title}</h3>
+        <h2 className="font-display text-lg font-bold">{title}</h2>
         <span className="text-sm text-muted-foreground">{teaser}</span>
       </summary>
       <div className="flex flex-col gap-4 p-4 pt-0">{opened && children}</div>
