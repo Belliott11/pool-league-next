@@ -100,6 +100,8 @@ export interface Game {
   // When a live game started and finished (ISO times). With a recording's own start time, these place the game in it.
   startedAt?: string
   endedAt?: string
+  // The live stream of this game (an unlisted YouTube live link), watched with replay buttons; it becomes the game's video when it ends.
+  streamUrl?: string
   // Moments someone flagged for a second look during a live game ("Review that"), lined up with the recording afterward.
   reviews?: Review[]
   recordedAt?: string // when this game's own video started recording, when it has its own file

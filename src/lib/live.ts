@@ -45,7 +45,9 @@ export function finishLive(state: PooleanState, id: string): PooleanState {
     // Friends' baskets become part of the game's score so the stats see one list.
     if (rest.scorekeeperScores?.length) rest.liveScores = [...(rest.liveScores ?? []), ...rest.scorekeeperScores]
     delete rest.scorekeeperScores
-    return { ...rest, winner: a > b ? "A" : b > a ? "B" : null, endedAt: new Date().toISOString() }
+    // A game that was streamed keeps the stream as its video (YouTube keeps a live stream once it ends), unless it already has one.
+    const video = rest.streamUrl && !rest.videoUrl && !rest.masterVideoId ? { videoUrl: rest.streamUrl } : {}
+    return { ...rest, ...video, winner: a > b ? "A" : b > a ? "B" : null, endedAt: new Date().toISOString() }
   })
 }
 

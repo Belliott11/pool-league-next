@@ -75,11 +75,18 @@ from motion in the video was tried: right on one recording, wrong on one of two 
 ## Reviews (instant replay, after the game)
 
 "Review that" on the live screens (`src/components/ReviewThat.tsx`: the editor's scoring screen saves it directly; friends' watch screen
-sends it to the `live-score` function, version 5, action `review`) saves the moment it was tapped, an optional note and who flagged it,
+sends it to the `live-score` function, version 6, action `review`) saves the moment it was tapped, an optional note and who flagged it,
 in `game.reviews` (type `Review`). Once the recording's start time is known, `reviewTime` in `src/lib/reviews.ts` places each one in the
 video, and the Reviews card under the game video (`src/pages/games/ReviewsCard.tsx`) replays it from 8 s before to 3 s after, looping,
 at normal, 0.5x or 0.25x speed; the editor records "Call stands" or "Overturned". Without a recording time, the editor can set the moment
-from where the video is. A live stream with replay during the game is the next step, not built yet.
+from where the video is.
+
+Live stream with instant replay: anyone at the game pastes the unlisted YouTube live link (`src/components/StreamLink.tsx`; the editor's
+screen saves it directly, friends' through the function's `stream` action, which accepts only https YouTube links), saved as
+`game.streamUrl`. Both live screens show it (`src/components/LiveStream.tsx`) with Replay 10s, 30s and Live buttons. A "Review that"
+from a phone watching the stream saves where the stream was (`videoTime`), exact without any clock. When the game finishes, the stream
+becomes the game's video (`finishLive`, and the function's finish) unless it already has one. YouTube is blocked in this cloud
+environment, so the player itself can only be tested on the live site.
 
 ## Speed
 

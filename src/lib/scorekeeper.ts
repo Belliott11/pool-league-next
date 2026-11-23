@@ -31,4 +31,7 @@ export const startGame = (gameId: string, date: string, teamA: string[], teamB: 
 export const finishGame = (gameId: string): Promise<Reply> => call({ action: "finish", gameId })
 export const undoBasket = (gameId: string): Promise<Reply> => call({ action: "undo", gameId })
 // Flags a moment of the live game for a second look ("Review that"): when it was tapped, an optional note, and who flagged it.
-export const flagReview = (gameId: string, at: number, note?: string, by?: string | null): Promise<Reply> => call({ action: "review", gameId, at, ...(note ? { note } : {}), ...(by ? { by } : {}) })
+export const flagReview = (gameId: string, at: number, note?: string, by?: string | null, videoTime?: number | null): Promise<Reply> =>
+  call({ action: "review", gameId, at, ...(note ? { note } : {}), ...(by ? { by } : {}), ...(typeof videoTime === "number" && videoTime > 0 ? { videoTime } : {}) })
+// Saves the game's YouTube live link, so everyone watching sees the stream with replay buttons.
+export const setStream = (gameId: string, url: string): Promise<Reply> => call({ action: "stream", gameId, url })

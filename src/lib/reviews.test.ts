@@ -25,3 +25,9 @@ test("no place in the video before the recording's time is known, verdicts are k
   s = updateReview(s, "g1", id, null)
   expect(s.games[0].reviews).toEqual([])
 })
+
+test("a moment flagged while watching the stream keeps where the stream was, which needs no clock", () => {
+  const noRec = { ...state, masterVideos: [{ id: "m1", name: "Aug 16" }] } as unknown as PooleanState
+  const s = addReview(noRec, "g1", newReview(rec + 1, "in or out?", null, 1234.56))
+  expect(reviewTime(s, s.games[0], s.games[0].reviews![0])).toBe(1234.6)
+})

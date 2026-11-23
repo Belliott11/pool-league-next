@@ -8,6 +8,7 @@ export interface PlayerControl {
   pause: () => void
   play: () => void
   rate?: (r: number) => void // playback speed, for slow motion (1 is normal)
+  duration?: () => number // for a live stream, how far it has run, so "back to live" can jump there
 }
 
 interface YTPlayer {
@@ -16,6 +17,7 @@ interface YTPlayer {
   playVideo: () => void
   pauseVideo: () => void
   setPlaybackRate?: (r: number) => void
+  getDuration?: () => number
   destroy: () => void
 }
 type YTApi = { Player: new (el: HTMLElement, opts: { videoId: string; playerVars: Record<string, number>; events: { onReady: () => void } }) => YTPlayer }
@@ -73,6 +75,7 @@ export function YouTubePlayer({ id, control, className, start = 0 }: { id: strin
                 pause: () => player?.pauseVideo(),
                 play: () => player?.playVideo(),
                 rate: (r) => player?.setPlaybackRate?.(r),
+                duration: () => player?.getDuration?.() ?? 0,
               }
             },
           },

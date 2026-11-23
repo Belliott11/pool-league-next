@@ -1,9 +1,10 @@
-// Lets anyone watching run a live game, with no sign-in and no code. It can do five things and nothing else:
+// Lets anyone watching run a live game, with no sign-in and no code. It can do six things and nothing else:
 //   start  a live game from players that already exist (only when no game is live)
 //   add    a basket for one of the live game's players
 //   undo   the last basket added this way
 //   finish the live game (their baskets count toward the final score)
 //   review flag a moment of the live game for a second look once the recording is up ("Review that")
+//   stream save the live game's YouTube live link, so everyone watching can see it and replay
 // It cannot add or remove players, edit or delete past games, or touch anything else.
 // Baskets added here go in their own list on the game (scorekeeperScores), separate from the editor's, so
 // the editor's app and this function can both write during a game without overwriting each other.
@@ -37,7 +38,7 @@ type Game = {
   [key: string]: unknown
 }
 type State = { players: { id: string }[]; games: Game[]; [key: string]: unknown }
-type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; at?: number; note?: string; by?: string; pA?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
+type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; at?: number; note?: string; by?: string; videoTime?: number; url?: string; pA?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
 
 const total = (g: Game, team: string[]) => [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])].filter((s) => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0)
 const ids = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
@@ -112,8 +113,24 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
     const note = String(body.note ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 140)
     const by = String(body.by ?? "")
     const known = state.players.some((p) => p.id === by)
-    reviews.push({ id: `rv_${at.toString(36)}${Math.random().toString(36).slice(2, 6)}`, at, ...(note ? { note } : {}), ...(known ? { by } : {}) })
+    // Where the stream was when flagged, from a phone watching it: exact, so the clock is not needed.
+    const vt = Number(body.videoTime)
+    const videoTime = Number.isFinite(vt) && vt > 0 && vt < 86400 ? Math.round(vt * 10) / 10 : null
+    reviews.push({ id: `rv_${at.toString(36)}${Math.random().toString(36).slice(2, 6)}`, at, ...(note ? { note } : {}), ...(known ? { by } : {}), ...(videoTime ? { videoTime } : {}) })
     game.reviews = reviews
+    return null
+  }
+  if (body.action === "stream") {
+    const url = String(body.url ?? "").trim()
+    let ok = false
+    try {
+      const u = new URL(url)
+      ok = u.protocol === "https:" && /(^|\.)(youtube\.com|youtu\.be)$/i.test(u.hostname) && url.length <= 200
+    } catch {
+      ok = false
+    }
+    if (!ok) return { error: "That is not a YouTube link.", status: 400 }
+    game.streamUrl = url
     return null
   }
   if (body.action === "undo") {
@@ -131,6 +148,8 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
     delete game.liveInProgress
     game.winner = a > b ? "A" : b > a ? "B" : null
     game.endedAt = new Date().toISOString()
+    // A streamed game keeps the stream as its video (YouTube keeps a live stream once it ends), unless it already has one.
+    if (game.streamUrl && !game.videoUrl && !game.masterVideoId) game.videoUrl = game.streamUrl
     return null
   }
   return { error: "Unknown action.", status: 400 }

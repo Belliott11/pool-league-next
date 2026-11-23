@@ -9,9 +9,11 @@ export const NOTE_MAX = 140
 export const BEFORE = 8 // seconds of video before the tap: people tap a moment after the play
 export const AFTER = 3
 
-export const newReview = (at: number, note?: string, by?: string | null): Review => ({
+// `videoTime`: where the stream was when flagged, from a phone that was watching it (exact, so no clock is needed).
+export const newReview = (at: number, note?: string, by?: string | null, videoTime?: number | null): Review => ({
   id: `rv_${at.toString(36)}${Math.random().toString(36).slice(2, 6)}`,
   at,
+  ...(typeof videoTime === "number" && videoTime > 0 ? { videoTime: Math.round(videoTime * 10) / 10 } : {}),
   ...(note?.trim() ? { note: note.trim().slice(0, NOTE_MAX) } : {}),
   ...(by ? { by } : {}),
 })

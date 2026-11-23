@@ -1,4 +1,7 @@
 import { gameOver, raceLine } from "@/lib/race"
+import { LiveStream } from "@/components/LiveStream"
+import { StreamLink } from "@/components/StreamLink"
+import type { PlayerControl } from "@/components/YouTubePlayer"
 import { ReviewThat } from "@/components/ReviewThat"
 import { addReview, newReview } from "@/lib/reviews"
 import { myPlayerId, useWho } from "@/lib/identity"
@@ -250,6 +253,7 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
   const [sel, setSel] = useState<string | null>(null)
   const [confirm, setConfirm] = useState(false)
   const who = useWho()
+  const stream = useRef<PlayerControl | null>(null) // the live stream on this screen, so a flagged moment notes where the stream was
   const [a, b] = liveTotals(game)
   const target = liveTargetOf(game)
   const over = gameOver(a, b, target)
@@ -332,7 +336,9 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
         <TeamColumn side="B" ids={game.teamB} total={b} other={a} {...col} />
       </div>
       <LiveOdds game={game} />
-      <ReviewThat count={(game.reviews ?? []).length} onFlag={(at, note) => (update((s) => addReview(s, game.id, newReview(at, note, myPlayerId(who, state.players)))), true)} />
+      {game.streamUrl && <LiveStream url={game.streamUrl} control={stream} />}
+      <StreamLink current={game.streamUrl} onSave={(url) => (update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, streamUrl: url } : g)) })), true)} />
+      <ReviewThat count={(game.reviews ?? []).length} onFlag={(at, note) => (update((s) => addReview(s, game.id, newReview(at, note, myPlayerId(who, state.players), game.streamUrl ? stream.current?.time() : null))), true)} />
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline" className="h-12" disabled={!(game.liveScores ?? []).length} onClick={() => {
             haptic("tick")
