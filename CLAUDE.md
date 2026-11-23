@@ -86,8 +86,11 @@ as a snapshot, then write the backup's `data` back to `league_state` id 1, and v
 
 ## Environment
 
-- `.mcp.json` adds the Playwright browser MCP (`scripts/playwright-mcp.sh`) for testing pages, including the live site.
-- Cloud sessions should use the "pool-league-next" environment: it allows the live site, Supabase, the R2 video host and the weather API,
+- `.mcp.json` adds three MCP servers: Playwright (`scripts/playwright-mcp.sh`) for driving pages, including the live site; Chrome
+  DevTools (`scripts/chrome-devtools-mcp.sh`, version 1.12.0, no usage statistics or CrUX lookups sent to Google) for performance
+  traces, network and console inspection and Lighthouse audits; and Context7 (`https://mcp.context7.com/mcp`) for current docs of the
+  libraries used (React 19, Tailwind v4, Vite 8).
+- Cloud sessions should use the "pool-league-next" environment: it allows the live site, Supabase, the R2 video host, the weather API and Context7,
   and runs `npm ci` on start.
 
 ## Ideas not built

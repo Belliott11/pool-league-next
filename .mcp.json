@@ -3,6 +3,14 @@
     "playwright": {
       "command": "bash",
       "args": ["scripts/playwright-mcp.sh"]
+    },
+    "chrome-devtools": {
+      "command": "bash",
+      "args": ["scripts/chrome-devtools-mcp.sh"]
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
     }
   }
 }
