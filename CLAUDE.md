@@ -81,9 +81,8 @@ data is fetched with a plain request (`fetchPublic` in `src/lib/cloud.ts`) while
 
 Pick'em votes and preseason predictions belong to the phone that made them: `src/lib/deviceKey.ts` keeps a private key on the phone, and
 the database functions `cast_pickem_vote` and `save_season_prediction` keep only its hash (`owner_hash`) and refuse changes from another
-key (`supabase/pickem.sql`, `supabase/predictions.sql`). The old open write policies on both tables still need dropping (the drop
-statements are in those files; Supabase asks the user to confirm destructive SQL, so run it while they can answer). A test vote
-(game `zz-claude-test`, voter `test-voter`) is still in `pickem_votes` to delete at the same time.
+key (`supabase/pickem.sql`, `supabase/predictions.sql`). Direct writes to both tables are refused (only the read policies remain), so
+the functions are the only way in.
 
 ## Backups
 
