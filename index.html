@@ -36,7 +36,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@50..150,100..900&family=Doto:wght@700;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Shown the moment the page arrives, while the site's code loads; React replaces it. -->
+    <div id="root">
+      <div class="mx-auto flex max-w-5xl flex-col gap-4 p-4 sm:p-6" aria-busy="true">
+        <div class="flex items-center py-3">
+          <span class="font-display text-base font-extrabold uppercase sm:text-2xl sm:tracking-wide">Poolean <span class="text-accent">Intel</span></span>
+        </div>
+        <p class="text-sm text-muted-foreground motion-safe:animate-pulse">Loading the league</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
