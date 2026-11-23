@@ -2,6 +2,8 @@
 // briefly so the eye finds it. Panels are found by the `data-panel` / `data-player-panel` title.
 export function jumpToPanel(sectionId: string | null, title: string) {
   if (sectionId) {
+    // A page that shows its groups as tabs (the Player page) switches to the right one.
+    document.dispatchEvent(new CustomEvent("panel-section", { detail: sectionId }))
     const section = document.getElementById(sectionId) as HTMLDetailsElement | null
     if (section) section.open = true
   }

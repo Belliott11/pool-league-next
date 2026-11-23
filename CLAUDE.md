@@ -88,6 +88,12 @@ from a phone watching the stream saves where the stream was (`videoTime`), exact
 becomes the game's video (`finishLive`, and the function's finish) unless it already has one. YouTube is blocked in this cloud
 environment, so the player itself can only be tested on the live site.
 
+## Player page
+
+Summary first (`src/pages/PlayerDetail.tsx`): the header, an "At a glance" card (`src/pages/PlayerGlance.tsx`: standing, win rate,
+rebounds, true shooting, best at and work on from the scouting report), then tabs (Overview, Shooting, Defense, Passing, Matchups,
+History) holding every panel. "Jump to a panel" switches tabs through the `panel-section` event in `src/lib/jump.ts`.
+
 ## Speed
 
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
