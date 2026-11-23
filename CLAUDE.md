@@ -117,11 +117,14 @@ as a snapshot, then write the backup's `data` back to `league_state` id 1, and v
 
 ## Environment
 
-- `.mcp.json` adds three MCP servers: Playwright (`scripts/playwright-mcp.sh`) for driving pages, including the live site; Chrome
+- `.mcp.json` adds four MCP servers: Playwright (`scripts/playwright-mcp.sh`) for driving pages, including the live site; Chrome
   DevTools (`scripts/chrome-devtools-mcp.sh`, version 1.12.0, no usage statistics or CrUX lookups sent to Google) for performance
   traces, network and console inspection and Lighthouse audits; and Context7 (`https://mcp.context7.com/mcp`) for current docs of the
-  libraries used (React 19, Tailwind v4, Vite 8).
-- Cloud sessions should use the "pool-league-next" environment: it allows the live site, Supabase, the R2 video host, the weather API and Context7,
+  libraries used (React 19, Tailwind v4, Vite 8). And Poolean (`https://poolean.net/mcp`, Adam's Worker in `AdamMirmina/poolean`, `web/src/bridge.ts`):
+  read-only league data, with the tools `list_players`, `list_games`, `get_game`, `player_games` and `intel_live_game`. It reads this
+  site's `public/cloud-config.json`, the `league_state` row (`games[].liveInProgress`) and the `live-score` actions (start, add, undo,
+  finish, review), so renaming any of those breaks it.
+- Cloud sessions should use the "pool-league-next" environment: it allows the live site, Supabase, the R2 video host, the weather API, Context7 and poolean.net,
   and runs `npm ci` on start.
 
 ## Ideas not built

@@ -2,15 +2,23 @@
   "mcpServers": {
     "playwright": {
       "command": "bash",
-      "args": ["scripts/playwright-mcp.sh"]
+      "args": [
+        "scripts/playwright-mcp.sh"
+      ]
     },
     "chrome-devtools": {
       "command": "bash",
-      "args": ["scripts/chrome-devtools-mcp.sh"]
+      "args": [
+        "scripts/chrome-devtools-mcp.sh"
+      ]
     },
     "context7": {
       "type": "http",
       "url": "https://mcp.context7.com/mcp"
+    },
+    "poolean": {
+      "type": "http",
+      "url": "https://poolean.net/mcp"
     }
   }
 }
