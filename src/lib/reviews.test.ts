@@ -31,3 +31,11 @@ test("a moment flagged while watching the stream keeps where the stream was, whi
   const s = addReview(noRec, "g1", newReview(rec + 1, "in or out?", null, 1234.56))
   expect(reviewTime(s, s.games[0], s.games[0].reviews![0])).toBe(1234.6)
 })
+
+test("the tally counts flags, calls and who was right, most overturned first", async () => {
+  const { reviewTally } = await import("@/lib/reviews")
+  const g = (reviews: object[]) => ({ ...game, reviews }) as unknown as Game
+  const t = reviewTally([g([{ id: "1", at: 1, by: "ben", verdict: "overturned" }, { id: "2", at: 2, by: "ben", verdict: "stands" }]), g([{ id: "3", at: 3, by: "zach", verdict: "overturned" }, { id: "4", at: 4, by: "zach", verdict: "overturned" }, { id: "5", at: 5 }])])
+  expect(t).toMatchObject({ flagged: 5, settled: 4, overturned: 3 })
+  expect(t.players.map((p) => [p.id, p.flagged, p.overturned, p.stood])).toEqual([["zach", 2, 2, 0], ["ben", 2, 1, 1]])
+})

@@ -13,6 +13,7 @@ import { rivalries } from "@/lib/rivalries"
 import { getClient } from "@/lib/cloud"
 import { loadAllPredictions, pastSeasons, type PastSeason } from "@/lib/predictions"
 import type { PooleanState } from "@/lib/types"
+import { reviewTally } from "@/lib/reviews"
 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
 
@@ -42,6 +43,21 @@ function Row({ i, rank, state, id, value, sub, onOpenPlayer }: { i: number; rank
       </button>
       <span className="font-display font-bold tabular-nums">{value}</span>
     </div>
+  )
+}
+
+// Replay reviews: how often a call is overturned, and who flags (and turns out right) most. Shows once anything has been flagged.
+function ReplayBoard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+  const t = reviewTally(state.games)
+  if (t.flagged === 0) return null
+  return (
+    <Board title="Replay review" hint={`${t.flagged} moment${t.flagged === 1 ? "" : "s"} flagged with Review that. ${t.settled ? `Of the ${t.settled} called, ${t.overturned} ${t.overturned === 1 ? "was" : "were"} overturned (${Math.round((t.overturned / t.settled) * 100)}%).` : "None called yet."}`}>
+      {t.players.length === 0 && <p className="text-muted-foreground">Nobody has put their name to a review yet.</p>}
+      {t.players.map((p, i) => (
+        <Row key={p.id} i={i} state={state} id={p.id} value={`${p.overturned}-${p.stood}`} sub={`${p.flagged} flagged`} onOpenPlayer={onOpenPlayer} />
+      ))}
+      {t.players.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Overturned and stood, of the reviews each person flagged.</p>}
+    </Board>
   )
 }
 
@@ -161,6 +177,8 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
           )
         })}
       </Board>
+
+      <ReplayBoard state={state} onOpenPlayer={onOpenPlayer} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Board title="Longest win streaks" hint="Every result, including the old site's games that were never filmed.">

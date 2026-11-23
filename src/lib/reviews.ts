@@ -42,3 +42,30 @@ export function reviewTime(state: PooleanState, game: Game, r: Review): number |
 
 // Every call settled so far, for a season tally.
 export const settled = (games: Game[]) => games.flatMap((g) => (g.reviews ?? []).filter((r) => r.verdict))
+
+export interface ReviewTally {
+  flagged: number // every flagged moment
+  settled: number // ones the group made a call on
+  overturned: number
+  players: { id: string; flagged: number; overturned: number; stood: number }[] // by who flagged it, most overturned first
+}
+
+// The season's replay reviews, all games given: how often a call is overturned, and who flags, and is right, most often.
+export function reviewTally(games: Game[]): ReviewTally {
+  const all = games.flatMap((g) => g.reviews ?? [])
+  const by = new Map<string, { id: string; flagged: number; overturned: number; stood: number }>()
+  for (const r of all) {
+    if (!r.by) continue
+    const p = by.get(r.by) ?? { id: r.by, flagged: 0, overturned: 0, stood: 0 }
+    p.flagged++
+    if (r.verdict === "overturned") p.overturned++
+    if (r.verdict === "stands") p.stood++
+    by.set(r.by, p)
+  }
+  return {
+    flagged: all.length,
+    settled: all.filter((r) => r.verdict).length,
+    overturned: all.filter((r) => r.verdict === "overturned").length,
+    players: [...by.values()].sort((a, b) => b.overturned - a.overturned || b.flagged - a.flagged || a.id.localeCompare(b.id)),
+  }
+}
