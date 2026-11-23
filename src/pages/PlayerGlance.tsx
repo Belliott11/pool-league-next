@@ -9,7 +9,7 @@ type Row = BoardRow & { wins: number; losses: number; ties: number; winPct: numb
 // Games a player needs before a standings rank means anything.
 const RANKED_GP = 3
 
-// The few numbers someone opening a player's page wants first: where they stand, how often they win, what they grab and how well they shoot, and one
+// The few numbers someone opening a player's page wants first: where they stand, how often they win, how much they set up and how well they shoot, and one
 // line each on what they do best and what to work on (from the scouting report). Everything else is in the tabs below.
 export function PlayerGlance({ state, pid }: { state: PooleanState; pid: string }) {
   const { row, rank, ranked, card } = useMemo(() => {
@@ -26,7 +26,7 @@ export function PlayerGlance({ state, pid }: { state: PooleanState; pid: string 
   const tiles: { label: string; value: string; sub: string }[] = [
     { label: "Standing", value: rank ? `#${rank}` : "Unranked", sub: rank ? `of ${ranked} by Two-Way/G` : `needs ${RANKED_GP} games` },
     { label: "Win rate", value: row.winPct === null ? "None yet" : `${Math.round(row.winPct)}%`, sub: `${row.gp} game${row.gp === 1 ? "" : "s"}` },
-    { label: "Rebounds/G", value: (row.rate.oreb + row.rate.dreb).toFixed(1), sub: `${row.rate.oreb.toFixed(1)} on offense` },
+    { label: "Assists/G", value: row.rate.ast.toFixed(1), sub: "per game" },
     { label: "True shooting", value: ts === null ? "No shots" : `${ts}%`, sub: "3s and free throws count" },
   ]
   const best = card?.strengths[0]
