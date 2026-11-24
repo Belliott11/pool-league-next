@@ -197,6 +197,10 @@ it used to clear `masterVideos`, which on this site would have broken every game
 standings and award races start empty, season panels borrow the last 10 games with a note, records and all 153 clips are unchanged.
 Season Wrapped follows the current season, so last season's Wrapped goes once the new season starts.
 
+Pick'em also opens for live games until their first basket (`liveOpenForVotes` in `src/lib/pickem.ts`): most games go live the moment
+teams are picked, so before this Pick'em never opened on a game night. Both live screens show "Who wins this one?" (`LivePickem` in
+`src/pages/games/PickEm.tsx`) until then, and the vote counts in the Pick'em standings once the game is finished.
+
 ## RSVP replies
 
 Players answer "I'm in" or "Can't make it" for opening night themselves on the off-season home (`src/lib/rsvpReplies.ts`). Replies live

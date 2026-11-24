@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { getClient } from "@/lib/cloud"
 import { formatDateDisplay } from "@/lib/format"
 import { myPlayerId, useWho } from "@/lib/identity"
-import { castVote, loadVotes, openForVotes, pickemStandings, type Vote } from "@/lib/pickem"
+import { castVote, liveOpenForVotes, loadVotes, openForVotes, pickemStandings, type Vote } from "@/lib/pickem"
 import { playerName } from "@/lib/players"
 import type { Side } from "@/lib/scorecard"
 import type { PooleanState } from "@/lib/types"
@@ -96,6 +96,58 @@ export function PickEmCard({ state }: { state: PooleanState }) {
             )}
           </ul>
         </div>
+      )}
+    </section>
+  )
+}
+
+// On the live screens, before the first basket: one tap to call the game, with the same phone-owned votes as the Pick'em card (they count
+// in its standings once the game is finished). It goes away at the first basket, when voting closes.
+export function LivePickem({ state, game }: { state: PooleanState; game: PooleanState["games"][number] }) {
+  const client = getClient()
+  const who = useWho()
+  const me = myPlayerId(who, state.players)
+  const [votes, setVotes] = useState<Vote[]>([])
+  const [refused, setRefused] = useState(false)
+  const open = liveOpenForVotes(game)
+  const refresh = useCallback(() => {
+    if (client) void loadVotes(client).then((all) => setVotes(all.filter((v) => v.gameId === game.id)))
+  }, [client, game.id])
+  useEffect(() => {
+    if (!open) return
+    refresh()
+    const t = setInterval(refresh, 10000)
+    return () => clearInterval(t)
+  }, [refresh, open])
+  if (!client || !open) return null
+  const picked = votes.find((v) => v.voter === me)?.pick
+  const count = (side: Side) => votes.filter((v) => v.pick === side).length
+  const vote = async (pick: Side) => {
+    if (!me) return
+    setVotes((cur) => [...cur.filter((v) => v.voter !== me), { gameId: game.id, voter: me, pick }])
+    const ok = await castVote(client, game.id, me, pick)
+    setRefused(!ok)
+    refresh()
+  }
+  const names = (ids: string[]) => ids.map((id) => playerName(state, id)).join(", ")
+  return (
+    <section className="flex flex-col gap-2 rounded-xl border bg-card p-3" aria-label="Who wins this one?">
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        <VoteIcon aria-hidden className="size-4 text-accent" /> Who wins this one? Votes close at the first basket.
+      </h3>
+      {!me && <p className="text-xs text-muted-foreground">Pick who you are at the top of the page to vote.</p>}
+      {refused && <p role="alert" className="text-xs text-destructive">That vote was made on another phone, so only that phone can change it.</p>}
+      <div className="grid grid-cols-2 gap-2">
+        {(["A", "B"] as const).map((side) => (
+          <Button key={side} variant="outline" disabled={!me} aria-pressed={picked === side} className={cn("h-auto min-h-11 whitespace-normal py-2", picked === side && "border-primary bg-primary text-primary-foreground")} onClick={() => void vote(side)}>
+            {names(side === "A" ? game.teamA : game.teamB)}
+          </Button>
+        ))}
+      </div>
+      {(count("A") + count("B") > 0) && (
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {count("A")} for {names(game.teamA)}, {count("B")} for {names(game.teamB)}
+        </p>
       )}
     </section>
   )

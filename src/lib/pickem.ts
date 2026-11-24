@@ -24,9 +24,12 @@ export async function castVote(client: SupabaseClient, gameId: string, voter: st
   return !error && data === true
 }
 
-// A game can be voted on until it has a score or is being played live.
+// A game can be voted on until it has a score: a planned game until it is played, and a live game (how most games start on a night: teams
+// are picked and it goes live at once) until the first basket.
+export const liveOpenForVotes = (g: PooleanState["games"][number]) =>
+  !!g.liveInProgress && [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])].length === 0 && g.teamA.length > 0 && g.teamB.length > 0
 export function openForVotes(state: PooleanState): PooleanState["games"] {
-  return state.games.filter((g) => !g.liveInProgress && !winnerOf(g) && g.teamA.length > 0 && g.teamB.length > 0 && !(g.scoringEvents.length > 0))
+  return state.games.filter((g) => liveOpenForVotes(g) || (!g.liveInProgress && !winnerOf(g) && g.teamA.length > 0 && g.teamB.length > 0 && !(g.scoringEvents.length > 0)))
 }
 
 export interface PickemRow {

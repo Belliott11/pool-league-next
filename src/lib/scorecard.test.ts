@@ -104,4 +104,14 @@ describe("pick'em standings", () => {
     expect(s.model).toEqual({ right: 1, total: 2 })
     expect(openForVotes(st).map((g) => g.id)).toEqual(["g3"])
   })
+
+  it("a live game takes votes until its first basket, and a vote on it counts once it is finished", async () => {
+    const { pickemStandings, openForVotes } = await import("@/lib/pickem")
+    const live: Game = { ...base, id: "g4", date: "2027-06-01", teamA: ["x"], teamB: ["z"], liveInProgress: true, liveScores: [] }
+    expect(openForVotes(state([live])).map((g) => g.id)).toEqual(["g4"])
+    expect(openForVotes(state([{ ...live, liveScores: [{ pid: "x", points: 1 }] }]))).toEqual([]) // the editor's basket closes it
+    expect(openForVotes(state([{ ...live, scorekeeperScores: [{ pid: "z", points: 1 }] }]))).toEqual([]) // so does a friend's
+    const finished = game("g4", 0.5, [["x", 5], ["z", 2]])
+    expect(pickemStandings(state([finished]), [{ gameId: "g4", voter: "a", pick: "A" as const }]).rows).toEqual([{ voter: "a", right: 1, total: 1 }])
+  })
 })
