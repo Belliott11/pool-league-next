@@ -6,7 +6,7 @@ import { defaultToggles, type Toggles } from "@/lib/toggles"
 
 const ROWS: { key: keyof Toggles; label: string; hint: string }[] = [
   { key: "imbalanced", label: "Include imbalanced games", hint: "Count uneven teams, like 3 against 2. Off by default because an uneven game is not a fair test of anyone." },
-  { key: "outliers", label: "Include outlier games", hint: "On: every game counts. Off: once a player has 4 games, their unusually good or bad ones are left out of their own stats." },
+  { key: "outliers", label: "Include outlier games", hint: "On: every game counts. Off: once a player has 4 games, their unusually good or bad ones are left out of their averages, worked out again each time a game is entered. Records, best games and personal bests always count every game." },
   { key: "pastSeasons", label: "Include past seasons", hint: "Count games from before this season too. Off shows this season, plus a few recent games while the season is young." },
 ]
 

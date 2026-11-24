@@ -26,6 +26,11 @@ default. App calls `setFilmedGames` before working out the filters. The phone sa
 (`storeToggles` in `src/lib/toggles.ts`), so the default can move for everyone who has not chosen. "Default" everywhere (written reads,
 the Filters badge, the reset) means `defaultFilters()`.
 
+Leaving outliers out only changes averages, rates and models (everything reading `qualifyingGamesForPlayer`). Records, best games,
+personal bests, streaks, night recaps and highlights read every game's own line (`playerLine`, `recordBook`, `bestGames`) and never
+change with it. Which games are outliers is worked out fresh from the player's current games on every call (no cache), so each new stat
+entry can move a game in or out. `src/lib/outliers.test.ts` checks all three, in both stat engines.
+
 ## Written text and Filters
 
 The written reads and headlines are for the default Filters. With any other filter, `writtenReadFor` and `customStories`/`customNight`
