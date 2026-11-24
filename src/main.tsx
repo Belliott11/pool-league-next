@@ -12,8 +12,11 @@ import { AppBoundary } from './components/AppBoundary'
 // are handed to the worker so the very first visit is enough, and a new deploy reloads the page once.
 if (import.meta.env.PROD && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   let reloaded = false
+  // A new deploy's worker taking over reloads the page once, so it runs the new files. On a first visit there was no worker before, and
+  // the page already has the newest files, so the first worker taking control must not reload it (that loaded everything twice).
+  const hadWorker = !!navigator.serviceWorker.controller
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloaded) return
+    if (reloaded || !hadWorker) return
     reloaded = true
     location.reload()
   })
