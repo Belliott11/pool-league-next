@@ -134,6 +134,13 @@ as a snapshot, then write the backup's `data` back to `league_state` id 1, and v
 - Cloud sessions should use the "pool-league-next" environment: it allows the live site, Supabase, the R2 video host, the weather API, Context7 and poolean.net,
   and runs `npm ci` on start.
 
+## Adam's older games
+
+The 50 games on Adam's old site that are not among this site's own games (summer 2026, July 5 to August 16) are already in
+`src/data/poolean-seasons.json` (`src/lib/real.ts`): results only, used for old-site records, head-to-heads and the Hall of Fame. Never
+import them into `league_state`, which would count them twice. There is no video and no usable recording for them, so no scores, shots or
+other stats can ever be added: do not suggest filming, stat entry or clip work for them.
+
 ## Ideas not built
 
 - A custom domain on the R2 bucket, for caching and no rate limit (`r2.dev` is rate-limited). Needs a domain on Cloudflare.
