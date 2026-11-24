@@ -1,4 +1,4 @@
-import { Check, Gift, Radio, Share2, Sparkles } from "lucide-react"
+import { Check, Gift, Radio, Share2, Smartphone, Sparkles } from "lucide-react"
 import { FlipDigits } from "@/components/FlipDigits"
 import { findLiveGame, liveTotals } from "@/lib/live"
 import { scoreOf } from "@/lib/nightRecap"
@@ -19,11 +19,14 @@ import { shareText } from "@/lib/shareText"
 import type { Game, PooleanState } from "@/lib/types"
 import { useEvening } from "@/lib/weather"
 import { Countdown } from "./Countdown"
+import { Throwback } from "./Throwback"
 import { PlayersToWatch } from "./PlayersToWatch"
 import { jumpPicks } from "@/lib/predictions"
 import { JumpPicksCard, PredictionsCard, usePredictions } from "./Predictions"
 
 const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`
+
+const POOLEAN_APP = "https://apps.apple.com/us/app/poolean/id6783053933"
 
 // The top of the Games tab between seasons: the countdown to opening night, who is in, who the group expects to make a jump, and the
 // ways in to Wrapped and preseason predictions. The hall of fame has its own button at the top of Games all year.
@@ -134,6 +137,8 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
         </Button>
       )}
 
+      {!tonight && <Throwback state={state} />}
+
       <div className="flex flex-col gap-1.5">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Sparkles aria-hidden className="size-4 text-gold" /> Predicted players to watch
@@ -174,6 +179,20 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
 
       <JumpPicksCard state={state} p={p} />
       <PredictionsCard state={state} p={p} />
+
+      {/* Adam's app, for the parts this site does not do: live power ranking votes at a party, and the official rules. */}
+      <a
+        href={POOLEAN_APP}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-muted"
+      >
+        <Smartphone aria-hidden className="size-5 shrink-0 text-accent" />
+        <span className="flex min-w-0 flex-col">
+          <span className="font-semibold">Poolean for iPhone</span>
+          <span className="text-xs text-muted-foreground">Adam's app: party power rankings and the official rules. On the App Store.</span>
+        </span>
+      </a>
     </section>
   )
 }

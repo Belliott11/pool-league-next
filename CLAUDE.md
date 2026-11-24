@@ -103,6 +103,14 @@ Two-Way/G and the points, assists, rebounds and true shooting leaders, 3+ games)
 Trends, History, and Models for editors). Both pages use `PageTabs`, `TabGroup` and `useJumpTab` from `src/components/PageTabs.tsx`;
 the tab row pins under the site header by measuring it.
 
+## Search, throwback, app card
+
+- Search (`src/components/SiteSearch.tsx`): players, games and pages, from the bottom bar's Search on a phone, the tab row on a wider
+  screen, or Ctrl/Cmd+K. It navigates with App's own `go` and `openPlayer`.
+- Throwback of the day (`src/pages/games/Throwback.tsx`) on the off-season home: one play a day from the clips in `clip-shares.json`
+  (never rough), the same for everyone that day, stepping through every one before repeating; "Another" steps on for that visit.
+- The off-season home links to Adam's iPhone app, Poolean (App Store id 6783053933), for party power rankings and the rules.
+
 ## Speed
 
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league

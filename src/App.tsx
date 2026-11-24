@@ -17,7 +17,8 @@ import { headlinesBehind, headlinesFormulaStale } from "@/lib/published"
 import { readsBehind, readsFormulaStale } from "@/lib/writtenReads"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
-import { ArrowLeft } from "lucide-react"
+import { SiteSearch } from "@/components/SiteSearch"
+import { ArrowLeft, Search } from "lucide-react"
 import { DEFAULT_VIEW, hashToView, sameView, viewToHash, type View } from "@/lib/nav"
 import { ColorMenu } from "@/components/ColorMenu"
 import { setArt } from "@/lib/emptyArt"
@@ -272,6 +273,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     playerIdRef.current = id
     setPlayerIdState(id)
   }
+  const [searching, setSearching] = useState(false)
   const openPlayer = (id: string) => {
     setPlayerId(id)
     go({ tab: "player", sub: "", player: id })
@@ -440,6 +442,9 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           <TabsTrigger value="player">Player</TabsTrigger>
           {!readOnly && <TabsTrigger value="players">Players</TabsTrigger>}
           {!readOnly && <TabsTrigger value="export">Export</TabsTrigger>}
+          <button type="button" onClick={() => setSearching(true)} className="ml-1 flex items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground hover:text-foreground">
+            <Search aria-hidden className="size-4" /> Search <kbd className="rounded border px-1 text-[10px]">{/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘K" : "Ctrl K"}</kbd>
+          </button>
         </TabsList>
         <TabsContent value="games">
           <GamesPage
@@ -495,7 +500,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         )}
       </Tabs>
       </main>
-      <BottomNav tab={tab} onChange={setTab} editor={!readOnly} />
+      <BottomNav tab={tab} onChange={setTab} onSearch={() => setSearching(true)} editor={!readOnly} />
+      <SiteSearch state={state} open={searching} onOpenChange={setSearching} go={go} openPlayer={openPlayer} readOnly={readOnly} />
       <p className="text-xs text-muted-foreground">
         {readOnly ? "You are viewing the shared stats. Only the league editor can make changes." : "A subset of the full site, with more stats on the classic site."}
       </p>
