@@ -12,13 +12,26 @@ export interface Filters {
 
 export const DEFAULT_FILTERS: Filters = { imbalanced: false, outliers: true }
 
+// Outlier games count by default while the league is small; from this many filmed games they are left out by default, since a player's
+// unusual nights then say less about them than the rest of their games do. A choice made in the Filters menu always wins.
+export const OUTLIERS_OFF_AT = 20
+let filmedGames = 0
+export function setFilmedGames(n: number) {
+  filmedGames = n
+}
+export const filmedGameCount = () => filmedGames
+export const defaultFilters = (): Filters => ({ imbalanced: false, outliers: filmedGames < OUTLIERS_OFF_AT })
+
 let current: Filters = DEFAULT_FILTERS
 
 export function setFilters(f: Partial<Filters>) {
   current = { ...current, ...f }
 }
 export const filters = () => current
-export const isDefaultFilters = (f: Filters = current) => f.imbalanced === DEFAULT_FILTERS.imbalanced && f.outliers === DEFAULT_FILTERS.outliers
+export const isDefaultFilters = (f: Filters = current) => {
+  const d = defaultFilters()
+  return f.imbalanced === d.imbalanced && f.outliers === d.outliers
+}
 
 export const isEvenGame = (g: Game) => g.teamA.length === g.teamB.length
 

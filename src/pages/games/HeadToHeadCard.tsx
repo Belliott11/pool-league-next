@@ -28,8 +28,8 @@ function meetingPlays(state: PooleanState, gameIds: string[], a: string, b: stri
 
 // Pick any two players: their record against each other, the last few meetings with plays from them, how they do as teammates, and
 // what the model gives each of them in a one on one.
-export function HeadToHeadCard({ state, onOpenGame }: { state: PooleanState; onOpenGame: (g: Game) => void }) {
-  const start = mostMetPair(state)
+export function HeadToHeadCard({ state, onOpenGame, initial }: { state: PooleanState; onOpenGame: (g: Game) => void; initial?: [string, string] }) {
+  const start = initial ?? mostMetPair(state)
   const [a, setA] = useState(start?.[0] ?? "")
   const [b, setB] = useState(start?.[1] ?? "")
   const sorted = [...state.players].sort((x, y) => x.name.localeCompare(y.name))

@@ -1,7 +1,8 @@
 import { SlidersHorizontal } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { DEFAULT_TOGGLES, type Toggles } from "@/lib/toggles"
+import { filmedGameCount, OUTLIERS_OFF_AT } from "@/lib/filters"
+import { defaultToggles, type Toggles } from "@/lib/toggles"
 
 const ROWS: { key: keyof Toggles; label: string; hint: string }[] = [
   { key: "imbalanced", label: "Include imbalanced games", hint: "Count uneven teams, like 3 against 2. Off by default because an uneven game is not a fair test of anyone." },
@@ -12,7 +13,8 @@ const ROWS: { key: keyof Toggles; label: string; hint: string }[] = [
 // The filters every page follows: standings, awards, the Leaderboard, player pages and the deep dives all count the same games.
 // Analyses about team size itself (By format, the bigger-team rule) always use every game.
 export function FiltersMenu({ toggles, setToggles }: { toggles: Toggles; setToggles: (t: Toggles) => void }) {
-  const changed = (toggles.imbalanced ? 1 : 0) + (toggles.outliers ? 0 : 1) + (toggles.pastSeasons ? 1 : 0)
+  const d = defaultToggles()
+  const changed = (toggles.imbalanced !== d.imbalanced ? 1 : 0) + (toggles.outliers !== d.outliers ? 1 : 0) + (toggles.pastSeasons !== d.pastSeasons ? 1 : 0)
   return (
     <details data-menu className="relative max-sm:static">
       <summary className={`${buttonVariants({ variant: "outline", size: "sm" })} cursor-pointer list-none gap-1.5 [&::-webkit-details-marker]:hidden`}>
@@ -29,12 +31,18 @@ export function FiltersMenu({ toggles, setToggles }: { toggles: Toggles; setTogg
                 <span className="font-medium">{r.label}</span>
                 <Switch checked={toggles[r.key]} onCheckedChange={(v) => setToggles({ ...toggles, [r.key]: v })} />
               </label>
-              <p className="text-xs text-muted-foreground">{r.hint}</p>
+              <p className="text-xs text-muted-foreground">
+                {r.hint}
+                {r.key === "outliers" &&
+                  (filmedGameCount() < OUTLIERS_OFF_AT
+                    ? ` On by default until there are ${OUTLIERS_OFF_AT} filmed games (${filmedGameCount()} so far), then off by default.`
+                    : ` Off by default now that there are ${OUTLIERS_OFF_AT}+ filmed games.`)}
+              </p>
             </li>
           ))}
         </ul>
         {changed > 0 && (
-          <button type="button" onClick={() => setToggles(DEFAULT_TOGGLES)} className="mt-3 min-h-10 w-full rounded-lg border text-sm font-medium hover:bg-muted">
+          <button type="button" onClick={() => setToggles(defaultToggles())} className="mt-3 min-h-10 w-full rounded-lg border text-sm font-medium hover:bg-muted">
             Back to the default filters
           </button>
         )}

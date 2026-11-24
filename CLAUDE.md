@@ -19,6 +19,13 @@ and https://intel.poolean.net (the user's domain, served from the same Pages bui
   `src/_state.json`. Delete all three before committing, and never commit the state file. `public/test-data.json` (a copy of live state)
   is also never committed; the tests that need it skip without it.
 
+## Filter defaults
+
+Outlier games count by default until the league has 20 filmed games (`OUTLIERS_OFF_AT` in `src/lib/filters.ts`), then are left out by
+default. App calls `setFilmedGames` before working out the filters. The phone saves `outliers` only when it differs from the default
+(`storeToggles` in `src/lib/toggles.ts`), so the default can move for everyone who has not chosen. "Default" everywhere (written reads,
+the Filters badge, the reset) means `defaultFilters()`.
+
 ## Written text and Filters
 
 The written reads and headlines are for the default Filters. With any other filter, `writtenReadFor` and `customStories`/`customNight`
@@ -128,7 +135,8 @@ the tab row pins under the site header by measuring it.
 - Throwback of the day (`src/pages/games/Throwback.tsx`) on the off-season home: one play a day from the clips in `clip-shares.json`
   (never rough), the same for everyone that day, stepping through every one before repeating; "Another" steps on for that visit.
 - Search also answers "Ben vs Zach": their record against each other and as teammates over every result (`pairRecord` in
-  `src/lib/headToHead.ts`, from the old site's full results list); it opens the first player's Matchups tab.
+  `src/lib/headToHead.ts`, from the old site's full results list), and opens the head-to-head page `#/games/h2h/<a>,<b>`
+  (`src/pages/games/HeadToHeadPage.tsx`: that record, then the filmed head-to-head card starting on the pair).
 - The Filters menu has "Back to the default filters" when any filter is changed.
 - Accessibility: every Leaderboard and Player tab, the Games home and search pass axe (WCAG 2.1 AA) in both themes. Mark thin samples
   with italics or a dashed border, never by fading (fading fails contrast).

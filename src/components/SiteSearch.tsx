@@ -87,13 +87,9 @@ export function SiteSearch({ state, open, onOpenChange, go, openPlayer, readOnly
       label: `${nx} vs ${ny}`,
       detail: `${vs}, ${mates}. Every result.`,
       words: "",
-      go: () => {
-        openPlayer(x)
-        // The player page builds first; then show its Matchups tab.
-        setTimeout(() => document.dispatchEvent(new CustomEvent("panel-section", { detail: "section-matchups" })), 300)
-      },
+      go: () => go({ tab: "games", sub: `h2h:${x},${y}`, player: null }),
     }
-  }, [q, state, openPlayer])
+  }, [q, state, go])
   const hits = pair
     ? [pair]
     : needle

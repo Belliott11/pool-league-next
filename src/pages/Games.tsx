@@ -32,6 +32,7 @@ const NightRecap = lazyPage(() => import("./games/NightRecap").then((m) => ({ de
 const StatEntryPage = lazyPage(() => import("./statentry/StatEntryPage").then((m) => ({ default: m.StatEntryPage })))
 const HallOfFame = lazyPage(() => import("./games/HallOfFame").then((m) => ({ default: m.HallOfFame })))
 const Wrapped = lazyPage(() => import("./games/Wrapped").then((m) => ({ default: m.Wrapped })))
+const HeadToHeadPage = lazyPage(() => import("./games/HeadToHeadPage").then((m) => ({ default: m.HeadToHeadPage })))
 const ClipPage = lazyPage(() => import("./games/ClipPage").then((m) => ({ default: m.ClipPage })))
 const Lazy = ({ children }: { children: ReactNode }) => <Suspense fallback={<PageSkeleton label="Loading" />}>{children}</Suspense>
 
@@ -72,6 +73,10 @@ export function GamesPage({
 
   if (kind === "clip") {
     return <Lazy><ClipPage state={state} id={arg} onBack={goBack} onOpenGame={(id) => go("game:" + id)} /></Lazy>
+  }
+
+  if (kind === "h2h") {
+    return <Lazy><HeadToHeadPage state={state} ids={arg} onBack={goBack} onOpenGame={open} onOpenPlayer={onOpenPlayer} /></Lazy>
   }
 
   if (kind === "hall") {

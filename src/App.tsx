@@ -23,7 +23,7 @@ import { DEFAULT_VIEW, hashToView, sameView, viewToHash, type View } from "@/lib
 import { ColorMenu } from "@/components/ColorMenu"
 import { setArt } from "@/lib/emptyArt"
 import { FiltersMenu } from "@/components/FiltersMenu"
-import { setFilters } from "@/lib/filters"
+import { setFilmedGames, setFilters } from "@/lib/filters"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,7 +37,7 @@ import { ReadOnlyContext, UpdateContext } from "@/lib/mode"
 import { LiveMiniBar } from "@/pages/live/LiveMiniBar"
 import { useCloud, type Cloud } from "@/lib/useCloud"
 import { installStackTables } from "@/lib/stackTables"
-import { loadToggles, saveToggles, type Toggles } from "@/lib/toggles"
+import { loadStoredToggles, resolveToggles, storeToggles, type Toggles } from "@/lib/toggles"
 import { importStateFromJson, loadState, saveState } from "@/lib/state"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
@@ -283,11 +283,11 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     else if (me && view.tab !== "player") setPlayerId(me)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.player, me])
-  const [toggles, setTogglesState] = useState<Toggles>(loadToggles)
-  const setToggles = (t: Toggles) => {
-    saveToggles(t)
-    setTogglesState(t)
-  }
+  // The outlier default depends on how many games are filmed (filters.ts), so it is set before the filters are worked out.
+  setFilmedGames(state.games.filter((g) => !g.liveInProgress && g.scoringEvents.length > 0).length)
+  const [storedToggles, setStoredToggles] = useState(loadStoredToggles)
+  const toggles = resolveToggles(storedToggles)
+  const setToggles = (t: Toggles) => setStoredToggles(storeToggles(t))
   // Every panel and stat reads the same filters (see filters.ts). They are set here, before anything below renders, and the pages are
   // handed a fresh copy of the data whenever one changes, so cards that remember their answer work it out again.
   setFilters({ imbalanced: toggles.imbalanced, outliers: toggles.outliers })
