@@ -91,13 +91,14 @@ function shareFor(target: number, pre: number): number {
 // Replaying the 9 logged games, 20 gave the lowest log loss (10 and 40 were close; rechecked 2026-11-24, 15 and 20 tie).
 const PRIOR_SCORES = 20
 
-// How much of the pre-game read's lean the live odds start from (1 = all of it, 0 = start every game at 50/50). Replaying the 9 complete
-// filmed games basket by basket (2026-11-24), the full read made the odds worse than a coin flip early and midway (log loss 0.79 there;
-// 0.646 overall), because on those games the read was right only 4 times in 9. Half its lean: 0.577. Ignoring it: 0.538, and
-// leave-one-game-out tuning beat the full read on games it never saw (0.612 vs 0.646). Half, not none, because over the league's 60
-// results the read is right 70% of the time (scripts/compare-models.mjs); next summer's games will say which way to move this.
-// A team-specific point mix (from players' shot logs) and moving q by points instead of baskets did not help (within 0.001, or worse).
-export const PREGAME_WEIGHT_LIVE = 0.5
+// How much of the pre-game read's lean the live odds start from (1 = all of it, 0 = start every game at 50/50). At 0-0 the live odds are
+// exactly this, so every result on record tests it, and the filmed games test every moment after. Checked 2026-11-24 on all 44 games with
+// a pre-game call (35 results at their opening moment, 9 filmed games basket by basket; each game counted once, each call made from only
+// earlier nights): 0.7 gave the lowest log loss (0.582; 0.5 gave 0.591, the full read 0.611, 50/50 0.656), and the curve is flat from
+// 0.6 to 0.8. The 9 filmed games alone pointed lower (0.5 or less), but they come mostly from the read's two worst nights (Jul 29, Aug 16);
+// over all its calls the read is right 73% of the time, though too sure at the top (its 80%+ calls won 67%). A team-specific point mix and
+// moving the odds by points instead of baskets did not help. src/lib/liveReplay.test.ts rechecks this with live data.
+export const PREGAME_WEIGHT_LIVE = 0.7
 
 export function winProbabilityFrom(a: number, b: number, target: number, pregameA: number | null, nA = 0, nB = 0): number {
   if (gameOver(a, b, target)) return a > b ? 0.99 : 0.01

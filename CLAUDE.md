@@ -205,11 +205,14 @@ teams are picked, so before this Pick'em never opened on a game night. Both live
 
 `src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:
 power rankings, extra player, history together and against) and the baskets so far (the read counts as 20 baskets, `PRIOR_SCORES`). The live
-odds start from only half the read's lean (`PREGAME_WEIGHT_LIVE`): replaying the 9 complete filmed games basket by basket (2026-11-24),
-the full read made the odds worse than a coin flip early and midway; half lowered log loss from 0.646 to 0.577. A team-specific point mix
-and moving the odds by points instead of baskets did not help. `src/lib/liveReplay.test.ts` replays the filmed games with live data and
-fails if the full read ever does better: revisit the weight then (rerun with all games after next summer). The pre-game model itself is
-compared with `npm run compare-models` and should not change until about 100 games.
+odds start from 0.7 of the read's lean (`PREGAME_WEIGHT_LIVE`). At 0-0 the live odds equal that, so every result on record tests it.
+Checked 2026-11-24 on all 44 games with a pre-game call (35 unfilmed results at their opening moment, 9 filmed games at every moment,
+each game counted once, calls from earlier nights only): 0.7 is best (log loss 0.582; 0.5 gave 0.591, the full read 0.611), flat from 0.6
+to 0.8. The 9 filmed games alone pointed to 0.5 or less, but they come mostly from the read's two worst nights. Over all its calls the read
+is right 73% of the time, better late in the season (78%) than early (68%), and too sure at the top (its 80%+ calls won 67%). A team-specific
+point mix and moving the odds by points did not help. `src/lib/liveReplay.test.ts` reruns the combined check with live data and fails if
+the full read or 50/50 ever does better: then sweep the weight again with all games. The pre-game model itself is compared with
+`npm run compare-models` and should not change until about 100 games.
 
 ## RSVP replies
 

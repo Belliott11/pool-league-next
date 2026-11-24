@@ -58,7 +58,7 @@ export function LiveOdds({ game }: { game: Game }) {
       <p className="mt-2 text-xs text-muted-foreground">
         {pregameA === null
           ? "No pre-game read yet, so this follows the score alone."
-          : `Before the game: Team A ${pct(pregameA)}%, Team B ${100 - pct(pregameA)}%. The live odds lean only half as far as that read, since it is a rough guess, and the score takes over as a team nears the target.`}
+          : `Before the game: Team A ${pct(pregameA)}%, Team B ${100 - pct(pregameA)}%. The live odds lean a little less than that read, since it can be too sure, and the score takes over as a team nears the target.`}
       </p>
     </section>
   )
