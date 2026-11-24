@@ -145,6 +145,9 @@ the tab row pins under the site header by measuring it.
 - The Filters menu has "Back to the default filters" when any filter is changed.
 - Accessibility: every Leaderboard and Player tab, the Games home and search pass axe (WCAG 2.1 AA) in both themes. Mark thin samples
   with italics or a dashed border, never by fading (fading fails contrast).
+- Home screen tip (`src/components/HomeScreenTip.tsx`): on an iPhone or iPad in the browser (never from the home screen or on a computer),
+  from the second visit, after "Who are you?" and the colors tip are done, so only one tip shows at a time. "Got it" hides it for good,
+  "Not now" for a month. On the home screen iOS keeps the saved stats that Safari clears after a week unused.
 - The off-season home links to Adam's iPhone app, Poolean (App Store id 6783053933), for party power rankings and the rules.
 
 ## Phone screen edges

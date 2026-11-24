@@ -18,6 +18,7 @@ import { readsBehind, readsFormulaStale } from "@/lib/writtenReads"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { BottomNav } from "@/components/BottomNav"
 import { SiteSearch } from "@/components/SiteSearch"
+import { HomeScreenTip } from "@/components/HomeScreenTip"
 import { ArrowLeft, Search } from "lucide-react"
 import { DEFAULT_VIEW, hashToView, sameView, viewToHash, type View } from "@/lib/nav"
 import { ColorMenu } from "@/components/ColorMenu"
@@ -389,6 +390,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       {/* Not on a shared play or Wrapped: the visitor came for that. */}
       {readOnly && cloud && <SavedCopyNote cloud={cloud} />}
       {!/^(clip|wrapped)/.test(view.sub) && <WhoPrompt state={state} />}
+      {/* One prompt at a time: the home screen tip waits until "Who are you?" has been answered or put off. */}
+      {view.tab === "games" && view.sub === "" && who !== null && <HomeScreenTip />}
       {mode === "admin" && cloud && cloud.sync === "conflict" && (
         <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-neg bg-card p-3 text-sm">
           <span className="min-w-0 flex-1">The cloud has newer changes, maybe from another device. Your latest edit is not saved yet.</span>
