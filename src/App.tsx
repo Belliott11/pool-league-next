@@ -38,6 +38,7 @@ import { ReadOnlyContext, UpdateContext } from "@/lib/mode"
 import { LiveMiniBar } from "@/pages/live/LiveMiniBar"
 import { useCloud, type Cloud } from "@/lib/useCloud"
 import { installStackTables } from "@/lib/stackTables"
+import { installScrollHints } from "@/lib/scrollHints"
 import { loadStoredToggles, resolveToggles, storeToggles, type Toggles } from "@/lib/toggles"
 import { importStateFromJson, loadState, saveState } from "@/lib/state"
 import type { Update } from "@/lib/store"
@@ -255,6 +256,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     return () => clearTimeout(t)
   }, [])
   useEffect(() => installStackTables(), [])
+  useEffect(() => installScrollHints(), [])
   useEffect(() => installDataViz(), [])
   // The header shrinks once the page is scrolled.
   const [scrolled, setScrolled] = useState(false)

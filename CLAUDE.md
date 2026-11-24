@@ -154,6 +154,10 @@ the tab row pins under the site header by measuring it.
   `scripts/og-fonts` (the renderer cannot pick weights in variable fonts). deploy.yml also runs daily at 20:05 UTC, just after the countdown
   drops a day, counted exactly as the site's (`countdownTo`). In a cloud session Node's fetch needs `NODE_USE_ENV_PROXY=1` and
   `NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` to reach Supabase, or the build quietly keeps the icon.
+- Scrollable tables (`src/lib/scrollHints.ts`, started in `App.tsx`): any table wider than its box (`[data-slot="table-container"]`,
+  `.table-scroll`, `.overflow-x-auto`) fades its right edge while there is more to the right (`data-more-right`, index.css) and shows
+  "Swipe for more columns →" (phones) or "Scroll sideways for more columns →" underneath until scrolled once. Right edge only: the main
+  stat tables pin the player column on the left.
 - The off-season home links to Adam's iPhone app, Poolean (App Store id 6783053933), for party power rankings and the rules.
 
 ## Phone screen edges

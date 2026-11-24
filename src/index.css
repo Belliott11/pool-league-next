@@ -463,3 +463,20 @@ body::before {
   clip-path: polygon(0 0, 100% 0, calc(100% - 0.7rem) 100%, 0 100%);
 }
 [data-panel] [data-slot="card-title"] > span[aria-hidden] { background: transparent; color: inherit; width: auto; height: auto; }
+
+/* Tables wider than their box (src/lib/scrollHints.ts): the right edge fades while there is more to the right, and a line underneath says
+   to swipe or scroll. Only the right edge, so a pinned player column on the left stays sharp. */
+[data-more-right] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
+}
+.scroll-hint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+  text-align: right;
+}
+.scroll-hint[hidden] {
+  display: none;
+}
