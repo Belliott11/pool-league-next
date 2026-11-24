@@ -111,6 +111,12 @@ the tab row pins under the site header by measuring it.
   (never rough), the same for everyone that day, stepping through every one before repeating; "Another" steps on for that visit.
 - The off-season home links to Adam's iPhone app, Poolean (App Store id 6783053933), for party power rankings and the rules.
 
+## Phone screen edges
+
+The page uses the whole screen (`viewport-fit=cover` in `index.html`). Without it, iOS stops the bottom bar above the home indicator and
+the page shows through below it. So anything at a screen edge pads with `env(safe-area-inset-*)`: the bottom bar, the page's bottom
+padding in `App.tsx`, the body's sides (`index.css`) and the full-screen Wrapped view.
+
 ## Speed
 
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league

@@ -229,7 +229,7 @@ export function Wrapped({ state, playerId, onPick, onClose }: { state: PooleanSt
   }
   const go = (d: number) => setI(Math.max(0, Math.min(slides.length - 1, at + d)))
   return (
-    <div data-no-swipe className="anim-page fixed inset-0 z-40 flex flex-col bg-background">
+    <div data-no-swipe className="anim-page fixed inset-0 z-40 flex flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="flex gap-1 px-4 pt-4" aria-hidden>
         {slides.map((_, k) => (
           <span key={k} className={cn("h-1 flex-1 rounded-full", k <= at ? "bg-accent" : "bg-muted")} />

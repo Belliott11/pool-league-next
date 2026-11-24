@@ -349,7 +349,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     <UpdateContext.Provider value={readOnly ? null : update}>
     <LabelsContext.Provider value={{ labels, setPlayerLabels, hideLine: (t) => setPlayerLabels(HIDDEN, (cur) => (cur.includes(t) ? cur : [...cur, t])), restoreHidden: () => setPlayerLabels(HIDDEN, () => []), reviewLine: (t, verdict) => { const k = lineKey(t); const drop = (cur: string[]) => cur.filter((x) => lineKey(x) !== k); setPlayerLabels(HIDDEN, (cur) => (verdict === "no" ? [...drop(cur), t] : drop(cur))); setPlayerLabels(APPROVED, (cur) => (verdict === "ok" ? [...drop(cur), t] : drop(cur))) } }}>
     {!readOnly && <StoryPublisher state={state} update={update} />}
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 pb-24 sm:p-6 sm:pb-6">
+    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 sm:pb-6">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"

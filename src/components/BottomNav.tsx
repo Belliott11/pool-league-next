@@ -9,8 +9,9 @@ const ITEMS = [
 ]
 
 // The tab bar on a phone: thumb-reach buttons pinned to the bottom edge, ending with Search (src/components/SiteSearch.tsx). On wider screens the
-// tabs stay at the top and this is hidden. Its background carries on below the bottom edge (::after): iOS Safari opens a strip
-// under a pinned bar while its own toolbar shrinks on scroll, and without this the page shows through that strip.
+// tabs stay at the top and this is hidden. It reaches the screen's bottom edge only because the page uses the whole screen
+// (viewport-fit=cover in index.html); without that, iOS stops it above the home indicator and the page shows through below it. Its
+// background also carries on past the edge (::after), for the bounce at the end of a scroll.
 export function BottomNav({ tab, onChange, onSearch, editor = true }: { tab: string; onChange: (tab: string) => void; onSearch: () => void; editor?: boolean }) {
   return (
     <nav
