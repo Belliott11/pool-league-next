@@ -20,6 +20,7 @@ const SMALL = 640
 const MAX_PLAYING = 2 // backdrops playing at once on a page; the rest hold their still frame
 
 const playing = new Set<HTMLVideoElement>()
+const FREED = "poolean-backdrop-freed"
 type Conn = { saveData?: boolean; type?: string; effectiveType?: string }
 const onMobileData = () => {
   const c = (navigator as Navigator & { connection?: Conn }).connection
@@ -30,7 +31,9 @@ const onMobileData = () => {
 // and not at all (a still frame instead) with reduced motion or Data Saver on. On mobile data only a backdrop marked `cellularOk` plays (one
 // place on the site, Wrapped); the rest wait for Wi-Fi. ponytail: only browsers that report the connection type can tell (Chrome on Android);
 // Safari on iPhone says nothing, so there the backdrops play as on Wi-Fi. A scrim keeps whatever sits on top readable.
-export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", cellularOk = false, still = false, contain = false, manual = false, children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; cellularOk?: boolean; still?: boolean; contain?: boolean; manual?: boolean; children?: ReactNode }) {
+// `poster`: a picture of the play (the clip tiles pass the one cut-clips saved). It shows until the video has a frame, and the clip itself is
+// only downloaded once this backdrop is actually going to play, so a page of tiles does not fetch every clip it scrolls past.
+export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65", cellularOk = false, still = false, contain = false, manual = false, poster = null, children }: { state: PooleanState; clip: Clip; className?: string; scrim?: string; cellularOk?: boolean; still?: boolean; contain?: boolean; manual?: boolean; poster?: string | null; children?: ReactNode }) {
   const game = state.games.find((g) => g.id === clip.gameId)
   const url = game ? gameVideoUrl(state, game) : ""
   const file = isDirectVideoUrl(url)
@@ -76,28 +79,34 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     const saver = (navigator as Navigator & { connection?: Conn }).connection?.saveData === true
     const calm = still || clip.kind === "still" || ((matchMedia("(prefers-reduced-motion: reduce)").matches || saver) && !forced) // `still`: hold the frame, never play
     let visible = false
+    const ensureSrc = () => {
+      if (v.getAttribute("src")) return
+      preconnect(source.src)
+      if (calm) v.preload = "auto" // a backdrop that holds still never plays, so load its frame now (a playing one loads when it plays)
+      // A clip fetched ahead of time (Season Wrapped's next slides) plays from memory, at once.
+      loadWithStill(v, `${prefetched(source.src) ?? source.src}#t=${Math.max(0, start - offset)}`, stillKey(url, start), Math.max(0, start - offset), () => setFrame(readFrame(url)), url)
+    }
     const sync = () => {
       if (visible && !document.hidden && !calm && (cellularOk || !onMobileData()) && (playing.has(v) || [...playing].filter((o) => !o.paused).length < MAX_PLAYING)) {
+        ensureSrc()
         playing.add(v)
         // iPhones in Low Power Mode refuse to autoplay until the person touches the page; the first touch tries again.
         void v.play().catch(() => (playing.delete(v), document.addEventListener("pointerdown", sync, { once: true })))
       } else {
         v.pause()
-        playing.delete(v)
+        // A backdrop that stops frees a slot: the others on screen check again, so one waiting its turn starts now.
+        if (playing.delete(v)) window.dispatchEvent(new Event(FREED))
       }
     }
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting
-      if (visible && !v.getAttribute("src")) {
-        preconnect(source.src)
-        if (calm) v.preload = "auto" // a backdrop that holds still never plays, so load its frame now (a playing one loads when it plays)
-        // A clip fetched ahead of time (Season Wrapped's next slides) plays from memory, at once.
-        loadWithStill(v, `${prefetched(source.src) ?? source.src}#t=${Math.max(0, start - offset)}`, stillKey(url, start), Math.max(0, start - offset), () => setFrame(readFrame(url)), url)
-      }
+      // Without a poster the video is the only picture, so it loads as soon as it is on screen; with one, it loads when it plays.
+      if (visible && !poster) ensureSrc()
       sync()
     }, { threshold: 0.25 })
     io.observe(el)
     document.addEventListener("visibilitychange", sync)
+    window.addEventListener(FREED, sync)
     const loop = () => {
       if (v.currentTime >= end - offset || v.currentTime < start - offset - 0.5) v.currentTime = Math.max(0, start - offset)
     }
@@ -107,18 +116,19 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     return () => {
       io.disconnect()
       document.removeEventListener("visibilitychange", sync)
+      window.removeEventListener(FREED, sync)
       document.removeEventListener("pointerdown", sync)
       v.removeEventListener("timeupdate", loop)
       v.removeEventListener("ended", again)
       v.pause()
-      playing.delete(v)
+      if (playing.delete(v)) window.dispatchEvent(new Event(FREED))
     }
-  }, [url, source.src, offset, file, start, end, cellularOk, still, forced])
+  }, [url, source.src, offset, file, start, end, cellularOk, still, forced, poster])
   return (
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
-          {saved && <img src={saved} alt="" aria-hidden style={{ ...lay, ...cover }} className={media} />}
+          {(saved ?? poster) && <img src={(saved ?? poster)!} alt="" aria-hidden style={{ ...lay, ...cover }} className={media} />}
           <video ref={video} style={following ? lay : { ...lay, ...cover }} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} onLoadedData={() => setShown(true)} className={cn(media, "transition-opacity duration-300", shown ? "opacity-100" : "opacity-0")} />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
           {manual && prefsCalm && !forced && !still && (

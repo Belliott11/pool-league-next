@@ -155,8 +155,11 @@ padding in `App.tsx`, the body's sides (`index.css`) and the full-screen Wrapped
 
 ## Speed
 
-Clip tiles show the play's saved picture (`posterOf` in `src/lib/clipShare.ts`, about 80 KB) and load the video only on Play; before,
-grabbing a frame pulled much of the 1.2 MB clip. The offline cache (`main.tsx`, `public/sw.js`) takes only the site's own files and fonts,
+Clip tiles loop the play silently at rest, like the profile header (`ClipBackdrop`: on screen only, two at most at once, still with Reduce
+Motion or Data Saver; a backdrop that stops frees its slot for the next). Until a tile plays it shows the play's saved picture
+(`posterOf` in `src/lib/clipShare.ts`, about 80 KB), and its clip downloads only when it is going to play, so tiles scrolled past cost
+the picture alone. A tap plays with sound and controls, started inside the tap (iPhones allow sound only then) with the start time in the
+address (`#t=`). The offline cache (`main.tsx`, `public/sw.js`) takes only the site's own files and fonts,
 never videos or league data, and only after the page has settled. The first service worker taking control does not reload the page (only a new
 deploy's worker does, for a returning visitor); that reload made a first visit load everything twice. Measured 2026-11-24 on a throttled
 phone (slow 4G, 4x CPU): Games home 5.0 MB to 1.3 MB, about 4.3 to 5.2 s to the real page, mostly CPU; the league data is 45 KB gzipped.

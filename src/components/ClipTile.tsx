@@ -1,13 +1,12 @@
 import { Check, Film, Play, Share2 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { InlineClip } from "@/components/InlineClip"
+import { ClipBackdrop } from "@/components/ClipBackdrop"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import type { Clip } from "@/lib/clips"
 import { clipSource } from "@/lib/clipCuts"
 import { clipIdOf, posterOf, shareLink } from "@/lib/clipShare"
-import { preconnect } from "@/lib/mediaGate"
-import { frameStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
@@ -16,78 +15,52 @@ import { cn } from "@/lib/utils"
 
 const LEAD = 5 // seconds of run-up before the play, as the game page's Watch buttons
 
-// One play from a game. At rest it is a still frame of the moment. The first visit loads the frame from the recording (only when the tile
-// nears the screen) and keeps it on the device, so after that the tile shows at once and the recording is not touched until a tap plays
-// it, from a few seconds before, stopping any other.
+// One play from a game. At rest the play loops silently (ClipBackdrop, like the profile header: only while on screen, two at most at once,
+// held still with Reduce Motion or Data Saver), over the play's saved picture until the video is in; the clip is downloaded only when it
+// is going to play. A tap plays it with sound and controls from a few seconds before, stopping any other.
 export function ClipTile({ state, clip, className, caption = true }: { state: PooleanState; clip: Clip; className?: string; caption?: boolean }) {
   const game = state.games.find((g) => g.id === clip.gameId)
   const url = game ? gameVideoUrl(state, game) : ""
   const file = isDirectVideoUrl(url)
   const source = clipSource(url, clip) // the clip's short cut when there is one (recording time = cut time + offset)
   const offset = source.offset
-  const box = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
-  const [near, setNear] = useState(false)
-  const key = stillKey(url, clip.time)
-  // The saved frame, once there is one; else the play's picture from the bucket when it has one, so the video loads only on Play.
   const poster = useMemo(() => posterOf(state, clip), [state, clip])
-  const [still, setStill] = useState<string | null>(() => readStill(key) ?? poster)
-  const [frame, setFrame] = useState(() => readFrame(url)) // the crop onto the pool, once a frame has been looked at
-  const [shown, setShown] = useState(false) // the recording's own frame is in
   const [playing, setPlaying] = useState(false)
-  useEffect(() => {
-    const el = box.current
-    if (!el || typeof IntersectionObserver === "undefined") return setNear(true)
-    const io = new IntersectionObserver(([e]) => e.isIntersecting && (setNear(true), io.disconnect()), { rootMargin: "150px" })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
-  useEffect(() => {
-    const v = video.current
-    if (!near || !file || !url || still || !v || v.getAttribute("src")) return
-    preconnect(source.src)
-    loadWithStill(v, `${source.src}#t=${Math.max(0, clip.time - offset)}`, key, Math.max(0, clip.time - offset), (d) => (setStill(d), setFrame(readFrame(url))), url)
-  }, [near, file, url, still, key, clip.time, source.src, offset])
   if (!game || !url) return null
+  // Plays straight from the tap (an iPhone only allows sound when play starts inside the tap itself), from a few seconds before the play:
+  // the start is part of the address (#t=), so nothing has to wait for the file first.
   const play = () => {
     const v = video.current
     setPlaying(true)
     if (!v) return
     document.querySelectorAll("video").forEach((o) => o !== v && o.pause())
-    const go = () => {
-      v.currentTime = Math.max(0, (clip.from ?? clip.time - LEAD) - offset)
-      if (clip.to !== undefined) v.addEventListener("timeupdate", () => v.currentTime >= clip.to! - offset && v.pause()) // stop where the editor cut it
-      void v.play().catch(() => {})
-    }
+    const from = Math.max(0, (clip.from ?? clip.time - LEAD) - offset)
     v.controls = true
     v.muted = false
-    if (!v.getAttribute("src")) v.src = source.src
-    if (v.readyState >= 1) go()
-    else v.addEventListener("loadedmetadata", go, { once: true })
+    v.preload = "auto"
+    if (!v.getAttribute("src")) v.src = `${source.src}#t=${from}`
+    else v.currentTime = from
+    if (clip.to !== undefined) v.addEventListener("timeupdate", () => v.currentTime >= clip.to! - offset && v.pause()) // stop where the editor cut it
+    void v.play().catch(() => {})
   }
   const name = playerName(state, clip.playerId)
   // A link to this play, for any clip that is not rough on someone (those are only shown with that news, never passed around).
   const id = clip.rough?.length ? null : clipIdOf(state, clip)
   return (
     <figure className={cn("flex min-w-0 flex-col gap-2", className)}>
-      <div ref={box} className={cn("relative aspect-video overflow-hidden rounded-xl bg-muted", file && near && !still && !shown && !playing && "motion-safe:animate-pulse")}>
+      <div className="relative aspect-video overflow-hidden rounded-xl bg-muted">
         {playing && !file ? (
           <InlineClip state={state} game={game} time={clip.time} />
         ) : file ? (
-          <video
-            ref={video}
-            onLoadedData={() => setShown(true)}
-            muted
-            playsInline
-            preload="metadata"
-            className="size-full object-cover"
-            style={playing ? undefined : frameStyle(clip.frame ?? frame)} // zoomed onto the pool at rest; whole picture once playing, so the controls show
-            aria-label={`${clip.label}, ${name}`}
-          />
+          <>
+            {!playing && <ClipBackdrop state={state} clip={clip} scrim="" poster={poster} className="absolute inset-0" />}
+            {/* The tile's own player, for a tap: whole picture, sound and controls. Hidden and empty until then. */}
+            <video ref={video} muted playsInline preload="none" className={playing ? "size-full object-cover" : "hidden"} aria-label={`${clip.label}, ${name}`} />
+          </>
         ) : null}
-        {still && !playing && <img src={still} alt="" style={frameStyle(clip.frame ?? frame)} className="absolute inset-0 size-full object-cover" />}
         {!playing && (
-          <button type="button" onClick={file ? play : () => setPlaying(true)} className="absolute inset-0 grid place-items-center bg-black/25 text-white transition-colors hover:bg-black/35 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary" aria-label={`Play: ${clip.label}, ${name}`}>
+          <button type="button" onClick={file ? play : () => setPlaying(true)} className="absolute inset-0 grid place-items-center bg-black/10 text-white transition-colors hover:bg-black/25 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary" aria-label={`Play: ${clip.label}, ${name}`}>
             <span className="grid size-12 place-items-center rounded-full bg-black/55 backdrop-blur-sm">
               <Play className="size-5 translate-x-px fill-current" />
             </span>
