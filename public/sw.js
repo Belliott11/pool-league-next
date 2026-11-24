@@ -18,8 +18,15 @@ self.addEventListener("activate", event => {
 // The page sends the files it already loaded before this worker took over, so the very first
 // visit is enough to work offline afterward.
 self.addEventListener("message", event => {
-  const urls = (event.data && event.data.cacheUrls) || [];
-  event.waitUntil(caches.open(CACHE).then(c => Promise.all(urls.map(u => c.add(u).catch(() => {})))));
+  const urls = ((event.data && event.data.cacheUrls) || []).filter(u => {
+    try {
+      const url = new URL(u);
+      return (url.origin === self.location.origin || FONT_HOSTS.includes(url.hostname)) && !/\.(mp4|mov|webm|m4v)$/i.test(url.pathname);
+    } catch (e) {
+      return false;
+    }
+  });
+  event.waitUntil(caches.open(CACHE).then(c => Promise.all(urls.map(u => c.match(u).then(hit => hit || c.add(u)).catch(() => {})))));
 });
 
 function cacheable(request) {

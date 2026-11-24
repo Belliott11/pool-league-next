@@ -150,7 +150,9 @@ padding in `App.tsx`, the body's sides (`index.css`) and the full-screen Wrapped
 
 ## Speed
 
-Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
+Clip tiles show the play's saved picture (`posterOf` in `src/lib/clipShare.ts`, about 80 KB) and load the video only on Play; before,
+grabbing a frame pulled much of the 1.2 MB clip. The offline cache (`main.tsx`, `public/sw.js`) takes only the site's own files and fonts,
+never videos or league data, and only after the page has settled. Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
 data is fetched with a plain request (`fetchPublic` in `src/lib/cloud.ts`) while the database library loads.
 
 ## Votes and predictions

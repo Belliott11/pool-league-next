@@ -24,8 +24,23 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && (location.protocol =
       return navigator.serviceWorker.ready.then(() => reg)
     })
     .then((reg) => {
-      const urls = performance.getEntriesByType('resource').map((e) => e.name)
-      reg.active?.postMessage({ cacheUrls: [location.href.split('#')[0], ...urls] })
+      // Only the site's own files and its fonts (never clips or league data), and only once the page has settled, so a first visit on a
+      // slow connection is not downloading everything twice while it loads.
+      const keep = (u: string) => {
+        try {
+          const url = new URL(u)
+          return (url.origin === location.origin || url.hostname === 'fonts.gstatic.com' || url.hostname === 'fonts.googleapis.com') && !/\.(mp4|mov|webm|m4v)$/i.test(url.pathname)
+        } catch {
+          return false
+        }
+      }
+      const send = () => {
+        const urls = performance.getEntriesByType('resource').map((e) => e.name).filter(keep)
+        reg.active?.postMessage({ cacheUrls: [location.href.split('#')[0], ...urls] })
+      }
+      const idle = () => ('requestIdleCallback' in window ? requestIdleCallback(send, { timeout: 10000 }) : setTimeout(send, 3000))
+      if (document.readyState === 'complete') setTimeout(idle, 4000)
+      else addEventListener('load', () => setTimeout(idle, 4000), { once: true })
     })
     .catch(() => {
       /* offline support is a bonus; the app works without it */

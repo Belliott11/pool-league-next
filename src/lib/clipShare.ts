@@ -44,3 +44,12 @@ export function clipById(state: PooleanState, id: string): Clip | null {
 export function shareLink(id: string): string {
   return table[id] ? `${SITE}clip/${id}.html` : `${SITE}#/games/clip/${id}`
 }
+
+// The picture of the play that npm run cut-clips saved (about 80 KB), for a clip that has one: shown in place of loading the clip itself
+// just to grab a frame, which costs a large part of the 1.2 MB file. Same moment and framing as that frame.
+const PICTURE_HOST = "https://pub-fe959ca0159c462e9b4e69082ac20db5.r2.dev" // the video bucket (see vite.config.ts)
+export function posterOf(state: PooleanState, c: Clip): string | null {
+  const id = clipIdOf(state, c)
+  const p = id ? table[id]?.poster : null
+  return p ? `${PICTURE_HOST}/${p}` : null
+}

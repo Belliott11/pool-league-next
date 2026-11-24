@@ -1,11 +1,11 @@
 import { Check, Film, Play, Share2 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { InlineClip } from "@/components/InlineClip"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import type { Clip } from "@/lib/clips"
 import { clipSource } from "@/lib/clipCuts"
-import { clipIdOf, shareLink } from "@/lib/clipShare"
+import { clipIdOf, posterOf, shareLink } from "@/lib/clipShare"
 import { preconnect } from "@/lib/mediaGate"
 import { frameStyle, loadWithStill, readFrame, readStill, stillKey } from "@/lib/stillCache"
 import { formatDateDisplay } from "@/lib/format"
@@ -29,7 +29,9 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
   const video = useRef<HTMLVideoElement>(null)
   const [near, setNear] = useState(false)
   const key = stillKey(url, clip.time)
-  const [still, setStill] = useState<string | null>(() => readStill(key)) // the saved frame, once there is one
+  // The saved frame, once there is one; else the play's picture from the bucket when it has one, so the video loads only on Play.
+  const poster = useMemo(() => posterOf(state, clip), [state, clip])
+  const [still, setStill] = useState<string | null>(() => readStill(key) ?? poster)
   const [frame, setFrame] = useState(() => readFrame(url)) // the crop onto the pool, once a frame has been looked at
   const [shown, setShown] = useState(false) // the recording's own frame is in
   const [playing, setPlaying] = useState(false)
