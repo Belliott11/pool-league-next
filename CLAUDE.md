@@ -19,6 +19,18 @@ and https://intel.poolean.net (the user's domain, served from the same Pages bui
   `src/_state.json`. Delete all three before committing, and never commit the state file. `public/test-data.json` (a copy of live state)
   is also never committed; the tests that need it skip without it.
 
+## Rerun the reads and headlines (recipe)
+
+1. Save live state to `public/test-data.json` (never committed). A temporary `src/_rerun.test.ts` stubs `localStorage`, imports with
+   `await import`, calls `setPaceGames(state.games)` (as App does; without it every per-game number is slightly off) and
+   `syncLegacy(state, DEFAULT_TOGGLES)`, then writes `advancedReads`, `seasonStories`, `previewStories`, `awardRace`, `ratings` and the
+   leaderboard rows to a file (console output is swallowed).
+2. Check every number in `advanced-reads.json` and `custom-headlines.json` against that. Old-site pair records come from
+   `src/data/poolean-seasons.json`. To tell rule changes from data changes, compare the games' event lists with a `league_state_history`
+   snapshot from the `writtenAt` date.
+3. Rewrite what drifted (B+C style), set `writtenAt`, bump `filmedGames` if games were added, and run `npx vitest run` with the test file
+   present (the written-read checks run then). Delete the temporary test and the state file before committing.
+
 ## Clips
 
 - `src/lib/clips.ts` finds clip candidates from the shot log and applies the editor's reviews (`game.clipReviews`, type `ClipReview`):
