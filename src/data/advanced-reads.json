@@ -1,5 +1,5 @@
 {
-  "writtenAt": "2026-11-18",
+  "writtenAt": "2026-11-24",
   "filmedGames": 10,
   "formula": 3,
   "players": {
@@ -23,7 +23,7 @@
       "text": [
         "Zach has taken 41 shots in 6 games, 68% of them open, and made them at 31% TS against a league middle of 37%. The looks are average for where he shoots (-0.07 a shot), so this is finishing, not shot selection.",
         "The pressure is real: 13 forced turnovers, the most in the league, against 14 giveaways. Viraj got beaten on 5 of 12 shots guarding him, but when Viraj stayed in front, Zach went 0 for 7. Opponents shoot 39% over Zach when he stays in front (middle 30%).",
-        "Rebounding is the quiet cost: 1.6 a game, and only 1.0 once uncontested ones count half, the lowest in the league. Across 54 results his teams win 13.7 points of win chance less than expected (17-37), the clearest signal in the league, and he and Adam are 2-11 as teammates."
+        "Rebounding is the quiet cost: 1.6 a game, and only 1.0 once uncontested ones count half, the lowest in the league. Across 54 results his teams win 13.7 points of win chance less than expected (17-37), the clearest signal in the league, and he and Adam are 5-15 as teammates across every result."
       ],
       "strengths": "Pressure on the ball: 13 forced turnovers, the most in the league.",
       "workOn": [
@@ -67,8 +67,8 @@
       "headline": "Stays in front of everyone and sets up the best looks, a few at a time.",
       "text": [
         "Ian is beaten on 9% of shots (1 of 11) and held Alex to 4 of 20, the busiest matchup on film. When opponents do shoot over him, though, they hit 40%.",
-        "His set-ups are worth 1.31 points a shot, the best in the league (middle 0.68), and half of them go in, but he makes only 1.8 a game. He and Adam are 3-1 together, the top pair in the Best duo race.",
-        "He has taken 15 shots in 4 games at 27% TS, so scoring is not his job yet. His rebounds are hard-won, 71% of them contested. He is also the most improved player, up 3.3 two-way a game from his early games to his late ones."
+        "His set-ups are worth 1.31 points a shot, the best in the league (middle 0.68), and half of them go in, but he makes only 1.8 a game. He and Adam are 3-1 together in filmed even-team games and 5-3 across every result.",
+        "He has taken 15 shots in 4 games at 27% TS, so scoring is not his job yet. His rebounds are hard-won, 71% of them contested. One more filmed game puts him in the award races and the ratings."
       ],
       "strengths": "Staying in front and passing: beaten on 9% of shots, and his set-ups are worth 1.31 points a shot, the best in the league.",
       "workOn": [
@@ -76,7 +76,7 @@
         "Keep a hand up after the stop: opponents hit 40% when they shoot over him, 4 of 10."
       ],
       "guard": "Make him defend a shot. He is beaten on only 9% of shots, but opponents make 40% of the ones they take over him.",
-      "season": "Ian went 3-1 in the filmed even-team games, was beaten on 9% of shots and made the biggest climb in the league, up 3.3 two-way a game."
+      "season": "Ian went 3-1 in the filmed even-team games, was beaten on 9% of shots and set up the best looks in the league, 1.31 points a shot."
     },
     "evan": {
       "headline": "Three games, three wins, and the best looks of anyone with real volume.",
