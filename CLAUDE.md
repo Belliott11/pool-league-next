@@ -201,6 +201,16 @@ Pick'em also opens for live games until their first basket (`liveOpenForVotes` i
 teams are picked, so before this Pick'em never opened on a game night. Both live screens show "Who wins this one?" (`LivePickem` in
 `src/pages/games/PickEm.tsx`) until then, and the vote counts in the Pick'em standings once the game is finished.
 
+## Live win probability
+
+`src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:
+power rankings, extra player, history together and against) and the baskets so far (the read counts as 20 baskets, `PRIOR_SCORES`). The live
+odds start from only half the read's lean (`PREGAME_WEIGHT_LIVE`): replaying the 9 complete filmed games basket by basket (2026-11-24),
+the full read made the odds worse than a coin flip early and midway; half lowered log loss from 0.646 to 0.577. A team-specific point mix
+and moving the odds by points instead of baskets did not help. `src/lib/liveReplay.test.ts` replays the filmed games with live data and
+fails if the full read ever does better: revisit the weight then (rerun with all games after next summer). The pre-game model itself is
+compared with `npm run compare-models` and should not change until about 100 games.
+
 ## RSVP replies
 
 Players answer "I'm in" or "Can't make it" for opening night themselves on the off-season home (`src/lib/rsvpReplies.ts`). Replies live

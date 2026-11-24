@@ -88,12 +88,20 @@ function shareFor(target: number, pre: number): number {
 }
 
 // The pre-game read is worth this many scores of evidence; the game's own scoring then moves q.
-// Replaying the 9 logged games, 20 gave the lowest log loss (10 and 40 were close).
+// Replaying the 9 logged games, 20 gave the lowest log loss (10 and 40 were close; rechecked 2026-11-24, 15 and 20 tie).
 const PRIOR_SCORES = 20
+
+// How much of the pre-game read's lean the live odds start from (1 = all of it, 0 = start every game at 50/50). Replaying the 9 complete
+// filmed games basket by basket (2026-11-24), the full read made the odds worse than a coin flip early and midway (log loss 0.79 there;
+// 0.646 overall), because on those games the read was right only 4 times in 9. Half its lean: 0.577. Ignoring it: 0.538, and
+// leave-one-game-out tuning beat the full read on games it never saw (0.612 vs 0.646). Half, not none, because over the league's 60
+// results the read is right 70% of the time (scripts/compare-models.mjs); next summer's games will say which way to move this.
+// A team-specific point mix (from players' shot logs) and moving q by points instead of baskets did not help (within 0.001, or worse).
+export const PREGAME_WEIGHT_LIVE = 0.5
 
 export function winProbabilityFrom(a: number, b: number, target: number, pregameA: number | null, nA = 0, nB = 0): number {
   if (gameOver(a, b, target)) return a > b ? 0.99 : 0.01
-  const pre = Math.min(0.97, Math.max(0.03, pregameA ?? 0.5))
+  const pre = Math.min(0.97, Math.max(0.03, 0.5 + PREGAME_WEIGHT_LIVE * ((pregameA ?? 0.5) - 0.5)))
   const q0 = shareFor(target, pre)
   const q = Math.min(0.97, Math.max(0.03, (PRIOR_SCORES * q0 + nA) / (PRIOR_SCORES + nA + nB)))
   return Math.min(0.99, Math.max(0.01, raceWin(a, b, target, q, POINT_MIX)))

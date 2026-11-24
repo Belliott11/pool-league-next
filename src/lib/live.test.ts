@@ -5,12 +5,13 @@ vi.mock("@/lib/matchup", () => ({ predictRealMatchup: () => null }))
 vi.mock("@/lib/stats", () => ({ liveScoreOf: () => 0 }))
 vi.mock("@/lib/store", () => ({ newGame: () => ({}) }))
 
-import { winProbabilityFrom as p } from "@/lib/live"
+import { PREGAME_WEIGHT_LIVE, winProbabilityFrom as p } from "@/lib/live"
 
 describe("winProbabilityFrom (race to the target)", () => {
-  it("starts at the pre-game read", () => {
+  it("starts from the pre-game read's lean, scaled by PREGAME_WEIGHT_LIVE", () => {
     expect(p(0, 0, 21, null)).toBeCloseTo(0.5, 2)
-    expect(p(0, 0, 21, 0.7)).toBeCloseTo(0.7, 2)
+    expect(p(0, 0, 21, 0.7)).toBeCloseTo(0.5 + PREGAME_WEIGHT_LIVE * 0.2, 2)
+    expect(p(0, 0, 21, 0.3)).toBeCloseTo(1 - p(0, 0, 21, 0.7), 6) // either side, the same pull
   })
 
   it("favors whoever leads, and the opposite side is the mirror image", () => {
