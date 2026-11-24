@@ -160,9 +160,17 @@ the database functions `cast_pickem_vote` and `save_season_prediction` keep only
 key (`supabase/pickem.sql`, `supabase/predictions.sql`). Direct writes to both tables are refused (only the read policies remain), so
 the functions are the only way in.
 
+## RSVP replies
+
+Players answer "I'm in" or "Can't make it" for opening night themselves on the off-season home (`src/lib/rsvpReplies.ts`). Replies live
+in `rsvp_replies`, written only through `save_rsvp` with the same phone-owned key as Pick'em (`supabase/rsvp.sql`), never in the league
+data. The home page shows the editor's list with each player's own reply on top (`whoIsComing`); Set Up Tonight shows the phone yeses
+with "Add them", so team balancing and the night preview, which read the editor's list, pick them up. A test reply made from a browser
+owns that player's row: delete it after testing, or the real player cannot answer.
+
 ## Backups
 
-`.github/workflows/backup.yml` saves the league data row, Pick'em votes and preseason predictions every night as a run artifact kept 30
+`.github/workflows/backup.yml` saves the league data row, Pick'em votes, preseason predictions and RSVP replies every night as a run artifact kept 30
 days (Actions tab, "Back up league data", a run, Artifacts). It fails if the league data has fewer than 5 games or players. Private labels
 are not in it (editor-only). To restore league data from one: ask the user first, insert the current row into `league_state_history`
 as a snapshot, then write the backup's `data` back to `league_state` id 1, and verify the counts.

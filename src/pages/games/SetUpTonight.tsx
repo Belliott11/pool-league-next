@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { PlayerChips, toggleId } from "@/components/PlayerChips"
 import { formatDateDisplay, formatTime, uid } from "@/lib/format"
 import { playerName } from "@/lib/players"
+import { useReplies } from "@/lib/rsvpReplies"
 import { pregamePrediction } from "@/lib/scorecard"
 import { newGame, type Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
@@ -22,6 +23,10 @@ function WhosComing({ state, update }: { state: PooleanState; update: Update }) 
   const [time, setTime] = useState("")
   const [selected, setSelected] = useState<string[]>([])
   const rsvps = [...(state.rsvps ?? [])].sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+  // What players answered from their own phones for this date (rsvpReplies.ts): the yeses not on this list yet, one tap to add.
+  const [replies] = useReplies(date || null)
+  const newYes = replies.filter((r) => r.going && !selected.includes(r.player)).map((r) => r.player)
+  const saidNo = replies.filter((r) => !r.going && selected.includes(r.player)).map((r) => r.player)
 
   function pickDate(next: string) {
     setDate(next)
@@ -63,6 +68,15 @@ function WhosComing({ state, update }: { state: PooleanState; update: Update }) 
           </label>
         </div>
         <PlayerChips state={state} selected={selected} onToggle={(id) => setSelected(toggleId(selected, id))} />
+        {newYes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-2 text-sm">
+            <span>Said they're in from their phone: {newYes.map((id) => playerName(state, id)).join(", ")}</span>
+            <Button size="sm" variant="outline" onClick={() => setSelected([...selected, ...newYes])}>
+              Add them
+            </Button>
+          </div>
+        )}
+        {saidNo.length > 0 && <p className="text-sm text-muted-foreground">Said they can't make it: {saidNo.map((id) => playerName(state, id)).join(", ")}. Their answer shows over this list on the home page.</p>}
         <div className="flex gap-2">
           <Button size="sm" onClick={save}>
             Save RSVPs

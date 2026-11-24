@@ -6,6 +6,8 @@ import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
 import { LiveOddsMini } from "@/pages/live/LiveOdds"
 import { useMemo, useState } from "react"
+import { getClient } from "@/lib/cloud"
+import { saveReply, useReplies, whoIsComing } from "@/lib/rsvpReplies"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { turnout } from "@/lib/attendance"
@@ -42,7 +44,23 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
   const playedTonight = new Set(state.games.filter((g) => g.date === o.date).flatMap((g) => [...g.teamA, ...g.teamB]))
   const weather = useEvening(o.date, o.time)
   const rsvp = (state.rsvps ?? []).find((r) => r.date === o.date)
-  const coming = rsvp?.playerIds ?? []
+  // The editor's list, with each player's own "I'm in" or "Can't make it" on top (rsvpReplies.ts).
+  const [replies, setReplies] = useReplies(o.date)
+  const coming = useMemo(() => whoIsComing(rsvp?.playerIds ?? [], replies), [rsvp, replies])
+  const myReply = me ? (replies.find((r) => r.player === me)?.going ?? (coming.includes(me) ? true : undefined)) : undefined
+  const [replyNote, setReplyNote] = useState("")
+  const answer = async (going: boolean) => {
+    const c = getClient()
+    if (!me || !c) return
+    const before = replies
+    setReplies([...replies.filter((r) => r.player !== me), { player: me, going }])
+    setReplyNote("")
+    const ok = await saveReply(c, o.date, me, going)
+    if (!ok) {
+      setReplies(before)
+      setReplyNote("Could not save that. Another phone may already have answered for you; ask the editor to change it.")
+    }
+  }
   const t = useMemo(() => turnout(state, coming), [state, coming])
   const p = usePredictions(state)
   const picks = useMemo(() => jumpPicks(p.entries).filter((r) => state.players.some((x) => x.id === r.id)), [p.entries, state.players])
@@ -77,7 +95,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
 
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-semibold">
-          {tonight ? (coming.length ? `${coming.length} said they're in. ${coming.filter((id) => playedTonight.has(id)).length} have played so far.` : "Who's here") : coming.length ? `${coming.length} in so far` : `Nobody is on the list yet. ${readOnly ? "The editor adds RSVPs." : "Add RSVPs under Set Up Tonight."}`}
+          {tonight ? (coming.length ? `${coming.length} said they're in. ${coming.filter((id) => playedTonight.has(id)).length} have played so far.` : "Who's here") : coming.length ? `${coming.length} in so far` : `Nobody is in yet.${readOnly ? "" : " You can also add RSVPs under Set Up Tonight."}`}
         </p>
         {coming.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -91,6 +109,23 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
           </div>
         )}
         {coming.length > 0 && <p className="text-xs text-muted-foreground">{t.teams}.</p>}
+        {me ? (
+          <div className="mt-1 flex flex-wrap items-center gap-2" role="group" aria-label={`Are you in, ${playerName(state, me)}?`}>
+            <Button size="sm" variant={myReply === true ? "default" : "outline"} aria-pressed={myReply === true} onClick={() => void answer(true)}>
+              <Check aria-hidden /> I'm in
+            </Button>
+            <Button size="sm" variant={myReply === false ? "secondary" : "outline"} aria-pressed={myReply === false} onClick={() => void answer(false)}>
+              Can't make it
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Pick who you are at the top of the page to say if you're in.</p>
+        )}
+        {replyNote && (
+          <p role="status" className="text-xs text-neg">
+            {replyNote}
+          </p>
+        )}
       </div>
 
       {tonight && liveGame && (
