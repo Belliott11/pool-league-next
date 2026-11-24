@@ -160,7 +160,11 @@ grabbing a frame pulled much of the 1.2 MB clip. The offline cache (`main.tsx`, 
 never videos or league data, and only after the page has settled. The first service worker taking control does not reload the page (only a new
 deploy's worker does, for a returning visitor); that reload made a first visit load everything twice. Measured 2026-11-24 on a throttled
 phone (slow 4G, 4x CPU): Games home 5.0 MB to 1.3 MB, about 4.3 to 5.2 s to the real page, mostly CPU; the league data is 45 KB gzipped.
-Offline, the site's files load from the cache but visitors see "Loading": their copy of the league data is never stored on the phone.
+Visitors' phones save the last league data they downloaded (`src/lib/viewerCopy.ts`, its own localStorage key, apart from the editor's
+copy) and open on it at once (`cloud.early` in `App.tsx`); the fresh copy swaps in under the same page. A repeat visit on the throttled
+phone shows the Leaderboard in 1.6 s instead of 4.4 s. With no signal the saved copy stays, minus any game it shows as live, with
+"No connection. Showing the stats as of ..." (`SavedCopyNote`); start-up retries when the phone comes back online. A phone known to be an
+editor's (`knownEditor`) never shows the saved copy first.
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
 data is fetched with a plain request (`fetchPublic` in `src/lib/cloud.ts`) while the database library loads.
 

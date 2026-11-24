@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { connect, fetchPublic, fetchRemote, isEditor, loadCloudConfig, saveRemote, type Remote } from "./cloud"
 import { adoptScorekeeperScores } from "./live"
+import { loadViewerCopy, saveViewerCopy, withoutLiveGames } from "./viewerCopy"
 import type { PooleanState } from "./types"
 
 export type CloudStatus = "loading" | "off" | "ready"
@@ -32,6 +33,8 @@ const lsSet = (k: string, v: string | null) => {
     /* private mode: the offline extras just do not persist */
   }
 }
+// True when this phone has been an editor's: it opens straight into the editor view, so it never shows the visitor's saved copy first.
+export const knownEditor = () => lsGet(ADMIN_KEY) !== null
 const POLL_MS = 60_000
 // While a live game is on, visitors refresh every few seconds so the score and odds follow along.
 const LIVE_POLL_MS = 10_000
@@ -42,8 +45,12 @@ export function useCloud() {
   const [status, setStatus] = useState<CloudStatus>("loading")
   const [admin, setAdmin] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
-  const [remote, setRemote] = useState<Remote | null>(null)
+  // A visitor's phone starts from the copy it saved last time (viewerCopy.ts), so the site opens at once; the fresh copy replaces it.
+  const saved = useRef(knownEditor() ? null : loadViewerCopy())
+  const [remote, setRemote] = useState<Remote | null>(() => (saved.current ? { ...saved.current.remote, state: withoutLiveGames(saved.current.remote.state) } : null))
   const [loaded, setLoaded] = useState(false)
+  // When the data on screen is the saved copy (not yet replaced by a fresh one), the time it was last updated, for the "as of" note.
+  const [savedAsOf, setSavedAsOf] = useState<string | null>(() => saved.current?.remote.updatedAt ?? null)
   const [error, setError] = useState<string | null>(null)
   const [sync, setSync] = useState<SyncState>("idle")
   const [syncMessage, setSyncMessage] = useState("")
@@ -72,6 +79,10 @@ export function useCloud() {
       lsSet(VERSION_KEY, version.current)
       setRemote(r)
       setError(null)
+      if (r) {
+        saveViewerCopy(r)
+        setSavedAsOf(null)
+      }
       return r
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not reach the shared data.")
@@ -114,9 +125,12 @@ export function useCloud() {
     }
   }, [])
 
+  // Bumped when the signal comes back after a start-up that failed for lack of it, to try again.
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     let sub: { unsubscribe: () => void } | undefined
     let dead = false
+    const retryOnline = () => !dead && setAttempt((n) => n + 1)
     ;(async () => {
       const cfg = await loadCloudConfig()
       if (!cfg) {
@@ -139,12 +153,16 @@ export function useCloud() {
       if (dead) return
       setStatus("ready")
       sub = c.auth.onAuthStateChange(() => void evaluateSession()).data.subscription
-    })()
+    })().catch(() => {
+      // No signal while starting (the database library could not download): the saved copy stays on screen; start again once online.
+      window.addEventListener("online", retryOnline, { once: true })
+    })
     return () => {
       dead = true
       sub?.unsubscribe()
+      window.removeEventListener("online", retryOnline)
     }
-  }, [evaluateSession, refresh])
+  }, [evaluateSession, refresh, attempt])
 
   const adminPoll = useCallback(async () => {
     const c = clientRef.current
@@ -175,9 +193,11 @@ export function useCloud() {
     const id = setInterval(tick, liveNow ? LIVE_POLL_MS : POLL_MS)
     const onVis = () => document.visibilityState === "visible" && tick()
     document.addEventListener("visibilitychange", onVis)
+    window.addEventListener("online", tick) // signal back: fresh stats now, not at the next poll
     return () => {
       clearInterval(id)
       document.removeEventListener("visibilitychange", onVis)
+      window.removeEventListener("online", tick)
     }
   }, [status, admin, refresh, liveNow])
 
@@ -303,7 +323,9 @@ export function useCloud() {
   }, [evaluateSession, refresh])
 
   const refreshNow = useCallback(() => refresh(), [refresh]) // never handed an event or other argument by mistake
-  return { status, admin, email, remote, loaded, error, sync, syncMessage, recoverLocal, external, setWatchLive, refresh: refreshNow, push, overwrite, acceptRemote, signIn, signOut }
+  // A visitor with a saved copy can be shown the site before the cloud has finished starting.
+  const early = status === "loading" && !!saved.current && !!remote
+  return { status, admin, email, remote, loaded, error, savedAsOf, early, sync, syncMessage, recoverLocal, external, setWatchLive, refresh: refreshNow, push, overwrite, acceptRemote, signIn, signOut }
 }
 
 export type Cloud = ReturnType<typeof useCloud>

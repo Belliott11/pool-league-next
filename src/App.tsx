@@ -387,6 +387,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       </div>
       <div aria-hidden className="lane-rope -mt-2" />
       {/* Not on a shared play or Wrapped: the visitor came for that. */}
+      {readOnly && cloud && <SavedCopyNote cloud={cloud} />}
       {!/^(clip|wrapped)/.test(view.sub) && <WhoPrompt state={state} />}
       {mode === "admin" && cloud && cloud.sync === "conflict" && (
         <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-neg bg-card p-3 text-sm">
@@ -546,10 +547,33 @@ function NoSharedData({ cloud }: { cloud: Cloud }) {
   )
 }
 
+// Shown while the stats on screen are this phone's saved copy: at once with no signal or when the fresh copy could not be loaded, and
+// after a few seconds if it is only slow, so old numbers are never taken for current ones.
+function SavedCopyNote({ cloud }: { cloud: Cloud }) {
+  const [slow, setSlow] = useState(false)
+  const asOf = cloud.savedAsOf
+  useEffect(() => {
+    if (!asOf) return setSlow(false)
+    const t = setTimeout(() => setSlow(true), 3000)
+    return () => clearTimeout(t)
+  }, [asOf])
+  if (!asOf) return null
+  const offline = typeof navigator !== "undefined" && !navigator.onLine
+  if (!offline && !cloud.error && !slow) return null
+  const when = new Date(asOf).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+  return (
+    <p role="status" className="rounded-xl border border-dashed bg-card px-3 py-2 text-sm">
+      {offline || cloud.error ? <>No connection. Showing the stats as of {when}; they update by themselves when the signal is back.</> : <>Showing the stats as of {when} while the latest load.</>}
+    </p>
+  )
+}
+
 function App() {
   const cloud = useCloud()
   const [local, setLocal] = useState<PooleanState | null>(() => loadState())
 
+  // A visitor's phone with a saved copy opens on it at once (viewerCopy.ts); the fresh copy swaps in under the same page when it arrives.
+  if (cloud.early && cloud.remote) return <AppShell key="viewer" initial={cloud.remote.state} mode="viewer" cloud={cloud} />
   if (cloud.status === "loading") {
     return (
       <div className="mx-auto max-w-5xl p-6">
