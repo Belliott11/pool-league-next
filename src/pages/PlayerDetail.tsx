@@ -3,7 +3,7 @@ import { PlayerRead } from "@/pages/PlayerRead"
 import { PlayerCompare } from "@/pages/PlayerCompare"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
 import { seasonView } from "@/lib/season"
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { resolvePlayer } from "@/lib/players"
@@ -29,7 +29,7 @@ import { ChevronRight } from "lucide-react"
 import { IconChip } from "@/components/IconChip"
 import { panelIcon, sectionIcon } from "@/lib/panelIcons"
 import { PlayerGlance } from "@/pages/PlayerGlance"
-import { cn } from "@/lib/utils"
+import { PageTabs, TabGroup, useJumpTab } from "@/components/PageTabs"
 import { syncLegacy } from "@/lib/legacy"
 import {
   PLAYER_PANELS,
@@ -161,26 +161,6 @@ const JUMP_ITEMS: JumpItem[] = PANELS.map((p) => {
   return { title: p.title, group: `${SECTIONS.find((s) => s.key === home)?.title ?? "Overview"}${g ? `, ${g.title}` : ""}`, sectionId: `section-${home}`, hint: p.hint }
 })
 
-// One group inside a tab: its one-line summary, and a heading when the tab holds more than one group.
-function TabSection({ id, title, teaser, icon: Icon, children }: { id: string; title: string | null; teaser: string; icon?: React.ComponentType<{ className?: string }>; children: ReactNode }) {
-  return (
-    <section id={id} className="flex scroll-mt-20 flex-col gap-4">
-      {(title || teaser) && (
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          {title && (
-            <h2 className="flex items-center gap-2 font-display text-lg font-bold">
-              {Icon && <Icon aria-hidden className="size-4 text-accent" />}
-              {title}
-            </h2>
-          )}
-          {teaser && <span className="text-sm text-muted-foreground">{teaser}</span>}
-        </div>
-      )}
-      {children}
-    </section>
-  )
-}
-
 function fmtRate(v: number) {
   return v.toFixed(1)
 }
@@ -235,16 +215,8 @@ export function PlayerDetailPage({
     if (pid) renderPlayerRankPill(pid)
   }, [pid, version])
 
-  const [tab, setTab] = useState("overview")
   // "Jump to a panel" names the group it is in; show that group's tab.
-  useEffect(() => {
-    const on = (e: Event) => {
-      const id = String((e as CustomEvent).detail ?? "")
-      if (id.startsWith("section-")) setTab(tabOf(id.slice(8)))
-    }
-    document.addEventListener("panel-section", on)
-    return () => document.removeEventListener("panel-section", on)
-  }, [])
+  const [tab, setTab] = useJumpTab("overview", (id) => (id.startsWith("section-") ? tabOf(id.slice(8)) : null))
 
   if (unknownLink) {
     return (
@@ -315,36 +287,7 @@ export function PlayerDetailPage({
         <StatLegend />
       </div>
 
-      <div role="tablist" aria-label="Player sections" className="-mx-4 flex gap-1 overflow-x-auto border-b px-4 [scrollbar-width:none] md:mx-0 md:px-0">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            id={`tab-${t.key}`}
-            role="tab"
-            type="button"
-            aria-selected={tab === t.key}
-            aria-controls={`tabpanel-${t.key}`}
-            tabIndex={tab === t.key ? 0 : -1}
-            onClick={() => setTab(t.key)}
-            onKeyDown={(e) => {
-              const i = TABS.findIndex((x) => x.key === tab)
-              const next = e.key === "ArrowRight" ? TABS[(i + 1) % TABS.length] : e.key === "ArrowLeft" ? TABS[(i - 1 + TABS.length) % TABS.length] : null
-              if (next) {
-                setTab(next.key)
-                document.getElementById(`tab-${next.key}`)?.focus()
-              }
-            }}
-            className={cn(
-              "-mb-px min-h-11 shrink-0 border-b-2 px-3 font-display text-sm font-semibold whitespace-nowrap transition-colors",
-              tab === t.key ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t.title}
-          </button>
-        ))}
-      </div>
-
-      <div id={`tabpanel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`} className="flex min-w-0 flex-col gap-4">
+      <PageTabs id="player" label="Player sections" tabs={TABS} value={tab} onChange={setTab}>
         {tab === "overview" && (
           <>
             <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />
@@ -358,7 +301,7 @@ export function PlayerDetailPage({
         {TABS.find((t) => t.key === tab)!
           .sections.filter((k) => k !== "overview")
           .map((k, i, all) => (
-            <TabSection key={k} id={`section-${k}`} title={all.length > 1 || i > 0 ? SECTIONS.find((s) => s.key === k)!.title : null} icon={sectionIcon(k)} teaser={teasers[k] ?? ""}>
+            <TabGroup key={k} id={`section-${k}`} title={all.length > 1 || i > 0 ? SECTIONS.find((s) => s.key === k)!.title : null} icon={sectionIcon(k)} teaser={teasers[k] ?? ""}>
               {k === "defense" && <PlayerBeatRate state={season} pid={pid} />}
               {k === "passing" && <PlayerLiveTov state={season} pid={pid} />}
               <Panels section={k} pid={pid} version={version} />
@@ -369,9 +312,9 @@ export function PlayerDetailPage({
                   <PlayerOldSite state={state} pid={pid} />
                 </>
               )}
-            </TabSection>
+            </TabGroup>
           ))}
-      </div>
+      </PageTabs>
     </div>
   )
 }

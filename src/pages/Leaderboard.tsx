@@ -2,7 +2,8 @@ import { SeasonSwitch } from "@/components/SeasonSwitch"
 import { seasonView } from "@/lib/season"
 import { AdvancedReads } from "./leaderboard/AdvancedReads"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { Section } from "@/components/Section"
+import { PageTabs, TabGroup, useJumpTab } from "@/components/PageTabs"
+import { LeagueGlance } from "./leaderboard/LeagueGlance"
 import { sectionIcon } from "@/lib/panelIcons"
 import { syncLegacy } from "@/lib/legacy"
 import type { Toggles } from "@/lib/toggles"
@@ -22,7 +23,7 @@ import { InsightCard } from "./leaderboard/InsightCard"
 import { DeepDiveCard } from "./leaderboard/DeepDiveCard"
 import { FatiguePanel } from "./leaderboard/FatiguePanel"
 
-// Same six groups, in the same order, as the classic Leaderboard tab.
+// The classic Leaderboard tab's groups. The page shows them in tabs after Overview (TABS below).
 const SECTIONS: { key: string; title: string }[] = [
   { key: "comparison", title: "Comparison & Trends" },
   { key: "shooting", title: "Shooting" },
@@ -39,8 +40,8 @@ const DEFENSE_TEASER = "Who defends well, who gets beat, and how hard the shots 
 const HINTS = hints as Record<string, { hint: string }>
 const sectionTitle = (key: string) => SECTIONS.find((s) => s.key === key)?.title ?? key
 const JUMP_ITEMS: JumpItem[] = [
-  { title: "Two-Way Ranking", group: "Top of the page", sectionId: null, hint: "Every player ranked by Two-Way/G" },
-  { title: "Season Rates (Individual)", group: "Top of the page", sectionId: null, hint: "The full stat table" },
+  { title: "Two-Way Ranking", group: "Top of the page", sectionId: "lb-section-overview", hint: "Every player ranked by Two-Way/G" },
+  { title: "Season Rates (Individual)", group: "Top of the page", sectionId: "lb-section-overview", hint: "The full stat table" },
   ...[...(TABLE_PANELS as { title: string; section: string }[]), ...(MOUNT_PANELS as { title: string; section: string }[])]
     .filter((p) => !LEADERBOARD_DROP.has(p.title) && !placeOf(p.title, LEADERBOARD_GROUPS)?.editorOnly)
     .map((p) => {
@@ -49,34 +50,17 @@ const JUMP_ITEMS: JumpItem[] = [
     }),
 ]
 
-// Phones only: one row of chips pinned under the header, so the long page is a jump away instead of a scroll.
-// The big dropdowns, most to least important. The first two cards sit above these, always.
-const ORDER = ["comparison", "reads", "insight", "shooting", "defense", "matchups", "deep", "situational", "flow", "media", "style"] as const
-const NATIVE = { reads: { id: "lb-reads", label: "Advanced reads" }, insight: { id: "lb-insight", label: "What decided games" }, deep: { id: "lb-deep", label: "Player deep dive" }, flow: { id: "lb-flow", label: "Game flow" } } as const
-const NAV = [
-  { id: "lb-ranking", label: "Ranking" },
-  { id: "lb-rates", label: "Season rates" },
-  ...ORDER.map((k) => (k in NATIVE ? NATIVE[k as keyof typeof NATIVE] : { id: `lb-section-${k}`, label: sectionTitle(k) })),
+// The page's tabs, each holding the groups listed (in this order). Models are for editors only.
+const TABS: { key: string; title: string; groups: string[] }[] = [
+  { key: "overview", title: "Overview", groups: [] },
+  { key: "shooting", title: "Shooting", groups: ["shooting"] },
+  { key: "defense", title: "Defense", groups: ["defense"] },
+  { key: "matchups", title: "Matchups", groups: ["matchups"] },
+  { key: "trends", title: "Trends", groups: ["comparison", "flow", "situational", "deep"] },
+  { key: "history", title: "History", groups: ["media"] },
+  { key: "style", title: "Models", groups: ["style"] },
 ]
-
-function QuickNav() {
-  const readOnly = useReadOnly()
-  const go = (id: string) => {
-    const el = document.getElementById(id) ?? document.querySelector<HTMLElement>(`[data-later="${id}"]`)
-    if (!el) return
-    if (el instanceof HTMLDetailsElement) el.open = true
-    el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" })
-  }
-  return (
-    <nav aria-label="Jump to a part of the leaderboard" data-no-swipe className="sticky top-0 z-20 -mx-4 flex gap-2 overflow-x-auto bg-background/90 px-4 py-2 backdrop-blur sm:hidden">
-      {NAV.filter((n) => !(readOnly && EDITOR_ONLY.has(n.id.replace("lb-section-", "")))).map((n, i) => (
-        <button key={n.id} type="button" onClick={() => go(n.id)} style={{ "--i": i } as React.CSSProperties} className="anim-chip shrink-0 rounded-full border bg-card px-3 py-1.5 text-sm font-medium">
-          {n.label}
-        </button>
-      ))}
-    </nav>
-  )
-}
+const tabOf = (sectionId: string) => (sectionId.startsWith("lb-section-") ? (TABS.find((t) => t.groups.includes(sectionId.slice(11)))?.key ?? "overview") : null)
 
 // A card below the first screen is built when it comes near the screen (or a jump chip asks for it), so opening the page only
 // pays for what is in view. Until then it holds its place with an empty box named by `id`, which the jump chips can still find.
@@ -114,37 +98,49 @@ export function LeaderboardPage({
   // Panels about how players are doing now follow the season start; league-wide ones get every game (see season.ts).
   const season = useMemo(() => seasonView(state, toggles.pastSeasons), [state, toggles.pastSeasons])
   const readOnly = useReadOnly()
+  const [tab, setTab] = useJumpTab("overview", tabOf)
+  const tabs = TABS.filter((t) => !(readOnly && EDITOR_ONLY.has(t.key)))
+  const groups = TABS.find((t) => t.key === tab)?.groups ?? []
+  const group = (k: string) => {
+    if (k === "flow") return <GameFlowCard key={k} state={season} onOpenPlayer={onOpenPlayer} />
+    if (k === "deep") return <DeepDiveCard key={k} state={state} season={season} onOpenPlayer={onOpenPlayer} />
+    return (
+      <TabGroup key={k} id={`lb-section-${k}`} title={groups.length > 1 ? sectionTitle(k) : null} icon={sectionIcon(k)} teaser={k === "defense" ? DEFENSE_TEASER : (teasers[k] ?? "")}>
+        <LegacyPanels state={season} section={k} onOpenPlayer={onOpenPlayer} version={version} />
+        {k === "situational" && <FatiguePanel state={state} onOpenPlayer={onOpenPlayer} />}
+      </TabGroup>
+    )
+  }
   return (
     <div className="flex min-w-0 flex-col gap-4">
+      <LeagueGlance state={state} onOpenPlayer={onOpenPlayer} />
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
           <PanelSearch items={JUMP_ITEMS} placeholder="Jump to a panel, such as heatmap or turnovers (press /)" />
         </div>
         <StatLegend />
       </div>
-      <QuickNav />
-      <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />
-      <div id="lb-ranking" className="anim-rise scroll-mt-28" style={{ "--i": 0 } as React.CSSProperties}>
-        <LaneBars onOpenPlayer={onOpenPlayer} />
-      </div>
-      <div id="lb-rates" className="anim-rise scroll-mt-28" style={{ "--i": 1 } as React.CSSProperties}>
-        <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
-      </div>
-      {ORDER.filter((k) => !(readOnly && EDITOR_ONLY.has(k))).map((k, i) => {
-        const style = { "--i": i + 2 } as React.CSSProperties
-        if (k === "reads") return <div key={k} className="anim-rise scroll-mt-28" style={style}><Later id="lb-reads"><AdvancedReads state={season} all={state} onOpenPlayer={onOpenPlayer} /></Later></div>
-        if (k === "insight") return <div key={k} className="anim-rise scroll-mt-28" style={style}><Later id="lb-insight"><InsightCard state={season} onOpenPlayer={onOpenPlayer} /></Later></div>
-        if (k === "deep") return <div key={k} className="anim-rise scroll-mt-28" style={style}><Later id="lb-deep"><DeepDiveCard state={state} season={season} onOpenPlayer={onOpenPlayer} /></Later></div>
-        if (k === "flow") return <div key={k} className="anim-rise scroll-mt-28" style={style}><Later id="lb-flow"><GameFlowCard state={season} onOpenPlayer={onOpenPlayer} /></Later></div>
-        return (
-          <div key={k} className="anim-rise" style={style}>
-            <Section id={`lb-section-${k}`} title={sectionTitle(k)} icon={sectionIcon(k)} teaser={k === "defense" ? DEFENSE_TEASER : (teasers[k] ?? "")}>
-              <LegacyPanels state={season} section={k} onOpenPlayer={onOpenPlayer} version={version} />
-              {k === "situational" && <FatiguePanel state={state} onOpenPlayer={onOpenPlayer} />}
-            </Section>
-          </div>
-        )
-      })}
+      <PageTabs id="lb" label="Leaderboard sections" tabs={tabs} value={tab} onChange={setTab}>
+        {tab === "overview" ? (
+          <>
+            <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />
+            <div id="lb-ranking" className="scroll-mt-28">
+              <LaneBars onOpenPlayer={onOpenPlayer} />
+            </div>
+            <div id="lb-rates" className="scroll-mt-28">
+              <SeasonRates state={state} toggles={toggles} setToggles={setToggles} onOpenPlayer={onOpenPlayer} />
+            </div>
+            <Later id="lb-reads">
+              <AdvancedReads state={season} all={state} onOpenPlayer={onOpenPlayer} />
+            </Later>
+            <Later id="lb-insight">
+              <InsightCard state={season} onOpenPlayer={onOpenPlayer} />
+            </Later>
+          </>
+        ) : (
+          groups.map(group)
+        )}
+      </PageTabs>
     </div>
   )
 }

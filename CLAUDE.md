@@ -96,6 +96,13 @@ Summary first (`src/pages/PlayerDetail.tsx`): the header, an "At a glance" card 
 assists, true shooting, best at and work on from the scouting report), then tabs (Overview, Shooting, Defense, Passing, Matchups,
 History) holding every panel. "Jump to a panel" switches tabs through the `panel-section` event in `src/lib/jump.ts`.
 
+## Leaderboard
+
+The same pattern (`src/pages/Leaderboard.tsx`): a "League at a glance" card (`src/pages/leaderboard/LeagueGlance.tsx`: top three by
+Two-Way/G and the points, assists, rebounds and true shooting leaders, 3+ games), then tabs (Overview, Shooting, Defense, Matchups,
+Trends, History, and Models for editors). Both pages use `PageTabs`, `TabGroup` and `useJumpTab` from `src/components/PageTabs.tsx`;
+the tab row pins under the site header by measuring it.
+
 ## Speed
 
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
