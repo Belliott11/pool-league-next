@@ -23,9 +23,9 @@ import type { PooleanState } from "@/lib/types"
 
 type Open = (id: string) => void
 
-function PlayerPick({ state, value, onChange }: { state: PooleanState; value: string; onChange: (v: string) => void }) {
+function PlayerPick({ state, value, onChange, label }: { state: PooleanState; value: string; onChange: (v: string) => void; label: string }) {
   return (
-    <select className={nativeSelect} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className={nativeSelect} value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
       <option value="">Select a player</option>
       {[...state.players].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
         <option key={p.id} value={p.id}>
@@ -55,9 +55,9 @@ export function PlayerComparison({ state, onOpen }: { state: PooleanState; onOpe
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <PlayerPick state={state} value={a} onChange={setA} />
+        <PlayerPick state={state} value={a} onChange={setA} label="First player" />
         <span className="text-muted-foreground">vs.</span>
-        <PlayerPick state={state} value={b} onChange={setB} />
+        <PlayerPick state={state} value={b} onChange={setB} label="Second player" />
       </div>
       {!a || !b ? (
         <p className="text-sm text-muted-foreground">Pick two players above.</p>
@@ -253,9 +253,9 @@ export function PassingChemistryPair({ state }: { state: PooleanState }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <PlayerPick state={state} value={a} onChange={setA} />
+        <PlayerPick state={state} value={a} onChange={setA} label="First player" />
         <span className="text-muted-foreground">&amp;</span>
-        <PlayerPick state={state} value={b} onChange={setB} />
+        <PlayerPick state={state} value={b} onChange={setB} label="Second player" />
       </div>
       {body}
     </div>

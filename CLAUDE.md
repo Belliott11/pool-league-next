@@ -127,6 +127,11 @@ the tab row pins under the site header by measuring it.
   screen, or Ctrl/Cmd+K. It navigates with App's own `go` and `openPlayer`.
 - Throwback of the day (`src/pages/games/Throwback.tsx`) on the off-season home: one play a day from the clips in `clip-shares.json`
   (never rough), the same for everyone that day, stepping through every one before repeating; "Another" steps on for that visit.
+- Search also answers "Ben vs Zach": their record against each other and as teammates over every result (`pairRecord` in
+  `src/lib/headToHead.ts`, from the old site's full results list); it opens the first player's Matchups tab.
+- The Filters menu has "Back to the default filters" when any filter is changed.
+- Accessibility: every Leaderboard and Player tab, the Games home and search pass axe (WCAG 2.1 AA) in both themes. Mark thin samples
+  with italics or a dashed border, never by fading (fading fails contrast).
 - The off-season home links to Adam's iPhone app, Poolean (App Store id 6783053933), for party power rankings and the rules.
 
 ## Phone screen edges

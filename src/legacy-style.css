@@ -2679,7 +2679,8 @@
 .legacy .award-badge-silver .award-badge-label { color: var(--award-silver); }
 .legacy .award-badge-bronze { background: linear-gradient(160deg, color-mix(in srgb, var(--award-bronze) 18%, var(--panel-bg)), color-mix(in srgb, var(--award-bronze-dark) 12%, var(--panel-bg))); border-color: color-mix(in srgb, var(--award-bronze) 45%, transparent); }
 .legacy .award-badge-bronze .award-badge-label { color: var(--award-bronze); }
-.legacy .award-badge-untiered { background: var(--panel-bg); border: 1px dashed color-mix(in srgb, var(--award-none) 70%, transparent); opacity: 0.75; }
+/* Marked by the dashed border and the grey icon, not by fading: fading drops the label below readable contrast. */
+.legacy .award-badge-untiered { background: var(--panel-bg); border: 1px dashed color-mix(in srgb, var(--award-none) 70%, transparent); }
 .legacy .award-badge-untiered .award-badge-icon { filter: grayscale(1); }
 .legacy .award-badge-untiered .award-badge-label { color: var(--muted); }
 

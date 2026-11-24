@@ -431,7 +431,7 @@
 .legacy.legacy .empty-state {
   border: 1px dashed var(--border);
   border-radius: var(--radius-xl);
-  background: color-mix(in oklab, var(--muted) 30%, transparent);
+  background: color-mix(in oklab, var(--muted) 12%, transparent);
   padding: 1.25rem 1rem;
   text-align: center;
   font-style: normal;

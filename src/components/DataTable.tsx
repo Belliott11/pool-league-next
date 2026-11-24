@@ -15,7 +15,7 @@ export interface Column<R> {
   display?: (r: R) => string
   tooltip?: string
   advanced?: boolean
-  // How much data is behind this value: printed next to it, and faded (or hidden) when thin.
+  // How much data is behind this value: printed next to it, and marked (italic, and a dashed border on phone cards) or hidden when thin. Never faded: that drops the text below readable contrast.
   sample?: (r: R) => Sample | null
 }
 
@@ -182,7 +182,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
           </TableHeader>
           <TableBody>
             {sorted.map((r, i) => (
-              <TableRow key={rowKey(r, i)} className={thin(r) ? "opacity-60" : undefined} title={thin(r) ? THIN_NOTE : undefined}>
+              <TableRow key={rowKey(r, i)} className={thin(r) ? "italic" : undefined} title={thin(r) ? THIN_NOTE : undefined}>
                 {columns.map((col, i) => {
                   if (i === 0) {
                     return (
@@ -221,7 +221,7 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
       <div className="flex flex-col gap-3 md:hidden">
         {Object.keys(ranges).length > 0 && <p className="text-xs text-muted-foreground">The thin bar under a number shows where it sits between the lowest and highest in this list.</p>}
         {(allCards ? sorted : sorted.slice(0, PHONE_CARDS)).map((r, i) => (
-          <Card key={rowKey(r, i)} className={thin(r) ? "opacity-70" : undefined} title={thin(r) ? THIN_NOTE : undefined}>
+          <Card key={rowKey(r, i)} className={thin(r) ? "border border-dashed italic" : undefined} title={thin(r) ? THIN_NOTE : undefined}>
             <CardContent className="flex flex-col gap-2">
               <div className="font-medium">{renderFirst ? renderFirst(r) : <Cell col={first} r={r} />}</div>
               {hero && hero.key !== first.key && (

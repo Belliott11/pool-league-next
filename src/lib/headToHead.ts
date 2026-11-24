@@ -1,3 +1,4 @@
+import { realSeasonsInOrder } from "@/lib/real"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
 import type { Game, PooleanState } from "@/lib/types"
 
@@ -64,4 +65,17 @@ export function mostMetPair(state: PooleanState): [string, string] | null {
   }
   const best = [...n.entries()].sort((p, q) => q[1] - p[1])[0]
   return best ? (best[0].split("|") as [string, string]) : null
+}
+
+// Every result on record (the old site's list holds every game, filmed or not): x's record against y, and the two as teammates.
+export function pairRecord(x: string, y: string): { vs: [number, number]; together: [number, number] } {
+  const out = { vs: [0, 0] as [number, number], together: [0, 0] as [number, number] }
+  for (const s of realSeasonsInOrder())
+    for (const g of s.games) {
+      const xa = g.a.includes(x), xb = g.b.includes(x), ya = g.a.includes(y), yb = g.b.includes(y)
+      const xWon = (xa && g.w === "A") || (xb && g.w === "B")
+      if ((xa && yb) || (xb && ya)) out.vs[xWon ? 0 : 1]++
+      else if ((xa && ya) || (xb && yb)) out.together[xWon ? 0 : 1]++
+    }
+  return out
 }

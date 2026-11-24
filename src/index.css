@@ -86,7 +86,7 @@
     /* Meaning, not decoration. Accent = identity and "this is selected / this is the leader".
        Pos = better than average or a good outcome. Neg = worse or a bad outcome. Gold = first
        place and awards only. Series colors (chart-2..5) only tell lines apart and never mean good/bad. */
-    --pos: #12806f;
+    --pos: #0e7062; /* dark enough for 4.5:1 on its own 15% tint (the game list badges) */
     --neg: #b3163f;
     --gold: #9a6a00;
     --radius: 0.75rem;

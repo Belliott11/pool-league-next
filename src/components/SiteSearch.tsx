@@ -1,16 +1,29 @@
-import { CalendarDays, FileText, Search, User } from "lucide-react"
+import { CalendarDays, FileText, Search, Swords, User } from "lucide-react"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { formatDateLong } from "@/lib/format"
 import type { View } from "@/lib/nav"
 import { playerName } from "@/lib/players"
+import { pairRecord } from "@/lib/headToHead"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-type Hit = { key: string; kind: "page" | "player" | "game"; label: string; detail: string; words: string; go: () => void }
+type Hit = { key: string; kind: "page" | "player" | "game" | "pair"; label: string; detail: string; words: string; go: () => void }
 
-const ICON = { page: FileText, player: User, game: CalendarDays }
+const ICON = { page: FileText, player: User, game: CalendarDays, pair: Swords }
+
+// "ben vs zach", "ben v zach": two names to compare. Each must match one player, by the start of their name or their id.
+const VS = /\s+(?:vs\.?|v\.?|versus)\s+/i
+function findPlayer(state: PooleanState, q: string): string | null {
+  const n = q.trim().toLowerCase()
+  if (!n) return null
+  const hits = state.players.filter((p) => p.name.toLowerCase().startsWith(n) || p.id.toLowerCase() === n || p.id.toLowerCase().endsWith(`-${n}`))
+  const exact = hits.find((p) => p.name.toLowerCase() === n)
+  return exact?.id ?? (hits.length === 1 ? hits[0].id : null)
+}
+
+
 
 // Search the whole site: players, games and pages. Opened from the bottom bar on a phone, the tab row on a wider screen, or Ctrl/Cmd+K
 // anywhere. Arrow keys move through the results and Enter opens one.
@@ -59,7 +72,31 @@ export function SiteSearch({ state, open, onOpenChange, go, openPlayer, readOnly
   }, [state, go, openPlayer, readOnly])
 
   const needle = q.trim().toLowerCase()
-  const hits = needle
+  const pair = useMemo<Hit | null>(() => {
+    const parts = q.split(VS)
+    if (parts.length !== 2) return null
+    const [x, y] = parts.map((s) => findPlayer(state, s))
+    if (!x || !y || x === y) return null
+    const r = pairRecord(x, y)
+    const nx = playerName(state, x), ny = playerName(state, y)
+    const vs = r.vs[0] + r.vs[1] > 0 ? `${nx} ${r.vs[0]}-${r.vs[1]} against ${ny}` : "Never on opposite teams"
+    const mates = r.together[0] + r.together[1] > 0 ? `${r.together[0]}-${r.together[1]} as teammates` : "never teammates"
+    return {
+      key: `pair:${x}|${y}`,
+      kind: "pair",
+      label: `${nx} vs ${ny}`,
+      detail: `${vs}, ${mates}. Every result.`,
+      words: "",
+      go: () => {
+        openPlayer(x)
+        // The player page builds first; then show its Matchups tab.
+        setTimeout(() => document.dispatchEvent(new CustomEvent("panel-section", { detail: "section-matchups" })), 300)
+      },
+    }
+  }, [q, state, openPlayer])
+  const hits = pair
+    ? [pair]
+    : needle
     ? all
         .filter((h) => needle.split(/\s+/).every((w) => `${h.label} ${h.detail} ${h.words}`.toLowerCase().includes(w)))
         .sort((a, b) => Number(b.label.toLowerCase().startsWith(needle)) - Number(a.label.toLowerCase().startsWith(needle)))
@@ -90,7 +127,7 @@ export function SiteSearch({ state, open, onOpenChange, go, openPlayer, readOnly
               else return
               e.preventDefault()
             }}
-            placeholder="A player, a game date or a page"
+            placeholder="A player, a date, or Ben vs Zach"
             aria-label="Search the site"
             role="combobox"
             aria-expanded
@@ -104,20 +141,20 @@ export function SiteSearch({ state, open, onOpenChange, go, openPlayer, readOnly
           {hits.map((h, i) => {
             const Icon = ICON[h.kind]
             return (
-              <li key={h.key} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => pick(h)}
-                  className={cn("flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left", i === active && "bg-muted")}
-                >
-                  <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate font-medium">{h.label}</span>
-                    <span className="truncate text-xs text-muted-foreground">{h.detail}</span>
-                  </span>
-                </button>
+              <li
+                key={h.key}
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={i === active}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => pick(h)}
+                className={cn("flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2", i === active && "bg-muted")}
+              >
+                <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate font-medium">{h.label}</span>
+                  <span className="truncate text-xs text-muted-foreground">{h.detail}</span>
+                </span>
               </li>
             )
           })}

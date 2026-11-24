@@ -1,7 +1,7 @@
 import { SlidersHorizontal } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import type { Toggles } from "@/lib/toggles"
+import { DEFAULT_TOGGLES, type Toggles } from "@/lib/toggles"
 
 const ROWS: { key: keyof Toggles; label: string; hint: string }[] = [
   { key: "imbalanced", label: "Include imbalanced games", hint: "Count uneven teams, like 3 against 2. Off by default because an uneven game is not a fair test of anyone." },
@@ -33,6 +33,11 @@ export function FiltersMenu({ toggles, setToggles }: { toggles: Toggles; setTogg
             </li>
           ))}
         </ul>
+        {changed > 0 && (
+          <button type="button" onClick={() => setToggles(DEFAULT_TOGGLES)} className="mt-3 min-h-10 w-full rounded-lg border text-sm font-medium hover:bg-muted">
+            Back to the default filters
+          </button>
+        )}
       </div>
     </details>
   )
