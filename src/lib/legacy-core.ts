@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { SITE } from "@/lib/site"
+import { startNewSeason, suggestSeasonName } from "@/lib/newSeason"
 // The classic site's compute layer, column definitions and dependencies, taken verbatim so the numbers match the
 // classic site exactly. It started as generated output; the generator is gone, so edit this file directly.
 import { PER, gamePace } from "@/lib/per";
@@ -12226,7 +12227,7 @@ export const EXPORT_PANELS = [
   };
   download(`${labelShotKey}-labels.json`, JSON.stringify(output, null, 2), "application/json");
 } }] },
-  { title: "Data Management", hint: "", tag: null, open: true, section: "dataManagement", order: 15, html: "\r\n          <div class=\"button-row\">\r\n            <label class=\"secondary-btn file-label\">\r\n              Import JSON\r\n              <input type=\"file\" id=\"importFileInput\" accept=\"application/json\" hidden>\r\n            </label>\r\n            <button id=\"startNewSeasonBtn\" class=\"danger-btn\">Start New Season</button>\r\n            <button id=\"resetDataBtn\" class=\"danger-btn\">Reset All Data</button>\r\n          </div>\r\n          <p class=\"hint\" style=\"margin:8px 0 0\">Start New Season closes the current season: its games are kept but archived (see Include Past Seasons), and videos stored in this browser are cleared. Reset All Data deletes everything, roster included. Either one saves a backup file first.</p>\r\n        ", render: () => {  }, wires: [{ id: "importFileInput", evt: "change", handler: e => {
+  { title: "Data Management", hint: "", tag: null, open: true, section: "dataManagement", order: 15, html: "\r\n          <div class=\"button-row\">\r\n            <label class=\"secondary-btn file-label\">\r\n              Import JSON\r\n              <input type=\"file\" id=\"importFileInput\" accept=\"application/json\" hidden>\r\n            </label>\r\n            <button id=\"startNewSeasonBtn\" class=\"danger-btn\">Start New Season</button>\r\n            <button id=\"resetDataBtn\" class=\"danger-btn\">Reset All Data</button>\r\n          </div>\r\n          <p class=\"hint\" style=\"margin:8px 0 0\">Start New Season closes the current season: every game, player and recording is kept, and the season panels move on to the new one (see Include Past Seasons). Reset All Data deletes everything, roster included. Either one saves a backup file first.</p>\r\n        ", render: () => {  }, wires: [{ id: "importFileInput", evt: "change", handler: e => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -12252,16 +12253,12 @@ export const EXPORT_PANELS = [
   e.target.value = "";
 } }, { id: "startNewSeasonBtn", evt: "click", handler: async () => {
   const today = new Date().toISOString().slice(0, 10);
-  const label = prompt('Name the season that\'s ending (shown on player profiles and the "Include Past Seasons" toggle), e.g. "Summer 2026":', "");
+  const label = prompt('Name the season that\'s ending (shown on player profiles and the "Include Past Seasons" toggle):', suggestSeasonName(state, today));
   if (label === null) return;
-  if (!confirm("This archives every current game behind today's date and clears locally-stored video files. Games, stats, the player roster, and every player's height/build/role tags are all kept. A backup file downloads first. Continue?")) return;
+  if (!confirm("This starts a new season today. Every game, stat, player and recording is kept; the season panels move on to the new season, and records stay all-time. A backup file downloads first. Continue?")) return;
   downloadBackup();
-  state.seasonHistory.push({ label: label.trim() || `Season ending ${today}`, startedAt: state.currentSeasonStartedAt, endedAt: today });
-  state.currentSeasonStartedAt = today;
-  saveState();
-  const videoIds = await getAllStoredVideoIds();
-  for (const id of videoIds) await deleteVideoFile(id);
-  state.masterVideos = [];
+  // Only the dates change (newSeason.ts). The recordings (masterVideos) are the shared videos every clip plays from, so they are never cleared.
+  state = startNewSeason(state, today, label);
   saveState();
   currentGameId = null;
   currentPlayerId = null;

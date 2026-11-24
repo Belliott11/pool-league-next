@@ -170,6 +170,8 @@ export interface PooleanState {
   // src/data/headline-tones.json; null means no clip for that headline.
   headlineTones?: Record<string, [string, "good" | "bad"] | null>
   currentSeasonStartedAt?: string | null
+  // Seasons already closed, oldest first: each one's name and dates (see newSeason.ts).
+  seasonHistory?: { label: string; startedAt: string | null; endedAt: string }[]
   // The first night of next season. While it is in the future the app is in the offseason.
   openingNight?: { date: string; time?: string } | null
   [key: string]: unknown

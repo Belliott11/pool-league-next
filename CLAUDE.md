@@ -178,6 +178,16 @@ the database functions `cast_pickem_vote` and `save_season_prediction` keep only
 key (`supabase/pickem.sql`, `supabase/predictions.sql`). Direct writes to both tables are refused (only the read policies remain), so
 the functions are the only way in.
 
+## New season
+
+`startNewSeason` (`src/lib/newSeason.ts`) closes a season by recording dates only: the ended season goes into `seasonHistory` with its
+name, and `currentSeasonStartedAt` moves to the new date. Games, players, labels and recordings (`masterVideos`, which every game video and
+clip plays from) are never touched. From opening night until a season is started, the editor's Games home asks for it
+(`src/pages/games/NewSeasonPrompt.tsx`, starting on the opening night's date). The classic Data Management button uses the same function;
+it used to clear `masterVideos`, which on this site would have broken every game video. Rehearsed on a copy of live data (2026-11-24):
+standings and award races start empty, season panels borrow the last 10 games with a note, records and all 153 clips are unchanged.
+Season Wrapped follows the current season, so last season's Wrapped goes once the new season starts.
+
 ## RSVP replies
 
 Players answer "I'm in" or "Can't make it" for opening night themselves on the off-season home (`src/lib/rsvpReplies.ts`). Replies live

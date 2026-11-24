@@ -18,6 +18,7 @@ import { findLiveGame } from "@/lib/live"
 import { upcomingRsvp } from "@/lib/nightPreview"
 import { showHub } from "@/lib/offseason"
 import { OffseasonHub } from "./games/OffseasonHub"
+import { NewSeasonPrompt } from "./games/NewSeasonPrompt"
 import { MyCard } from "./games/MyCard"
 import { TopPlays } from "./games/TopPlays"
 
@@ -124,6 +125,7 @@ export function GamesPage({
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div className="flex min-w-0 flex-col gap-4">
         {readOnly && <LiveBanner state={state} onOpen={() => go("live")} />}
+        {!readOnly && <NewSeasonPrompt state={state} update={update} />}
         <div className="flex flex-wrap gap-2">
           {(!readOnly || (!findLiveGame(state) && getClient())) && (
             <Button variant={readOnly ? "outline" : "default"} onClick={() => go("live")}>
