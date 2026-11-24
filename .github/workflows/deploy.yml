@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Daily, so the link preview picture's countdown moves (scripts/og-image.mjs). 20:05 UTC is just after the countdown drops by a day.
+  schedule:
+    - cron: "5 20 * * *"
 
 permissions:
   contents: read

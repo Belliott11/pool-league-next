@@ -51,10 +51,45 @@ function clipPages(): Plugin {
   }
 }
 
+// The link preview picture (scripts/og-image.mjs), made from the current league data on each build and saved as og/<date>.png, so chat apps
+// that cache by address pick up a new one each day. If the data cannot be fetched, the page keeps the plain icon.
+function ogImage(): Plugin {
+  let file: string | null = null
+  let png: Buffer | null = null
+  return {
+    name: "og-image",
+    apply: "build",
+    async buildStart() {
+      try {
+        const cfg = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "public/cloud-config.json"), "utf8")) as { url: string; anonKey: string }
+        const res = await fetch(`${cfg.url}/rest/v1/league_state?select=data&id=eq.1`, { headers: { apikey: cfg.anonKey, Authorization: `Bearer ${cfg.anonKey}` }, signal: AbortSignal.timeout(8000) })
+        const rows = (await res.json()) as { data: unknown }[]
+        if (!res.ok || !rows[0]) throw new Error(`league data ${res.status}`)
+        const og = await import("./scripts/og-image.mjs")
+        png = og.renderOg(rows[0].data)
+        file = `og/${og.cherryHillDate(new Date())}.png`
+      } catch (e) {
+        this.warn(`Link preview picture skipped, keeping the icon: ${e instanceof Error ? e.message : e}`)
+      }
+    },
+    transformIndexHtml(html) {
+      if (!file) return html
+      return html
+        .replace(/<meta property="og:image" content="[^"]*" \/>/, `<meta property="og:image" content="${SITE}${file}" />`)
+        .replace(/<meta property="og:image:width" content="\d+" \/>/, `<meta property="og:image:width" content="1200" />`)
+        .replace(/<meta property="og:image:height" content="\d+" \/>/, `<meta property="og:image:height" content="630" />`)
+        .replace(/<meta name="twitter:card" content="summary" \/>/, `<meta name="twitter:card" content="summary_large_image" />`)
+    },
+    generateBundle() {
+      if (file && png) this.emitFile({ type: "asset", fileName: file, source: png })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   base: BASE,
-  plugins: [react(), tailwindcss(), clipPages()],
+  plugins: [react(), tailwindcss(), clipPages(), ogImage()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

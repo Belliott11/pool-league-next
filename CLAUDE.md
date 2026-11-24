@@ -148,6 +148,12 @@ the tab row pins under the site header by measuring it.
 - Home screen tip (`src/components/HomeScreenTip.tsx`): on an iPhone or iPad in the browser (never from the home screen or on a computer),
   from the second visit, after "Who are you?" and the colors tip are done, so only one tip shows at a time. "Got it" hides it for good,
   "Not now" for a month. On the home screen iOS keeps the saved stats that Safari clears after a week unused.
+- Link preview picture (`scripts/og-image.mjs`, the `ogImage` plugin in `vite.config.ts`): each build draws a 1200x630 picture from the
+  live league data (before opening night the countdown and last season's best records; in season the standings) as `og/<date>.png` and
+  points og:image at it, falling back to the icon if the data cannot be fetched. Fonts are fixed-weight copies of the site's own in
+  `scripts/og-fonts` (the renderer cannot pick weights in variable fonts). deploy.yml also runs daily at 20:05 UTC, just after the countdown
+  drops a day, counted exactly as the site's (`countdownTo`). In a cloud session Node's fetch needs `NODE_USE_ENV_PROXY=1` and
+  `NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt` to reach Supabase, or the build quietly keeps the icon.
 - The off-season home links to Adam's iPhone app, Poolean (App Store id 6783053933), for party power rankings and the rules.
 
 ## Phone screen edges
