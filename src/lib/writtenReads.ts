@@ -16,6 +16,9 @@ export interface WrittenRead {
 export const WRITTEN = written as { writtenAt: string; filmedGames: number; formula?: number; players: Record<string, WrittenRead> }
 
 export const writtenRead = (id: string): WrittenRead | null => WRITTEN.players[id] ?? null
+// The written read, but only with the default Filters: its numbers were written for those. With any other filter the pages show the read
+// worked out live from the numbers (advancedReads), which follows the filters.
+export const writtenReadFor = (id: string): WrittenRead | null => (isDefaultFilters() ? writtenRead(id) : null)
 
 const filmedGames = (state: PooleanState) => state.games.filter((g) => !g.liveInProgress && g.scoringEvents.length > 0).length
 
@@ -29,6 +32,6 @@ export function writtenNote(state: PooleanState): string {
   const when = new Date(WRITTEN.writtenAt + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })
   const behind = since > 0 ? ` ${since} more ${since === 1 ? "game has" : "games have"} been filmed since, so this is behind the numbers until it is rewritten.` : ""
   const formula = readsFormulaStale() ? " A stat formula has changed since, so numbers in the text may not match the panels until it is rewritten." : ""
-  const filters = isDefaultFilters() ? "" : " Your Filters are not the default ones, so the numbers in the text are for the default filters and the panels follow yours."
-  return `Written ${when} from ${WRITTEN.filmedGames} filmed games.${behind}${formula}${filters}`
+  if (!isDefaultFilters()) return "Your Filters are not the default ones, so this is worked out live from the numbers and follows them. The written read comes back with the default Filters."
+  return `Written ${when} from ${WRITTEN.filmedGames} filmed games.${behind}${formula}`
 }

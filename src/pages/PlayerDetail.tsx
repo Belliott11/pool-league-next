@@ -291,7 +291,7 @@ export function PlayerDetailPage({
         {tab === "overview" && (
           <>
             <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />
-            <PlayerRead state={state} pid={pid} />
+            <PlayerRead state={state} season={season} pid={pid} />
             <ClipStrip state={season} clips={clips.slice(1)} />
             <PlayerCompare key={pid} state={season} pid={pid} />
             <Panels section="overview" pid={pid} version={version} />

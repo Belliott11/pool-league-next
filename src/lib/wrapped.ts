@@ -7,7 +7,7 @@ import { currentRealSeason, type RealGame } from "@/lib/real"
 import { ordinalOf } from "@/lib/ordinal"
 import { RECORD_LABEL, holders, recordBook } from "@/lib/records"
 import type { PooleanState } from "@/lib/types"
-import { writtenRead } from "@/lib/writtenReads"
+import { writtenReadFor } from "@/lib/writtenReads"
 
 // A player's season told one fact at a time, like a year-end recap. Slides with nothing to say are left out.
 export type Slide =
@@ -107,7 +107,7 @@ export function wrappedFor(full: PooleanState, id: string, old: RealGame[] = sea
     .map((r) => ({ label: RECORD_LABEL[r!.key], value: r!.value, date: r!.date, tiedWith: holders(r!).filter((x) => x !== id) }))
   if (rows.length) slides.push({ kind: "records", rows })
 
-  const words = writtenRead(id)?.season
+  const words = writtenReadFor(id)?.season
   if (words) slides.push({ kind: "words", text: words })
   slides.push({ kind: "summary", w, l, pts: me?.pts ?? null, bestDate: best?.date ?? null })
   return slides

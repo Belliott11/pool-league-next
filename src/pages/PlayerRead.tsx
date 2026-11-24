@@ -1,11 +1,33 @@
+import { useMemo } from "react"
 import { Panel } from "@/components/Panel"
 import { Terms } from "@/components/Terms"
+import { advancedReads } from "@/lib/advancedReads"
+import { isDefaultFilters } from "@/lib/filters"
 import type { PooleanState } from "@/lib/types"
-import { writtenNote, writtenRead } from "@/lib/writtenReads"
+import { writtenNote, writtenReadFor } from "@/lib/writtenReads"
 
-// The written read for one player, the same one their Advanced reads card shows. Nothing shows for a player without one yet.
-export function PlayerRead({ state, pid }: { state: PooleanState; pid: string }) {
-  const r = writtenRead(pid)
+// The written read for one player, the same one their Advanced reads card shows. With Filters other than the default (or for a player
+// with no written read yet) it is the read worked out live from `season`, which follows the Filters. Nothing shows for a player with too
+// few games for either.
+export function PlayerRead({ state, season = state, pid }: { state: PooleanState; season?: PooleanState; pid: string }) {
+  const written = writtenReadFor(pid)
+  const live = useMemo(() => (written ? null : (advancedReads(season).reads.find((x) => x.id === pid) ?? null)), [written, season, pid])
+  if (!written && live)
+    return (
+      <Panel title="Advanced read" hint={isDefaultFilters() ? "Worked out live from the numbers. There is no written read for this player yet." : writtenNote(state)}>
+        <p className="font-medium">{live.headline}</p>
+        <dl className="grid max-w-prose gap-x-4 gap-y-2 text-sm sm:grid-cols-[6.5rem_minmax(0,1fr)]">
+          {live.lines.map((l) => (
+            <div key={l.label} className="contents">
+              <dt className={`font-semibold ${l.tone === "good" ? "text-pos" : l.tone === "bad" ? "text-neg" : "text-muted-foreground"}`}>{l.label}</dt>
+              <dd className="mb-2 min-w-0 sm:mb-0">{l.text}</dd>
+            </div>
+          ))}
+        </dl>
+        <Terms texts={[live.headline, ...live.lines.map((l) => l.text)]} />
+      </Panel>
+    )
+  const r = written
   if (!r) return null
   return (
     <Panel title="Advanced read" hint={writtenNote(state)}>

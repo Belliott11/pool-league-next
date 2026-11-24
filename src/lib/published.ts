@@ -3,6 +3,7 @@ import { useReadOnly } from "@/lib/mode"
 import type { Update } from "@/lib/store"
 import custom from "@/data/custom-headlines.json"
 import { FORMULA_VERSION } from "@/lib/formulaVersion"
+import { isDefaultFilters } from "@/lib/filters"
 import type { PooleanState } from "@/lib/types"
 
 // Headlines can use private player labels, but visitors never get the labels. So when the editor looks at a story
@@ -18,11 +19,11 @@ const filmed = (state: PooleanState) => state.games.filter((g) => !g.liveInProgr
 export const headlinesFormulaStale = () => (CUSTOM.formula ?? 0) < FORMULA_VERSION
 export function customStories(state: PooleanState, key: StoryKey): string[] | null {
   const lines = CUSTOM[key]
-  return lines && lines.length && filmed(state) <= CUSTOM.filmedGames && !headlinesFormulaStale() ? lines : null
+  return lines && lines.length && filmed(state) <= CUSTOM.filmedGames && !headlinesFormulaStale() && isDefaultFilters() ? lines : null
 }
 // How many games have been filmed since the hand-written headlines were last rewritten.
 export const headlinesBehind = (state: PooleanState) => Math.max(0, filmed(state) - CUSTOM.filmedGames)
-export const customNight = (date: string) => (headlinesFormulaStale() ? null : (CUSTOM.nights?.[date] ?? null))
+export const customNight = (date: string) => (headlinesFormulaStale() || !isDefaultFilters() ? null : (CUSTOM.nights?.[date] ?? null))
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
@@ -30,9 +31,12 @@ export function usePublishedStories(state: PooleanState, update: Update | undefi
   const readOnly = useReadOnly()
   const saved = state.publishedStories?.[key]
   useEffect(() => {
-    if (readOnly || !update || same(saved, computed)) return
+    // Saved lines are what visitors read, so only lines written with the default Filters are saved.
+    if (readOnly || !update || !isDefaultFilters() || same(saved, computed)) return
     update((s) => ({ ...s, publishedStories: { ...s.publishedStories, [key]: computed } }))
   }, [readOnly, update, saved, computed, key])
+  // With other Filters everyone gets the lines worked out live, which follow them.
+  if (!isDefaultFilters()) return computed
   return customStories(state, key) ?? (readOnly ? (saved && saved.length ? saved : computed) : computed)
 }
 
@@ -40,8 +44,9 @@ export function usePublishedNight(state: PooleanState, update: Update | undefine
   const readOnly = useReadOnly()
   const saved = state.publishedStories?.nights?.[date]
   useEffect(() => {
-    if (readOnly || !update || !date || same(saved, computed)) return
+    if (readOnly || !update || !date || !isDefaultFilters() || same(saved, computed)) return
     update((s) => ({ ...s, publishedStories: { ...s.publishedStories, nights: { ...s.publishedStories?.nights, [date]: computed } } }))
   }, [readOnly, update, date, saved, computed])
+  if (!isDefaultFilters()) return computed
   return customNight(date) ?? (readOnly && saved ? saved : computed)
 }

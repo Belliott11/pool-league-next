@@ -19,6 +19,12 @@ and https://intel.poolean.net (the user's domain, served from the same Pages bui
   `src/_state.json`. Delete all three before committing, and never commit the state file. `public/test-data.json` (a copy of live state)
   is also never committed; the tests that need it skip without it.
 
+## Written text and Filters
+
+The written reads and headlines are for the default Filters. With any other filter, `writtenReadFor` and `customStories`/`customNight`
+return null, so the Player page, Advanced reads, Wrapped and the headline lists show the versions worked out live, which follow the
+filters. Lines are only saved for visitors (`publishedStories`) at the default filters.
+
 ## Rerun the reads and headlines (recipe)
 
 1. Save live state to `public/test-data.json` (never committed). A temporary `src/_rerun.test.ts` stubs `localStorage`, imports with

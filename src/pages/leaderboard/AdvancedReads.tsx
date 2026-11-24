@@ -5,7 +5,7 @@ import { Terms } from "@/components/Terms"
 import { advancedReads, EARLY_GAMES, READ_MIN_GAMES, type Read, type Tone } from "@/lib/advancedReads"
 import { isSeasonOnly } from "@/lib/season"
 import type { PooleanState } from "@/lib/types"
-import { WRITTEN, writtenNote } from "@/lib/writtenReads"
+import { writtenNote, writtenReadFor } from "@/lib/writtenReads"
 import { Grid, Hint, Who } from "./parts"
 
 const TONE: Record<string, string> = { good: "text-pos font-semibold", bad: "text-neg font-semibold" }
@@ -13,9 +13,10 @@ const cls = (t: Tone) => (t ? TONE[t] : "")
 const pc = (v: number | null) => (v === null ? "-" : `${Math.round(v * 100)}%`)
 const sg = (v: number | null, d = 2) => (v === null ? "-" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`)
 
-// The written read when there is one (see writtenReads.ts), with the computed lines underneath.
+// The written read when there is one and the Filters are the default (see writtenReads.ts), with the computed lines underneath; otherwise
+// the computed read, which follows the Filters.
 function Card({ r, state, onOpenPlayer }: { r: Read; state: PooleanState; onOpenPlayer: (id: string) => void }) {
-  const mine = WRITTEN.players[r.id]
+  const mine = writtenReadFor(r.id)
   const numbers = (
     <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[6.5rem_minmax(0,1fr)]">
       {r.lines.map((l) => (
