@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react"
 import { lazyPage } from "@/lib/lazyPage"
-import { CalendarDays, Crown, Radio } from "lucide-react"
+import { Calculator, CalendarDays, Crown, Radio } from "lucide-react"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { getClient } from "@/lib/cloud"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,7 @@ const LiveGamePage = lazyPage(() => import("./live/LiveGamePage").then((m) => ({
 // The live screens and the editor's Set Up Tonight load only when opened, so a visitor's first load stays smaller.
 const LiveWatch = lazyPage(() => import("./live/LiveWatch").then((m) => ({ default: m.LiveWatch })))
 const SetUpTonight = lazyPage(() => import("./games/SetUpTonight").then((m) => ({ default: m.SetUpTonight })))
+const HowItWorks = lazyPage(() => import("./games/HowItWorks").then((m) => ({ default: m.HowItWorks })))
 const NightRecap = lazyPage(() => import("./games/NightRecap").then((m) => ({ default: m.NightRecap })))
 const StatEntryPage = lazyPage(() => import("./statentry/StatEntryPage").then((m) => ({ default: m.StatEntryPage })))
 const HallOfFame = lazyPage(() => import("./games/HallOfFame").then((m) => ({ default: m.HallOfFame })))
@@ -78,6 +79,10 @@ export function GamesPage({
 
   if (kind === "h2h") {
     return <Lazy><HeadToHeadPage state={state} ids={arg} onBack={goBack} onOpenGame={open} onOpenPlayer={onOpenPlayer} /></Lazy>
+  }
+
+  if (kind === "how") {
+    return <Lazy><HowItWorks state={state} onBack={goBack} onOpenGame={(id) => go("game:" + id)} /></Lazy>
   }
 
   if (kind === "hall") {
@@ -143,6 +148,12 @@ export function GamesPage({
             <Button variant="outline" onClick={() => go("hall")}>
               <Crown />
               Hall of fame
+            </Button>
+          )}
+          {state.games.some((g) => g.scoringEvents.length > 0) && (
+            <Button variant="outline" onClick={() => go("how")}>
+              <Calculator />
+              How the numbers work
             </Button>
           )}
         </div>

@@ -205,6 +205,16 @@ Pick'em also opens for live games until their first basket (`liveOpenForVotes` i
 teams are picked, so before this Pick'em never opened on a game night. Both live screens show "Who wins this one?" (`LivePickem` in
 `src/pages/games/PickEm.tsx`) until then, and the vote counts in the Pick'em standings once the game is finished.
 
+## How the numbers work, and runs
+
+`#/games/how` (`src/pages/games/HowItWorks.tsx`, linked from the Games home and search) explains each model on a real moment, all worked
+out live: the live odds on one basket (before, with it, and if the other team had scored it, starting on the basket that moved the odds
+most; the pre-game read is `backtestPick`, from earlier nights only), runs against chance, and Two-Way added up term by term from one
+player's game with that player's outlier fences. `src/lib/momentum.ts` judges runs against the same game's baskets in a random order,
+counted exactly (no simulation), and the hot hand against each player's own shots shuffled within each game (better shooters take more
+shots after a make, so the gap to beat is not zero; the basket that ends a game is left out). The game page's Shots tab has "Was that run
+real?" (`src/components/RunCheck.tsx`). As of 2026-11-25 the games swing more than chance (65 runs against 59) and there is no hot hand.
+
 ## Live win probability
 
 `src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:

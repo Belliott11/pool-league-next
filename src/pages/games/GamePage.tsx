@@ -15,6 +15,7 @@ import { ClipboardPenLine, Play, Share2 } from "lucide-react"
 import { shareGameCard } from "@/lib/shareCard"
 import { GameVideoPanel } from "@/components/GameVideoPanel"
 import { ReviewsCard } from "./ReviewsCard"
+import { RunCheck } from "@/components/RunCheck"
 import { WatchContext, WatchTime } from "@/components/WatchTime"
 import type { PlayerControl } from "@/components/YouTubePlayer"
 import { JUMP_LEAD_SECONDS } from "@/lib/legacy-core"
@@ -484,6 +485,9 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
             </Card>
           ) : (
             <div className="flex flex-col gap-4">
+              <Panel title="Was that run real?" hint="The longest streak of baskets by one team, against the same baskets in a random order.">
+                <RunCheck state={state} game={game} />
+              </Panel>
               <Panel title="Shot Log" hint="Every shot, make or miss, with the defender and any assist.">
                 <ShotLog state={state} game={game} />
               </Panel>
