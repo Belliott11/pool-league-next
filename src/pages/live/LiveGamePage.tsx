@@ -11,10 +11,11 @@ import { Minus, Plus, Undo2, Flag, X, UserPlus, Vibrate, VibrateOff } from "luci
 import { EmptyState } from "@/components/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { uid } from "@/lib/format"
 import { PickChips, type PickMethodKey } from "@/components/GameTags"
 import {
-  DEFAULT_TARGET, addLiveScore, discardLive, finishLive, findLiveGame, liveTargetOf, liveTotals, startLive, undoLiveScore,
+  DEFAULT_TARGET, addLiveScore, discardLive, finishLive, findLiveGame, liveTargetOf, liveTotals, markTest, startLive, undoLiveScore,
 } from "@/lib/live"
 import { playerName } from "@/lib/players"
 import { haptic, hapticsEnabled, setHapticsEnabled } from "@/lib/haptics"
@@ -32,6 +33,7 @@ function Setup({ state, update, onClose }: { state: PooleanState; update: Update
   const [teamB, setB] = useState<string[]>([])
   const [target, setTarget] = useState(DEFAULT_TARGET)
   const [picked, setPicked] = useState<PickMethodKey | undefined>()
+  const [test, setTest] = useState(false)
   const [name, setName] = useState("")
 
   // Tapping a team button moves the player there; tapping it again takes them off.
@@ -104,12 +106,19 @@ function Setup({ state, update, onClose }: { state: PooleanState; update: Update
         <span className="font-medium">How teams were picked</span>
         <PickChips value={picked} onChange={setPicked} />
       </div>
+      <label className="flex items-center justify-between gap-3 rounded-lg border p-2">
+        <span>
+          <span className="block font-medium">Test game</span>
+          <span className="block text-xs text-muted-foreground">No alerts, no Pick'em, and it is thrown away when it ends.</span>
+        </span>
+        <Switch checked={test} onCheckedChange={setTest} aria-label="Test game" />
+      </label>
       <Button
         className="h-14 text-lg"
         disabled={!ok}
-        onClick={() => update((s) => startLive(s, uid("game"), new Date().toISOString().slice(0, 10), teamA, teamB, target, picked))}
+        onClick={() => update((s) => startLive(s, uid("game"), new Date().toISOString().slice(0, 10), teamA, teamB, target, picked, test))}
       >
-        Start game
+        {test ? "Start test game" : "Start game"}
       </Button>
       {!ok && <p className="text-center text-xs text-muted-foreground">Put at least one player on each team.</p>}
       <Button variant="ghost" onClick={onClose}>
@@ -302,6 +311,11 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
   return (
     <div className="flex flex-col gap-3">
       {party && <Confetti />}
+      {game.test && (
+        <p role="status" className="rounded-lg border border-gold px-3 py-2 text-sm">
+          Test game. Nobody gets an alert, Pick'em stays closed, and it is thrown away when it ends.
+        </p>
+      )}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">Swipe a player right to score. A short swipe is +1, longer +2, longest +3.</p>
         <Button
@@ -352,13 +366,19 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
           className="h-12"
           onClick={() => {
             haptic("success")
+            // A test game is thrown away when it ends, so it never reaches the stats.
+            if (game.test) {
+              update((s) => discardLive(s, game.id))
+              onClose()
+              return
+            }
             update((s) => finishLive(s, game.id))
             // Straight to the night's recap when the app can show it.
             if (onRecap) onRecap(game.date)
             else onClose()
           }}
         >
-          <Flag /> Finish game
+          <Flag /> {game.test ? "End test" : "Finish game"}
         </Button>
       </div>
       {confirm ? (
@@ -380,9 +400,16 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
           </div>
         </div>
       ) : (
-        <Button variant="ghost" className="h-11 text-neg" onClick={() => setConfirm(true)}>
-          <X /> Discard game
-        </Button>
+        <div className="flex flex-col">
+          {!game.test && (
+            <Button variant="ghost" className="h-11" onClick={() => update((s) => markTest(s, game.id))}>
+              Make this a test game
+            </Button>
+          )}
+          <Button variant="ghost" className="h-11 text-neg" onClick={() => setConfirm(true)}>
+            <X /> Discard game
+          </Button>
+        </div>
       )}
       <Button variant="ghost" onClick={onClose}>
         Back to games

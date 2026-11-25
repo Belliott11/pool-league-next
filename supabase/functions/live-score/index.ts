@@ -2,7 +2,7 @@
 //   start  a live game from players that already exist (only when no game is live)
 //   add    a basket for one of the live game's players
 //   undo   the last basket added this way
-//   finish the live game (their baskets count toward the final score)
+//   finish the live game (their baskets count toward the final score); a test game is thrown away instead
 //   review flag a moment of the live game for a second look once the recording is up ("Review that")
 //   stream save the live game's YouTube live link, so everyone watching can see it and replay
 // It cannot add or remove players, edit or delete past games, or touch anything else.
@@ -38,7 +38,7 @@ type Game = {
   [key: string]: unknown
 }
 type State = { players: { id: string }[]; games: Game[]; [key: string]: unknown }
-type Body = { action?: string; gameId?: string; pid?: string; points?: number; bid?: string; at?: number; note?: string; by?: string; videoTime?: number; url?: string; pA?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
+type Body = { test?: boolean; action?: string; gameId?: string; pid?: string; points?: number; bid?: string; at?: number; note?: string; by?: string; videoTime?: number; url?: string; pA?: number; teamA?: string[]; teamB?: string[]; target?: number; date?: string }
 
 const total = (g: Game, team: string[]) => [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])].filter((s) => team.includes(s.pid)).reduce((sum, s) => sum + s.points, 0)
 const ids = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
@@ -83,6 +83,8 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
       liveScores: [],
       liveTarget: target,
       startedAt: new Date().toISOString(),
+      // A test game: no alerts, no Pick'em, and it is thrown away when it ends.
+      ...(body.test === true ? { test: true } : {}),
       // The model's call, sent by the phone that started the game before anything was played.
       ...(Number(body.pA) > 0 && Number(body.pA) < 1 ? { prediction: { pA: Math.round(Number(body.pA) * 1000) / 1000, at: new Date().toISOString() } } : {}),
     })
@@ -140,6 +142,11 @@ function apply(state: State, body: Body): { error: string; status: number } | nu
     return null
   }
   if (body.action === "finish") {
+    // A test game never reaches the stats: ending it throws it away.
+    if (game.test === true) {
+      state.games = state.games.filter((g) => g.id !== game.id)
+      return null
+    }
     const a = total(game, game.teamA)
     const b = total(game, game.teamB)
     if (a === 0 && b === 0) return { error: "Nobody has scored yet. There is nothing to finish.", status: 409 }

@@ -125,12 +125,13 @@ export function Scorekeeper({ game, state, pops, a, b, children }: { game: Game;
         )}
         <Button
           className="h-12"
-          disabled={busy || waiting.length > 0 || (a === 0 && b === 0)}
+          disabled={busy || waiting.length > 0 || (!game.test && a === 0 && b === 0)}
           onClick={() => {
-            if (confirm(`Finish the game at ${side(game.teamA)} to ${side(game.teamB)}? It is saved to the game list.`)) void run(() => finishGame(game.id), "success").then(() => setKeeping(false))
+            const ask = game.test ? "End this test game? It is thrown away, not saved." : `Finish the game at ${side(game.teamA)} to ${side(game.teamB)}? It is saved to the game list.`
+            if (confirm(ask)) void run(() => finishGame(game.id), "success").then(() => setKeeping(false))
           }}
         >
-          <Flag /> Finish game
+          <Flag /> {game.test ? "End test" : "Finish game"}
         </Button>
         <div className="grid grid-cols-2 gap-2">
           <Button

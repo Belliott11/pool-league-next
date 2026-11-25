@@ -107,7 +107,7 @@ from motion in the video was tried: right on one recording, wrong on one of two 
 ## Reviews (instant replay, after the game)
 
 "Review that" on the live screens (`src/components/ReviewThat.tsx`: the editor's scoring screen saves it directly; friends' watch screen
-sends it to the `live-score` function, version 6, action `review`) saves the moment it was tapped, an optional note and who flagged it,
+sends it to the `live-score` function, version 7, action `review`) saves the moment it was tapped, an optional note and who flagged it,
 in `game.reviews` (type `Review`). Once the recording's start time is known, `reviewTime` in `src/lib/reviews.ts` places each one in the
 video, and the Reviews card under the game video (`src/pages/games/ReviewsCard.tsx`) replays it from 8 s before to 3 s after, looping,
 at normal, 0.5x or 0.25x speed; the editor records "Call stands" or "Overturned". Without a recording time, the editor can set the moment
@@ -270,6 +270,11 @@ Win chance added (insight.ts) now uses the live odds (`winProbabilityFrom` with 
   `supabase/functions/game-alerts/webpush.ts`, tested in `src/lib/webpush.test.ts`; `public/sw.js` shows the notification and opens its
   page. Turning alerts on sends one "You're set" notification. Headless browsers have no push service, so delivery to a real phone can
   only be checked on a phone; the server side was checked end to end against a test address (2026-11-25).
+- Test games: a "Test game" switch on the live start screen (and "Make this a test game" during one) sets `game.test`. A test game sends
+  no alerts, keeps Pick'em closed (`liveOpenForVotes`), shows a banner on both live screens, and is thrown away when it ends ("End test"
+  on the editor's screen; the `live-score` function, version 7, discards it on `finish` and accepts `test: true` on `start`), so it never
+  reaches the stats. "Game on" also waits a minute (`LIVE_DELAY_MS` in the game-alerts function) and goes only if the game is still live
+  and not a test then, so a game started by mistake can be discarded first; "Final" goes at once.
 - Game summary (`src/lib/gameSummary.ts`, `src/components/GameSummaryCard.tsx` on the game page, and two lines on the share picture):
   the final score, the winners' basket that moved the live odds most (not the one that ended it), the most Points added in the game
   (`pointsAdded(state, { only })`, filmed games), and a link to the best shareable play or the game.

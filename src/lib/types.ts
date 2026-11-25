@@ -88,6 +88,7 @@ export interface Game {
   teamsPickedBy?: "balanced" | "captains" | "random" | "runback"
   rules?: string // house rules that night
   liveTarget?: number // the score it was played to
+  test?: boolean // a live game for trying things out: no alerts, no Pick'em, and it is discarded when it ends
   videoUrl?: string
   videoPath?: string
   // Seconds into the video where this game begins, for one recording shared by several games.

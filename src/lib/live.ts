@@ -20,8 +20,8 @@ export function liveTotals(game: Game): [number, number] {
   return [liveScoreOf(game, game.teamA), liveScoreOf(game, game.teamB)]
 }
 
-export function startLive(state: PooleanState, id: string, date: string, teamA: string[], teamB: string[], target: number, teamsPickedBy?: Game["teamsPickedBy"]): PooleanState {
-  const g = newGame({ id, date, teamA, teamB, liveInProgress: true, liveScores: [], liveTarget: target, teamsPickedBy, prediction: pregamePrediction(teamA, teamB), startedAt: new Date().toISOString() })
+export function startLive(state: PooleanState, id: string, date: string, teamA: string[], teamB: string[], target: number, teamsPickedBy?: Game["teamsPickedBy"], test = false): PooleanState {
+  const g = newGame({ id, date, teamA, teamB, liveInProgress: true, liveScores: [], liveTarget: target, teamsPickedBy, prediction: pregamePrediction(teamA, teamB), startedAt: new Date().toISOString(), ...(test ? { test: true } : {}) })
   return { ...state, games: [...state.games, g] }
 }
 
@@ -65,6 +65,11 @@ export function adoptScorekeeperScores(local: PooleanState, remote: PooleanState
     return { ...g, scorekeeperScores: theirs }
   })
   return changed ? { ...local, games } : local
+}
+
+// Marks a live game as a test (no alerts, no Pick'em, discarded when it ends), for one started without the switch.
+export function markTest(state: PooleanState, id: string): PooleanState {
+  return patch(state, id, (g) => ({ ...g, test: true }))
 }
 
 export function discardLive(state: PooleanState, id: string): PooleanState {

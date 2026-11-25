@@ -119,6 +119,9 @@ export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; on
       <p className={cn("rounded-lg px-3 py-2 text-center text-sm font-medium", !isLive && a !== b ? "bg-pos text-white" : "bg-muted")} role="status">
         {hint}
       </p>
+      {isLive && game.test && (
+        <p className="rounded-lg border border-gold px-3 py-2 text-center text-sm">Test game. It sends no alerts and is thrown away when it ends.</p>
+      )}
       {isLive && game.streamUrl && <LiveStream url={game.streamUrl} control={stream} />}
       {isLive ? (
         <Scorekeeper game={game} state={state} pops={pops} a={a} b={b}>
