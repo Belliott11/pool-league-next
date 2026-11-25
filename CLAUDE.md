@@ -124,7 +124,11 @@ environment, so the player itself can only be tested on the live site.
 
 Summary first (`src/pages/PlayerDetail.tsx`): the header, an "At a glance" card (`src/pages/PlayerGlance.tsx`: standing, win rate,
 assists, true shooting, best at and work on from the scouting report), then tabs (Overview, Shooting, Defense, Passing, Matchups,
-History) holding every panel. "Jump to a panel" switches tabs through the `panel-section` event in `src/lib/jump.ts`.
+History) holding every panel. "Jump to a panel" switches tabs through the `panel-section` event in `src/lib/jump.ts`. The Defense tab
+opens with "Who stops whom" (`src/pages/PlayerDefense.tsx`, `src/lib/playerDefense.ts`): points allowed per shot guarded against what
+the same shooters score on everyone else (leaning on the league's points per shot by 10 shots), ranked at 15+ shots guarded, with the
+pairs both ways (shooters they guard, defenders who guard them, 4+ shots each). Who guarded a shot comes from `defendersOf` in
+`src/lib/matchupRecord.ts`: the tagged defenders, else the game's matchups list.
 
 ## Leaderboard
 

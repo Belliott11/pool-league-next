@@ -19,6 +19,7 @@ import { bestClips } from "@/lib/clips"
 import { PlayerGameFlow } from "@/pages/PlayerGameFlow"
 import { PlayerInsight } from "@/pages/PlayerInsight"
 import { PlayerBeatRate } from "@/pages/leaderboard/BeatRatePanel"
+import { PlayerDefense } from "@/pages/PlayerDefense"
 import { ScoutingCard } from "@/pages/ScoutingCard"
 import type { Update } from "@/lib/store"
 import { PlayerLiveTov } from "@/pages/leaderboard/LiveTovPanel"
@@ -305,6 +306,7 @@ export function PlayerDetailPage({
           .sections.filter((k) => k !== "overview")
           .map((k, i, all) => (
             <TabGroup key={k} id={`section-${k}`} title={all.length > 1 || i > 0 ? SECTIONS.find((s) => s.key === k)!.title : null} icon={sectionIcon(k)} teaser={teasers[k] ?? ""}>
+              {k === "defense" && <PlayerDefense state={season} pid={pid} />}
               {k === "defense" && <PlayerBeatRate state={season} pid={pid} />}
               {k === "shooting" && <ThreeWorth state={state} pid={pid} />}
               {k === "passing" && <PlayerLiveTov state={season} pid={pid} />}
