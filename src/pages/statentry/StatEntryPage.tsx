@@ -18,6 +18,7 @@ import type { Game, PooleanState } from "@/lib/types"
 import { EventForm, type Apply, type Draft } from "./EventForm"
 import { QuickAdd } from "./QuickAdd"
 import { EventLog } from "./EventLog"
+import { Untagged } from "./Untagged"
 import { tagsLeft } from "@/lib/tagQueue"
 import { ExtraEntry } from "./ExtraForms"
 import { MatchupEntry } from "./MatchupEntry"
@@ -209,6 +210,15 @@ export function StatEntryPage({ state, game, update, onBack }: { state: PooleanS
 
       <MatchupEntry state={state} game={game} apply={apply} now={() => (yt ? (ytControl.current?.time() ?? null) : (videoRef.current?.currentTime ?? null))} />
       <ExtraEntry state={state} game={game} apply={apply} hasVideo={direct || !!yt} now={() => (yt ? (ytControl.current?.time() ?? null) : (videoRef.current?.currentTime ?? null))} />
+
+      <Untagged
+        state={state}
+        game={game}
+        onEdit={(e) => {
+          setDraft({ kind: e.kind, edit: e })
+          window.scrollTo({ top: 0, behavior: "smooth" })
+        }}
+      />
 
       <EventLog
         state={state}

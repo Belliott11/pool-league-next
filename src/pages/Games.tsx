@@ -21,6 +21,7 @@ import { OffseasonHub } from "./games/OffseasonHub"
 import { NewSeasonPrompt } from "./games/NewSeasonPrompt"
 import { MyCard } from "./games/MyCard"
 import { TopPlays } from "./games/TopPlays"
+import { GameAlerts } from "@/components/GameAlerts"
 
 // Screens opened from the game list load when first opened, so the list itself shows up faster.
 const BalanceAndPredict = lazyPage(() => import("./games/BalanceAndPredict").then((m) => ({ default: m.BalanceAndPredict })))
@@ -160,6 +161,7 @@ export function GamesPage({
         <MyCard state={state} onOpenPlayer={onOpenPlayer} />
         <TopPlays state={state} />
         {showHub(state) && <OffseasonHub state={state} onWrapped={() => go("wrapped")} onOpenPlayer={onOpenPlayer} onLive={() => go("live")} onOpenGame={open} />}
+        <GameAlerts />
         <PickEmCard state={state} />
         {/* The hub already covers opening night, so the regular next-night card would repeat it. */}
         {!(showHub(state) && upcomingRsvp(state)?.date === state.openingNight?.date) && <NightPreviewCard state={state} update={update} />}

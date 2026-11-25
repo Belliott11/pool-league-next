@@ -16,6 +16,7 @@ import { shareGameCard } from "@/lib/shareCard"
 import { GameVideoPanel } from "@/components/GameVideoPanel"
 import { ReviewsCard } from "./ReviewsCard"
 import { RunCheck } from "@/components/RunCheck"
+import { GameSummaryCard } from "@/components/GameSummaryCard"
 import { WatchContext, WatchTime } from "@/components/WatchTime"
 import type { PlayerControl } from "@/components/YouTubePlayer"
 import { JUMP_LEAD_SECONDS } from "@/lib/legacy-core"
@@ -444,6 +445,8 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
       </Card>
 
       {predictionNote(game) && <p className="-mt-2 text-center text-sm text-muted-foreground">{predictionNote(game)}{!game.prediction && <Explain term="Backtest pick" className="ml-1" />}</p>}
+
+      <GameSummaryCard state={state} game={game} />
 
       <div ref={videoBox}>
         <GameVideoPanel state={state} game={game} update={update} readOnly={readOnly} control={control} />

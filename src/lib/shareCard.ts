@@ -1,4 +1,5 @@
 import type { NightSummary } from "@/lib/nightRecap"
+import { gameSummary } from "@/lib/gameSummary"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import { getGameStats, isLiveScoreOnly, liveScoreOf, teamScore } from "@/lib/stats"
@@ -111,7 +112,7 @@ export async function drawGameCard(state: PooleanState, game: Game): Promise<HTM
     ctx.font = `700 44px ${body}`
     ctx.fillText("Top scorers", 72, 1040)
     rows.forEach((r, i) => {
-      const y = 1100 + i * 64
+      const y = 1100 + i * 56
       ctx.fillStyle = r.team
       ctx.fillRect(72, y - 38, 10, 48)
       ctx.fillStyle = fg
@@ -123,9 +124,24 @@ export async function drawGameCard(state: PooleanState, game: Game): Promise<HTM
       ctx.textAlign = "left"
     })
   }
-  ctx.fillStyle = muted
-  ctx.font = `500 30px ${body}`
-  ctx.fillText(game.notes ? fit(ctx, game.notes, W - 144) : "Backyard pool basketball", 72, H - 44)
+  // The basket that swung it and who added the most points (gameSummary.ts), under the scorers.
+  const sum = gameSummary(state, game)
+  const extra = [
+    sum.swing ? `The swing: ${playerName(state, sum.swing.scorerId)}'s ${sum.swing.points} at ${sum.swing.before[0]}-${sum.swing.before[1]}, +${Math.round(sum.swing.gain)} win chance` : null,
+    sum.top ? `Most points added: ${playerName(state, sum.top.id)}, +${sum.top.value.toFixed(1)}` : null,
+  ].filter((x): x is string => !!x)
+  ctx.textAlign = "left"
+  ctx.font = `600 32px ${body}`
+  extra.forEach((line, i) => {
+    ctx.fillStyle = i === 0 ? fg : muted
+    ctx.fillText(fit(ctx, line, W - 144), 72, H - 96 + i * 44)
+  })
+  // The footer gives way to those lines when there are any.
+  if (!extra.length) {
+    ctx.fillStyle = muted
+    ctx.font = `500 30px ${body}`
+    ctx.fillText(game.notes ? fit(ctx, game.notes, W - 144) : "Backyard pool basketball", 72, H - 44)
+  }
   return canvas
 }
 

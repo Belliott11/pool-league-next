@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { assignmentsAt } from "@/lib/matchupSets"
 import { Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -131,12 +132,25 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rebounderId])
   const [blockerId, setBlockerId] = useState<string | null>(edit?.blockerId ?? null)
-  // The same defender usually stays on a run of shots, so the last shot's defenders carry over whenever the
-  // shooter is on the same team as the last shooter.
-  const carry = (shooter: string | null) => (last && shooter ? last.defenderIds.filter((d) => teamsOf(game, shooter).opps.includes(d)) : [])
+  // Who is guarding the shooter right now by the game's matchups list, at this moment of the video.
+  const fromMatchups = (shooter: string | null) =>
+    shooter && (game.matchups ?? []).length
+      ? [...assignmentsAt(game, time)].filter(([d, offenders]) => offenders.includes(shooter) && teamsOf(game, shooter).opps.includes(d)).map(([d]) => d)
+      : []
+  // The defender to start from: the matchups list when it names one for this shooter, else the last shot's defenders (the same
+  // defender usually stays on a run of shots) when the shooter is on the same team as the last shooter.
+  const carry = (shooter: string | null) => {
+    const listed = fromMatchups(shooter)
+    if (listed.length) return listed
+    return last && shooter ? last.defenderIds.filter((d) => teamsOf(game, shooter).opps.includes(d)) : []
+  }
   const [defenderIds, setDefenderIds] = useState<string[]>(edit?.defenderIds ?? carry(scorerId))
-  // The contest level carries with the defenders: a run of shots against the same defender is usually guarded the same way.
-  const carryContest = (shooter: string | null) => (carry(shooter).length ? (last?.contestLevel ?? null) : null)
+  // The contest level carries only when the defenders are the same as on the last shot: a run of shots against the same defender is
+  // usually guarded the same way.
+  const carryContest = (shooter: string | null) => {
+    const d = carry(shooter)
+    return d.length && last && d.length === last.defenderIds.length && d.every((x) => last.defenderIds.includes(x)) ? (last.contestLevel ?? null) : null
+  }
   const [contestLevel, setContestLevel] = useState<ScoringEvent["contestLevel"]>(edit ? (edit.contestLevel ?? null) : carryContest(scorerId))
   const [catchAndShoot, setCatchAndShoot] = useState<boolean | null>(edit?.catchAndShoot ?? null)
   const [shotType, setShotType] = useState<string | null>(edit?.shotType ?? null)
@@ -233,7 +247,14 @@ function ShotFields({ state, game, edit, time, timeBad, timeField, onSave, onClo
 
       {scorerId && (
         <>
-          <Field label="Defender(s)" hint="Tag whoever was contesting. Pick two for a double team.">
+          <Field
+            label="Defender(s)"
+            hint={
+              !edit && scorerId && fromMatchups(scorerId).length && fromMatchups(scorerId).every((d) => defenderIds.includes(d))
+                ? "Picked from the matchups list. Change it if someone else was contesting; pick two for a double team."
+                : "Tag whoever was contesting. Pick two for a double team."
+            }
+          >
             <Chip selected={defenderIds.length === 0} onClick={() => { setDefenderIds([]); setContestLevel(null) }}>No defender</Chip>
             {opps.map((id) => (
               <Chip key={id} selected={defenderIds.includes(id)} onClick={() => toggleDef(id)}>{name(id)}</Chip>

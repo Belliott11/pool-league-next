@@ -259,6 +259,26 @@ the defenders on a shot take the other side of its value (split when two guarded
 insight.ts). Over the league the offense's credits sum to zero once rebounds nobody is credited with are put back (`epa.test.ts`).
 Win chance added (insight.ts) now uses the live odds (`winProbabilityFrom` with `backtestPick`), not a 50/50 race.
 
+## Game alerts, summaries, odds check, tagging
+
+- Game alerts (web push): "Game alerts" on the Games home (`src/components/GameAlerts.tsx`, `src/lib/alerts.ts`) asks for permission on a
+  tap and saves the phone's push address through `save_push_subscription` (phone-owned key, like Pick'em; `supabase/alerts.sql`). An
+  iPhone gets them only from the Home Screen app. A trigger on `league_state` pings the `game-alerts` edge function (verify JWT off)
+  when the set of live games changes; the function reads the league data itself and sends "Game on" and "Final" once per game
+  (`push_sent`), so a stray call can only send what is true. Its signing key was made by the function and lives in `push_vapid` (only
+  the service role can read it; it never passed through a session or the repo). Encryption and signing are plain WebCrypto in
+  `supabase/functions/game-alerts/webpush.ts`, tested in `src/lib/webpush.test.ts`; `public/sw.js` shows the notification and opens its
+  page. Turning alerts on sends one "You're set" notification. Headless browsers have no push service, so delivery to a real phone can
+  only be checked on a phone; the server side was checked end to end against a test address (2026-11-25).
+- Game summary (`src/lib/gameSummary.ts`, `src/components/GameSummaryCard.tsx` on the game page, and two lines on the share picture):
+  the final score, the winners' basket that moved the live odds most (not the one that ended it), the most Points added in the game
+  (`pointsAdded(state, { only })`, filmed games), and a link to the best shareable play or the game.
+- "Do the live odds mean what they say?" (`src/lib/calibration.ts`, `src/pages/leaderboard/CalibrationCard.tsx`, Models tab): the same
+  moments as `liveReplay.test.ts`, grouped by how sure the odds were. On 2026-11-25 the 60-70% calls won 85% and the 80-90% calls 56%.
+- Stat entry: a new shot's defender comes from the matchups list for that shooter at that moment when it names one, else the last
+  shot's (`EventForm.tsx`); the contest level carries only with the same defenders. `src/pages/statentry/Untagged.tsx` lists shots with
+  no defender and no contest, or a defender but no contest, with a jump to each.
+
 ## Live win probability
 
 `src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:

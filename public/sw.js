@@ -50,3 +50,34 @@ self.addEventListener("fetch", event => {
       .then(hit => hit || (request.mode === "navigate" ? caches.match("./index.html") : Response.error())))
   );
 });
+
+// Game alerts (src/lib/alerts.ts, supabase/functions/game-alerts): show the notification, and open the page it is about when tapped.
+self.addEventListener("push", event => {
+  let msg = {};
+  try {
+    msg = event.data ? event.data.json() : {};
+  } catch (e) {
+    msg = { title: "Poolean Intel", body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(self.registration.showNotification(msg.title || "Poolean Intel", {
+    body: msg.body || "",
+    icon: "icon-192.png",
+    badge: "icon-192.png",
+    tag: msg.tag,
+    data: { url: msg.url || "./" },
+  }));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "./";
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    for (const c of list) {
+      if ("focus" in c) {
+        c.navigate ? c.navigate(url).catch(() => {}) : null;
+        return c.focus();
+      }
+    }
+    return self.clients.openWindow(url);
+  }));
+});

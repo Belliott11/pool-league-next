@@ -112,7 +112,7 @@ export interface Epa {
 const CONTEST: Record<string, string> = { none: "No contest", beat: "Defender beaten", light: "Light contest", medium: "Medium contest", heavy: "Heavy contest" }
 const TYPE: Record<string, string> = { catchAndShoot: "Catch and shoot", drive: "Drive", move: "Move", dunk: "Dunk", deepHeave: "Deep heave" }
 
-export function pointsAdded(state: PooleanState): Epa {
+export function pointsAdded(state: PooleanState, opts: { only?: string } = {}): Epa {
   const gs = games(state)
   // What a trip is worth comes from the games under the newest scoring, possession and out-of-bounds rules (rulebook.ts), once
   // they have enough games; until then from every game.
@@ -129,7 +129,9 @@ export function pointsAdded(state: PooleanState): Epa {
   }
   const play = { two: { n: 0, s: 0 }, three: { n: 0, s: 0 }, tov: { n: 0, s: 0 }, oreb: { n: 0, s: 0 }, dreb: { n: 0, s: 0 }, out: { n: 0, s: 0 } }
 
-  for (const g of gs) {
+  // One game's plays (for its summary), valued at the league's rates; any filmed game, even uneven ones.
+  const counted = opts.only ? state.games.filter((g) => g.id === opts.only && g.scoringEvents.length > 0) : gs
+  for (const g of counted) {
     const total = g.scoringEvents.reduce((n, e) => n + (made(e) ? e.points : 0), 0)
     const pace = gamePace(g, total)
     for (const id of [...g.teamA, ...g.teamB]) {
