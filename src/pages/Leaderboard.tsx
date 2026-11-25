@@ -22,6 +22,7 @@ import { GameFlowCard } from "./leaderboard/GameFlowCard"
 import { InsightCard } from "./leaderboard/InsightCard"
 import { DeepDiveCard } from "./leaderboard/DeepDiveCard"
 import { FatiguePanel } from "./leaderboard/FatiguePanel"
+import { ThreeWorth } from "@/components/ThreeWorth"
 
 // The classic Leaderboard tab's groups. The page shows them in tabs after Overview (TABS below).
 const SECTIONS: { key: string; title: string }[] = [
@@ -106,6 +107,7 @@ export function LeaderboardPage({
     if (k === "deep") return <DeepDiveCard key={k} state={state} season={season} onOpenPlayer={onOpenPlayer} />
     return (
       <TabGroup key={k} id={`lb-section-${k}`} title={groups.length > 1 ? sectionTitle(k) : null} icon={sectionIcon(k)} teaser={k === "defense" ? DEFENSE_TEASER : (teasers[k] ?? "")}>
+        {k === "shooting" && <ThreeWorth state={state} onOpenPlayer={onOpenPlayer} />}
         <LegacyPanels state={season} section={k} onOpenPlayer={onOpenPlayer} version={version} />
         {k === "situational" && <FatiguePanel state={state} onOpenPlayer={onOpenPlayer} />}
       </TabGroup>

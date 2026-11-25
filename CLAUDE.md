@@ -215,6 +215,16 @@ counted exactly (no simulation), and the hot hand against each player's own shot
 shots after a make, so the gap to beat is not zero; the basket that ends a game is left out). The game page's Shots tab has "Was that run
 real?" (`src/components/RunCheck.tsx`). As of 2026-11-25 the games swing more than chance (65 runs against 59) and there is no hot hand.
 
+## Is a 3 worth it?
+
+`src/lib/shotChoice.ts` and the card `src/components/ThreeWorth.tsx` (Leaderboard and Player Shooting tabs): how often a 3 has to go in
+to beat a 2 at common scores, for the league and each player. Win chances come from a race to the target that knows who has the ball
+(each trip scores a 2 or 3 at the league's per-trip rates, the ball changes hands after every trip, even teams). A miss is the other
+team's ball unless the shooting team rebounds it; a turnover with `missEventId` is a miss ruled out of bounds. Missed 3s go out of
+bounds about twice as often as missed 2s (44% against 21% on 2026-11-25) and come back half as often (12% against 25%), which raises the
+bar for a 3 by about 2 points; most missed 2s are lost too. Player rates lean on the league's by `PRIOR_SHOTS` (15); only where a
+player's misses go is their own, since rebounds depend on teammates.
+
 ## Live win probability
 
 `src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:

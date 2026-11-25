@@ -1,4 +1,5 @@
 import { SITE } from "@/lib/site"
+import { ThreeWorth } from "@/components/ThreeWorth"
 import { PlayerRead } from "@/pages/PlayerRead"
 import { PlayerCompare } from "@/pages/PlayerCompare"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
@@ -303,6 +304,7 @@ export function PlayerDetailPage({
           .map((k, i, all) => (
             <TabGroup key={k} id={`section-${k}`} title={all.length > 1 || i > 0 ? SECTIONS.find((s) => s.key === k)!.title : null} icon={sectionIcon(k)} teaser={teasers[k] ?? ""}>
               {k === "defense" && <PlayerBeatRate state={season} pid={pid} />}
+              {k === "shooting" && <ThreeWorth state={state} pid={pid} />}
               {k === "passing" && <PlayerLiveTov state={season} pid={pid} />}
               <Panels section={k} pid={pid} version={version} />
               {k === "passing" && <PlayerInsight state={season} pid={pid} />}
