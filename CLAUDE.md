@@ -147,7 +147,10 @@ the tab row pins under the site header by measuring it.
   (never rough), the same for everyone that day, stepping through every one before repeating; "Another" steps on for that visit.
 - Search also answers "Ben vs Zach": their record against each other and as teammates over every result (`pairRecord` in
   `src/lib/headToHead.ts`, from the old site's full results list), and opens the head-to-head page `#/games/h2h/<a>,<b>`
-  (`src/pages/games/HeadToHeadPage.tsx`: that record, then the filmed head-to-head card starting on the pair).
+  (`src/pages/games/HeadToHeadPage.tsx`). That page is "Settle it" (a Games home button, and in search): two pickers that change the
+  address (so a debate is a shareable link; `#/games/h2h` alone starts on the pair who met most), the all-time record, a tale of the
+  tape (`src/lib/debate.ts`: ten stats the site already works out, each with a minimum sample, the better number in bold and the
+  verdict as rows won), their best filmed games against each other, a "Share this debate" text, then the filmed head-to-head card.
 - The Filters menu has "Back to the default filters" when any filter is changed.
 - Accessibility: every Leaderboard and Player tab, the Games home and search pass axe (WCAG 2.1 AA) in both themes. Mark thin samples
   with italics or a dashed border, never by fading (fading fails contrast).

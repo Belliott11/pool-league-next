@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react"
 import { lazyPage } from "@/lib/lazyPage"
-import { Calculator, CalendarDays, Crown, Radio } from "lucide-react"
+import { Calculator, CalendarDays, Crown, Radio, Swords } from "lucide-react"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { getClient } from "@/lib/cloud"
 import { Button } from "@/components/ui/button"
@@ -79,7 +79,7 @@ export function GamesPage({
   }
 
   if (kind === "h2h") {
-    return <Lazy><HeadToHeadPage state={state} ids={arg} onBack={goBack} onOpenGame={open} onOpenPlayer={onOpenPlayer} /></Lazy>
+    return <Lazy><HeadToHeadPage state={state} ids={arg} onBack={goBack} onOpenGame={open} onOpenPlayer={onOpenPlayer} onPick={(ids) => go("h2h:" + ids, true)} /></Lazy>
   }
 
   if (kind === "how") {
@@ -149,6 +149,12 @@ export function GamesPage({
             <Button variant="outline" onClick={() => go("hall")}>
               <Crown />
               Hall of fame
+            </Button>
+          )}
+          {state.players.length > 1 && (
+            <Button variant="outline" onClick={() => go("h2h")}>
+              <Swords />
+              Settle it
             </Button>
           )}
           {state.games.some((g) => g.scoringEvents.length > 0) && (

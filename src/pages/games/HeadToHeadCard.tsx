@@ -28,7 +28,7 @@ function meetingPlays(state: PooleanState, gameIds: string[], a: string, b: stri
 
 // Pick any two players: their record against each other, the last few meetings with plays from them, how they do as teammates, and
 // what the model gives each of them in a one on one.
-export function HeadToHeadCard({ state, onOpenGame, initial }: { state: PooleanState; onOpenGame: (g: Game) => void; initial?: [string, string] }) {
+export function HeadToHeadCard({ state, onOpenGame, initial, hidePicker }: { state: PooleanState; onOpenGame: (g: Game) => void; initial?: [string, string]; hidePicker?: boolean }) {
   const start = initial ?? mostMetPair(state)
   const [a, setA] = useState(start?.[0] ?? "")
   const [b, setB] = useState(start?.[1] ?? "")
@@ -54,11 +54,11 @@ export function HeadToHeadCard({ state, onOpenGame, initial }: { state: PooleanS
         <CardTitle className="font-display">Head to head</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
+        {!hidePicker && <div className="flex items-center gap-2">
           {picker(a, setA, "First player")}
           <span className="text-sm text-muted-foreground">vs</span>
           {picker(b, setB, "Second player")}
-        </div>
+        </div>}
         {!h ? (
           <EmptyState title="Pick two players" hint="See their record against each other and how they do as teammates." />
         ) : h.meetings.length === 0 ? (
