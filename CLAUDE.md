@@ -258,6 +258,11 @@ in-bounds rebound rate for that shot times `ep`; the rebound settles the rest. A
 the defenders on a shot take the other side of its value (split when two guarded it). Assisted makes split 65/35 (`CREDIT` in
 insight.ts). Over the league the offense's credits sum to zero once rebounds nobody is credited with are put back (`epa.test.ts`).
 Win chance added (insight.ts) now uses the live odds (`winProbabilityFrom` with `backtestPick`), not a 50/50 race.
+Wins added (`src/lib/winsAdded.ts`, a column and a line on both Points added cards): points added per game turned into wins against an
+average player (not a replacement level: in a league of about a dozen friends that would only single out whoever plays least). A team
+whose player adds d points over an average game (PER points) gets half plus d/(2 PER) of the scoring, and `raceWin` with the league's
+point mix to the usual target turns that into a win chance (about 6% a game per point, to 16). Editors see it now, marked as a preview;
+everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games are in italics.
 
 ## Game alerts, summaries, odds check, tagging
 

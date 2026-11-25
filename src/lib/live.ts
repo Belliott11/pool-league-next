@@ -79,7 +79,7 @@ export function discardLive(state: PooleanState, id: string): PooleanState {
 // Exact race to the target. Each score goes to team A with chance q and is worth 1, 2 or 3 points in the
 // league's usual mix (measured on the logged games). V[a][b] is A's chance to win from the score a to b.
 // This beats the old curve-fit because it knows a 3-point lead is worth less early than late.
-const POINT_MIX: [number, number][] = [[1, 0.009], [2, 0.81], [3, 0.181]]
+export const POINT_MIX: [number, number][] = [[1, 0.009], [2, 0.81], [3, 0.181]]
 // The per-score share q that makes the pre-game chance equal `pre`.
 function shareFor(target: number, pre: number): number {
   let lo = 0.05

@@ -4,6 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { pointsAdded, type Epa, type Parts } from "@/lib/epa"
 import { playerName } from "@/lib/players"
 import { cn } from "@/lib/utils"
+import { filmedGameCount } from "@/lib/filters"
+import { useReadOnly } from "@/lib/mode"
+import { THIN_GAMES, usualTarget, WINS_SHOW_AT, winsAdded, type WinsRow } from "@/lib/winsAdded"
 import type { PooleanState } from "@/lib/types"
 
 // "Points added": every play valued by how far it moves what a trip is worth (src/lib/epa.ts). The league card lists every player and
@@ -89,8 +92,28 @@ function Intro({ epa }: { epa: Epa }) {
   )
 }
 
+// Wins added (winsAdded.ts): everyone sees it from WINS_SHOW_AT filmed games; before that only editors, marked as a preview.
+function useWins(state: PooleanState, epa: Epa): { show: boolean; preview: boolean; by: Map<string, WinsRow>; target: number } {
+  const readOnly = useReadOnly()
+  const target = useMemo(() => usualTarget(state), [state])
+  const by = useMemo(() => new Map(winsAdded(epa.rows, target).map((w) => [w.id, w])), [epa, target])
+  const preview = filmedGameCount() < WINS_SHOW_AT
+  return { show: !preview || !readOnly, preview, by, target }
+}
+
+function WinsNote({ preview, target }: { preview: boolean; target: number }) {
+  return (
+    <p className="text-xs text-muted-foreground">
+      Wins added turns points added into wins against an average player, in games to {target}: a player who adds a point a game shifts their team's share of the scoring, and the race
+      to the target says what that is worth in wins.
+      {preview ? ` Preview: only editors see it until there are ${WINS_SHOW_AT} filmed games (${filmedGameCount()} so far), since one game swings it too much before then.` : ""}
+    </p>
+  )
+}
+
 export function PointsAddedCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer?: (id: string) => void }) {
   const epa = useMemo(() => pointsAdded(state), [state])
+  const wins = useWins(state, epa)
   if (!epa.rows.length) return null
   return (
     <Card>
@@ -104,6 +127,7 @@ export function PointsAddedCard({ state, onOpenPlayer }: { state: PooleanState; 
             <TableRow>
               <TableHead>Player</TableHead>
               <TableHead className="text-right">Per game</TableHead>
+              {wins.show && <TableHead className="text-right">Wins added</TableHead>}
               <TableHead className="text-right">Per trip used</TableHead>
               {PARTS.map(([, l]) => (
                 <TableHead key={l} className="text-right">
@@ -125,6 +149,12 @@ export function PointsAddedCard({ state, onOpenPlayer }: { state: PooleanState; 
                   )}
                 </TableCell>
                 <TableCell className={cn("text-right font-semibold tabular-nums", tone(r.perGame))}>{signed(r.perGame, 1)}</TableCell>
+                {wins.show && (
+                  <TableCell className={cn("text-right tabular-nums", (wins.by.get(r.id)?.games ?? 0) < THIN_GAMES && "italic")}>
+                    {signed(wins.by.get(r.id)?.total ?? 0, 1)}
+                    <span className="block text-xs text-muted-foreground">{signed((wins.by.get(r.id)?.perGame ?? 0) * 10, 1)} per 10</span>
+                  </TableCell>
+                )}
                 <TableCell className="text-right tabular-nums">
                   {signed(r.perTrip)}
                   <span className="block text-xs text-muted-foreground">{r.used} trips</span>
@@ -142,6 +172,7 @@ export function PointsAddedCard({ state, onOpenPlayer }: { state: PooleanState; 
           Per game is everything, scaled to an average game. Per trip used is their own shots and turnovers over the trips they ended. Italic rows have fewer than {THIN_TRIPS} trips used, so
           read them as early. An assisted basket's value is shared, most of it to the shooter.
         </p>
+        {wins.show && <WinsNote preview={wins.preview} target={wins.target} />}
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <div className="mb-1 font-semibold">What each play is worth</div>
@@ -156,8 +187,10 @@ export function PointsAddedCard({ state, onOpenPlayer }: { state: PooleanState; 
 
 export function PlayerPointsAdded({ state, pid }: { state: PooleanState; pid: string }) {
   const epa = useMemo(() => pointsAdded(state), [state])
+  const wins = useWins(state, epa)
   const r = epa.rows.find((x) => x.id === pid)
   if (!r) return null
+  const w = wins.by.get(pid)
   const rank = epa.rows.filter((x) => x.used >= THIN_TRIPS).findIndex((x) => x.id === pid)
   const ranked = epa.rows.filter((x) => x.used >= THIN_TRIPS).length
   const name = playerName(state, pid)
@@ -173,6 +206,13 @@ export function PlayerPointsAdded({ state, pid }: { state: PooleanState; pid: st
           {rank >= 0 ? `, ${rank + 1} of ${ranked} with ${THIN_TRIPS}+ trips used` : `, from ${r.used} trips used so far, so it is an early read`}. On trips that end with {name}'s own shot or
           turnover: {signed(r.perTrip)} a trip.
         </p>
+        {wins.show && w && (
+          <p>
+            In wins: <span className={cn("font-semibold", tone(w.total))}>{signed(w.total, 1)}</span> over {w.games} {w.games === 1 ? "game" : "games"} against an average player, or{" "}
+            {signed(w.perGame * 10, 1)} every 10 games{w.games < THIN_GAMES ? ", still an early read" : ""}.
+          </p>
+        )}
+        {wins.show && w && <WinsNote preview={wins.preview} target={wins.target} />}
         <Table>
           <TableBody>
             {PARTS.map(([k, l]) => (

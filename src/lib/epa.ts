@@ -91,6 +91,7 @@ export interface EpaRow {
   offense: number
   perTrip: number // offense per trip used
   perGame: number // total per average game (per.ts)
+  gamesWorth: number // how many average games they played, for turning per-game numbers back into totals
   perGameParts: Parts
 }
 
@@ -199,7 +200,7 @@ export function pointsAdded(state: PooleanState, opts: { only?: string } = {}): 
     .map(([id, r]) => {
       const offense = r.parts.shots + r.parts.passes + r.parts.turnovers + r.parts.boards
       const total = sum(r.parts)
-      return { id, games: r.games, used: r.used, parts: r.parts, total, offense, perTrip: r.used ? (r.parts.shots + r.parts.turnovers) / r.used : 0, perGame: r.pace ? (total / r.pace) * PER : 0, perGameParts: scale(r.parts, r.pace) }
+      return { id, games: r.games, used: r.used, parts: r.parts, total, offense, perTrip: r.used ? (r.parts.shots + r.parts.turnovers) / r.used : 0, perGame: r.pace ? (total / r.pace) * PER : 0, gamesWorth: r.pace / PER, perGameParts: scale(r.parts, r.pace) }
     })
     .sort((a, b) => b.perGame - a.perGame)
   const avg = (x: { n: number; s: number }) => (x.n ? x.s / x.n : 0)
