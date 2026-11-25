@@ -14,6 +14,9 @@ import { insideFences, OUTLIER_MIN_GAMES } from "@/lib/filters"
 import { defensiveRating, gameDefenseStats, gameTotalPoints, getGameStats, isQualifyingGame, offensiveRating, shootingStats } from "@/lib/stats"
 import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
+import { leagueValues, pointsAdded, shotEnd } from "@/lib/epa"
+import { CREDIT, games as insightGames } from "@/lib/insight"
+import { PlayValues, signed as signed2 } from "@/components/PointsAdded"
 import type { Game, PooleanState } from "@/lib/types"
 
 // "How the numbers work": each model explained on a real moment from the league, so the method can be checked against something
@@ -412,6 +415,85 @@ function TwoWay({ state, onOpenGame }: { state: PooleanState; onOpenGame: (id: s
   )
 }
 
+// ---------- Points added ----------
+
+// A real trip that has a miss, an offensive rebound and a make, walked through play by play.
+function PointsAddedWalk({ state, onOpenGame }: { state: PooleanState; onOpenGame: (id: string) => void }) {
+  const data = useMemo(() => {
+    const gs = insightGames(state)
+    const v = leagueValues(gs)
+    const epa = pointsAdded(state)
+    // Prefer a trip with three different people in it (shooter, rebounder, and a passer on the make), newest first.
+    let best: { g: (typeof gs)[number]; miss: (typeof gs)[number]["scoringEvents"][number]; make: (typeof gs)[number]["scoringEvents"][number]; score: number } | null = null
+    for (const g of [...gs].reverse()) {
+      if (!g.scoringEvents.every((e) => typeof e.videoTime === "number")) continue
+      const shots = [...g.scoringEvents].filter((e) => e.points !== 1).sort((a, b) => (a.videoTime as number) - (b.videoTime as number))
+      const out = new Set(g.turnoverEvents.map((t) => t.missEventId).filter(Boolean) as string[])
+      for (let i = 1; i < shots.length; i++) {
+        const miss = shots[i - 1]
+        const make = shots[i]
+        const same = g.teamA.includes(miss.scorerId) === g.teamA.includes(make.scorerId)
+        if (!same || shotEnd(g, miss, out) !== "kept" || !miss.rebounderId || shotEnd(g, make, out) !== "made") continue
+        const score = new Set([miss.scorerId, miss.rebounderId, make.scorerId, make.assistId].filter(Boolean)).size
+        if (!best || score > best.score) best = { g, miss, make, score }
+      }
+    }
+    if (best) return { g: best.g, miss: best.miss, make: best.make, v, epa }
+    return { g: null, miss: null, make: null, v, epa }
+  }, [state])
+  const { g, miss, make, v, epa } = data
+  if (!epa.rows.length) return <p className="text-muted-foreground">This fills in once a game has been filmed and logged.</p>
+  const keep = (k: number) => (k === 2 ? v.keep2 : v.keep3)
+  const steps: { who: string; what: string; worth: number; credit: string }[] = []
+  if (g && miss && make) {
+    const afterMiss = keep(miss.points) * v.ep
+    steps.push({ who: playerName(state, miss.scorerId), what: `misses a ${miss.points}, and it stays in`, worth: afterMiss, credit: `${playerName(state, miss.scorerId)} ${signed2(afterMiss - v.ep)}` })
+    steps.push({ who: playerName(state, miss.rebounderId!), what: "gets the offensive rebound", worth: v.ep, credit: `${playerName(state, miss.rebounderId!)} ${signed2(v.ep - afterMiss)}` })
+    const value = make.points - v.ep
+    const passer = make.assistId && make.assistId !== make.scorerId ? make.assistId : null
+    steps.push({
+      who: playerName(state, make.scorerId),
+      what: `makes a ${make.points}${passer ? `, from ${playerName(state, passer)}'s pass` : ""}`,
+      worth: make.points,
+      credit: passer ? `${playerName(state, make.scorerId)} ${signed2(value * CREDIT.scorer)}, ${playerName(state, passer)} ${signed2(value * CREDIT.assister)}` : `${playerName(state, make.scorerId)} ${signed2(value)}`,
+    })
+  }
+  return (
+    <>
+      {g && (
+        <div>
+          <div className="mb-1 font-semibold">
+            One real trip,{" "}
+            <button className="underline underline-offset-2" onClick={() => onOpenGame(g.id)}>
+              {formatDateDisplay(g.date)}
+            </button>
+          </div>
+          <ol className="flex flex-col gap-1.5">
+            <li>The trip starts: worth {v.ep.toFixed(2)} points.</li>
+            {steps.map((s, i) => (
+              <li key={i}>
+                <span className="font-semibold">{s.who}</span> {s.what}: now worth {s.worth.toFixed(2)}. <span className="text-muted-foreground">({s.credit})</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-2">
+            The three plays add up to {signed2(make ? make.points - v.ep : 0)}: the trip scored {make?.points} where an average one scores {v.ep.toFixed(2)}. A missed {miss?.points} that
+            stays in bounds keeps {Math.round(keep(miss?.points ?? 2) * 100)}% of the trip's worth, the chance the shooting team gets it back; one that goes out of bounds keeps none.
+            Whoever guarded each shot takes the other side of its value.
+          </p>
+        </div>
+      )}
+      <div>
+        <div className="mb-1 font-semibold">What each play is worth, over the filmed games the stats count</div>
+        <PlayValues epa={epa} />
+      </div>
+      <p>
+        Points added says who makes good plays whatever the score; Win chance added says whose plays mattered most to the result. Both are on the Leaderboard and each Player page.
+      </p>
+    </>
+  )
+}
+
 export function HowItWorks({ state, onBack, onOpenGame }: { state: PooleanState; onBack: () => void; onOpenGame: (id: string) => void }) {
   return (
     <div className="anim-page flex flex-col gap-4">
@@ -427,6 +509,7 @@ export function HowItWorks({ state, onBack, onOpenGame }: { state: PooleanState;
           ["how-odds", "Live odds"],
           ["how-runs", "Was that run real?"],
           ["how-twoway", "Two-Way and outliers"],
+          ["how-epa", "Points added"],
         ].map(([id, label]) => (
           <button key={id} className="rounded-full border px-3 py-1 hover:bg-muted" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>
             {label}
@@ -441,6 +524,9 @@ export function HowItWorks({ state, onBack, onOpenGame }: { state: PooleanState;
       </Section>
       <Section id="how-twoway" title="Two-Way, on one real line" intro="The Leaderboard's main number, added up term by term from one player's game, and the rule for which games count as outliers.">
         <TwoWay state={state} onOpenGame={onOpenGame} />
+      </Section>
+      <Section id="how-epa" title="Points added, one trip at a time" intro="The idea behind expected points in football, for pool basketball: every play is scored by how far it moves what the trip is worth.">
+        <PointsAddedWalk state={state} onOpenGame={onOpenGame} />
       </Section>
     </div>
   )

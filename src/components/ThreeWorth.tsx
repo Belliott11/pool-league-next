@@ -79,7 +79,7 @@ export function ThreeWorth({ state, pid, onOpenPlayer }: { state: PooleanState; 
           <p>
             {name} makes {mine.two.made} of {mine.two.att} twos and {mine.three.made} of {mine.three.att} threes. Leaning on the league's rates until there are more shots, that is{" "}
             <span className="font-semibold">{pct(mine.p2)}</span> on 2s and <span className="font-semibold">{pct(mine.p3)}</span> on 3s
-            {mine.three.misses >= 5 ? `, and ${pct(mine.three.oob / mine.three.misses)} of their missed 3s went out of bounds` : ""}.
+            {mine.three.misses >= 5 ? `, and ${pct(mine.three.oob / mine.three.misses)} of the missed 3s went out of bounds` : ""}.
           </p>
         )}
         <Table>

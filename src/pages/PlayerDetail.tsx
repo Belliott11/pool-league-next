@@ -1,5 +1,6 @@
 import { SITE } from "@/lib/site"
 import { ThreeWorth } from "@/components/ThreeWorth"
+import { PlayerPointsAdded } from "@/components/PointsAdded"
 import { PlayerRead } from "@/pages/PlayerRead"
 import { PlayerCompare } from "@/pages/PlayerCompare"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
@@ -295,6 +296,7 @@ export function PlayerDetailPage({
             <PlayerRead state={state} season={season} pid={pid} />
             <ClipStrip state={season} clips={clips.slice(1)} />
             <PlayerCompare key={pid} state={season} pid={pid} />
+            <PlayerPointsAdded state={season} pid={pid} />
             <Panels section="overview" pid={pid} version={version} />
             <ScoutingCard state={season} pid={pid} update={update} />
           </>

@@ -23,6 +23,7 @@ import { InsightCard } from "./leaderboard/InsightCard"
 import { DeepDiveCard } from "./leaderboard/DeepDiveCard"
 import { FatiguePanel } from "./leaderboard/FatiguePanel"
 import { ThreeWorth } from "@/components/ThreeWorth"
+import { PointsAddedCard } from "@/components/PointsAdded"
 
 // The classic Leaderboard tab's groups. The page shows them in tabs after Overview (TABS below).
 const SECTIONS: { key: string; title: string }[] = [
@@ -137,6 +138,9 @@ export function LeaderboardPage({
             </Later>
             <Later id="lb-insight">
               <InsightCard state={season} onOpenPlayer={onOpenPlayer} />
+            </Later>
+            <Later id="lb-epa">
+              <PointsAddedCard state={season} onOpenPlayer={onOpenPlayer} />
             </Later>
           </>
         ) : (

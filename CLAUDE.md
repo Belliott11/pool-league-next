@@ -225,6 +225,16 @@ bounds about twice as often as missed 2s (44% against 21% on 2026-11-25) and com
 bar for a 3 by about 2 points; most missed 2s are lost too. Player rates lean on the league's by `PRIOR_SHOTS` (15); only where a
 player's misses go is their own, since rebounds depend on teammates.
 
+## Points added
+
+`src/lib/epa.ts`, cards in `src/components/PointsAdded.tsx` (Leaderboard Overview, Player Overview) and a walk-through of one real trip
+on the How page: the football idea of expected points added. A trip is worth the league's points per trip (`ep`, about 0.63 on the
+games the stats count); each play is scored by how far it moves that. A miss is worth nothing if it goes out of bounds, else the
+in-bounds rebound rate for that shot times `ep`; the rebound settles the rest. A live-ball turnover costs `ep`, forcing one earns it, and
+the defenders on a shot take the other side of its value (split when two guarded it). Assisted makes split 65/35 (`CREDIT` in
+insight.ts). Over the league the offense's credits sum to zero once rebounds nobody is credited with are put back (`epa.test.ts`).
+Win chance added (insight.ts) now uses the live odds (`winProbabilityFrom` with `backtestPick`), not a 50/50 race.
+
 ## Live win probability
 
 `src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:

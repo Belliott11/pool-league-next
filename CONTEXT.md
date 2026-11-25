@@ -184,3 +184,6 @@ A miss against a tagged defender earns a stop, except when the shot was tagged G
 
 **Panel group**:
 Related Leaderboard or Player panels combined into one panel with a tab each, so nothing repeats and the pages are shorter (for example Awards, Shot mix, Turnovers, Old site history). Defined in `src/lib/panelGroups.ts`. A panel that only repeated another (Season Timeline, the self-inflicted turnover bars) was dropped; tuning views (Calibrated Thresholds, Win Shares model) sit in an editor-only Developer views group.
+
+**Points added**:
+Every play valued by how far it moves what a trip is worth (the league's points per trip): shots, out-of-bounds misses, rebounds, live-ball turnovers, passes on assisted makes and the defense on each shot (`src/lib/epa.ts`). Per game is scaled to an average game; per trip used is a player's own shots and turnovers over the trips they ended.
