@@ -1,0 +1,42 @@
+name: Track the rulebook
+
+# Every hour, reads Poolean's rulebook (poolean.net) and, when its text has changed, adds the new version to src/data/rulebook.json,
+# dated the day it was first seen, commits it and deploys the site. Every game is matched to the rules in force on its date
+# (src/lib/rulebook.ts). An hour with no change changes nothing. Can also be started by hand from the Actions tab.
+on:
+  schedule:
+    - cron: "41 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write # commit the new version
+  actions: write # start the deploy
+
+concurrency:
+  group: rulebook
+  cancel-in-progress: false
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node scripts/rulebook.mjs
+      - name: Commit a new version and deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- src/data/rulebook.json; then
+            echo "Rulebook unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add src/data/rulebook.json
+          git commit -m "Rulebook changed on poolean.net"
+          git push
+          # A push made by this workflow does not start other workflows, so the deploy is started here.
+          gh workflow run deploy.yml --ref main

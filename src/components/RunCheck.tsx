@@ -45,7 +45,7 @@ export function BasketStrip({ game, m }: { game: Game; m: GameMomentum }) {
   )
 }
 
-// The game page's "Was that run real?" card: the longest run, and how often a shuffle of the same baskets gives one that long.
+// The game page's "Was that run real?" card: the longest run, and how often chance gives one that long (see momentum.ts).
 export function RunCheck({ state, game }: { state: PooleanState; game: Game }) {
   const m = gameMomentum(game)
   if (!m) return <p className="text-sm text-muted-foreground">This game needs {MIN_BASKETS} made baskets, some by each team, before its runs say anything.</p>
@@ -56,11 +56,11 @@ export function RunCheck({ state, game }: { state: PooleanState; game: Game }) {
       </p>
       <BasketStrip game={game} m={m} />
       <p>
-        Shuffle this game's {m.baskets} baskets ({m.nA} for Team A, {m.nB} for Team B) into a random order and a run that long turns up{" "}
-        <span className="font-semibold">{oneIn(m.chance)}</span>. {runVerdict(m.chance)}
+        The team that is scored on gets the ball, so baskets mostly go back and forth. In this game Team A scored again right after scoring {Math.round(m.again.A * 100)}% of the
+        time and Team B {Math.round(m.again.B * 100)}%. At those rates, with no momentum at all, a run that long turns up <span className="font-semibold">{oneIn(m.chance)}</span>.{" "}
+        {runVerdict(m.chance)}
       </p>
       <p className="text-muted-foreground">
-        The game had {m.runs} runs in all; a random order of the same baskets averages {m.expectedRuns.toFixed(1)}.{" "}
         <a className="underline underline-offset-2" href="#/games/how">
           How this works
         </a>

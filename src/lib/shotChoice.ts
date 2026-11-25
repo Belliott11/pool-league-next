@@ -1,4 +1,5 @@
 import { WIN_BY } from "@/lib/race"
+import { sameMathRules } from "@/lib/rulebook"
 import type { Game, PooleanState } from "@/lib/types"
 
 // "Is a 3 worth it?" A shot is worth the win chance it leaves you with, counting what happens when it misses. A missed 3 goes out of
@@ -20,12 +21,17 @@ export interface ShotKind {
 
 const blank = (): ShotKind => ({ att: 0, made: 0, misses: 0, oob: 0, oreb: 0, lost: 0 })
 const filmed = (g: Game) => g.scoringEvents.length > 0 && !g.liveInProgress
+// The league's rates come from the games under the newest scoring, possession and out-of-bounds rules (rulebook.ts), once they have
+// enough games; a player's own shots count from every game.
+function leagueGames(state: PooleanState): Game[] {
+  const gs = state.games.filter(filmed)
+  return sameMathRules(gs, gs.map((g) => g.date || "").sort().at(-1))
+}
 
 export function shotKinds(state: PooleanState, only?: string): { two: ShotKind; three: ShotKind } {
   const two = blank()
   const three = blank()
-  for (const g of state.games) {
-    if (!filmed(g)) continue
+  for (const g of only ? state.games.filter(filmed) : leagueGames(state)) {
     const outOfBounds = new Set(g.turnoverEvents.map((t) => t.missEventId).filter(Boolean))
     const sideOf = (id: string) => (g.teamA.includes(id) ? "A" : g.teamB.includes(id) ? "B" : null)
     for (const e of g.scoringEvents) {
@@ -51,8 +57,7 @@ export function tripRates(state: PooleanState): { t2: number; t3: number; trips:
   let trips = 0
   let m2 = 0
   let m3 = 0
-  for (const g of state.games) {
-    if (!filmed(g)) continue
+  for (const g of leagueGames(state)) {
     const sideOf = (id: string) => (g.teamA.includes(id) ? "A" : g.teamB.includes(id) ? "B" : null)
     const onShot = new Set(g.scoringEvents.map((e) => e.turnoverEventId).filter(Boolean))
     for (const e of g.scoringEvents) {

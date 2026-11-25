@@ -1,5 +1,6 @@
 import { CREDIT, games } from "@/lib/insight"
 import { PER, gamePace } from "@/lib/per"
+import { sameMathRules } from "@/lib/rulebook"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 // Points added: every play valued by how far it moves what the trip is worth. A trip with the ball (a turn with it, see possessions.ts)
@@ -112,7 +113,10 @@ const TYPE: Record<string, string> = { catchAndShoot: "Catch and shoot", drive: 
 
 export function pointsAdded(state: PooleanState): Epa {
   const gs = games(state)
-  const v = leagueValues(gs)
+  // What a trip is worth comes from the games under the newest scoring, possession and out-of-bounds rules (rulebook.ts), once
+  // they have enough games; until then from every game.
+  const newest = gs.map((g) => g.date || "").sort().at(-1)
+  const v = leagueValues(sameMathRules(gs, newest))
   const keep = (k: number) => (k === 2 ? v.keep2 : v.keep3)
   const by = new Map<string, { games: number; used: number; pace: number; parts: Parts }>()
   const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, used: 0, pace: 0, parts: blankParts() }).get(id)!

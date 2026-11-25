@@ -209,11 +209,29 @@ teams are picked, so before this Pick'em never opened on a game night. Both live
 
 `#/games/how` (`src/pages/games/HowItWorks.tsx`, linked from the Games home and search) explains each model on a real moment, all worked
 out live: the live odds on one basket (before, with it, and if the other team had scored it, starting on the basket that moved the odds
-most; the pre-game read is `backtestPick`, from earlier nights only), runs against chance, and Two-Way added up term by term from one
-player's game with that player's outlier fences. `src/lib/momentum.ts` judges runs against the same game's baskets in a random order,
-counted exactly (no simulation), and the hot hand against each player's own shots shuffled within each game (better shooters take more
-shots after a make, so the gap to beat is not zero; the basket that ends a game is left out). The game page's Shots tab has "Was that run
-real?" (`src/components/RunCheck.tsx`). As of 2026-11-25 the games swing more than chance (65 runs against 59) and there is no hot hand.
+most; the pre-game read is `backtestPick`, from earlier nights only), runs against chance, Two-Way added up term by term from one
+player's game with that player's outlier fences, Points added on one real trip, and the rulebook's history. `src/lib/momentum.ts`: the
+rules give the ball to the team scored on, so baskets alternate and a plain shuffle makes every game look less streaky than chance. Each
+game's longest run is judged against that game's own rates of scoring again right after scoring (a two-state chain, counted exactly).
+The league check is how often the other team answers after one basket against after two or more in a row, compared plainly: that leans
+toward finding momentum (stronger teams have more runs), while splitting it per game leans the other way (the hot-hand trap). On
+2026-11-25: 54% against 52%, no sign of momentum. The hot hand is checked against each player's own shots shuffled within each game
+(the basket that ends a game is left out). The game page's Shots tab has "Was that run real?" (`src/components/RunCheck.tsx`).
+
+## Rulebook and rule changes
+
+Poolean's rulebook (Adam's app) is tracked in `src/data/rulebook.json` by `scripts/rulebook.mjs`, run hourly by
+`.github/workflows/rulebook.yml`: it reads `https://poolean.net/api/v1/rules` when that exists, else the published
+`https://poolean.net/data/rules.json` (a copy committed in Adam's repo, which does not follow edits made in the app until he publishes
+it), and adds a dated version when the text changes. A `from` date can be corrected by hand when a rule changed on a game day before
+play. `src/lib/rulebook.ts` matches each game to the version on its date, diffs versions line by line and sorts each change by section
+(scoring, possession, boundaries, defense and contact, other). Only scoring, possession and boundaries split the model rates
+(`sameMathRules`, used by `epa.ts` and `shotChoice.ts`, leaning on every game until the new rules have 8); the expected changes are to
+defense and contact, which leave the math pooled. Once the rulebook has changed: the Filters menu offers "Only games under the current
+rules" (`toggles.currentRules`, applied in App to the Leaderboard and Player pages only; written text steps aside), the Leaderboard's
+Trends tab shows "Did the rule change work?" and the How page shows what changed (`src/components/RuleChanges.tsx`,
+`src/lib/ruleImpact.ts`: fouls, roughness free throws, steals and live-ball turnovers per 10 trips, heavy contests, defenders beaten,
+shooting, points per trip, offensive rebounds, out of bounds, trips per game, over every filmed game, with gameFlow.ts verdicts).
 
 ## Is a 3 worth it?
 

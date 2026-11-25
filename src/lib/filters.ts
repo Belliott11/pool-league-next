@@ -8,6 +8,7 @@ import type { Game } from "@/lib/types"
 export interface Filters {
   imbalanced: boolean // count uneven teams, like 3 against 2
   outliers: boolean // count a player's statistical outlier games (when off, those are left out of that player's stats)
+  currentRules?: boolean // count only games under the current rulebook (rulebook.ts); the written text steps aside when on
 }
 
 export const DEFAULT_FILTERS: Filters = { imbalanced: false, outliers: true }
@@ -30,7 +31,7 @@ export function setFilters(f: Partial<Filters>) {
 export const filters = () => current
 export const isDefaultFilters = (f: Filters = current) => {
   const d = defaultFilters()
-  return f.imbalanced === d.imbalanced && f.outliers === d.outliers
+  return f.imbalanced === d.imbalanced && f.outliers === d.outliers && !f.currentRules
 }
 
 export const isEvenGame = (g: Game) => g.teamA.length === g.teamB.length

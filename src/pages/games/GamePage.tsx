@@ -485,7 +485,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
             </Card>
           ) : (
             <div className="flex flex-col gap-4">
-              <Panel title="Was that run real?" hint="The longest streak of baskets by one team, against the same baskets in a random order.">
+              <Panel title="Was that run real?" hint="The longest streak of baskets by one team, against what chance gives when the team scored on gets the ball.">
                 <RunCheck state={state} game={game} />
               </Panel>
               <Panel title="Shot Log" hint="Every shot, make or miss, with the defender and any assist.">

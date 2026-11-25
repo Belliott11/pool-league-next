@@ -1,0 +1,170 @@
+{
+  "about": "Poolean rulebook versions, newest last. Each applies to games on or after its from date (null: every game before the first change). Kept by scripts/rulebook.mjs; a from date can be corrected by hand if a change was made on a game day before play.",
+  "versions": [
+    {
+      "from": null,
+      "hash": "b15d5d928368",
+      "source": "https://poolean.net/data/rules.json",
+      "sections": [
+        {
+          "n": 1,
+          "title": "Scoring",
+          "lines": [
+            "Baskets inside the three-point line are worth 2 points.",
+            "Baskets beyond the three-point line are worth 3 points.",
+            "The three-point line sits at about 60% of the pool's length from the basket."
+          ],
+          "subs": []
+        },
+        {
+          "n": 2,
+          "title": "Possession",
+          "lines": [
+            "Possession alternates after each score.",
+            "The team that is scored upon receives possession.",
+            "The scoring team may not touch the ball after a basket is made."
+          ],
+          "subs": []
+        },
+        {
+          "n": 3,
+          "title": "Boundaries",
+          "lines": [
+            "Touching the concrete outside the pool while in possession puts the ball out of bounds.",
+            "A ball that hits the coping (the white strip along the top edge of the pool walls) and bounces back in is still in play.",
+            "A ball that goes out of the pool any other way, including off the hoop pole, is out of bounds."
+          ],
+          "subs": []
+        },
+        {
+          "n": 4,
+          "title": "Checking the ball",
+          "lines": [
+            "After a basket, the ball is checked before play resumes.",
+            "After the ball goes out of bounds, no check is needed, but the ball must touch the back wall of the pool before play resumes."
+          ],
+          "subs": []
+        },
+        {
+          "n": 5,
+          "title": "Goaltending",
+          "lines": [
+            "Goaltending is prohibited.",
+            "A shot on its downward path, or with a reasonable chance of going in, may not be interfered with.",
+            "If goaltending occurs, the basket is automatically awarded."
+          ],
+          "subs": []
+        },
+        {
+          "n": 6,
+          "title": "Contact",
+          "lines": [],
+          "subs": [
+            {
+              "title": "Cuddle bear rule",
+              "lines": [
+                "On-ball hugs are allowed.",
+                "Off-ball hugs are prohibited.",
+                "Applies to both offensive and defensive players."
+              ]
+            },
+            {
+              "title": "What counts as a hug",
+              "lines": [
+                "Wrapping or placing arms or hands around another player in a way that restricts their movement."
+              ]
+            },
+            {
+              "title": "Off-ball contact",
+              "lines": [
+                "Boxing out, applying reasonable pressure, and using arms to hold position are all allowed off-ball.",
+                "Grabbing and hugging are prohibited off-ball.",
+                "The other player must always have an avenue to move away. No holding, grabbing, or trapping."
+              ]
+            },
+            {
+              "title": "Prohibited contact",
+              "lines": [
+                "Dunking or forcing another player underwater.",
+                "Any contact involving a player's head or neck.",
+                "Grabbing and forcefully yanking an opposing player's arm, leg, or other limb."
+              ]
+            }
+          ]
+        },
+        {
+          "n": 7,
+          "title": "Rough play",
+          "lines": [
+            "Roughness is judged case by case.",
+            "Control and sportsmanship come first.",
+            "When play gets heated, physicality eases off immediately."
+          ],
+          "subs": []
+        },
+        {
+          "n": 8,
+          "title": "Fouls and penalties",
+          "lines": [],
+          "subs": [
+            {
+              "title": "Calling fouls",
+              "lines": [
+                "Players call their own fouls, without abusing the privilege.",
+                "A designated ref or third team, if present, may make the call."
+              ]
+            },
+            {
+              "title": "Settling a violation",
+              "lines": [
+                "The player calling it can explain what happened. Anyone with a clear view can weigh in.",
+                "Players closest with the clearest view get more weight than those far away.",
+                "A violation stands if a majority agree it happened.",
+                "No majority or unclear facts defaults to no violation, and play resumes."
+              ]
+            },
+            {
+              "title": "Free throws",
+              "lines": [
+                "No free throws for regular shooting fouls.",
+                "Free throws come only from penalties named in these rules."
+              ]
+            },
+            {
+              "title": "Unnecessary roughness",
+              "lines": [
+                "A prohibited-contact violation or other unnecessarily rough conduct is two free throws from the three-point line."
+              ]
+            }
+          ]
+        },
+        {
+          "n": 9,
+          "title": "Basket and rim safety",
+          "lines": [
+            "Hanging on the rim is prohibited."
+          ],
+          "subs": []
+        },
+        {
+          "n": 10,
+          "title": "Timeouts",
+          "lines": [
+            "One timeout per team per game.",
+            "Timeouts may only be called between possessions."
+          ],
+          "subs": []
+        },
+        {
+          "n": 11,
+          "title": "General principle",
+          "lines": [
+            "These rules keep the game competitive, safe, and fun.",
+            "Common sense and good sportsmanship cover anything these rules don't."
+          ],
+          "subs": []
+        }
+      ]
+    }
+  ]
+}

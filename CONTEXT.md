@@ -187,3 +187,6 @@ Related Leaderboard or Player panels combined into one panel with a tab each, so
 
 **Points added**:
 Every play valued by how far it moves what a trip is worth (the league's points per trip): shots, out-of-bounds misses, rebounds, live-ball turnovers, passes on assisted makes and the defense on each shot (`src/lib/epa.ts`). Per game is scaled to an average game; per trip used is a player's own shots and turnovers over the trips they ended.
+
+**Rulebook version**:
+Poolean's rulebook as it stood from a date (`src/data/rulebook.json`). Every game is played under the version in force on its date; a rule change is the step from one version to the next.

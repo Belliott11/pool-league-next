@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { basketsOf, chanceRunAtLeast, expectedLongest, gameMomentum, leagueMomentum, runsChance, runsOf, streakCheck } from "@/lib/momentum"
+import { basketsOf, chanceRunAtLeast, chanceRunWithPossession, expectedLongest, gameMomentum, leagueMomentum, runsChance, runsOf, streakCheck } from "@/lib/momentum"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 // Every order of nA A's and nB B's, for checking the exact counts against brute force.
@@ -42,7 +42,32 @@ describe("runs against chance", () => {
     expect(gameMomentum(game([ev("a1"), ev("b1"), ev("a1")]))).toBeNull()
     const m = gameMomentum(game([..."AAAABABBABAB"].map((s) => ev(s === "A" ? "a1" : "b1"))))!
     expect(m.longest).toMatchObject({ side: "A", length: 4 })
-    expect(m.chance).toBeCloseTo(orders(7, 5).filter((s) => longest(s) >= 4).length / orders(7, 5).length, 10)
+    // A scored again 3 of the 7 times one of its baskets was followed by another; B 1 of 4.
+    expect(m.again.A).toBeCloseTo(3 / 7, 10)
+    expect(m.again.B).toBeCloseTo(1 / 4, 10)
+  })
+
+  it("counts runs exactly when the team scored on gets the ball", () => {
+    const again = { A: 0.4, B: 0.25 }
+    for (const n of [5, 8, 11]) {
+      // Every sequence of n baskets starting with A, weighted by its chance.
+      let total = 0
+      const at = new Map<number, number>()
+      const walk = (seq: string, p: number) => {
+        if (seq.length === n) {
+          total += p
+          for (let k = 1; k <= n; k++) if (longest(seq) >= k) at.set(k, (at.get(k) ?? 0) + p)
+          return
+        }
+        const last = seq.at(-1) as "A" | "B"
+        const other = last === "A" ? "B" : "A"
+        walk(seq + last, p * again[last])
+        walk(seq + other, p * (1 - again[last]))
+      }
+      walk("A", 1)
+      expect(total).toBeCloseTo(1, 10)
+      for (let k = 1; k <= n; k++) expect(chanceRunWithPossession(n, "A", again, k)).toBeCloseTo(at.get(k) ?? 0, 10)
+    }
   })
 
   it("gives the shuffled after-make rate that a brute-force shuffle gives", () => {

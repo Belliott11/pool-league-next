@@ -42,6 +42,7 @@ import { installScrollHints } from "@/lib/scrollHints"
 import { loadStoredToggles, resolveToggles, storeToggles, type Toggles } from "@/lib/toggles"
 import { importStateFromJson, loadState, saveState } from "@/lib/state"
 import type { Update } from "@/lib/store"
+import { underCurrentRules } from "@/lib/rulebook"
 import type { PooleanState } from "@/lib/types"
 import { GamesPage } from "@/pages/Games"
 
@@ -293,8 +294,10 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   const setToggles = (t: Toggles) => setStoredToggles(storeToggles(t))
   // Every panel and stat reads the same filters (see filters.ts). They are set here, before anything below renders, and the pages are
   // handed a fresh copy of the data whenever one changes, so cards that remember their answer work it out again.
-  setFilters({ imbalanced: toggles.imbalanced, outliers: toggles.outliers })
+  setFilters({ imbalanced: toggles.imbalanced, outliers: toggles.outliers, currentRules: !!toggles.currentRules })
   const shown = useMemo(() => ({ ...state }), [state, toggles.imbalanced, toggles.outliers, toggles.pastSeasons])
+  // The Leaderboard and Player pages can count only the games under the current rulebook; the Games pages always show every game.
+  const statsShown = useMemo(() => (toggles.currentRules ? underCurrentRules(shown) : shown), [shown, toggles.currentRules])
   // The classic panels announce "open this player" through a window event.
   useEffect(() => {
     const onPlayer = (e: Event) => {
@@ -465,10 +468,10 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           />
         </TabsContent>
         <TabsContent value="leaderboard" keepMounted>
-          {visited.current.has("leaderboard") && <Frozen active={tab === "leaderboard"} keys={[shown, toggles]}>
+          {visited.current.has("leaderboard") && <Frozen active={tab === "leaderboard"} keys={[statsShown, toggles]}>
           <Suspense fallback={<PageSkeleton label="Loading leaderboard" />}>
             <LeaderboardPage
-            state={shown}
+            state={statsShown}
             toggles={toggles}
             setToggles={setToggles}
             onOpenPlayer={openPlayer}
@@ -477,9 +480,9 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           </Frozen>}
         </TabsContent>
         <TabsContent value="player" keepMounted>
-          {visited.current.has("player") && <Frozen active={tab === "player"} keys={[shown, toggles, playerId]}>
+          {visited.current.has("player") && <Frozen active={tab === "player"} keys={[statsShown, toggles, playerId]}>
           <Suspense fallback={<PageSkeleton label="Loading player" />}>
-            <PlayerDetailPage state={shown} toggles={toggles} setToggles={setToggles} playerId={playerId} update={update} onChangePlayer={(id) => {
+            <PlayerDetailPage state={statsShown} toggles={toggles} setToggles={setToggles} playerId={playerId} update={update} onChangePlayer={(id) => {
               setPlayerId(id)
               go({ player: id }, true)
             }} />

@@ -1,11 +1,16 @@
-import { CLEAR_Z, HINT_Z, type Verdict } from "@/lib/gameFlow"
+import { CLEAR_Z, compareRates, HINT_Z, type Rate, type Verdict } from "@/lib/gameFlow"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
-// "Was that run real?" A run is a streak of baskets by one team. Momentum would show up as more long runs than chance gives, so every
-// number here is compared with the same game's own baskets shuffled: the same number of baskets for each team, in a random order. That
-// is the fair version of chance for one game (a team that scored more baskets will have longer runs anyway). The chances are worked out
-// exactly, not by simulation, so they never change between visits. Shooting streaks (a make after a make) are checked the same way: each
-// player's own shots in each game, shuffled.
+// "Was that run real?" A run is a streak of baskets by one team. The rules hand the ball to the team that was just scored on, so baskets
+// alternate far more than a random order of them would, and a plain shuffle makes every game look less streaky than chance. So a game's
+// runs are judged against chance that knows this: each team scores again right after scoring at its own rate in that game (which carries
+// the possession rule and how good each team was that day), with no memory of how long the run already is. Momentum would mean the
+// answer gets harder as a run grows, which the league check measures directly: how often the other team answers after one basket,
+// against after two or more in a row. That plain comparison leans toward finding momentum (stronger teams have more of the runs, and
+// their opponents answer less), so no gap there is the cautious reading. Splitting it game by game would lean the other way: within a
+// handful of baskets, picking out the moments after a run makes the next basket look more likely to be answered, the same trap as the
+// hot hand. The chances are worked out exactly, not by simulation. Shooting
+// streaks (a make after a make) are checked against each player's own shots shuffled within each game.
 
 export type Side = "A" | "B"
 export const MIN_BASKETS = 8 // a game with fewer made baskets has too few runs to say anything
@@ -123,10 +128,34 @@ export interface GameMomentum {
   nA: number
   nB: number
   runs: number
-  expectedRuns: number
+  again: { A: number; B: number } // each team's chance to score again right after scoring, in this game
   longest: Run
-  chance: number // chance a shuffle of this game's baskets gives a run at least as long as `longest`
+  chance: number // chance the game's own scoring-again rates give a run at least as long as `longest`
   expectedLongest: number
+}
+
+// Chance of a run of k or more in n baskets that start with `first`, when the team that just scored scores again with chance again[side].
+export function chanceRunWithPossession(n: number, first: Side, again: { A: number; B: number }, k: number): number {
+  if (k <= 1) return n > 0 ? 1 : 0
+  // p[side][len]: chance of being on a run of `len` by `side` with no run of k yet.
+  let p = { A: new Float64Array(k), B: new Float64Array(k) }
+  p[first][1] = 1
+  let hit = 0
+  for (let i = 1; i < n; i++) {
+    const next = { A: new Float64Array(k), B: new Float64Array(k) }
+    for (const s of ["A", "B"] as const) {
+      const o = s === "A" ? "B" : "A"
+      for (let l = 1; l < k; l++) {
+        const w = p[s][l]
+        if (!w) continue
+        if (l + 1 >= k) hit += w * again[s]
+        else next[s][l + 1] += w * again[s]
+        next[o][1] += w * (1 - again[s])
+      }
+    }
+    p = next
+  }
+  return hit
 }
 
 export function gameMomentum(game: Game): GameMomentum | null {
@@ -135,18 +164,30 @@ export function gameMomentum(game: Game): GameMomentum | null {
   const nB = baskets.length - nA
   if (baskets.length < MIN_BASKETS || !nA || !nB) return null
   const runs = runsOf(baskets)
-  // The longest run; on a tie in length, the one worth more points.
   const longest = runs.reduce((best, r) => (r.length > best.length || (r.length === best.length && r.points > best.points) ? r : best))
+  // How often each team scored again right after scoring. A team that never had a basket followed by another gets an even chance.
+  const follow = { A: { same: 0, all: 0 }, B: { same: 0, all: 0 } }
+  for (let i = 1; i < baskets.length; i++) {
+    const f = follow[baskets[i - 1].side]
+    f.all++
+    if (baskets[i].side === baskets[i - 1].side) f.same++
+  }
+  // Clamped away from 0 and 1, so one game's handful of baskets cannot rule a run out entirely.
+  const rate = (f: { same: number; all: number }) => Math.min(0.95, Math.max(0.05, f.all ? f.same / f.all : 0.5))
+  const again = { A: rate(follow.A), B: rate(follow.B) }
+  const first = baskets[0].side
+  let expected = 0
+  for (let k = 1; k <= baskets.length; k++) expected += chanceRunWithPossession(baskets.length, first, again, k)
   return {
     game,
     baskets: baskets.length,
     nA,
     nB,
     runs: runs.length,
-    expectedRuns: runsChance(nA, nB).mean,
+    again,
     longest,
-    chance: chanceRunAtLeast(nA, nB, longest.length),
-    expectedLongest: expectedLongest(nA, nB),
+    chance: chanceRunWithPossession(baskets.length, first, again, longest.length),
+    expectedLongest: expected,
   }
 }
 
@@ -167,13 +208,14 @@ export interface StreakCheck {
 
 export interface LeagueMomentum {
   games: GameMomentum[]
-  runs: number
-  expectedRuns: number
-  runsZ: number
-  runsVerdict: Verdict
   avgLongest: number
   avgExpectedLongest: number
   rare: number // games whose longest run chance gives 1 time in 10 or less
+  // How often the other team scored next after one basket, and after two or more in a row. Momentum would make the second lower.
+  answerAfterOne: Rate
+  answerAfterRun: Rate
+  answerDiff: number | null // after a run minus after one, in percentage points
+  answerVerdict: Verdict
   streaks: StreakCheck | null
 }
 
@@ -183,26 +225,28 @@ export function leagueMomentum(state: PooleanState): LeagueMomentum | null {
     .map(gameMomentum)
     .filter((m): m is GameMomentum => m !== null)
   if (!games.length) return null
-  let runs = 0
-  let expectedRuns = 0
-  let variance = 0
+  const one: Rate = { made: 0, att: 0 }
+  const run: Rate = { made: 0, att: 0 }
   for (const m of games) {
-    runs += m.runs
-    const c = runsChance(m.nA, m.nB)
-    expectedRuns += c.mean
-    variance += c.variance
+    const b = basketsOf(m.game)
+    let len = 0
+    for (let i = 0; i < b.length - 1; i++) {
+      len = i > 0 && b[i].side === b[i - 1].side ? len + 1 : 1
+      const all = len >= 2 ? run : one
+      all.att++
+      if (b[i + 1].side !== b[i].side) all.made++
+    }
   }
-  // Fewer runs than chance means longer streaks; the z is positive when the games are streakier than chance.
-  const runsZ = variance > 0 ? (expectedRuns - runs) / Math.sqrt(variance) : 0
+  const st = compareRates(one, run)
   return {
     games,
-    runs,
-    expectedRuns,
-    runsZ,
-    runsVerdict: verdictOf(runsZ),
     avgLongest: games.reduce((s, m) => s + m.longest.length, 0) / games.length,
     avgExpectedLongest: games.reduce((s, m) => s + m.expectedLongest, 0) / games.length,
     rare: games.filter((m) => m.chance <= 0.1).length,
+    answerAfterOne: one,
+    answerAfterRun: run,
+    answerDiff: st.diff,
+    answerVerdict: st.verdict,
     streaks: streakCheck(state),
   }
 }

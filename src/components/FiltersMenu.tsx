@@ -3,8 +3,10 @@ import { buttonVariants } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { filmedGameCount, OUTLIERS_OFF_AT } from "@/lib/filters"
 import { defaultToggles, type Toggles } from "@/lib/toggles"
+import { currentRules, ruleChanges } from "@/lib/rulebook"
+import { formatDateDisplay } from "@/lib/format"
 
-const ROWS: { key: keyof Toggles; label: string; hint: string }[] = [
+const ROWS: { key: "imbalanced" | "outliers" | "pastSeasons"; label: string; hint: string }[] = [
   { key: "imbalanced", label: "Include imbalanced games", hint: "Count uneven teams, like 3 against 2. Off by default because an uneven game is not a fair test of anyone." },
   { key: "outliers", label: "Include outlier games", hint: "On: every game counts. Off: once a player has 4 games, their unusually good or bad ones are left out of their averages, worked out again each time a game is entered. Records, best games and personal bests always count every game." },
   { key: "pastSeasons", label: "Include past seasons", hint: "Count games from before this season too. Off shows this season, plus a few recent games while the season is young." },
@@ -14,7 +16,9 @@ const ROWS: { key: keyof Toggles; label: string; hint: string }[] = [
 // Analyses about team size itself (By format, the bigger-team rule) always use every game.
 export function FiltersMenu({ toggles, setToggles }: { toggles: Toggles; setToggles: (t: Toggles) => void }) {
   const d = defaultToggles()
-  const changed = (toggles.imbalanced !== d.imbalanced ? 1 : 0) + (toggles.outliers !== d.outliers ? 1 : 0) + (toggles.pastSeasons !== d.pastSeasons ? 1 : 0)
+  const changed = (toggles.imbalanced !== d.imbalanced ? 1 : 0) + (toggles.outliers !== d.outliers ? 1 : 0) + (toggles.pastSeasons !== d.pastSeasons ? 1 : 0) + (toggles.currentRules ? 1 : 0)
+  // Offered once Poolean's rulebook has changed (rulebook.ts).
+  const rulesFrom = ruleChanges().length ? currentRules()?.from : null
   return (
     <details data-menu className="relative max-sm:static">
       <summary className={`${buttonVariants({ variant: "outline", size: "sm" })} cursor-pointer list-none gap-1.5 [&::-webkit-details-marker]:hidden`}>
@@ -40,6 +44,17 @@ export function FiltersMenu({ toggles, setToggles }: { toggles: Toggles; setTogg
               </p>
             </li>
           ))}
+          {rulesFrom && (
+            <li>
+              <label className="flex min-h-10 items-center justify-between gap-3">
+                <span className="font-medium">Only games under the current rules</span>
+                <Switch checked={!!toggles.currentRules} onCheckedChange={(v) => setToggles({ ...toggles, currentRules: v })} />
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Poolean's rulebook last changed on {formatDateDisplay(rulesFrom)}. On: the Leaderboard and player pages count only games since then. The Games pages always show every game.
+              </p>
+            </li>
+          )}
         </ul>
         {changed > 0 && (
           <button type="button" onClick={() => setToggles(defaultToggles())} className="mt-3 min-h-10 w-full rounded-lg border text-sm font-medium hover:bg-muted">

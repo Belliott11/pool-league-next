@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 import { leagueValues, pointsAdded, shotEnd } from "@/lib/epa"
 import { CREDIT, games as insightGames } from "@/lib/insight"
 import { PlayValues, signed as signed2 } from "@/components/PointsAdded"
+import { RuleHistory } from "@/components/RuleChanges"
 import type { Game, PooleanState } from "@/lib/types"
 
 // "How the numbers work": each model explained on a real moment from the league, so the method can be checked against something
@@ -204,20 +205,19 @@ function LiveOdds({ state }: { state: PooleanState }) {
 function Runs({ state, onOpenGame }: { state: PooleanState; onOpenGame: (id: string) => void }) {
   const m = useMemo(() => leagueMomentum(state), [state])
   if (!m) return <p className="text-muted-foreground">This fills in once a game has been filmed and logged.</p>
-  const more = m.runs > m.expectedRuns
   const best = [...m.games].sort((a, b) => a.chance - b.chance)[0]
   const st = m.streaks
   return (
     <>
       <p>
-        Take one game's made baskets and shuffle them: same number for each team, random order. Do it every possible way and count how often a run as long as the real one
-        turns up. If momentum were real, the real games would have longer runs than the shuffles. A team that scored more baskets gets longer runs anyway, which is why each
-        game is only compared with its own baskets.
+        The rules give the ball to the team that was just scored on, so baskets mostly go back and forth on their own. A run happens when a team scores, the other side comes
+        up empty, and the first team scores again. So the fair question is not "are there long runs", it is "does a run make the next basket harder to answer". Each game's
+        longest run is checked against that game's own rates of scoring again right after scoring, with no memory of how long a run already is.
       </p>
       <div>
         <div className="mb-1 font-semibold">The rarest run on record</div>
         <p className="mb-2">
-          {formatDateDisplay(best.game.date)}: {runLine(state, best)} A shuffle gives a run that long {oneIn(best.chance)}. {runVerdict(best.chance)}
+          {formatDateDisplay(best.game.date)}: {runLine(state, best)} Chance gives a run that long {oneIn(best.chance)}. {runVerdict(best.chance)}
         </p>
         <BasketStrip game={best.game} m={best} />
       </div>
@@ -225,11 +225,19 @@ function Runs({ state, onOpenGame }: { state: PooleanState; onOpenGame: (id: str
         <div className="mb-1 font-semibold">Over all {m.games.length} filmed games</div>
         <ul className="flex list-disc flex-col gap-1 pl-5">
           <li>
-            {m.runs} runs, against {m.expectedRuns.toFixed(0)} from shuffling. {more ? "More runs means shorter ones: the games swing back and forth more than chance does, not less." : "Fewer runs means longer ones, which is what momentum would look like."}
-            {m.runsVerdict === "early" ? " Not enough games yet to call it more than chance." : m.runsVerdict === "hint" ? " A hint, not proof yet." : ""}
+            After one basket, the other team scored next {pct(m.answerAfterOne.made / Math.max(1, m.answerAfterOne.att))} of the time ({m.answerAfterOne.att} times). After two or more in
+            a row, {pct(m.answerAfterRun.made / Math.max(1, m.answerAfterRun.att))} ({m.answerAfterRun.att} times). Momentum would make the second lower. Stronger teams have more of the
+            runs and their opponents answer less, which also pushes it lower, so a gap here would overstate momentum.{" "}
+            {m.answerDiff === null
+              ? "Too few baskets to compare yet."
+              : m.answerVerdict === "early"
+                ? "No sign of momentum so far."
+                : m.answerDiff < 0
+                  ? m.answerVerdict === "hint" ? "A hint of momentum, not proof yet." : "Teams answer clearly less often after a run."
+                  : "If anything, teams answer more often after a run."}
           </li>
           <li>
-            The longest run averages {m.avgLongest.toFixed(1)} baskets a game; shuffling gives {m.avgExpectedLongest.toFixed(1)}. {m.rare === 0 ? "No game had a run chance gives 1 time in 10 or less." : `${m.rare} game${m.rare === 1 ? "" : "s"} had a run chance gives 1 time in 10 or less; with ${m.games.length} games, chance alone would give about ${Math.max(1, Math.round(m.games.length / 10))}.`}
+            The longest run averages {m.avgLongest.toFixed(1)} baskets a game; chance gives {m.avgExpectedLongest.toFixed(1)}. {m.rare === 0 ? "No game had a run chance gives 1 time in 10 or less." : `${m.rare} game${m.rare === 1 ? "" : "s"} had a run chance gives 1 time in 10 or less; with ${m.games.length} games, chance alone would give about ${Math.max(1, Math.round(m.games.length / 10))}.`}
           </li>
           {st && (
             <li>
@@ -510,6 +518,7 @@ export function HowItWorks({ state, onBack, onOpenGame }: { state: PooleanState;
           ["how-runs", "Was that run real?"],
           ["how-twoway", "Two-Way and outliers"],
           ["how-epa", "Points added"],
+          ["how-rules", "Rule changes"],
         ].map(([id, label]) => (
           <button key={id} className="rounded-full border px-3 py-1 hover:bg-muted" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>
             {label}
@@ -519,7 +528,7 @@ export function HowItWorks({ state, onBack, onOpenGame }: { state: PooleanState;
       <Section id="how-odds" title="Live odds, one basket at a time" intro="The win chance on the live screen, worked out on a basket from a filmed game. It starts on the basket that moved the odds most.">
         <LiveOdds state={state} />
       </Section>
-      <Section id="how-runs" title="Was that run real?" intro="Every game feels like it has momentum. This checks the runs against the same baskets in a random order.">
+      <Section id="how-runs" title="Was that run real?" intro="Every game feels like it has momentum. This checks the runs against chance that knows who gets the ball after a basket.">
         <Runs state={state} onOpenGame={onOpenGame} />
       </Section>
       <Section id="how-twoway" title="Two-Way, on one real line" intro="The Leaderboard's main number, added up term by term from one player's game, and the rule for which games count as outliers.">
@@ -527,6 +536,9 @@ export function HowItWorks({ state, onBack, onOpenGame }: { state: PooleanState;
       </Section>
       <Section id="how-epa" title="Points added, one trip at a time" intro="The idea behind expected points in football, for pool basketball: every play is scored by how far it moves what the trip is worth.">
         <PointsAddedWalk state={state} onOpenGame={onOpenGame} />
+      </Section>
+      <Section id="how-rules" title="Rule changes" intro="Poolean's rulebook, tracked over time, so every game is matched to the rules it was played under and a change can be judged before and after.">
+        <RuleHistory state={state} />
       </Section>
     </div>
   )
