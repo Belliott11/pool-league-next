@@ -49,7 +49,7 @@ export function PageTabs({ id, label, tabs, value, onChange, children }: { id: s
 }
 
 // The site header is pinned too, and its height changes as the page scrolls, so the tab row pins just below it.
-function useHeaderHeight() {
+export function useHeaderHeight() {
   const [h, setH] = useState(0)
   useEffect(() => {
     const el = document.querySelector<HTMLElement>("[data-header-menus]")

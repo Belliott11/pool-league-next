@@ -17,6 +17,7 @@ import { GameVideoPanel } from "@/components/GameVideoPanel"
 import { ReviewsCard } from "./ReviewsCard"
 import { RunCheck } from "@/components/RunCheck"
 import { GameSummaryCard } from "@/components/GameSummaryCard"
+import { OddsTimelineCard } from "@/components/OddsTimeline"
 import { WatchContext, WatchTime } from "@/components/WatchTime"
 import type { PlayerControl } from "@/components/YouTubePlayer"
 import { JUMP_LEAD_SECONDS } from "@/lib/legacy-core"
@@ -456,12 +457,18 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
       <Tabs defaultValue={reviewed ? "stats" : "teams"} className="gap-4">
         <TabsList {...TAB_LIST}>
           <TabsTrigger value="teams" {...TAB_TRIGGER}>Teams</TabsTrigger>
+          <TabsTrigger value="odds" {...TAB_TRIGGER}>Odds</TabsTrigger>
           <TabsTrigger value="stats" {...TAB_TRIGGER}>Stats</TabsTrigger>
           <TabsTrigger value="shots" {...TAB_TRIGGER}>Shots</TabsTrigger>
           <TabsTrigger value="reel" {...TAB_TRIGGER}>Reel</TabsTrigger>
         </TabsList>
         <TabsContent value="teams">
           <TeamsTab state={state} game={game} onOpenGame={onOpenGame} />
+        </TabsContent>
+        <TabsContent value="odds">
+          <Panel title="How the odds moved" hint="Team A's chance of winning after every basket. Scroll the baskets and the chart follows.">
+            <OddsTimelineCard state={state} game={game} />
+          </Panel>
         </TabsContent>
         <TabsContent value="stats">
           {!reviewed ? (

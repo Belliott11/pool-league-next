@@ -30,6 +30,8 @@ export interface Basket {
   scorerId: string
   a: number // score after this basket
   b: number
+  assistId?: string | null
+  videoTime?: number | null
 }
 
 export function basketsOf(game: Game): Basket[] {
@@ -42,7 +44,7 @@ export function basketsOf(game: Game): Basket[] {
     if (!side) continue
     if (side === "A") a += e.points
     else b += e.points
-    out.push({ side, points: e.points, scorerId: e.scorerId, a, b })
+    out.push({ side, points: e.points, scorerId: e.scorerId, a, b, assistId: e.assistId && e.assistId !== e.scorerId ? e.assistId : null, videoTime: e.videoTime ?? null })
   }
   return out
 }
