@@ -1,6 +1,7 @@
 import { sizeAllowed } from "@/lib/filters"
 import { PER, gamePace } from "@/lib/per"
-import { raceWin } from "@/lib/race"
+import { winProbabilityFrom } from "@/lib/live"
+import { backtestPick } from "@/lib/matchup"
 import { allGamesOf } from "@/lib/season"
 import { getGameStats } from "@/lib/stats"
 import type { Game, PooleanState, ScoringEvent, TurnoverEvent } from "@/lib/types"
@@ -319,9 +320,6 @@ export function winProbAdded(state: PooleanState): Wpa {
   const expectedTotal = totals.length ? totals[Math.floor((totals.length - 1) / 2)] : 0
   const made2 = gs.flatMap((g) => g.scoringEvents.filter(made).map((e) => e.points * e.points))
   const sq = made2.length ? made2.reduce((a, b) => a + b, 0) / made2.length : 4
-  // The league's mix of made baskets by value, for the race to a game's target (first to it, win by 2).
-  const values = gs.flatMap((g) => g.scoringEvents.filter(made).map((e) => e.points))
-  const mix: [number, number][] = [1, 2, 3].map((v) => [v, values.length ? values.filter((x) => x === v).length / values.length : v === 2 ? 1 : 0] as [number, number]).filter(([, w]) => w > 0)
   const by = new Map<string, { games: number; baskets: number; added: number; allowed: number; points: number }>()
   const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, baskets: 0, added: 0, allowed: 0, points: 0 }).get(id)!
   const swings: Swing[] = []
@@ -334,16 +332,20 @@ export function winProbAdded(state: PooleanState): Wpa {
       r.points += pace(g)
     }
     const run: [number, number] = [0, 0]
+    const count: [number, number] = [0, 0]
     const order = orderOf(g).filter((e) => made(e) && side(g, e.scorerId) !== null)
-    // With the game's target logged, each moment is a race to it; without one, the game length is guessed from the median total.
+    // With the game's target logged, each moment is the live odds (live.ts): the pre-game read from the nights before, then the race
+    // to the target as the baskets come. Without one, the game length is guessed from the median total.
     const target = targetOf(g)
-    const chance = (left: number) => (target ? raceWin(run[0], run[1], target, 0.5, mix) : winChance(run[0] - run[1], left, sq))
+    const pre = target ? (backtestPick(g) ?? null) : null
+    const chance = (left: number) => (target ? winProbabilityFrom(run[0], run[1], target, pre, count[0], count[1]) : winChance(run[0] - run[1], left, sq))
     order.forEach((e, i) => {
       const t = side(g, e.scorerId) as 0 | 1
       const left = Math.max(expectedTotal, final[0] + final[1]) - (run[0] + run[1])
       const pA = chance(left)
       const from = t === 0 ? pA : 1 - pA
       run[t] += e.points
+      count[t]++
       const pA2 = chance(left - e.points)
       const to = i === order.length - 1 ? (t === winner ? 1 : 0) : t === 0 ? pA2 : 1 - pA2
       const d = to - from
