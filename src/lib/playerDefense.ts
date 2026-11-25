@@ -9,7 +9,7 @@ import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 export const PRIOR_SHOTS = 10 // a shooter's usual points per shot leans on the league's as if they had this many more shots at it
 export const MIN_PAIR_SHOTS = 4 // shots between a defender and a shooter before the pair is listed
-export const MIN_RANK_SHOTS = 15 // shots guarded before a defender is ranked
+export const MIN_RANK_SHOTS = 10 // shots guarded before a defender is ranked
 
 const isShot = (e: ScoringEvent) => e.points === 2 || e.points === 3
 const ptsOf = (e: ScoringEvent) => (e.made !== false ? e.points : 0)

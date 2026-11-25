@@ -1,6 +1,7 @@
 import { CREDIT, games } from "@/lib/insight"
 import { PER, gamePace } from "@/lib/per"
 import { sameMathRules } from "@/lib/rulebook"
+import { defendersOf } from "@/lib/matchupRecord"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 // Points added: every play valued by how far it moves what the trip is worth. A trip with the ball (a turn with it, see possessions.ts)
@@ -156,7 +157,8 @@ export function pointsAdded(state: PooleanState): Epa {
         play.out.s += shot
       }
       // The defenders logged on the shot take the other side of its value, shared when two guarded it.
-      const guards = (e.defenderIds ?? []).filter((x) => side(g, x) === 1 - s)
+      // The same rule as Who stops whom: tagged defenders, else the matchups list on a contested shot (matchupRecord.ts).
+      const guards = defendersOf(g, e).filter((x) => side(g, x) === 1 - s)
       for (const x of guards) row(x).parts.defense -= shot / guards.length
       tally(`pts${e.points}`, e.points === 2 ? "All 2s" : "All 3s", shot)
       if (e.contestLevel) tally(`${e.points}-c-${e.contestLevel}`, `${e.points}s, ${(CONTEST[e.contestLevel] ?? e.contestLevel).toLowerCase()}`, shot)

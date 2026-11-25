@@ -109,8 +109,8 @@ export function PlayerDefense({ state, pid }: { state: PooleanState; pid: string
         </div>
         <p className="text-xs text-muted-foreground">
           Usual is the shooter's points per shot when anyone else guarded them, leaning on the league's as if they had {PRIOR_SHOTS} more shots, so one hot night does not decide it.
-          Saved is the points kept off the board against that. A shot guarded by two people counts half for each; with no defender tagged, the game's matchups list says who was on the
-          shooter. Pairs with at least {MIN_PAIR_SHOTS} shots are listed; italic rows have fewer than {THIN}.
+          Saved is the points kept off the board against that. A shot guarded by two people counts half for each; with no defender tagged, the game's matchups list says who was on the shooter, but only on a contested shot (an
+          uncontested one usually means the listed defender was not there, so nobody is charged). Pairs with at least {MIN_PAIR_SHOTS} shots are listed; italic rows have fewer than {THIN}.
         </p>
       </CardContent>
     </Card>

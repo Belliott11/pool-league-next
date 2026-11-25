@@ -3,7 +3,7 @@ import { assignmentsAt } from "@/lib/matchupSets"
 import type { Game, PooleanState, ScoringEvent } from "@/lib/types"
 
 // How each pairing went: for every shot, who was guarding the shooter. A shot's own tagged defenders win; a shot with none tagged falls
-// back to whoever the game's matchups say was guarding the shooter at that moment. Shots off a beaten defender are counted apart, so
+// back to whoever the game's matchups say was guarding the shooter at that moment, when the shot was contested. Shots off a beaten defender are counted apart, so
 // the make rate reads "when the defender was in position".
 export interface Pairing {
   defenderId: string
@@ -15,10 +15,13 @@ export interface Pairing {
   fromMatchups: number // shots credited by the matchups list rather than a tag
 }
 
-// Who was guarding a shot: its own tagged defenders, else whoever the game's matchups say was on the shooter at that moment.
+// Who was guarding a shot: its own tagged defenders, else whoever the game's matchups say was on the shooter at that moment, but only
+// when the shot was contested. A shot with no contest logged (or "No contest") usually means the listed defender was not there (a
+// switch, a transition chance), so nobody is charged for it.
 export function defendersOf(g: Game, e: ScoringEvent): string[] {
   const tagged = e.defenderIds ?? []
   if (tagged.length > 0 || (g.matchups ?? []).length === 0) return tagged
+  if (!e.contestLevel || e.contestLevel === "none") return []
   return [...assignmentsAt(g, e.videoTime ?? null)].filter(([, offenders]) => offenders.includes(e.scorerId)).map(([d]) => d)
 }
 

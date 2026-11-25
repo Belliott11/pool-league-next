@@ -4,7 +4,7 @@ import { trustOf } from "@/lib/trust"
 import type { PooleanState } from "@/lib/types"
 import { Grid, Hint, TrustChip, Who } from "./parts"
 
-export const MATCHUP_TIP = "How each pairing went: shots the scorer took while this defender was on them, from the shot's own defender tag, or from who the game's matchups say was guarding them when no defender was tagged. Shots off a beaten defender are counted apart, so the make rate shows how the scorer did against a defender who was in position."
+export const MATCHUP_TIP = "How each pairing went: shots the scorer took while this defender was on them, from the shot's own defender tag, or from who the game's matchups say was guarding them when no defender was tagged and the shot was contested (an uncontested shot with no tag usually means the listed defender was not there, so nobody is charged). Shots off a beaten defender are counted apart, so the make rate shows how the scorer did against a defender who was in position."
 
 const pc = (n: number, d: number) => (d === 0 ? "-" : `${Math.round((n / d) * 100)}% (${n}/${d})`)
 
