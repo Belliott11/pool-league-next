@@ -1,7 +1,7 @@
 import { ClipBackdrop } from "@/components/ClipBackdrop"
 import { ClipStrip } from "@/components/ClipTile"
 import { bestClips } from "@/lib/clips"
-import { ChevronDown, ChevronUp, Copy, Share2, Trophy } from "lucide-react"
+import { ChevronDown, ChevronUp, Copy, Share2, Smartphone, Trophy } from "lucide-react"
 import { useMemo, useState } from "react"
 import { EmptyState } from "@/components/EmptyState"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
@@ -24,7 +24,7 @@ import { useLabeledState } from "@/lib/labelsContext"
 import { usePublishedNight } from "@/lib/published"
 import type { Update } from "@/lib/store"
 import { playerName } from "@/lib/players"
-import { shareNightCard } from "@/lib/shareCard"
+import { shareNightCard, shareNightStory } from "@/lib/shareCard"
 import { TEAM } from "@/lib/teamColors"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -154,6 +154,9 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
         <div className="ml-auto flex gap-2">
           <Button size="sm" variant="outline" onClick={() => void shareNightCard(state, s, label).catch(() => {})}>
             <Share2 aria-hidden /> Share picture
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void shareNightStory(state, s, label).catch(() => {})}>
+            <Smartphone aria-hidden /> Story picture
           </Button>
           <Button
             size="sm"

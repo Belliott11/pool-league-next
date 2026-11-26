@@ -1,5 +1,6 @@
 import { gameOver, raceLine } from "@/lib/race"
 import { GuardPlanCard } from "@/components/GuardPlan"
+import { Announcer } from "@/components/Announcer"
 import { LiveStream } from "@/components/LiveStream"
 import { StreamLink } from "@/components/StreamLink"
 import type { PlayerControl } from "@/components/YouTubePlayer"
@@ -461,7 +462,8 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
 export function LiveGamePage({ state, update, onClose, onRecap }: { state: PooleanState; update: Update; onClose: () => void; onRecap?: (date: string) => void }) {
   const game = findLiveGame(state)
   return (
-    <div data-no-swipe className="mx-auto w-full max-w-md">
+    <div data-no-swipe className="mx-auto flex w-full max-w-md flex-col gap-3">
+      <Announcer state={state} />
       {game ? <Board game={game} state={state} update={update} onClose={onClose} onRecap={onRecap} /> : <Setup state={state} update={update} onClose={onClose} />}
     </div>
   )

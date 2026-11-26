@@ -1,5 +1,6 @@
 import { gameOver, raceLine } from "@/lib/race"
 import { GuardPlanCard } from "@/components/GuardPlan"
+import { Announcer } from "@/components/Announcer"
 import { ReviewThat } from "@/components/ReviewThat"
 import { flagReview, setStream } from "@/lib/scorekeeper"
 import { LiveStream } from "@/components/LiveStream"
@@ -121,6 +122,7 @@ export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; on
       <p className={cn("rounded-lg px-3 py-2 text-center text-sm font-medium", !isLive && a !== b ? "bg-pos text-white" : "bg-muted")} role="status">
         {hint}
       </p>
+      <Announcer state={state} />
       {isLive && game.test && (
         <p className="rounded-lg border border-gold px-3 py-2 text-center text-sm">Test game. It sends no alerts and is thrown away when it ends.</p>
       )}

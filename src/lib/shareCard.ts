@@ -303,6 +303,122 @@ export async function shareNightCard(state: PooleanState, s: NightSummary, dateL
   await shareCanvas(await drawNightCard(state, s, dateLabel), `poolean-recap-${s.date || "night"}.png`, "Poolean Intel recap")
 }
 
+// ---- the night's story picture: 1080x1920 for Instagram stories. Instagram covers about the top and bottom 250 px with its own bars,
+// so everything that matters sits between them: the night's best play fills the top and fades into the page, then the player of the
+// night (the MVP when there is a box score, else the top scorer) in big type, every result, and the site's address.
+const SW = 1080
+const SH = 1920
+
+export async function drawNightStory(state: PooleanState, s: NightSummary, dateLabel: string): Promise<HTMLCanvasElement> {
+  try {
+    await Promise.all([document.fonts.load("800 120px Anybody"), document.fonts.load("600 40px 'Hanken Grotesk'")])
+  } catch {
+    /* the system font is used instead */
+  }
+  const display = "Anybody, 'Arial Black', sans-serif"
+  const body = "'Hanken Grotesk', system-ui, sans-serif"
+  const bg = "#071014"
+  const fg = "#eaf2f4"
+  const muted = "#8aa0a6"
+  const accent = cssColor("primary", "#6aa6ff")
+  const teamA = cssColor("team-a", "#7fb4f2")
+  const teamB = cssColor("team-b", "#ffa94d")
+  const canvas = document.createElement("canvas")
+  canvas.width = SW
+  canvas.height = SH
+  const ctx = canvas.getContext("2d")!
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, SW, SH)
+
+  // The play of the night across the top, fading into the page.
+  const play = await playOfTheNight(state, s.games.map((g) => g.id))
+  const band = 900
+  if (play) {
+    const scale = Math.max(SW / play.img.width, band / play.img.height)
+    ctx.drawImage(play.img, (SW - play.img.width * scale) / 2, (band - play.img.height * scale) / 2, play.img.width * scale, play.img.height * scale)
+    const fade = ctx.createLinearGradient(0, 0, 0, band)
+    fade.addColorStop(0, "rgba(7,16,20,0.35)")
+    fade.addColorStop(0.55, "rgba(7,16,20,0.45)")
+    fade.addColorStop(1, "rgba(7,16,20,1)")
+    ctx.fillStyle = fade
+    ctx.fillRect(0, 0, SW, band)
+  } else {
+    const wash = ctx.createLinearGradient(0, 0, 0, band)
+    wash.addColorStop(0, accent.replace("rgb", "rgba").replace(")", ", 0.35)"))
+    wash.addColorStop(1, "rgba(7,16,20,0)")
+    ctx.fillStyle = wash
+    ctx.fillRect(0, 0, SW, band)
+  }
+
+  ctx.textBaseline = "alphabetic"
+  ctx.textAlign = "left"
+  ctx.fillStyle = fg
+  ctx.font = `800 54px ${display}`
+  ctx.fillText("POOLEAN INTEL", 72, 330)
+  ctx.fillStyle = "rgba(234,242,244,0.85)"
+  ctx.font = `600 40px ${body}`
+  ctx.fillText(`${dateLabel}  ·  ${s.games.length} game${s.games.length === 1 ? "" : "s"}`, 72, 390)
+  if (play) {
+    ctx.font = `600 34px ${body}`
+    ctx.fillText(fit(ctx, `Play of the night: ${play.clip.kind === "marked" ? "Highlight" : play.clip.label}, ${playerName(state, play.clip.playerId)}`, SW - 144), 72, 820)
+  }
+
+  // The player of the night.
+  const star = s.mvp ?? s.topScorer
+  let y = 990
+  if (star) {
+    ctx.fillStyle = accent
+    ctx.font = `700 40px ${body}`
+    ctx.fillText(s.mvp ? "Player of the night" : "Top scorer", 72, y)
+    ctx.fillStyle = fg
+    ctx.font = `800 150px ${display}`
+    ctx.fillText(fit(ctx, playerName(state, star.id), SW - 144), 72, y + 150)
+    ctx.fillStyle = muted
+    ctx.font = `600 44px ${body}`
+    const bits = [`${star.pts} points`, `${star.wins}-${star.losses}`, s.mvp && star.boxGames ? `${star.ast} assists` : null].filter(Boolean)
+    ctx.fillText(bits.join("  ·  "), 72, y + 222)
+    y += 330
+  }
+
+  // Every result (up to 6), winners bright.
+  const games = s.games.slice(0, 6)
+  const names = (ids: string[]) => ids.map((id) => playerName(state, id)).join(", ")
+  games.forEach((g, i) => {
+    const gy = y + i * 70
+    ctx.textAlign = "left"
+    ctx.font = `600 32px ${body}`
+    ctx.fillStyle = g.winner === "A" ? fg : muted
+    ctx.fillText(fit(ctx, names(g.teamA), 330), 72, gy)
+    ctx.textAlign = "right"
+    ctx.fillStyle = g.winner === "B" ? fg : muted
+    ctx.fillText(fit(ctx, names(g.teamB), 330), SW - 72, gy)
+    ctx.textAlign = "center"
+    ctx.font = `800 50px ${display}`
+    ctx.fillStyle = teamA
+    ctx.fillText(String(g.scoreA), SW / 2 - 70, gy + 4)
+    ctx.fillStyle = muted
+    ctx.fillText("-", SW / 2, gy + 4)
+    ctx.fillStyle = teamB
+    ctx.fillText(String(g.scoreB), SW / 2 + 70, gy + 4)
+  })
+  if (s.games.length > games.length) {
+    ctx.textAlign = "left"
+    ctx.fillStyle = muted
+    ctx.font = `500 30px ${body}`
+    ctx.fillText(`and ${s.games.length - games.length} more`, 72, y + games.length * 70)
+  }
+
+  ctx.textAlign = "center"
+  ctx.fillStyle = fg
+  ctx.font = `700 40px ${body}`
+  ctx.fillText("intel.poolean.net", SW / 2, SH - 270)
+  return canvas
+}
+
+export async function shareNightStory(state: PooleanState, s: NightSummary, dateLabel: string): Promise<void> {
+  await shareCanvas(await drawNightStory(state, s, dateLabel), `poolean-story-${s.date || "night"}.png`, "Poolean Intel")
+}
+
 // ---- the Season Wrapped picture: one player's season on a single card.
 export async function shareWrappedCard(name: string, lines: { big: string; label: string }[], footer: string): Promise<void> {
   try {

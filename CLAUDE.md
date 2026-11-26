@@ -459,6 +459,18 @@ one, else the top of the standings.
   `close`). Never for test games. Checked live with a call (sends nothing with no live game); delivery to a phone not yet seen.
 - Backups also save `poty_votes` and `season_goals`.
 
+## Announcer mode and the story picture (2026-11-26)
+
+- Announcer (`src/components/Announcer.tsx`, wording in `src/lib/announcer.ts`): an "Announcer" button on both live screens (above the
+  editor's board, so it still calls the final after the game stops being live). The phone's own voice (speechSynthesis) calls each new
+  basket and the score ("Zach, three. Team A leads 9 to 7."), "Game point, Team A" when a two would end it, a basket taken back, and the
+  end once. Off on every visit (phones only allow speech a tap started; the tap says "Announcer on"); keeps the screen awake while on
+  (Wake Lock). Speech errors are swallowed so they cannot break the live screen.
+- Story picture (`drawNightStory` in `src/lib/shareCard.ts`, "Story picture" on the night recap): 1080x1920 for Instagram stories, with
+  everything kept out of the top and bottom 250 px Instagram covers. It shows the play of the night's still across the top (only
+  drawable on the live site, where the bucket's CORS allows it), the player of the night (MVP with a box score, else the top scorer),
+  every result and the address. Shared as a file, else downloaded.
+
 ## Live win probability
 
 `src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:
