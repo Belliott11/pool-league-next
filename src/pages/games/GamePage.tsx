@@ -32,6 +32,7 @@ import { GameTagsEditor } from "@/components/GameTags"
 import { loadsFor, loadText } from "@/lib/dayLoad"
 import { tipoffStatus } from "@/lib/matchupSets"
 import { formatDateDisplay } from "@/lib/format"
+import { GameReplay } from "@/components/GameReplay"
 import { playerName } from "@/lib/players"
 import {
   effectiveFgPct,
@@ -505,6 +506,9 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
             </Card>
           ) : (
             <div className="flex flex-col gap-4">
+              <Panel title="Replay the game" hint="Every shot in order, where it was taken, with the score after it.">
+                <GameReplay state={state} game={game} />
+              </Panel>
               <Panel title="Was that run real?" hint="The longest streak of baskets by one team, against what chance gives when the team scored on gets the ball.">
                 <RunCheck state={state} game={game} />
               </Panel>

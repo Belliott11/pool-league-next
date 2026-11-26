@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Check, Copy, Shield, Smartphone, Undo2 } from "lucide-react"
+import { Check, Copy, Crown, Shield, Smartphone, Trophy, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,13 +11,13 @@ import { allTimeRecord } from "@/lib/debate"
 import { formatDateDisplay } from "@/lib/format"
 import { useReadOnly } from "@/lib/mode"
 import { playerName } from "@/lib/players"
-import { captainOrder, currentSet, draftPick, MIN_COUNTED, movePlayer, newSet, nextNewcomerTeam, undoMove, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
+import { captainOrder, currentSet, draftPick, MIN_COUNTED, movePlayer, newSet, nextNewcomerTeam, undoMove, finals, startFinals, FINAL_WINS, type Series, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
 import { powerOf } from "@/lib/matchup"
 import { DEFAULT_NIGHTS, titleOdds } from "@/lib/titleOdds"
 import { makeCaptainLinks, parseCaptainLink, saveCaptainLink, savedCaptainLink, sendPick, sendUndo, type CaptainLink } from "@/lib/draftRoom"
 import type { Update } from "@/lib/store"
 import { cn } from "@/lib/utils"
-import type { Game, PooleanState, SeasonTeamSet } from "@/lib/types"
+import type { Game, PooleanState, SeasonTeam, SeasonTeamSet } from "@/lib/types"
 
 // Season teams (#/games/teams): standings, each team's members and what they added, team of the night and rivalry games. The editor
 // sets the teams up here and runs the captains' draft (src/lib/seasonTeams.ts has the scoring).
@@ -309,6 +309,96 @@ function Draft({ state, set, update, readOnly, captain }: { state: PooleanState;
 
 const pct = (p: number) => (p > 0 && p < 0.005 ? "<1%" : p < 1 && p > 0.995 ? ">99%" : `${Math.round(p * 100)}%`)
 
+// Finals night: the bracket from rivalry games after the editor starts it (src/lib/seasonTeams.ts, `finals`).
+function SeriesCard({ s, onOpenGame }: { s: Series; onOpenGame: (id: string) => void }) {
+  const side = (t: SeasonTeam | null, seed: number | null, w: number) => (
+    <div className={cn("flex items-center justify-between gap-2 rounded-md px-2 py-1.5", s.winner && t && s.winner.id === t.id && "bg-muted font-semibold")}>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="w-4 text-xs tabular-nums text-muted-foreground">{seed ?? ""}</span>
+        {t ? <TeamChip team={t} /> : <span className="text-muted-foreground">To be decided</span>}
+      </span>
+      <span className="font-display text-base tabular-nums">{t ? w : ""}</span>
+    </div>
+  )
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border p-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{s.round === "final" ? `Final, first to ${s.need}` : "Semifinal, one game"}</p>
+      {side(s.a, s.seedA, s.wins[0])}
+      {side(s.b, s.seedB, s.wins[1])}
+      {s.games.length > 0 && (
+        <p className="flex flex-wrap gap-x-2 text-xs">
+          {s.games.map((g, i) => (
+            <button key={g.id} type="button" className="text-muted-foreground underline underline-offset-2" onClick={() => onOpenGame(g.id)}>
+              Game {i + 1}
+            </button>
+          ))}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function FinalsCard({ state, set, editor, update, onOpenGame }: { state: PooleanState; set: SeasonTeamSet; editor: boolean; update: Update; onOpenGame: (id: string) => void }) {
+  const f = useMemo(() => (set.finals ? finals(state, set) : null), [state, set])
+  if (!f) {
+    if (!editor || set.teams.length < 2) return null
+    const n = set.teams.length >= 4 ? 4 : 2
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 font-display">
+            <Trophy aria-hidden className="size-4" /> Finals night
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            End the season with a playoff: the top {n} by the standings, seeded as they stand when you start it.{" "}
+            {n === 4 ? `Semifinals are one game each (1 against 4, 2 against 3), then a final, first to ${FINAL_WINS}.` : `A final, first to ${FINAL_WINS}.`} Every game is a rivalry
+            game: start each one from the live screen with "Rivalry game" so each side is one whole season team.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Button size="sm" onClick={() => confirm(`Start finals night today with the top ${n}?`) && update((st) => putSet(st, startFinals(st, set, today())))}>
+            Start finals night today
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 font-display">
+          <Trophy aria-hidden className="size-4" /> Finals
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Rivalry games from {formatDateDisplay(set.finals!.from)} count, in the order they are played. Seeds are the standings when finals night started.
+        </p>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3 text-sm">
+        {f.champion && (
+          <p className="flex items-center gap-2 rounded-lg border-2 border-gold p-3 font-display text-lg font-bold" role="status">
+            <Crown aria-hidden className="size-5 text-gold" /> <TeamChip team={f.champion} /> are the champions
+          </p>
+        )}
+        <div className={cn("grid gap-3", f.semis.length && "sm:grid-cols-2 sm:items-center")}>
+          {f.semis.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {f.semis.map((s, i) => (
+                <SeriesCard key={i} s={s} onOpenGame={onOpenGame} />
+              ))}
+            </div>
+          )}
+          <SeriesCard s={f.final} onOpenGame={onOpenGame} />
+        </div>
+        {editor && (
+          <Button size="sm" variant="ghost" className="self-start" onClick={() => confirm("Call off finals night? The games stay; they just stop counting for the bracket.") && update((st) => putSet(st, { ...set, finals: undefined }))}>
+            Call off finals
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 // Each team's chance of finishing first, from playing out the nights left (src/lib/titleOdds.ts).
 function TitleOddsCard({ state, set, editor, update }: { state: PooleanState; set: SeasonTeamSet; editor: boolean; update: Update }) {
   const t = useMemo(() => titleOdds(state, set), [state, set])
@@ -482,6 +572,7 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
   const teamName = (id: string | null) => (id ? (set.teams.find((t) => t.id === id)?.name ?? "a team") : null)
   return (
     <div className="flex flex-col gap-4">
+      <FinalsCard state={state} set={set} editor={editor} update={update} onOpenGame={onOpenGame} />
       <TitleOddsCard state={state} set={set} editor={editor} update={update} />
       <Card>
         <CardHeader>

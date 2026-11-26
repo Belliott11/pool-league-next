@@ -1,4 +1,4 @@
-import { Check, Film, Play, Share2 } from "lucide-react"
+import { Check, Film, Play, Share2, Smartphone } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 import { InlineClip } from "@/components/InlineClip"
 import { ClipBackdrop } from "@/components/ClipBackdrop"
@@ -6,7 +6,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import type { Clip } from "@/lib/clips"
 import { clipSource } from "@/lib/clipCuts"
-import { clipIdOf, posterOf, shareLink } from "@/lib/clipShare"
+import { clipIdOf, posterOf, shareLink, verticalOf } from "@/lib/clipShare"
 import { formatDateDisplay } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
@@ -70,10 +70,11 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
       {caption && (
         <figcaption className="flex min-w-0 items-center gap-2 text-sm">
           <PlayerAvatar id={clip.playerId} name={name} size="sm" />
-          <span className="min-w-0">
+          <span className="min-w-0 flex-1">
             <span className="block truncate font-medium">{clip.label}</span>
             <span className="block truncate text-xs text-muted-foreground">{name}, {formatDateDisplay(clip.date)}</span>
           </span>
+          {id && verticalOf(id) && <VerticalClip url={verticalOf(id)!} title={`${clip.label}, ${name}`} />}
           {id && <ShareClip id={id} title={`${clip.label}, ${name}`} />}
         </figcaption>
       )}
@@ -96,8 +97,43 @@ function ShareClip({ id, title }: { id: string; title: string }) {
     }
   }
   return (
-    <button type="button" onClick={() => void share()} className="ml-auto grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={copied ? "Link copied" : `Share this play: ${title}`} title={copied ? "Link copied" : "Share this play"}>
+    <button type="button" onClick={() => void share()} className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={copied ? "Link copied" : `Share this play: ${title}`} title={copied ? "Link copied" : "Share this play"}>
       {copied ? <Check aria-hidden className="size-4" /> : <Share2 aria-hidden className="size-4" />}
+    </button>
+  )
+}
+
+// The play as a vertical video (9:16, captioned, with sound) for an Instagram story or reel: handed to the phone's share sheet as a file
+// where it can take one (iPhone, Android), else saved as a download.
+function VerticalClip({ url, title }: { url: string; title: string }) {
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const save = async () => {
+    setBusy(true)
+    setFailed(false)
+    try {
+      const blob = await (await fetch(url)).blob()
+      const name = `${title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "play"}.mp4`
+      const file = new File([blob], name, { type: "video/mp4" })
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
+      if (nav.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title })
+      } else {
+        const a = document.createElement("a")
+        a.href = URL.createObjectURL(blob)
+        a.download = name
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
+      }
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === "AbortError")) setFailed(true)
+    }
+    setBusy(false)
+  }
+  const label = failed ? "That did not work. Try again" : busy ? "Getting the video" : `Vertical video for Instagram: ${title}`
+  return (
+    <button type="button" disabled={busy} onClick={() => void save()} className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60" aria-label={label} title={failed ? "That did not work. Try again" : "Vertical video for Instagram"}>
+      <Smartphone aria-hidden className={cn("size-4", busy && "motion-safe:animate-pulse")} />
     </button>
   )
 }

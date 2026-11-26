@@ -207,4 +207,7 @@ export interface SeasonTeamSet {
   // Phone draft: each captain's link key, hashed (sha-256 hex) so the public league data cannot be used to pick. Set by the editor.
   captainKeys?: Record<string, string>
   lastPickAt?: string
+  // Finals night: seeds (team ids, best first) frozen from the standings when the editor starts it, and the date rivalry games start
+  // counting for the bracket (seasonTeams.ts, `finals`).
+  finals?: { from: string; seeds: string[] }
 }

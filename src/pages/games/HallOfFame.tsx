@@ -107,7 +107,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
       )}
 
       {data.teams.length > 0 && (
-        <Board title="Season team champions" hint="Each finished season's best season team: wins plus Wins added, averaged per player per night.">
+        <Board title="Season team champions" hint="Each finished season's champion: the finals winner, or the top of the standings when no finals were played.">
           {data.teams.map((c) => (
             <div key={c.set.id} className="flex flex-col gap-0.5 border-t pt-1.5 first:border-t-0 first:pt-0">
               <span className="text-xs text-muted-foreground">
@@ -115,7 +115,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
               </span>
               <span>
                 <TeamChip team={c.line.team} />
-                <span className="text-muted-foreground"> {c.line.score.toFixed(2)} a night: </span>
+                <span className="text-muted-foreground">{c.finals ? " won the finals: " : ` ${c.line.score.toFixed(2)} a game: `}</span>
                 {c.line.team.members.map((m) => poolNameOf(state, m)).join(", ")}
               </span>
             </div>

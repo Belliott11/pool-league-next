@@ -14,6 +14,7 @@ export interface Share {
   key: string // the cut key
   title: string // "Dunk, Ben"
   poster: string // the picture's path in the video bucket
+  vertical?: string // a 9:16 video of the play with a caption, for Instagram stories and reels (cut-clips makes it when it knows where the play is)
 }
 
 const table = shares as Record<string, Share>
@@ -52,4 +53,10 @@ export function posterOf(state: PooleanState, c: Clip): string | null {
   const id = clipIdOf(state, c)
   const p = id ? table[id]?.poster : null
   return p ? `${PICTURE_HOST}/${p}` : null
+}
+
+// The vertical video of a play, when cut-clips made one.
+export function verticalOf(id: string): string | null {
+  const v = table[id]?.vertical
+  return v ? `${PICTURE_HOST}/${v}` : null
 }

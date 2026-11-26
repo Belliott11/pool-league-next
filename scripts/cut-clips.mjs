@@ -57,7 +57,12 @@ const shares = fs.existsSync(SHARES) ? JSON.parse(fs.readFileSync(SHARES, "utf8"
 // A clip that goes badly for someone is never offered for sharing. A picture is made again when the cut changes (a follow added or moved).
 for (const c of plan) if (!c.shareable && shares[c.id]) delete shares[c.id]
 const needPoster = plan.filter((c) => c.shareable && (!shares[c.id] || shares[c.id].key !== c.key) && (manifest[c.key] || todo.includes(c)))
-if (!dry && (todo.length || needPoster.length) && !account) {
+// A shareable clip that knows where the play is (a follow path, or the editor's crop) also gets a vertical video for Instagram stories and
+// reels: 9:16, following the play across, with sound and a caption. Made again when the cut changes or VERTICAL_STYLE is bumped.
+const VERTICAL_STYLE = 2
+const canVertical = (c) => c.shareable && (c.follow || c.frameX !== null)
+const needVertical = plan.filter((c) => canVertical(c) && (manifest[c.key] || todo.includes(c)) && (!shares[c.id]?.vertical || shares[c.id].key !== c.key || shares[c.id].vstyle !== VERTICAL_STYLE))
+if (!dry && (todo.length || needPoster.length || needVertical.length) && !account) {
   const list = api("/accounts").result
   if (list.length !== 1) throw new Error(`Set CLOUDFLARE_ACCOUNT_ID: the token sees ${list.length} accounts`)
   account = list[0].id
@@ -96,6 +101,32 @@ const followCrop = (f, at) => {
   const y = p ? String(p.y) : along(f.path, "y")
   return `crop=w=trunc(iw/${f.zoom}/2)*2:h=trunc(ih/${f.zoom}/2)*2:x='clip(iw*(${x})-ow/2,0,iw-ow)':y='clip(ih*(${y})-oh/2,0,ih-oh)'`
 }
+// The vertical video: 80% of the recording's height, 9/16 of that wide, centred on the play (the follow path across, else the editor's
+// crop), 720 by 1280, with the site's name at the top and what, who and when at the bottom. Keeps the sound.
+function makeVertical(c, local, out) {
+  const fonts = path.join(root, "scripts/og-fonts")
+  const tmp = fs.mkdtempSync(path.join(work, "v-"))
+  const text = (name, s) => (fs.writeFileSync(path.join(tmp, name), s), path.join(tmp, name))
+  const x = c.follow ? along(c.follow.path, "x") : String(c.frameX)
+  const y = c.follow ? along(c.follow.path, "y") : "0.5"
+  const day = new Date(`${c.date}T12:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })
+  const vf = [
+    // 80% of the height, so the players are bigger than in the whole-height strip, following the play up and down as well as across.
+    `crop=w=trunc(ih*0.8*9/16/2)*2:h=trunc(ih*0.8/2)*2:x='clip(iw*(${x})-ow/2,0,iw-ow)':y='clip(ih*(${y})-oh/2,0,ih-oh)'`,
+    "scale=720:1280:flags=lanczos,setsar=1",
+    "eq=contrast=1.05:saturation=1.15",
+    `drawbox=x=0:y=0:w=iw:h=110:color=black@0.35:t=fill`,
+    `drawtext=fontfile=${path.join(fonts, "Anybody-Display.ttf")}:textfile=${text("brand.txt", "POOLEAN INTEL")}:fontcolor=white:fontsize=38:x=(w-text_w)/2:y=40`,
+    `drawbox=x=0:y=ih-230:w=iw:h=170:color=black@0.5:t=fill`,
+    `drawbox=x=0:y=ih-230:w=10:h=170:color=0x2f7de1:t=fill`,
+    `drawtext=fontfile=${path.join(fonts, "HankenGrotesk-Bold.ttf")}:textfile=${text("title.txt", c.title)}:fontcolor=white:fontsize=48:x=40:y=h-205`,
+    `drawtext=fontfile=${path.join(fonts, "HankenGrotesk-Regular.ttf")}:textfile=${text("date.txt", `${day}   intel.poolean.net`)}:fontcolor=white@0.85:fontsize=30:x=42:y=h-135`,
+  ].join(",")
+  execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", String(c.start), "-i", local, "-t", String(Math.max(0.5, c.end - c.start)), "-vf", vf,
+    "-c:v", "libx264", "-preset", "medium", "-crf", "24", "-maxrate", "2500k", "-bufsize", "5000k", "-pix_fmt", "yuv420p", "-r", "30",
+    "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", out])
+  fs.rmSync(tmp, { recursive: true })
+}
 const save = (file, data) => fs.writeFileSync(file, JSON.stringify(Object.fromEntries(Object.entries(data).sort()), null, 1) + "\n")
 const sourceOf = (url) => {
   const file = decodeURIComponent(new URL(url).pathname.split("/").pop())
@@ -111,7 +142,7 @@ const sourceOf = (url) => {
 }
 
 // 3. One recording at a time: fetch it, cut its clips and pictures, upload them, let it go.
-const byRec = Map.groupBy([...new Set([...todo, ...needPoster])], (c) => c.url)
+const byRec = Map.groupBy([...new Set([...todo, ...needPoster, ...needVertical])], (c) => c.url)
 let done = 0
 for (const [url, clips] of byRec) {
   const { file, local, dir, origin } = sourceOf(url)
@@ -146,6 +177,18 @@ for (const [url, clips] of byRec) {
         shares[c.id] = { key: c.key, title: c.title, poster: key }
         save(SHARES, shares)
         fs.rmSync(pic)
+      }
+    }
+    if (needVertical.includes(c) && shares[c.id]) {
+      const out = path.join(work, `${name}_v.mp4`)
+      makeVertical(c, local, out)
+      const key = `clips/${dir}/${name}_v.mp4`
+      if (!dry) {
+        upload(out, key, "video/mp4")
+        served(origin, key)
+        shares[c.id] = { ...shares[c.id], vertical: key, vstyle: VERTICAL_STYLE }
+        save(SHARES, shares)
+        fs.rmSync(out)
       }
     }
     process.stdout.write(`\r${done}/${todo.length} cut`)
@@ -265,4 +308,4 @@ function makeTrailer(list, urlOf, out) {
   return Math.round(t)
 }
 
-console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts and ${needPoster.length} pictures; commit src/data/clip-cuts.json, src/data/clip-shares.json and src/data/trailer.json`)
+console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts, ${needPoster.length} pictures and ${needVertical.length} vertical videos; commit src/data/clip-cuts.json, src/data/clip-shares.json and src/data/trailer.json`)

@@ -232,12 +232,98 @@ export function nextNewcomerTeam(state: PooleanState, set: SeasonTeamSet): Seaso
 }
 
 // The finished sets' champions, newest first, for the Hall of Fame.
-export function champions(state: PooleanState): { set: SeasonTeamSet; line: TeamLine }[] {
+// A finished set's champion: the finals winner when finals were played to the end, else the top of the standings.
+export function champions(state: PooleanState): { set: SeasonTeamSet; line: TeamLine; finals: boolean }[] {
   return (state.seasonTeamSets ?? [])
     .filter((s) => s.to && !s.drafting)
-    .map((set) => ({ set, line: standings(state, set).rows[0] }))
+    .map((set) => {
+      const rows = standings(state, set).rows
+      const won = set.finals ? finals(state, set).champion : null
+      return { set, line: (won && rows.find((r) => r.team.id === won.id)) || rows[0], finals: !!won }
+    })
     .filter((c) => c.line && c.line.nights > 0)
     .reverse()
+}
+
+// ---------- finals night ----------
+
+// A playoff at the end of the season, played as rivalry games (each pickup team is one whole season team). With four or more teams the
+// top four go in: semifinals 1 against 4 and 2 against 3, one game each, then a final, first to two wins. With two or three teams the top
+// two play the final. Seeds are frozen when the editor starts finals night (`startFinals`), so later nights do not reshuffle the bracket.
+// Rivalry games from that date count: a game between two teams in an open series goes to that series, in the order they were played.
+
+export interface Series {
+  round: "semi" | "final"
+  a: SeasonTeam | null // the higher seed, or null while the semifinal deciding it is open
+  b: SeasonTeam | null
+  seedA: number | null
+  seedB: number | null
+  need: number // wins to take it
+  wins: [number, number]
+  games: Game[]
+  winner: SeasonTeam | null
+}
+
+export interface Finals {
+  semis: Series[]
+  final: Series
+  champion: SeasonTeam | null
+}
+
+export const SEMI_WINS = 1
+export const FINAL_WINS = 2
+
+// Starts finals night from today's standings (top four, or top two with fewer than four teams).
+export function startFinals(state: PooleanState, set: SeasonTeamSet, from: string): SeasonTeamSet {
+  const rows = standings(state, set).rows
+  const n = set.teams.length >= 4 ? 4 : 2
+  return { ...set, finals: { from, seeds: rows.slice(0, n).map((r) => r.team.id) } }
+}
+
+export function finals(state: PooleanState, set: SeasonTeamSet): Finals {
+  const seeds = (set.finals?.seeds ?? []).map((id) => set.teams.find((t) => t.id === id) ?? null)
+  const series = (round: Series["round"], a: SeasonTeam | null, b: SeasonTeam | null, need: number): Series => ({
+    round,
+    a,
+    b,
+    seedA: a ? seeds.indexOf(a) + 1 : null,
+    seedB: b ? seeds.indexOf(b) + 1 : null,
+    need,
+    wins: [0, 0],
+    games: [],
+    winner: null,
+  })
+  const semis = seeds.length >= 4 ? [series("semi", seeds[0], seeds[3], SEMI_WINS), series("semi", seeds[1], seeds[2], SEMI_WINS)] : []
+  const final = series("final", seeds.length >= 4 ? null : seeds[0], seeds.length >= 4 ? null : seeds[1], FINAL_WINS)
+  const from = set.finals?.from
+  const games = from ? gamesIn(state, set).filter((g) => (g.date || "") >= from) : []
+  const settle = (s: Series) => {
+    if (s.wins[0] >= s.need) s.winner = s.a
+    else if (s.wins[1] >= s.need) s.winner = s.b
+  }
+  for (const g of games) {
+    const rv = rivalryOf(set, g)
+    if (!rv) continue
+    const winner = g.winner === "A" ? rv.a : g.winner === "B" ? rv.b : null
+    if (!winner) continue
+    // The final's teams are set once both semifinals are decided.
+    if (semis.length && !final.a && semis.every((x) => x.winner)) {
+      const [w1, w2] = semis.map((x) => x.winner!)
+      const [hi, lo] = seeds.indexOf(w1) < seeds.indexOf(w2) ? [w1, w2] : [w2, w1]
+      Object.assign(final, { a: hi, b: lo, seedA: seeds.indexOf(hi) + 1, seedB: seeds.indexOf(lo) + 1 })
+    }
+    const open = [...semis, final].find((s) => !s.winner && s.a && s.b && [s.a.id, s.b.id].sort().join() === [rv.a.id, rv.b.id].sort().join())
+    if (!open) continue
+    open.games.push(g)
+    open.wins[winner.id === open.a!.id ? 0 : 1]++
+    settle(open)
+  }
+  if (semis.length && !final.a && semis.every((x) => x.winner)) {
+    const [w1, w2] = semis.map((x) => x.winner!)
+    const [hi, lo] = seeds.indexOf(w1) < seeds.indexOf(w2) ? [w1, w2] : [w2, w1]
+    Object.assign(final, { a: hi, b: lo, seedA: seeds.indexOf(hi) + 1, seedB: seeds.indexOf(lo) + 1 })
+  }
+  return { semis, final, champion: final.winner }
 }
 
 // ---------- the draft ----------

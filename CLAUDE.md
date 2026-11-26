@@ -86,7 +86,11 @@ api.cloudflare.com.
 `npm run cut-clips` also saves a picture of each play (`clips/.../<name>.jpg`) and lists shareable clips in
 `src/data/clip-shares.json` (never one that goes badly for someone). The build writes `clip/<id>.html` for each (the `clipPages` plugin
 in `vite.config.ts`): the preview title and picture, then a redirect to `#/games/clip/<id>` (`src/pages/games/ClipPage.tsx`). Ids come
-from `clipId` in `src/lib/clipShare.ts`. Clip tiles have a Share button. Every link that is sent (share buttons, link previews) uses the public
+from `clipId` in `src/lib/clipShare.ts`. Clip tiles have a Share button. A shareable clip that knows where the play is (a follow path or the
+editor's crop) also gets a vertical video for Instagram stories and reels (`makeVertical` in cut-clips: 80% of the height, 9:16, following
+the play across and down, 720x1280, "POOLEAN INTEL" at the top, what, who, the date and the address at the bottom; `vertical` and
+`vstyle` in clip-shares.json, `VERTICAL_STYLE` to remake them); the tile's phone button hands it to the share sheet as a file, else
+downloads it (`VerticalClip` in ClipTile.tsx). The recordings have no sound, so neither do the clips. Every link that is sent (share buttons, link previews) uses the public
 address in `src/lib/site.ts` (`https://intel.poolean.net/`; the clip pages' copy is `SITE` in `vite.config.ts`).
 
 ### Season trailer
@@ -236,7 +240,9 @@ game's longest run is judged against that game's own rates of scoring again righ
 The league check is how often the other team answers after one basket against after two or more in a row, compared plainly: that leans
 toward finding momentum (stronger teams have more runs), while splitting it per game leans the other way (the hot-hand trap). On
 2026-11-25: 54% against 52%, no sign of momentum. The hot hand is checked against each player's own shots shuffled within each game
-(the basket that ends a game is left out). The game page's Shots tab has "Was that run real?" (`src/components/RunCheck.tsx`).
+(the basket that ends a game is left out). The game page's Shots tab has "Was that run real?" (`src/components/RunCheck.tsx`), under "Replay the game"
+(`src/components/GameReplay.tsx`, `src/lib/replay.ts`): every shot in order on the court (filled for a make, a ring for a miss, team
+colours), the score after it, play at 1x or 2x, step, a slider and a Watch link.
 
 ## Rulebook and rule changes
 
@@ -332,7 +338,11 @@ ties to fewer players (`nextNewcomerTeam`, shown on the page with an "Add to" bu
 after the new date. The page shows standings, team of the night, rivalry games and each team's members. Also: a "Season team" chip on
 the Player page's At a glance card (`src/components/TeamChip.tsx`), a rivalry badge on the game page, a "Rivalry game" quick-fill on the
 live start screen (fills both pickup teams from two season teams), "Season team champions" in the Hall of Fame (`champions`) and the
-player's team finish in Season Wrapped's awards slide.
+player's team finish in Season Wrapped's awards slide. Finals night (`startFinals`, `finals`, a card at the top of the standings): the
+editor starts it, freezing the top four (two with fewer than four teams) as seeds; semifinals 1 against 4 and 2 against 3 are one game
+each, the final is first to two (`FINAL_WINS`), all from rivalry games from that date, each going to the open series between its two
+teams. "Call off finals" clears it (games stay). A finished set's champion (`champions`, Hall of Fame) is the finals winner when there is
+one, else the top of the standings.
 
 ## Title odds, draft room, props, milestones
 
