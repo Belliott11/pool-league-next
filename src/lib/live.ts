@@ -81,7 +81,19 @@ export function discardLive(state: PooleanState, id: string): PooleanState {
 // This beats the old curve-fit because it knows a 3-point lead is worth less early than late.
 export const POINT_MIX: [number, number][] = [[1, 0.009], [2, 0.81], [3, 0.181]]
 // The per-score share q that makes the pre-game chance equal `pre`.
+// The same target and pre-game read always give the same share, and every basket of a game asks again, so answers are kept.
+const shares = new Map<string, number>()
 function shareFor(target: number, pre: number): number {
+  const key = `${target}|${pre}`
+  const kept = shares.get(key)
+  if (kept !== undefined) return kept
+  const v = searchShare(target, pre)
+  if (shares.size > 2000) shares.clear()
+  shares.set(key, v)
+  return v
+}
+
+function searchShare(target: number, pre: number): number {
   let lo = 0.05
   let hi = 0.95
   for (let i = 0; i < 24; i++) {

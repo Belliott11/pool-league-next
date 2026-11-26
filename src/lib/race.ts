@@ -9,17 +9,47 @@ export type Mix = [number, number][]
 
 // Once both teams are within WIN_BY - 1 of the target, only the margin matters: whoever gets WIN_BY ahead wins. Those few margins feed
 // each other in a loop, so they are solved by repeating the update until it settles.
+// The loop stops once nothing moves by more than a trillionth (it used to run 500 times every call).
+// Answers are kept: the live odds ask the same questions over and over (a game page asked about a hundred times, which froze it for
+// about three seconds on a phone, measured 2026-11-26). Each table is cleared when it gets large, so memory stays small.
+const mixKey = (mix: Mix) => mix.map(([k, w]) => `${k}:${w}`).join(",")
+const deuces = new Map<string, (d: number) => number>()
+const wins = new Map<string, number>()
+const KEEP = 5000
+
 function deuce(q: number, mix: Mix): (d: number) => number {
+  const key = `${q}|${mixKey(mix)}`
+  const kept = deuces.get(key)
+  if (kept) return kept
   const p = new Map<number, number>()
   for (let d = -WIN_BY + 1; d < WIN_BY; d++) p.set(d, 0.5)
   const at = (d: number) => (d >= WIN_BY ? 1 : d <= -WIN_BY ? 0 : p.get(d)!)
-  for (let i = 0; i < 500; i++)
-    for (let d = -WIN_BY + 1; d < WIN_BY; d++) p.set(d, mix.reduce((n, [k, w]) => n + w * (q * at(d + k) + (1 - q) * at(d - k)), 0))
+  for (let i = 0; i < 500; i++) {
+    let moved = 0
+    for (let d = -WIN_BY + 1; d < WIN_BY; d++) {
+      const v = mix.reduce((n, [k, w]) => n + w * (q * at(d + k) + (1 - q) * at(d - k)), 0)
+      moved = Math.max(moved, Math.abs(v - p.get(d)!))
+      p.set(d, v)
+    }
+    if (moved < 1e-12) break
+  }
+  if (deuces.size > KEEP) deuces.clear()
+  deuces.set(key, at)
   return at
 }
 
 // Chance team A wins from a score of a to b, when each basket goes to A with chance q and is worth points in `mix`.
 export function raceWin(a: number, b: number, target: number, q: number, mix: Mix): number {
+  const key = `${a}|${b}|${target}|${q}|${mixKey(mix)}`
+  const kept = wins.get(key)
+  if (kept !== undefined) return kept
+  const v = raceFrom(a, b, target, q, mix)
+  if (wins.size > KEEP) wins.clear()
+  wins.set(key, v)
+  return v
+}
+
+function raceFrom(a: number, b: number, target: number, q: number, mix: Mix): number {
   const tie = deuce(q, mix)
   const floor = target - WIN_BY + 1
   const memo = new Map<string, number>()
