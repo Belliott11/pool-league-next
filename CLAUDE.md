@@ -206,6 +206,10 @@ copy) and open on it at once (`cloud.early` in `App.tsx`); the fresh copy swaps 
 phone shows the Leaderboard in 1.6 s instead of 4.4 s. With no signal the saved copy stays, minus any game it shows as live, with
 "No connection. Showing the stats as of ..." (`SavedCopyNote`); start-up retries when the phone comes back online. A phone known to be an
 editor's (`knownEditor`) never shows the saved copy first.
+The race math (`raceWin`, `deuce` in `src/lib/race.ts`) and the live odds' pre-game share (`shareFor` in live.ts) keep their answers
+(bounded tables), and the deuce loop stops once settled: a game page used to freeze about 3 s on a phone re-running them (the game
+summary's work went from 692 ms to 36 ms, 2026-11-26). The heaviest remaining first-visit work is the classic win-share weights fit
+(`computeWinSharesWeights`, about 100 ms, cached after the first time).
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
 data is fetched with a plain request (`fetchPublic` in `src/lib/cloud.ts`) while the database library loads.
 
