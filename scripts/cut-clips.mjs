@@ -35,7 +35,8 @@ fs.writeFileSync(stateFile, JSON.stringify(rows[0].data))
 // 2. Which stretch of which recording each clip plays (the site's own rules, src/lib/clipCuts.ts).
 const planFile = path.join(work, "plan.json")
 const trailerFile = path.join(work, "trailer-keys.json")
-execFileSync("npx", ["vitest", "run", "src/lib/clipCuts.plan.test.ts"], { cwd: root, stdio: "ignore", env: { ...process.env, CLIP_STATE: stateFile, CLIP_PLAN: planFile, CLIP_TRAILER: trailerFile } })
+const mixtapeFile = path.join(work, "mixtapes.json")
+execFileSync("npx", ["vitest", "run", "src/lib/clipCuts.plan.test.ts"], { cwd: root, stdio: "ignore", env: { ...process.env, CLIP_STATE: stateFile, CLIP_PLAN: planFile, CLIP_TRAILER: trailerFile, CLIP_MIXTAPES: mixtapeFile } })
 const plan = JSON.parse(fs.readFileSync(planFile, "utf8"))
 const manifest = fs.existsSync(MANIFEST) ? JSON.parse(fs.readFileSync(MANIFEST, "utf8")) : {}
 const todo = plan.filter((c) => !manifest[c.key])
@@ -228,9 +229,44 @@ if (!dry && plays.length >= 3 && stale) {
   fs.rmSync(out)
 }
 
+// 5. Player mixtapes: each player's own best plays of the season as a reel (the trailer's look, with their name on the title card), for
+// anyone with at least three good plays. Made again when a player's plays change or MIXTAPE_STYLE is bumped. Listed in
+// src/data/mixtapes.json; the Player page has the button.
+const MIXTAPES = path.join(root, "src/data/mixtapes.json")
+const MIXTAPE_STYLE = 1
+const tapes = (fs.existsSync(mixtapeFile) ? JSON.parse(fs.readFileSync(mixtapeFile, "utf8")) : []).map((t) => ({ ...t, plays: t.plays.filter((p) => manifest[p.key]) })).filter((t) => t.plays.length >= 3)
+const hadTapes = fs.existsSync(MIXTAPES) ? JSON.parse(fs.readFileSync(MIXTAPES, "utf8")) : {}
+if (!dry && tapes.length) {
+  const origin = new URL(plan[0].url).origin
+  const next = {}
+  for (const t of tapes) {
+    const keys = t.plays.map((p) => p.key)
+    const old = hadTapes[t.pid]
+    if (old && old.style === MIXTAPE_STYLE && JSON.stringify(old.clips) === JSON.stringify(keys) && process.env.TRAILER_LOOK !== "1") {
+      next[t.pid] = old
+      continue
+    }
+    const out = path.join(work, `mixtape-${t.pid}.mp4`)
+    const seconds = makeTrailer(t.plays, (k) => `${origin}/${manifest[k]}`, out, {
+      title: (year) => [t.name.toUpperCase(), `Mixtape, summer ${year}`],
+      caption: (p) => p.label,
+    })
+    let h = 0x811c9dc5
+    for (const ch of `${MIXTAPE_STYLE}|${keys.join(",")}`) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0
+    const key = `clips/mixtapes/${t.pid}-${h.toString(36)}.mp4`
+    upload(out, key, "video/mp4")
+    served(origin, key)
+    fs.rmSync(out)
+    next[t.pid] = { file: key, seconds, style: MIXTAPE_STYLE, clips: keys }
+    console.log(`\nmixtape for ${t.name}: ${keys.length} plays, ${seconds} s`)
+  }
+  fs.writeFileSync(MIXTAPES, JSON.stringify(Object.fromEntries(Object.entries(next).sort()), null, 1) + "\n")
+}
+
 // Builds the trailer from the plays' cuts (fetched from `urlOf`) into `out`, and returns its length in whole seconds. Also run by
 // itself to look at first: node scripts/cut-clips.mjs --trailer-preview (uses the cuts already uploaded).
-function makeTrailer(list, urlOf, out) {
+// `style`: the title card's lines (given the year) and each play's caption line; the season trailer's by default.
+function makeTrailer(list, urlOf, out, style = {}) {
   const W = 1280, H = 720, FPS = 30, X = 0.5 // size, frame rate, transition length
   const fonts = path.join(root, "scripts/og-fonts")
   const bold = path.join(fonts, "HankenGrotesk-Bold.ttf"), regular = path.join(fonts, "HankenGrotesk-Regular.ttf"), display = path.join(fonts, "Anybody-Display.ttf")
@@ -254,9 +290,10 @@ function makeTrailer(list, urlOf, out) {
     return { file, secs }
   }
   const parts = []
+  const [head, sub] = style.title ? style.title(year) : ["POOLEAN INTEL", `Top plays, summer ${year}`]
   parts.push(card(path.join(tmp, "intro.mp4"), 3, [
-    { font: display, text: "POOLEAN INTEL", size: 92, y: 270 },
-    { font: bold, text: `Top plays, summer ${year}`, size: 44, y: 390 },
+    { font: display, text: head, size: head.length > 14 ? 72 : 92, y: 270 },
+    { font: bold, text: sub, size: 44, y: 390 },
   ]))
   list.forEach((p, i) => {
     const src = path.join(tmp, `src${i}.mp4`)
@@ -273,7 +310,7 @@ function makeTrailer(list, urlOf, out) {
       // The bar slides in, and goes with its words (it used to stay up, empty, after the words faded).
       `drawbox=x=0:y=ih-150:w='min(iw*0.62,iw*0.62*(t-0.3)/0.35)':h=110:color=black@0.55:t=fill:enable='between(t,0.3,${(fadeAt + 0.15).toFixed(2)})'`,
       `drawbox=x=0:y=ih-150:w=8:h=110:color=0x2f7de1:t=fill:enable='between(t,0.3,${(fadeAt + 0.15).toFixed(2)})'`,
-      `drawtext=fontfile=${bold}:textfile=${text(`${p.label}, ${p.player}`)}:fontcolor=white:fontsize=42:x=36:y=h-136:alpha='min(1,max(0,(t-0.5)/0.3))*min(1,max(0,(${fadeAt}-t)/0.3))'`,
+      `drawtext=fontfile=${bold}:textfile=${text(style.caption ? style.caption(p) : `${p.label}, ${p.player}`)}:fontcolor=white:fontsize=42:x=36:y=h-136:alpha='min(1,max(0,(t-0.5)/0.3))*min(1,max(0,(${fadeAt}-t)/0.3))'`,
       `drawtext=fontfile=${regular}:textfile=${text(`${month(p.date)}   Play ${i + 1} of ${list.length}`)}:fontcolor=white@0.85:fontsize=26:x=38:y=h-80:alpha='min(1,max(0,(t-0.65)/0.3))*min(1,max(0,(${fadeAt}-t)/0.3))'`,
     ]
     const fit = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1`
@@ -307,4 +344,4 @@ function makeTrailer(list, urlOf, out) {
   return Math.round(t)
 }
 
-console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts, ${needPoster.length} pictures and ${needVertical.length} vertical videos; commit src/data/clip-cuts.json, src/data/clip-shares.json and src/data/trailer.json`)
+console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts, ${needPoster.length} pictures and ${needVertical.length} vertical videos; commit src/data/clip-cuts.json, src/data/clip-shares.json, src/data/trailer.json and src/data/mixtapes.json`)

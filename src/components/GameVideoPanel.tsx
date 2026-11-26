@@ -1,3 +1,4 @@
+import { ScoreOverlay } from "@/components/ScoreOverlay"
 import { useRef, useState, type MutableRefObject } from "react"
 import type { PlayerControl } from "@/components/YouTubePlayer"
 import { Link2, Trash2, Upload } from "lucide-react"
@@ -31,7 +32,7 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
   const useMaster = !!master && !game.videoUrl
   const groupSize = master ? games.filter((g) => g.masterVideoId === master.id).length : 0
 
-  if (readOnly) return url ? <GameVideo url={url} start={game.videoStart} control={control} /> : null
+  if (readOnly) return url ? <ScoreOverlay state={state} game={game} control={control}><GameVideo url={url} start={game.videoStart} control={control} /></ScoreOverlay> : null
 
   const busy = progress !== null
   const cloudOn = !!getClient()
@@ -159,7 +160,9 @@ export function GameVideoPanel({ state, game, update, readOnly, control }: { sta
           Part of the recording <span className="font-medium text-foreground">{master.name}</span>, shared by {groupSize} game{groupSize === 1 ? "" : "s"}. {url ? "Set where this game starts below." : "Add the video once and every game in it gets it."}
         </p>
       )}
-      <GameVideo key={`${url}|${startSeconds}`} url={url} start={startSeconds} control={control} />
+      <ScoreOverlay state={state} game={game} control={control}>
+        <GameVideo key={`${url}|${startSeconds}`} url={url} start={startSeconds} control={control} />
+      </ScoreOverlay>
       <div className="flex flex-wrap items-center gap-2">
         <input ref={fileRef} type="file" accept="video/*" className="sr-only" aria-label="Choose a video file to upload" disabled={!cloudOn || busy} onChange={(e) => void onFile(e.target.files?.[0])} />
         <Button type="button" variant="outline" disabled={!cloudOn || busy} onClick={() => fileRef.current?.click()}>

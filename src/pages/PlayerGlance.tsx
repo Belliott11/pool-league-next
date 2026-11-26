@@ -2,6 +2,8 @@ import { useMemo } from "react"
 import { currentSet, teamOf } from "@/lib/seasonTeams"
 import { TeamChip } from "@/components/TeamChip"
 import { Card, CardContent } from "@/components/ui/card"
+import { MixtapeButton } from "@/components/ReelButton"
+import { playerName } from "@/lib/players"
 import { computeLeaderboard } from "@/lib/legacy-core"
 import { metricsFor, scoutCard, type BoardRow } from "@/lib/scouting"
 import type { PooleanState } from "@/lib/types"
@@ -71,6 +73,7 @@ export function PlayerGlance({ state, pid }: { state: PooleanState; pid: string 
             )}
           </ul>
         )}
+        <MixtapeButton pid={pid} name={playerName(state, pid)} />
       </CardContent>
     </Card>
   )

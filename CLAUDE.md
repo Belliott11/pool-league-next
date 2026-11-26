@@ -105,6 +105,22 @@ Rebuilt when the plays change or `TRAILER_STYLE` is bumped; `--trailer-preview` 
 without uploading. Listed in `src/data/trailer.json`. The Top plays card on the home page
 (`src/pages/games/TopPlays.tsx`) has the button.
 
+### Player mixtapes
+
+The same script makes each player's mixtape: their own best plays of the season (up to 6, two from a game at most, none rough, no stills,
+followed where set) with the trailer's look and their name on the title card ("<NAME>, Mixtape, summer <year>"), for anyone with at
+least 3 (`CLIP_MIXTAPES` in the cut plan, `MIXTAPE_STYLE`). Uploaded as `clips/mixtapes/<pid>-<hash>.mp4` and listed in
+`src/data/mixtapes.json`, which the nightly workflow commits. The Player page's At a glance card has "Watch <name>'s mixtape"
+(`MixtapeButton` in `src/components/ReelButton.tsx`). Nine players had one on 2026-11-26.
+
+## Score on the game video
+
+`src/components/ScoreOverlay.tsx` (around `GameVideo` in `GameVideoPanel.tsx`), `src/lib/scoreAt.ts`: a score bug in the corner of the
+game video that follows the video's time: the score after each basket (counted `LAG` 1.5 s after the shot's video time, since that is the
+release), a bar for Team A's live win chance (from `oddsTimeline`), and who scored for a moment after each basket. Only for games whose
+shots have video times, and only inside the game's own stretch of a shared recording. "Score on the video" under the video hides it
+(localStorage `pooleanScoreOverlay`). It sits over the page's player, so a phone's own full-screen player does not show it.
+
 ## Headlines and clips
 
 `src/lib/headlineClips.ts` gives a headline a clip only when it knows who the headline is about and whether it is good or bad news for
