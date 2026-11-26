@@ -338,8 +338,12 @@ function SeriesCard({ s, onOpenGame }: { s: Series; onOpenGame: (id: string) => 
   )
 }
 
+// Hidden until the league decides to play a championship (asked 2026-11-26): set to true to show the finals card again.
+const FINALS_ON = false
+
 function FinalsCard({ state, set, editor, update, onOpenGame }: { state: PooleanState; set: SeasonTeamSet; editor: boolean; update: Update; onOpenGame: (id: string) => void }) {
   const f = useMemo(() => (set.finals ? finals(state, set) : null), [state, set])
+  if (!FINALS_ON) return null
   if (!f) {
     if (!editor || set.teams.length < 2) return null
     const n = set.teams.length >= 4 ? 4 : 2

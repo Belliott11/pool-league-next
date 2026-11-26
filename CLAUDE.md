@@ -338,7 +338,8 @@ ties to fewer players (`nextNewcomerTeam`, shown on the page with an "Add to" bu
 after the new date. The page shows standings, team of the night, rivalry games and each team's members. Also: a "Season team" chip on
 the Player page's At a glance card (`src/components/TeamChip.tsx`), a rivalry badge on the game page, a "Rivalry game" quick-fill on the
 live start screen (fills both pickup teams from two season teams), "Season team champions" in the Hall of Fame (`champions`) and the
-player's team finish in Season Wrapped's awards slide. Finals night (`startFinals`, `finals`, a card at the top of the standings): the
+player's team finish in Season Wrapped's awards slide. Finals night (`startFinals`, `finals`, a card at the top of the standings, hidden for now behind `FINALS_ON` in SeasonTeams.tsx
+until the league decides on a championship, asked 2026-11-26): the
 editor starts it, freezing the top four (two with fewer than four teams) as seeds; semifinals 1 against 4 and 2 against 3 are one game
 each, the final is first to two (`FINAL_WINS`), all from rivalry games from that date, each going to the open series between its two
 teams. "Call off finals" clears it (games stay). A finished set's champion (`champions`, Hall of Fame) is the finals winner when there is
