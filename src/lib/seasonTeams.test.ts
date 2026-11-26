@@ -68,3 +68,13 @@ describe("standings", () => {
     expect(st.champions(next)[0].line.team.name).toBe("Sharks")
   })
 })
+
+describe("captain order", () => {
+  it("puts the weakest captain first by power ranking, unknown players counting as low", async () => {
+    const m = await import("@/lib/matchup")
+    const power = (id: string) => m.powerOf(id) ?? m.UNKNOWN_PLAYER_PCT
+    const teams = [{ captain: "phillip" }, { captain: "adam" }, { captain: "ben" }, { captain: "reilly" }]
+    const ordered = st.captainOrder(teams).map((t) => t.captain!)
+    for (let i = 1; i < ordered.length; i++) expect(power(ordered[i])).toBeGreaterThanOrEqual(power(ordered[i - 1]))
+  })
+})

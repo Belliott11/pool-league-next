@@ -11,7 +11,8 @@ import { allTimeRecord } from "@/lib/debate"
 import { formatDateDisplay } from "@/lib/format"
 import { useReadOnly } from "@/lib/mode"
 import { playerName } from "@/lib/players"
-import { currentSet, draftPick, newSet, onTheClock, putSet, RIVALRY_WEIGHT, standings, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
+import { captainOrder, currentSet, draftPick, newSet, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
+import { powerOf } from "@/lib/matchup"
 import type { Update } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import type { Game, PooleanState, SeasonTeamSet } from "@/lib/types"
@@ -37,7 +38,7 @@ function Setup({ state, update }: { state: PooleanState; update: Update }) {
     <Card>
       <CardHeader>
         <CardTitle className="font-display">Set up season teams</CardTitle>
-        <p className="text-sm text-muted-foreground">Name the teams and pick a captain for each. The captains then draft everyone else, snake order: first pick goes last in round two.</p>
+        <p className="text-sm text-muted-foreground">Name the teams and pick a captain for each. The captains then draft everyone else in snake order, with the weakest captain picking first.</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">
         <label className="flex items-center justify-between gap-3">
@@ -70,7 +71,13 @@ function Setup({ state, update }: { state: PooleanState; update: Update }) {
             </select>
           </div>
         ))}
-        <Button disabled={!ok || !from} onClick={() => update((s) => putSet(s, newSet(from, shown)))}>
+        {ok && (
+          <p className="text-xs text-muted-foreground">
+            Draft order, weakest captain first by power ranking: {captainOrder(shown, (id) => playerName(state, id)).map((t, i) => `${i + 1}. ${playerName(state, t.captain!)}`).join(", ")}. The
+            snake then reverses, so the strongest captain also picks first in round two.
+          </p>
+        )}
+        <Button disabled={!ok || !from} onClick={() => update((s) => putSet(s, newSet(from, captainOrder(shown, (id) => playerName(state, id)))))}>
           Start the draft
         </Button>
         {!ok && <p className="text-xs text-muted-foreground">Each team needs its own captain.</p>}
@@ -89,13 +96,14 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
     () =>
       state.players
         .filter((p) => !taken.has(p.id))
-        .map((p) => ({ p, games: allTimeRecord(p.id)[0] + allTimeRecord(p.id)[1] }))
-        .sort((a, b) => b.games - a.games || a.p.name.localeCompare(b.p.name)),
+        .map((p) => ({ p, games: allTimeRecord(p.id)[0] + allTimeRecord(p.id)[1], power: powerOf(p.id) }))
+        .sort((a, b) => (b.power ?? -1) - (a.power ?? -1) || b.games - a.games || a.p.name.localeCompare(b.p.name)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.players, set],
   )
   const picks = set.teams.reduce((k, t) => k + t.members.length - (t.captain ? 1 : 0), 0)
   const save = (next: SeasonTeamSet) => update((s) => putSet(s, next))
+  const strength = teamStrength(set)
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -115,11 +123,11 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
         <CardContent className="flex flex-col gap-3 text-sm">
           {!readOnly && pool.length > 0 && (
             <ul className="flex flex-wrap gap-1.5" aria-label="Players still to pick">
-              {pool.map(({ p, games }) => (
+              {pool.map(({ p, games, power }) => (
                 <li key={p.id}>
                   <Button size="sm" variant="outline" onClick={() => save(draftPick(set, p.id))}>
                     {p.name}
-                    <span className="text-xs text-muted-foreground">{games} games</span>
+                    <span className="text-xs text-muted-foreground">{power !== null ? `${Math.round(power)} rank, ` : ""}{games} games</span>
                   </Button>
                 </li>
               ))}
@@ -139,6 +147,12 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
               </Button>
             </div>
           )}
+          {strength && (
+            <p className="text-xs text-muted-foreground">
+              The percentage on each team is its chance of beating the other teams if they played each other, from the same model as the pre-game odds. Even teams sit near 50%. Mid-round, the teams that have
+              just picked have an extra player, so judge it at the end of each round, and use the last picks to close any gap.
+            </p>
+          )}
           {!readOnly && <p className="text-xs text-muted-foreground">Players who are not picked simply have no season team. Finish whenever the picks you want are in.</p>}
         </CardContent>
       </Card>
@@ -146,9 +160,15 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
         {set.teams.map((t) => (
           <Card key={t.id} className={cn(clock?.id === t.id && "border-foreground")}>
             <CardHeader>
-              <CardTitle className="font-display">
+              <CardTitle className="flex items-center justify-between gap-2 font-display">
                 <TeamChip team={t} />
+                {strength?.has(t.id) && <span className="text-sm font-normal tabular-nums text-muted-foreground">{Math.round(strength.get(t.id)! * 100)}%</span>}
               </CardTitle>
+              {strength?.has(t.id) && (
+                <div role="img" aria-label={`${t.name}: ${Math.round(strength.get(t.id)! * 100)}% chance against the other teams`} className="h-2 overflow-hidden rounded-full bg-muted">
+                  <span className="block h-full rounded-full" style={{ width: `${Math.round(strength.get(t.id)! * 100)}%`, background: t.color }} />
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <ol className="flex flex-col gap-1 text-sm">

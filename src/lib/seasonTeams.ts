@@ -1,5 +1,6 @@
 import { pointsAdded } from "@/lib/epa"
 import { liveTargetOf } from "@/lib/live"
+import { powerOf, predictTeamWinChances, UNKNOWN_PLAYER_PCT } from "@/lib/matchup"
 import { winChanceWith } from "@/lib/winsAdded"
 import type { Game, PooleanState, SeasonTeam, SeasonTeamSet } from "@/lib/types"
 
@@ -160,6 +161,22 @@ export function undoPick(set: SeasonTeamSet): SeasonTeamSet {
   const slot = last % n
   const t = set.teams[round % 2 === 0 ? slot : n - 1 - slot]
   return { ...set, teams: set.teams.map((x) => (x.id === t.id ? { ...x, members: x.members.slice(0, -1) } : x)) }
+}
+
+// The first round's order: the weakest captain (by power ranking) picks first, so with the snake the strongest captain picks last in
+// round one and first in round two. A captain is a free first pick, and this evens out most of the head start. Ties go by name order.
+export function captainOrder<T extends { captain: string | null }>(teams: T[], nameOf: (id: string) => string = (id) => id): T[] {
+  const power = (t: T) => (t.captain ? (powerOf(t.captain) ?? UNKNOWN_PLAYER_PCT) : UNKNOWN_PLAYER_PCT)
+  return [...teams].sort((a, b) => power(a) - power(b) || nameOf(a.captain ?? "").localeCompare(nameOf(b.captain ?? "")))
+}
+
+// Each team's chance of beating the others if the season teams played each other, from the pre-game model (matchup.ts): a quick read
+// on whether the draft is coming out even. null before the model has enough games.
+export function teamStrength(set: SeasonTeamSet): Map<string, number> | null {
+  const teams = set.teams.filter((t) => t.members.length)
+  if (teams.length < 2) return null
+  const p = predictTeamWinChances(teams.map((t) => t.members))
+  return p ? new Map(teams.map((t, i) => [t.id, p[i]])) : null
 }
 
 export function newSet(from: string, teams: { name: string; captain: string | null }[]): SeasonTeamSet {

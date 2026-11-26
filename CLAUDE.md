@@ -304,7 +304,10 @@ everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games ar
 `src/lib/seasonTeams.ts`, page `#/games/teams` (`src/pages/games/SeasonTeams.tsx`, a Games home button and in search). Teams that exist
 only in the stats for a season (`state.seasonTeamSets`, the last open set is current; types `SeasonTeamSet`, `SeasonTeam`). Game nights
 stay pickup. The editor names 2 to 6 teams with a captain each and runs a snake draft on the page (`onTheClock`, `draftPick`,
-`undoPick`; saved after every pick, `drafting` until "Finish the draft"); players can be moved between teams later (trades). Each night a
+`undoPick`; saved after every pick, `drafting` until "Finish the draft"). The first round goes weakest captain first by power ranking
+(`captainOrder`, `powerOf` in matchup.ts), since a captain is a free first pick; the board lists players by power ranking; each team
+card shows its chance of beating the other teams from the pre-game model (`teamStrength`, near 50% when even). Captains for 2027:
+Adam, Ben, Reilly and Phillip; players can be moved between teams later (trades). Each night a
 member plays, they score game wins (a rivalry game, where each pickup team is all from one season team and the two differ, counts double,
 `RIVALRY_WEIGHT`) plus their Wins added in filmed games; a team's score is the average over its members' nights, so attendance does not
 decide it. Teams count games from `from` to `to`; `startNewSeason` closes the open set (names it after the season) unless it starts on or

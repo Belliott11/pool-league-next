@@ -430,3 +430,9 @@ export function worstPairingGap(teams: string[][]): number {
   }
   return worst
 }
+
+// A player's power ranking from the old site's votes (0 to 100), or null when they have none.
+export function powerOf(id: string): number | null {
+  const L = getRealMatchupModel()?.lookups
+  return L && L.hasPct(id) ? L.pctOf(id) : null
+}
