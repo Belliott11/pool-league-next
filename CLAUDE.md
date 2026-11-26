@@ -307,10 +307,13 @@ stay pickup. The editor names 2 to 6 teams with a captain each and runs a snake 
 `undoPick`; saved after every pick, `drafting` until "Finish the draft"). The first round goes weakest captain first by power ranking
 (`captainOrder`, `powerOf` in matchup.ts), since a captain is a free first pick; the board lists players by power ranking; each team
 card shows its chance of beating the other teams from the pre-game model (`teamStrength`, near 50% when even). Captains for 2027:
-Adam, Ben, Reilly and Phillip; players can be moved between teams later (trades). Each night a
-member plays, they score game wins (a rivalry game, where each pickup team is all from one season team and the two differ, counts double,
-`RIVALRY_WEIGHT`) plus their Wins added in filmed games; a team's score is the average over its members' nights, so attendance does not
-decide it. Teams count games from `from` to `to`; `startNewSeason` closes the open set (names it after the season) unless it starts on or
+Adam, Ben, Reilly and Phillip. Each night a member plays, they score game wins (a rivalry game, where each pickup team is all from one
+season team and the two differ, counts double, `RIVALRY_WEIGHT`) plus their Wins added in filmed games. Each night every team counts the
+average of its best K players' nights, K the same for every team: the fewest any team had there, at least 2 (`MIN_COUNTED`); a team's
+score is the average of its nights. So roster size and turnout do not decide it and a weak player never hurts (plain per-member averaging
+rewarded short rosters; changed 2026-11-26). Trades and newcomers are kept in `set.moves` (`movePlayer`), and `teamOn` gives the team a
+player was on for each game's date, so nights stay with the team they were played for. Newcomers go to the team lowest in the standings,
+ties to fewer players (`nextNewcomerTeam`, shown on the page with an "Add to" button). Teams count games from `from` to `to`; `startNewSeason` closes the open set (names it after the season) unless it starts on or
 after the new date. The page shows standings, team of the night, rivalry games and each team's members. Also: a "Season team" chip on
 the Player page's At a glance card (`src/components/TeamChip.tsx`), a rivalry badge on the game page, a "Rivalry game" quick-fill on the
 live start screen (fills both pickup teams from two season teams), "Season team champions" in the Hall of Fame (`champions`) and the

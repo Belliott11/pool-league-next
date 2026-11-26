@@ -11,7 +11,7 @@ import { allTimeRecord } from "@/lib/debate"
 import { formatDateDisplay } from "@/lib/format"
 import { useReadOnly } from "@/lib/mode"
 import { playerName } from "@/lib/players"
-import { captainOrder, currentSet, draftPick, newSet, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
+import { captainOrder, currentSet, draftPick, MIN_COUNTED, movePlayer, newSet, nextNewcomerTeam, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
 import { powerOf } from "@/lib/matchup"
 import type { Update } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -191,12 +191,50 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
 
 // ---------- standings ----------
 
+const today = () => new Date().toLocaleDateString("en-CA")
+
+// Newcomers join the team lowest in the standings (ties to the team with fewer players), counting from the day they join.
+function Newcomers({ state, set, editor, update }: { state: PooleanState; set: SeasonTeamSet; editor: boolean; update: Update }) {
+  const next = useMemo(() => nextNewcomerTeam(state, set), [state, set])
+  const [pid, setPid] = useState("")
+  const onTeam = new Set(set.teams.flatMap((t) => t.members))
+  const free = state.players.filter((p) => !onTeam.has(p.id)).sort((a, b) => a.name.localeCompare(b.name))
+  if (!next) return null
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+      <p>
+        Next newcomer joins <TeamChip team={next} />
+        <span className="text-muted-foreground">, the team lowest in the standings (ties go to the team with fewer players).</span>
+      </p>
+      {editor && free.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2" aria-label="Newcomer" value={pid} onChange={(e) => setPid(e.target.value)}>
+            <option value="">Pick a player not on a team</option>
+            {free.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            disabled={!pid}
+            onClick={() => {
+              update((s) => putSet(s, movePlayer(set, pid, next.id, today())))
+              setPid("")
+            }}
+          >
+            Add to {next.name}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TeamCard({ state, line, rank, onOpenPlayer, editor, set, update }: { state: PooleanState; line: TeamLine; rank: number; onOpenPlayer: (id: string) => void; editor: boolean; set: SeasonTeamSet; update: Update }) {
-  // A trade or a late signing: the editor moves a player to another team (or onto this one).
-  const move = (pid: string, to: string) =>
-    update((s) =>
-      putSet(s, { ...set, teams: set.teams.map((t) => ({ ...t, members: t.id === to ? [...t.members.filter((m) => m !== pid), pid] : t.members.filter((m) => m !== pid) })) }),
-    )
+  // A trade: the editor moves a player to another team from today. Their earlier nights stay with this team.
+  const move = (pid: string, to: string) => update((s) => putSet(s, movePlayer(set, pid, to || null, today())))
   return (
     <Card>
       <CardHeader>
@@ -217,31 +255,35 @@ function TeamCard({ state, line, rank, onOpenPlayer, editor, set, update }: { st
               <TableHead className="text-right">Wins</TableHead>
               <TableHead className="text-right">Wins added</TableHead>
               <TableHead className="text-right">A night</TableHead>
+              <TableHead className="text-right">Counted</TableHead>
               {editor && <TableHead>Move</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {line.members.map((m) => (
-              <TableRow key={m.id}>
+              <TableRow key={m.id} className={cn(!m.current && "text-muted-foreground")}>
                 <TableCell>
                   <button className="underline-offset-2 hover:underline" onClick={() => onOpenPlayer(m.id)}>
                     {playerName(state, m.id)}
                   </button>
                   {m.id === line.team.captain && <span className="ml-1 text-xs text-muted-foreground">captain</span>}
+                  {!m.current && <span className="ml-1 text-xs">moved on</span>}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{m.nights}</TableCell>
                 <TableCell className="text-right tabular-nums">{m.wins}</TableCell>
                 <TableCell className="text-right tabular-nums">{signed(m.winsAdded)}</TableCell>
                 <TableCell className="text-right tabular-nums">{m.nights ? one(m.score) : "-"}</TableCell>
+                <TableCell className="text-right tabular-nums">{m.nights ? `${m.counted} of ${m.nights}` : "-"}</TableCell>
                 {editor && (
                   <TableCell>
-                    <select className="h-8 rounded-md border bg-background px-1 text-xs" aria-label={`Move ${playerName(state, m.id)}`} value={line.team.id} onChange={(e) => move(m.id, e.target.value)}>
+                    {m.current && <select className="h-8 rounded-md border bg-background px-1 text-xs" aria-label={`Move ${playerName(state, m.id)}`} value={line.team.id} onChange={(e) => move(m.id, e.target.value)}>
                       {set.teams.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.name}
                         </option>
                       ))}
-                    </select>
+                      <option value="">Off the teams</option>
+                    </select>}
                   </TableCell>
                 )}
               </TableRow>
@@ -279,14 +321,16 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
             </TableHeader>
             <TableBody>
               {s.rows.map((r, i) => (
-                <TableRow key={r.team.id} className={cn(r.memberNights < THIN_NIGHTS && "italic")}>
+                <TableRow key={r.team.id} className={cn(r.nights < THIN_NIGHTS && "italic")}>
                   <TableCell>
                     <span className="mr-1.5 tabular-nums text-muted-foreground">{i + 1}.</span>
                     <TeamChip team={r.team} />
                   </TableCell>
                   <TableCell className="text-right font-semibold tabular-nums">
-                    {r.memberNights ? one(r.score) : "-"}
-                    <span className="block text-xs font-normal text-muted-foreground">{r.memberNights} player-nights</span>
+                    {r.nights ? one(r.score) : "-"}
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      {r.nights} {r.nights === 1 ? "night" : "nights"}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{r.wins}</TableCell>
                   <TableCell className="text-right tabular-nums">{signed(r.winsAdded)}</TableCell>
@@ -296,15 +340,17 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
             </TableBody>
           </Table>
           <p className="text-xs text-muted-foreground">
-            Each night a player plays, they score their game wins plus their Wins added (filmed games). A night is the team's average over its players' nights, so a team is not
-            ahead just because its players came more often. Rivalry games, where the two pickup teams are two whole season teams, count {RIVALRY_WEIGHT === 2 ? "double" : `${RIVALRY_WEIGHT} times`}.
-            Italic rows have fewer than {THIN_NIGHTS} player-nights.
+            Each night a player plays, they score their game wins plus their Wins added (filmed games). Each team counts the average of its best few players that night, the same
+            number for every team: the fewest any team had there, but at least {MIN_COUNTED}. So a big roster or a big turnout does not decide it, an off night never hurts, and
+            extra players are depth. A team's score is the average of its nights. Rivalry games, where the two pickup teams are two whole season teams, count{" "}
+            {RIVALRY_WEIGHT === 2 ? "double" : `${RIVALRY_WEIGHT} times`}. Nights stay with the team a player was on that night. Italic rows have fewer than {THIN_NIGHTS} nights.
           </p>
-          {tonight?.best && (
+          {tonight?.scores[0] && (
             <p>
-              Team of the night, {formatDateDisplay(tonight.date)}: <TeamChip team={tonight.best} /> ({one(tonight.score)} a player).
+              Team of the night, {formatDateDisplay(tonight.date)}: <TeamChip team={tonight.scores[0].team} /> ({one(tonight.scores[0].score)} a player, best {tonight.counted} counted).
             </p>
           )}
+          <Newcomers state={state} set={set} editor={editor} update={update} />
         </CardContent>
       </Card>
       {s.rivalries.length > 0 && (

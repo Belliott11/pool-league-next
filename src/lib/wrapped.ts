@@ -202,6 +202,6 @@ function teamFinish(full: PooleanState, id: string): { label: string; place: str
   if (!set || !team) return []
   const s = standings(full, set)
   const at = s.rows.findIndex((r) => r.team.id === team.id)
-  if (at < 0 || !s.rows[at].memberNights) return []
+  if (at < 0 || !s.rows[at].nights) return []
   return [{ label: `Season team: ${team.name}`, place: ordinalOf(at + 1) }]
 }

@@ -199,4 +199,7 @@ export interface SeasonTeamSet {
   label?: string
   teams: SeasonTeam[]
   drafting?: boolean
+  // Trades and newcomers after the draft: who moved, from which team (null: new) to which (null: left), from what date. A player's
+  // nights count for the team they were on that night.
+  moves?: { pid: string; from: string | null; to: string | null; date: string }[]
 }
