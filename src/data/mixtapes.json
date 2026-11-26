@@ -1,8 +1,8 @@
 {
  "adam": {
-  "file": "clips/mixtapes/adam-1cj5xc0.mp4",
-  "seconds": 45,
-  "style": 1,
+  "file": "clips/mixtapes/adam-ujdscr.mp4",
+  "seconds": 66,
+  "style": 2,
   "clips": [
    "1791220425551-IMG_2770_1_.mp4|775.54|786.54",
    "1791220425551-IMG_2770_1_.mp4|910.28|921.28",
@@ -13,9 +13,9 @@
   ]
  },
  "alex": {
-  "file": "clips/mixtapes/alex-1uhrd7u.mp4",
-  "seconds": 60,
-  "style": 1,
+  "file": "clips/mixtapes/alex-7l4y3n.mp4",
+  "seconds": 78,
+  "style": 2,
   "clips": [
    "1791220425551-IMG_2770_1_.mp4|428.65|439.65",
    "1791220425551-IMG_2770_1_.mp4|581.26|592.26",
@@ -26,9 +26,9 @@
   ]
  },
  "ben": {
-  "file": "clips/mixtapes/ben-sihvkm.mp4",
-  "seconds": 41,
-  "style": 1,
+  "file": "clips/mixtapes/ben-lff5rn.mp4",
+  "seconds": 63,
+  "style": 2,
   "clips": [
    "1791220232138-IMG_2483_2_.mp4|699.23|710.23",
    "1791220098199-IMG_2769_2_.mp4|475.53|481.03|fdzhk5m",
@@ -39,9 +39,9 @@
   ]
  },
  "evan": {
-  "file": "clips/mixtapes/evan-yr0s08.mp4",
-  "seconds": 59,
-  "style": 1,
+  "file": "clips/mixtapes/evan-z693xd.mp4",
+  "seconds": 77,
+  "style": 2,
   "clips": [
    "1791220098199-IMG_2769_2_.mp4|446.77|457.77",
    "1791220098199-IMG_2769_2_.mp4|497.1|507.1",
@@ -52,9 +52,9 @@
   ]
  },
  "g-ian": {
-  "file": "clips/mixtapes/g-ian-2z6fu5.mp4",
-  "seconds": 60,
-  "style": 1,
+  "file": "clips/mixtapes/g-ian-jg0sd0.mp4",
+  "seconds": 78,
+  "style": 2,
   "clips": [
    "1791220310036-IMG_2482_1_.mp4|280.91|291.91",
    "1791220310036-IMG_2482_1_.mp4|322.17|333.17",
@@ -65,9 +65,9 @@
   ]
  },
  "g-lukas": {
-  "file": "clips/mixtapes/g-lukas-3slzjn.mp4",
-  "seconds": 51,
-  "style": 1,
+  "file": "clips/mixtapes/g-lukas-56y4ha.mp4",
+  "seconds": 66,
+  "style": 2,
   "clips": [
    "1791220098199-IMG_2769_2_.mp4|426.34|437.34",
    "1791220425551-IMG_2770_1_.mp4|1235.76|1246.76",
@@ -77,9 +77,9 @@
   ]
  },
  "g-michael-t": {
-  "file": "clips/mixtapes/g-michael-t-zd3o5p.mp4",
-  "seconds": 42,
-  "style": 1,
+  "file": "clips/mixtapes/g-michael-t-wzs880.mp4",
+  "seconds": 54,
+  "style": 2,
   "clips": [
    "1791220232138-IMG_2483_2_.mp4|267.62|278.62",
    "1791220232138-IMG_2483_2_.mp4|290|301",
@@ -88,9 +88,9 @@
   ]
  },
  "reilly": {
-  "file": "clips/mixtapes/reilly-1lpf5nk.mp4",
-  "seconds": 42,
-  "style": 1,
+  "file": "clips/mixtapes/reilly-gpaqnd.mp4",
+  "seconds": 54,
+  "style": 2,
   "clips": [
    "1791220425551-IMG_2770_1_.mp4|308.87|319.87",
    "1791220098199-IMG_2769_2_.mp4|470.59|481.59",
@@ -99,9 +99,9 @@
   ]
  },
  "zach": {
-  "file": "clips/mixtapes/zach-dt7f71.mp4",
-  "seconds": 52,
-  "style": 1,
+  "file": "clips/mixtapes/zach-1yjrv0w.mp4",
+  "seconds": 72,
+  "style": 2,
   "clips": [
    "1791220232138-IMG_2483_2_.mp4|361.67|372.67",
    "1791220310036-IMG_2482_1_.mp4|456.79|467.79",

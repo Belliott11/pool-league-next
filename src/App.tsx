@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { installDataViz } from "@/lib/dataViz"
+import { keepCloudMarks } from "@/lib/keepCloudMarks"
 import { adoptScorekeeperScores, findLiveGame } from "@/lib/live"
 import { isOpeningNight } from "@/lib/offseason"
 import { syncWinnerFlags } from "@/lib/winner"
@@ -177,7 +178,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
     // with edits in flight, only take friends' baskets so the editor's own changes are never overwritten.
     const idle = cloud.sync === "idle" || cloud.sync === "saved"
     setState((s) => {
-      const next = idle ? ext.state : adoptScorekeeperScores(s, ext.state)
+      const next = idle ? ext.state : keepCloudMarks(adoptScorekeeperScores(s, ext.state), ext.state)
       if (next !== s) saveState(next)
       return next
     })
@@ -415,7 +416,16 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
           >
             Use the cloud version
           </Button>
-          <Button size="sm" onClick={() => void cloud.overwrite(state)}>
+          <Button
+            size="sm"
+            onClick={async () => {
+              const saved = await cloud.overwrite(state)
+              if (saved !== state) {
+                saveState(saved)
+                setState(saved)
+              }
+            }}
+          >
             Overwrite the cloud with mine
           </Button>
         </div>

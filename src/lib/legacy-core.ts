@@ -593,7 +593,7 @@ function renderPlayerAvatar(player, size = "normal", ringClass = "") {
   const ring = ringClass ? ` ${ringClass}` : "";
   const photoFile = PLAYER_PHOTO_FILES[player.id];
   if (photoFile) {
-    return `<img src="photos/sm/${photoFile.replace(/\.[^.]+$/, ".webp")}" alt="" loading="lazy" decoding="async" class="player-avatar player-avatar-${size}${ring}">`;
+    return `<img src="${import.meta.env.BASE_URL}photos/sm/${photoFile.replace(/\.[^.]+$/, ".webp")}" alt="" loading="lazy" decoding="async" class="player-avatar player-avatar-${size}${ring}">`;
   }
   const initial = (player.name.trim().charAt(0) || "?").toUpperCase();
   const hue = avatarHueForPlayer(player.id);
@@ -3695,6 +3695,15 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 function showImagePreview(canvas, filename) {
   if (!canvas) return;
+  // The overlay sits at the end of the page, outside the panels, and its styles are scoped to .legacy, so it lives inside its own
+  // .legacy box (it used to be unstyled and land below everything, so the Card button seemed to do nothing).
+  let box = document.getElementById("imagePreviewBox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "imagePreviewBox";
+    box.className = "legacy";
+    document.body.appendChild(box);
+  }
   let el = document.getElementById("imagePreviewOverlay");
   if (!el) {
     el = document.createElement("div");
@@ -3702,7 +3711,7 @@ function showImagePreview(canvas, filename) {
     el.className = "image-preview-overlay";
     el.setAttribute("role", "dialog");
     el.setAttribute("aria-label", "Image preview");
-    document.body.appendChild(el);
+    box.appendChild(el);
   }
   canvas.toBlob(blob => {
     const url = URL.createObjectURL(blob);
@@ -4268,7 +4277,7 @@ async function generateTradingCardCanvas(playerId) {
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
   const photoFile = PLAYER_PHOTO_FILES[player.id];
   if (photoFile) {
-    const img = await new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = `photos/${photoFile}`; });
+    const img = await new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = `${import.meta.env.BASE_URL}photos/${photoFile}`; });
     if (img) ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
     else { ctx.fillStyle = "#333"; ctx.fillRect(cx - r, cy - r, r * 2, r * 2); }
   } else {
@@ -4646,7 +4655,7 @@ function svgAvatarDot(player, cx, cy, r = 9, label = null) {
     // rendered as a plain colored dot with the image invisibly stuck behind it.
     return `
       <clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${r}" /></clipPath>
-      <image href="photos/sm/${photoFile.replace(/\.[^.]+$/, ".webp")}" x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice" />
+      <image href="${import.meta.env.BASE_URL}photos/sm/${photoFile.replace(/\.[^.]+$/, ".webp")}" x="${cx - r}" y="${cy - r}" width="${r * 2}" height="${r * 2}" clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice" />
       <circle cx="${cx}" cy="${cy}" r="${r}" class="quadrant-dot-ring" />
     `;
   }

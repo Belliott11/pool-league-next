@@ -237,6 +237,13 @@ summary's work went from 692 ms to 36 ms, 2026-11-26). The heaviest remaining fi
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
 data is fetched with a plain request (`fetchPublic` in `src/lib/cloud.ts`) while the database library loads.
 
+## Saving over the cloud
+
+"Overwrite the cloud with mine" and the live-game save that takes friends' baskets both keep clip reviews (by key) and replay flags
+(by id) that the cloud has and the device's copy lacks (`keepCloudMarks` in `src/lib/keepCloudMarks.ts`), and the editor's screen
+takes them too, so an older copy on another phone cannot wipe them (11 reviews were lost that way on 2026-11-26). A review deleted on
+one device can come back if another device saves over it; that trade was chosen on purpose.
+
 ## Votes and predictions
 
 Pick'em votes and preseason predictions belong to the phone that made them: `src/lib/deviceKey.ts` keeps a private key on the phone, and

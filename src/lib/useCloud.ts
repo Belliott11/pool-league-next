@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { connect, fetchPublic, fetchRemote, isEditor, loadCloudConfig, saveRemote, type Remote } from "./cloud"
 import { adoptScorekeeperScores } from "./live"
+import { keepCloudMarks } from "./keepCloudMarks"
 import { loadViewerCopy, saveViewerCopy, withoutLiveGames } from "./viewerCopy"
 import type { PooleanState } from "./types"
 
@@ -235,7 +236,7 @@ export function useCloud() {
         try {
           const latest = await fetchRemote(c)
           if (latest) {
-            pending.current = adoptScorekeeperScores(pending.current ?? next, latest.state)
+            pending.current = keepCloudMarks(adoptScorekeeperScores(pending.current ?? next, latest.state), latest.state)
             version.current = latest.updatedAt
             setExternal(latest)
             setSync("saving")
@@ -286,10 +287,12 @@ export function useCloud() {
     async (state: PooleanState) => {
       clearTimeout(timer.current)
       setSync("saving")
-      await refresh()
-      pending.current = state
+      const latest = await refresh()
+      const merged = keepCloudMarks(state, latest?.state)
+      pending.current = merged
       await flush()
       await refresh()
+      return merged
     },
     [flush, refresh],
   )
