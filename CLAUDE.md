@@ -15,6 +15,7 @@ and https://intel.poolean.net (the user's domain, served from the same Pages bui
 - `src/lib/stats.ts` and `src/lib/legacy-core.ts` compute the same stats and must stay equal.
 - Headline style is B+C: specific, deadpan, everyday. "Rerun the reads" and "rerun the headlines" are on-request recipes. Hand-written
   lines live in `src/data/custom-headlines.json` and `src/data/advanced-reads.json`.
+- "Now what" from the user means: pitch new ideas (features or analysis not built yet), not a maintenance or pre-season checklist.
 - To test an editor screen without signing in, make a temporary `_x.html` plus `src/_x.tsx` that renders the component with live state in
   `src/_state.json`. Delete all three before committing, and never commit the state file. `public/test-data.json` (a copy of live state)
   is also never committed; the tests that need it skip without it.
