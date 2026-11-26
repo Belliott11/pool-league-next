@@ -532,3 +532,31 @@
   color: var(--muted-foreground);
 }
 .legacy.legacy tbody tr:hover td { background: color-mix(in srgb, var(--sh-muted) 45%, transparent); }
+
+/* The pinned first column of a sideways-scrolling table (names, and the corner label in its header) needs a solid background, above
+   the cells that scroll under it. `.legacy.legacy .matchup-table td` above clears every cell's background and outranked the plain
+   `.sticky-col` rule, so tiles scrolled visibly through the names on a phone (2026-11-26). */
+.legacy.legacy .matchup-table th.sticky-col,
+.legacy.legacy .matchup-table td.sticky-col,
+.legacy.legacy table th.sticky-col,
+.legacy.legacy table td.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--card);
+  box-shadow: 6px 0 6px -6px rgba(0, 0, 0, 0.45);
+}
+.legacy.legacy .matchup-table tr:hover td.sticky-col,
+.legacy.legacy table tr:hover td.sticky-col {
+  background: color-mix(in srgb, var(--sh-muted) 60%, var(--card));
+}
+/* The corner label ("On team with / Stat shown for", "Scorer / Defender") wraps inside its pinned cell instead of spilling over the
+   column names beside it (the header cells' no-wrap rule kept it on one line). */
+.legacy.legacy .matchup-table thead th.sticky-col {
+  white-space: normal;
+  overflow: hidden;
+  max-width: 6.5rem;
+  min-width: 5.5rem;
+  line-height: 1.2;
+  font-size: 0.7rem;
+}
