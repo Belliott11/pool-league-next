@@ -3,7 +3,6 @@ import { Explain } from "@/components/Explain"
 import { ClipBackdrop } from "@/components/ClipBackdrop"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { JerseyStat } from "@/components/JerseyStat"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import type { Clip } from "@/lib/clips"
 import type { PooleanState } from "@/lib/types"
@@ -33,8 +32,8 @@ export function PlayerHero({ pid, name, stats, form = [], onShare, onCard, state
           </div>
           {stats ? (
             <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-              <div className="flex flex-col items-center">
-                <JerseyStat value={stats.twoWay} label="Two-Way/G" />
+              <div className="flex flex-col">
+                <span className="font-display text-5xl font-bold leading-none tabular-nums text-primary">{stats.twoWay}</span>
                 <div className="mt-1 text-sm text-muted-foreground">Two-Way/G <Explain term="Two-Way/G" /></div>
               </div>
               <dl className="flex gap-6 sm:border-l sm:border-dashed sm:pl-6">
