@@ -14,6 +14,7 @@ import { playerName } from "@/lib/players"
 import { captainOrder, currentSet, draftPick, MIN_COUNTED, movePlayer, newSet, nextNewcomerTeam, undoMove, finals, startFinals, FINAL_WINS, type Series, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
 import { powerOf } from "@/lib/matchup"
 import { DEFAULT_NIGHTS, titleOdds } from "@/lib/titleOdds"
+import { SEASON_TEAMS_PUBLIC } from "@/lib/visibility"
 import { makeCaptainLinks, parseCaptainLink, saveCaptainLink, savedCaptainLink, sendPick, sendUndo, type CaptainLink } from "@/lib/draftRoom"
 import type { Update } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -725,6 +726,11 @@ export function SeasonTeamsPage({ state, update, onBack, onOpenPlayer, onOpenGam
           <Shield aria-hidden className="size-5" /> Season teams
         </h2>
       </div>
+      {!readOnly && !SEASON_TEAMS_PUBLIC && (
+        <p className="rounded-lg border border-dashed p-3 text-sm" role="note">
+          Hidden from visitors for now: only you can see season teams until they are switched on for everyone. Captain draft links need them on.
+        </p>
+      )}
       {!set ? (
         readOnly ? (
           <EmptyState title="No season teams yet" hint="Once the captains draft them, the season teams and their standings show up here." />

@@ -1,3 +1,4 @@
+import { forVisitors } from "@/lib/visibility"
 import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { lazyPage } from "@/lib/lazyPage"
 import { setAppGames } from "@/lib/matchup"
@@ -102,7 +103,8 @@ type Mode = "local" | "viewer" | "admin"
 
 function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode; cloud?: Cloud }) {
   const readOnly = mode === "viewer"
-  const [state, setState] = useState(initial)
+  // Visitors' copy leaves out what is not public yet (visibility.ts); a visitor never saves, so nothing is lost.
+  const [state, setState] = useState(() => (readOnly ? forVisitors(initial) : initial))
   // The header menus: opening one closes the others, and touching anywhere outside closes the open one.
   useEffect(() => {
     const open = () => [...document.querySelectorAll<HTMLDetailsElement>("[data-header-menus] details[data-menu][open]")]
@@ -195,7 +197,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
   }, [])
   // A viewer always shows the latest shared copy; it is never written to this browser's own storage.
   useEffect(() => {
-    if (readOnly) setState(initial)
+    if (readOnly) setState(forVisitors(initial))
   }, [readOnly, initial])
   const persist = (next: PooleanState) => {
     if (readOnly) return
