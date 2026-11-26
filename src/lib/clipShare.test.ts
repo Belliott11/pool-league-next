@@ -10,5 +10,6 @@ test("a clip's link id is short, the same every time, and different for another 
 })
 
 test("every shareable clip's id matches its cut key (the script and the site agree)", () => {
-  for (const [id, s] of Object.entries(shares as Record<string, { key: string }>)) expect(clipId(s.key)).toBe(id)
+  // A followed clip's key carries a follow tag (|f...); its link id stays on the plain key, so links do not change when a follow is added.
+  for (const [id, s] of Object.entries(shares as Record<string, { key: string }>)) expect(clipId(s.key.split("|f")[0])).toBe(id)
 })

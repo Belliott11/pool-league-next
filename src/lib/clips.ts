@@ -43,7 +43,7 @@ export function gameClips(state: PooleanState, g: Game): Clip[] {
   if (!hasVideo(state, g) || g.liveInProgress) return []
   const reviews = new Map((g.clipReviews ?? []).filter((r) => !r.still).map((r) => [r.key, r]))
   // A frame an editor picked by hand is a clip in its own right, held as a still.
-  const stills: Clip[] = (g.clipReviews ?? []).filter((r) => r.still && r.verdict === "keep").map((r) => reviewed({ gameId: g.id, date: g.date, time: r.still!.time, playerId: r.still!.playerId, kind: "still", label: "Still", score: SCORE.still }, r))
+  const stills: Clip[] = (g.clipReviews ?? []).filter((r) => r.still && r.verdict === "keep").map((r) => reviewed({ gameId: g.id, date: g.date, time: r.still!.time, playerId: r.still!.playerId, kind: "still", label: "Moment", score: SCORE.still }, r))
   return [...stills, ...rawClips(state, g).flatMap((c) => {
     const r = reviews.get(reviewKey(c))
     if (!r) return [c]

@@ -60,7 +60,10 @@ filters. Lines are only saved for visitors (`publishedStories`) at the default f
   ball finding failed on this footage, so do not retry it. "Follow whoever has the ball" chains players: the editor taps the carrier at
   the start and at each change of hands that `src/lib/ballCarrier.ts` lists from the shot log (pass and rebound times are estimated
   around the logged shot). Players cannot be told apart automatically: caps vary and are not recorded.
-- Playback crop and follow only apply to backdrops narrower than 640px (`SMALL` in `ClipBackdrop.tsx`).
+- The followed version is the one shown everywhere: a clip with a follow path is cut with the follow camera baked in (below), and until
+  its cut exists `ClipBackdrop` follows it in the browser at every size. The static crop onto the pool still applies only to backdrops
+  narrower than 640px (`SMALL`). Tiles show the play's 1200px picture before the 400px frame saved in the browser (that one blurred
+  when zoomed). Hand-picked stills are labelled "Moment".
 - Video frames can only be read (stills, following) on the live origin: the R2 bucket's CORS allows only belliott11.github.io and
   intel.poolean.net. Headless
   browsers run IntersectionObserver fine; the user's hidden preview pane does not.
@@ -69,7 +72,10 @@ filters. Lines are only saved for visitors (`publishedStories`) at the default f
 
 Every clip plays from its own ~1.2 MB file instead of seeking into a 150 to 280 MB recording. `npm run cut-clips`
 (`scripts/cut-clips.mjs`) cuts each clip's stretch (`cutWindow` in `src/lib/clipCuts.ts`: 5 s before to 6 s after, or the editor's trim)
-with ffmpeg, uploads it to the `pooleanintel` bucket under `clips/`, and lists it in `src/data/clip-cuts.json`. Clips not in the list
+with ffmpeg, uploads it to the `pooleanintel` bucket under `clips/`, and lists it in `src/data/clip-cuts.json`. A followed clip's cut has the
+follow camera in it (crop to 1/zoom along the smoothed path, `cutPath` and `clipCutKey` in clipCuts.ts; its key ends `|f<tag>` of the path
+and zoom, so changing the follow cuts it again, and `clipSource(...).followed` tells players not to crop it again); its share picture is
+cropped the same way. Share ids stay on the plain key. Clips not in the list
 play from the full recording, so a new or re-trimmed clip works before it is cut. `.github/workflows/cut-clips.yml` runs it nightly
 and commits the list; it needs the `CLOUDFLARE_API_TOKEN` repository secret (an R2 token with Admin Read & Write, since bucket-scoped
 tokens only work with the S3 API). In a cloud session the same token is saved on the "pool-league-next" environment for
@@ -85,8 +91,12 @@ address in `src/lib/site.ts` (`https://intel.poolean.net/`; the clip pages' copy
 
 ### Season trailer
 
-The same script joins the season's 8 best plays (two per game at most, none rough) into `clips/trailer/season-<hash>.mp4`, no sound,
-quick fades, and lists it in `src/data/trailer.json`; rebuilt only when the plays change. The Top plays card on the home page
+The same script joins the season's 8 best plays (two per game at most, none rough, followed where set) into
+`clips/trailer/season-<hash>.mp4` (`makeTrailer`): a title card ("POOLEAN INTEL, Top plays, summer <year>"), then each play with the
+run-up at normal speed and the play slowed to 60% (marked "SLOW MOTION"), a caption bar (what and who, the date, "Play n of 8"), a
+different xfade transition into each, light colour grading, and an end card with the address. No sound. Fonts from `scripts/og-fonts`.
+Rebuilt when the plays change or `TRAILER_STYLE` is bumped; `--trailer-preview` builds it into the work folder from the uploaded cuts
+without uploading. Listed in `src/data/trailer.json`. The Top plays card on the home page
 (`src/pages/games/TopPlays.tsx`) has the button.
 
 ## Headlines and clips

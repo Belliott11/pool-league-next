@@ -14,8 +14,8 @@ const AFTER = 6 // and after it, then the clip loops
 
 // How many seconds one pass of a backdrop lasts.
 export const clipSpan = (c: Clip) => (c.to ?? c.time + AFTER) - Math.max(0, c.from ?? c.time - BEFORE)
-// A backdrop narrower than this is shrunk (a phone, a small window): the crop onto the pool and the follow camera zoom in so the play is not tiny.
-// Wider than this the whole picture is large enough as it is.
+// A backdrop narrower than this is shrunk (a phone, a small window): the crop onto the pool zooms in so the play is not tiny. Wider than this
+// the whole picture is large enough as it is. A clip with a follow path is followed at every size.
 const SMALL = 640
 const MAX_PLAYING = 2 // backdrops playing at once on a page; the rest hold their still frame
 
@@ -41,7 +41,9 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
   const offset = source.offset
   const box = useRef<HTMLDivElement>(null)
   const startAt = clip.kind === "still" ? clip.time : Math.max(0, clip.from ?? clip.time - BEFORE) // a still shows the frame the editor picked
-  const saved = file ? readStill(stillKey(url, startAt)) : null // the frame from a past visit, shown while the video loads
+  // The frame from a past visit, shown while the video loads, when there is no saved picture of the play. (Not for a cut with the follow in
+  // it: a frame saved before the follow was cut in has the wrong framing.)
+  const saved = file && !source.followed ? readStill(stillKey(url, startAt)) : null
   const video = useRef<HTMLVideoElement>(null)
   const [frame, setFrame] = useState(() => (file ? readFrame(url) : null)) // crop onto the pool
   // Reduced motion or Data Saver holds a backdrop still. With `manual`, a Play button lets the person start it anyway.
@@ -58,8 +60,10 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     return () => ro.disconnect()
   }, [])
   const start = startAt
-  const zoomed = small && !contain // only a shrunk backdrop is zoomed in
-  const following = zoomed && !!clip.track?.length
+  // A followed clip follows at every size (the follow is the version shown); a cut that already has the follow in it is shown as it is.
+  // Otherwise only a shrunk backdrop is zoomed onto the pool.
+  const following = !contain && !source.followed && !!clip.track?.length
+  const zoomed = !contain && !source.followed && (small || following)
   const staticFrame = following ? { z: clip.frame?.z ?? 2, x: clip.track![0].x, y: clip.track![0].y } : (clip.frame ?? frame) // a followed clip rests on where it starts
   // The picture is laid out at its full cover size (wider than a tall box), centred, and the crop moves that. (Moving a box that has already
   // cropped the picture would show empty space beside it.)
@@ -128,7 +132,8 @@ export function ClipBackdrop({ state, clip, className, scrim = "bg-background/65
     <div ref={box} className={cn("relative overflow-hidden", className)}>
       {file && (
         <>
-          {(saved ?? poster) && <img src={(saved ?? poster)!} alt="" aria-hidden style={{ ...lay, ...cover }} className={media} />}
+          {/* The play's picture (1200 wide) first: the frame saved in the browser is only 400 wide, and blurs when the crop zooms in. */}
+          {(poster ?? saved) && <img src={(poster ?? saved)!} alt="" aria-hidden style={{ ...lay, ...cover }} className={media} />}
           <video ref={video} style={following ? lay : { ...lay, ...cover }} muted loop={false} playsInline preload="none" aria-hidden tabIndex={-1} onLoadedData={() => setShown(true)} className={cn(media, "transition-opacity duration-300", shown ? "opacity-100" : "opacity-0")} />
           <div aria-hidden className={cn("pointer-events-none absolute inset-0", scrim)} />
           {manual && prefsCalm && !forced && !still && (
