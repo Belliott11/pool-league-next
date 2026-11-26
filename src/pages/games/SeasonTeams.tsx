@@ -341,7 +341,8 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
           </Table>
           <p className="text-xs text-muted-foreground">
             Each night a player plays, they score their game wins plus their Wins added (filmed games). Each team counts the average of its best few players that night, the same
-            number for every team: the fewest any team had there, but at least {MIN_COUNTED}. So a big roster or a big turnout does not decide it, an off night never hurts, and
+            number for every team: the fewest any team had there, but at least {MIN_COUNTED}. A team with fewer there than that gets a bench night ({one(s.bench)}, the bottom
+            quarter of all player-nights) for each empty spot, so sending one star alone never helps. So a big roster or a big turnout does not decide it, an off night never hurts, and
             extra players are depth. A team's score is the average of its nights. Rivalry games, where the two pickup teams are two whole season teams, count{" "}
             {RIVALRY_WEIGHT === 2 ? "double" : `${RIVALRY_WEIGHT} times`}. Nights stay with the team a player was on that night. Italic rows have fewer than {THIN_NIGHTS} nights.
           </p>

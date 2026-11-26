@@ -87,6 +87,19 @@ describe("best nights, trades and newcomers", () => {
     expect(sharks.score).toBeCloseTo(1.5, 10)
     expect(sharks.members.find((m) => m.id === "c")!.counted).toBe(0)
   })
+  it("gives a team with one player there a bench night for the empty spot", () => {
+    // Night 1 sets the bench: a 1, b 0, d 1, e 0, so the bottom quarter is 0. Night 2: only a for Sharks, d and e for Jets.
+    const state = {
+      players: [],
+      games: [game("2027-06-01", ["a", "d"], ["b", "e"], "A"), game("2027-06-08", ["a", "d"], ["x", "e"], "A")],
+      seasonTeamSets: [base],
+    } as unknown as PooleanState
+    const s = st.standings(state, base)
+    expect(s.bench).toBeCloseTo(0, 10)
+    const night = s.nights[1].scores.find((x) => x.team.name === "Sharks")!
+    expect(night.filled).toBe(1)
+    expect(night.score).toBeCloseTo(0.5, 10) // a's 1 plus a bench 0, over 2, not a's 1 alone
+  })
   it("keeps a traded player's earlier nights with their old team", () => {
     const moved = st.movePlayer(base, "b", base.teams[1].id, "2027-06-05")
     expect(moved.teams[1].members).toContain("b")

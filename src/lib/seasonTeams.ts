@@ -8,12 +8,22 @@ import type { Game, PooleanState, SeasonTeam, SeasonTeamSet } from "@/lib/types"
 // every player's own results feed their season team. A player's night is their game wins (a rivalry game, where the two pickup teams are
 // two whole season teams, counts double) plus their Wins added (winsAdded.ts: Points added turned into wins, filmed games only). Each
 // night, every team counts the average of its best few players' nights, the same number for every team: the fewest any team had there,
-// but at least 2 (a team with fewer there counts what it has). So roster size and turnout do not decide it, a weak night never hurts,
+// but at least 2 (a team with fewer there gets a bench night for each empty spot). So roster size and turnout do not decide it, a weak night never hurts,
 // and extra players are depth. A team's score is the average of its nights. Nights count for the team a player was on that night, so a
 // trade or a newcomer only changes things from the day it happens.
 export const RIVALRY_WEIGHT = 2
 export const THIN_NIGHTS = 2 // team nights before a team's score is more than an early read
-export const MIN_COUNTED = 2 // each team counts at least this many players' nights, when it has them
+export const MIN_COUNTED = 2 // each team counts at least this many players' nights
+export const BENCH_PCT = 0.25 // an empty spot counts as a bench night: this far up all the set's player-nights
+
+// The value of the night at fraction q of the sorted list (linear between neighbours), 0 when there are none.
+function quantile(values: number[], q: number): number {
+  if (!values.length) return 0
+  const v = [...values].sort((a, b) => a - b)
+  const at = (v.length - 1) * q
+  const lo = Math.floor(at)
+  return v[lo] + (v[Math.min(lo + 1, v.length - 1)] - v[lo]) * (at - lo)
+}
 export const COLORS = ["#2f7de1", "#e2552b", "#1f9d6b", "#a35bd6", "#d9a400", "#d6336c"]
 
 export const currentSet = (state: PooleanState): SeasonTeamSet | null => {
@@ -81,7 +91,7 @@ export interface TeamLine {
 export interface NightLine {
   date: string
   counted: number // how many players' nights each team counted
-  scores: { team: SeasonTeam; score: number; present: number }[] // best first
+  scores: { team: SeasonTeam; score: number; present: number; filled: number }[] // best first; filled: empty spots given a bench night
 }
 
 export interface Standings {
@@ -90,6 +100,7 @@ export interface Standings {
   rows: TeamLine[] // best first
   nights: NightLine[]
   rivalries: { game: Game; a: SeasonTeam; b: SeasonTeam; winner: SeasonTeam }[]
+  bench: number // what an empty spot is worth
 }
 
 export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
@@ -116,6 +127,9 @@ export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
   const line = (team: string, pid: string) =>
     member.get(`${team}|${pid}`) ??
     member.set(`${team}|${pid}`, { id: pid, nights: 0, counted: 0, wins: 0, winsAdded: 0, score: 0, current: !!set.teams.find((t) => t.id === team)?.members.includes(pid) }).get(`${team}|${pid}`)!
+  // A team with fewer players there than the night counts fills each empty spot with a bench night (the bottom quarter of every
+  // player-night in the set), so one player cannot stand in for a full team, and a below-average player gains nothing by staying home.
+  const bench = quantile([...by.values()].flatMap((night) => [...night.values()].map((c) => c.wins + c.winsAdded)), BENCH_PCT)
   const teamNights = new Map<string, number[]>()
   const nights: NightLine[] = []
   for (const [date, night] of [...by].sort((a, b) => a[0].localeCompare(b[0]))) {
@@ -133,10 +147,11 @@ export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
     for (const [teamId, list] of perTeam) {
       const best = [...list].sort((a, b) => b.v - a.v).slice(0, Math.min(k, list.length))
       for (const b of best) line(teamId, b.pid).counted++
-      const score = best.reduce((n, b) => n + b.v, 0) / best.length
+      const filled = k - best.length
+      const score = (best.reduce((n, b) => n + b.v, 0) + filled * bench) / k
       ;(teamNights.get(teamId) ?? teamNights.set(teamId, []).get(teamId)!).push(score)
       const team = set.teams.find((t) => t.id === teamId)
-      if (team) scores.push({ team, score, present: list.length })
+      if (team) scores.push({ team, score, present: list.length, filled })
     }
     nights.push({ date, counted: k, scores: scores.sort((a, b) => b.score - a.score) })
   }
@@ -158,7 +173,7 @@ export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
     }
   })
   rows.sort((x, y) => y.score - x.score || y.wins + y.winsAdded - (x.wins + x.winsAdded))
-  return { set, games: games.length, rows, nights, rivalries }
+  return { set, games: games.length, rows, nights, rivalries, bench }
 }
 
 // ---------- trades and newcomers ----------
