@@ -16,7 +16,7 @@ const ordinal = (n: number) => `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 
 // Draft lottery night on the Season teams page (src/lib/draftLottery.ts): before the first pick, the editor can draw the first round's
 // order and reveal it one pick at a time, last pick first, on everyone's phone. Visitors see it once it is drawn.
 export function DraftLottery({ state, set, update, readOnly }: { state: PooleanState; set: SeasonTeamSet; update: Update; readOnly: boolean }) {
-  const [mode, setMode] = useState<LotteryMode>("weighted")
+  const [mode, setMode] = useState<LotteryMode>("even")
   const l = lotteryOf(set)
   if (picksMade(set) > 0 && !l) return null
   if (!l && readOnly) return null
@@ -42,15 +42,15 @@ export function DraftLottery({ state, set, update, readOnly }: { state: PooleanS
           <fieldset className="flex flex-col gap-1.5">
             <legend className="mb-1 text-xs text-muted-foreground">Balls</legend>
             <label className="flex items-start gap-2">
-              <input type="radio" name="lottery-mode" checked={mode === "weighted"} onChange={() => setMode("weighted")} className="mt-1 accent-[var(--color-primary)]" />
-              <span>
-                <span className="font-medium">Weighted.</span> <span className="text-muted-foreground">The weakest captain by power ranking holds the most balls, the strongest the fewest.</span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2">
               <input type="radio" name="lottery-mode" checked={mode === "even"} onChange={() => setMode("even")} className="mt-1 accent-[var(--color-primary)]" />
               <span>
                 <span className="font-medium">Even.</span> <span className="text-muted-foreground">One ball each.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2">
+              <input type="radio" name="lottery-mode" checked={mode === "weighted"} onChange={() => setMode("weighted")} className="mt-1 accent-[var(--color-primary)]" />
+              <span>
+                <span className="font-medium">Weighted.</span> <span className="text-muted-foreground">The weakest captain by power ranking holds the most balls, the strongest the fewest.</span>
               </span>
             </label>
           </fieldset>

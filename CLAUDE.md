@@ -405,8 +405,8 @@ one, else the top of the standings.
 ## Draft lottery night (2026-11-26)
 
 `src/lib/draftLottery.ts`, card `src/pages/games/DraftLottery.tsx` at the top of the Season teams page while a set is drafting and no pick
-is made. The editor draws the first round's order (weighted by default: the weakest captain by power ranking holds n balls down to 1 for
-the strongest; or even), each pick drawn without putting balls back (`crypto.getRandomValues`), with every team's exact odds per pick
+is made. The editor draws the first round's order (even by default, one ball each, asked 2026-11-26; or weighted: the weakest captain by
+power ranking holds n balls down to 1 for the strongest), each pick drawn without putting balls back (`crypto.getRandomValues`), with every team's exact odds per pick
 (`pickOdds`, every order gone through). Saved as `set.lottery` (order, balls, `revealed`), then revealed on everyone's phone one pick at
 a time, last pick first; phones refresh every 4 s meanwhile. The teams are only reordered on the last reveal (the snake follows
 `set.teams` order), and until then the draft board is hidden and the `season-draft` function (version 2) refuses picks. "Draw again"

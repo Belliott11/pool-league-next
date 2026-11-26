@@ -2,9 +2,8 @@ import { captainOrder } from "@/lib/seasonTeams"
 import type { SeasonTeamSet } from "@/lib/types"
 
 // Draft lottery night: a draw decides the season-team draft's first-round order (the snake follows it), revealed on everyone's phone one
-// pick at a time from last to first. Weighted (the default), the weakest captain by power ranking holds the most balls: with n teams the
-// weakest has n, the next n - 1, down to 1 for the strongest, which keeps the old "weakest captain picks first" idea as the likeliest
-// result. Even gives every team one ball. Picks are drawn one after another without putting balls back. The order is drawn when the
+// pick at a time from last to first. Even (the default, asked 2026-11-26) gives every team one ball. Weighted, the weakest captain by
+// power ranking holds the most balls: with n teams the weakest has n, the next n - 1, down to 1 for the strongest. Picks are drawn one after another without putting balls back. The order is drawn when the
 // editor runs it and kept in the league data (`set.lottery`); the teams are only reordered once the last pick is revealed, so the draft
 // room cannot start on a half-shown order.
 
