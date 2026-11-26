@@ -480,3 +480,8 @@ body::before {
 .scroll-hint[hidden] {
   display: none;
 }
+
+/* The dotted jersey (JerseyStat.tsx): the body in the primary's hue at a fixed deep lightness, so white digits stand out on every
+   palette, light or dark (the dark palettes' primaries are pale). Browsers without relative colors keep the plain primary. */
+.jersey-body { fill: var(--primary); fill: oklch(from var(--primary) 0.44 min(c, 0.19) h); }
+.jersey-on { fill: #fff; }

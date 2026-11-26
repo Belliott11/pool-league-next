@@ -3,7 +3,9 @@ import { glyphCells } from "@/components/FlipDigits"
 import { cn } from "@/lib/utils"
 
 // A tank-top jersey made of dots, like a flip-dot sign: the body is a grid of discs in the primary color and the stat
-// is picked out on the chest in white discs. Two colors only (asked 2026-11-26): the digit box's unlit discs match the body. The jersey is a polygon on a 64 by 72 sheet; every grid cell whose
+// is picked out on the chest in white discs. Two colors only (asked 2026-11-26): the digit box's unlit discs match the body, which is
+// the primary's hue at a fixed deep lightness (.jersey-body in index.css) so the white digits read on every palette and theme, on a
+// solid panel of that color. The jersey is a polygon on a 64 by 72 sheet; every grid cell whose
 // centre falls inside it becomes a disc, so the digits and the jersey share one grid.
 const SHAPE: [number, number][] = [
   [16, 3], [26, 3], [26.5, 8], [29, 11], [32, 12], [35, 11], [37.5, 8], [38, 3], [48, 3],
@@ -39,12 +41,16 @@ export function JerseyStat({ value, label, className }: { value: string; label: 
         out.push({ x, y, kind: d === undefined ? "body" : d ? "on" : "off" })
       }
     }
-    return { out, r: p * 0.42 }
+    // A solid panel of the body color behind the number, so its white discs never sit on the page between the dots (on a white page
+    // they read as holes otherwise).
+    const panel = { x: (col0 - 0.5) * p, y: (row0 - 0.5) * p, w: (width + 1) * p, h: 8 * p }
+    return { out, r: p * 0.42, panel }
   }, [value])
   return (
     <svg viewBox="0 0 64 72" role="img" aria-label={`${label} ${value}`} className={cn("h-28 w-auto shrink-0", className)}>
+      <rect x={dots.panel.x} y={dots.panel.y} width={dots.panel.w} height={dots.panel.h} rx={dots.r} className="jersey-body" />
       {dots.out.map((d, i) => (
-        <circle key={i} cx={d.x} cy={d.y} r={dots.r} fill={d.kind === "on" ? "#ffffff" : "var(--primary)"} />
+        <circle key={i} cx={d.x} cy={d.y} r={d.kind === "on" ? dots.r * 1.12 : dots.r} className={d.kind === "on" ? "jersey-on" : "jersey-body"} />
       ))}
     </svg>
   )
