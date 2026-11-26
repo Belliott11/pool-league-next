@@ -23,13 +23,8 @@
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
     <meta name="twitter:card" content="summary" />
-    <script>
-      // Apply the saved theme before first paint (dark by default).
-      // Blue unless a person picked something (red is saved as an empty string).
-      var a = "blue"; try { var s = localStorage.getItem("pooleanIntelAccent"); if (s !== null) a = s } catch (e) {}
-      if (a) document.documentElement.setAttribute("data-accent", a)
-      try { if (localStorage.getItem("pooleanIntelTheme") !== "light") document.documentElement.classList.add("dark") } catch (e) { document.documentElement.classList.add("dark") }
-    </script>
+    <!-- Applies the saved theme before first paint; a file, not inline, so the security policy can forbid inline scripts. -->
+    <script src="/pool-league-next/theme-boot.js"></script>
     <script src="/pool-league-next/poolean-external-data.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

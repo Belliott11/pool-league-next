@@ -132,3 +132,6 @@ $$;
 drop trigger if exists league_state_alerts on public.league_state;
 create trigger league_state_alerts after update of data on public.league_state
 for each row execute function public.league_state_alerts();
+
+-- The trigger function is not an API: nobody calls it directly (triggers fire without this permission). Applied 2026-11-26.
+revoke all on function public.league_state_alerts() from public, anon, authenticated;

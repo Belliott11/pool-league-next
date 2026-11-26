@@ -244,6 +244,19 @@ data is fetched with a plain request (`fetchPublic` in `src/lib/cloud.ts`) while
 takes them too, so an older copy on another phone cannot wipe them (11 reviews were lost that way on 2026-11-26). A review deleted on
 one device can come back if another device saves over it; that trade was chosen on purpose.
 
+## Security
+
+- Content Security Policy (`CSP` and the `security-meta` plugin in `vite.config.ts`): a meta tag in built pages only (GitHub Pages
+  cannot send headers; the dev server needs inline scripts). Scripts only from the site and YouTube's player API; data only to Supabase,
+  the video bucket, R2 uploads (`*.r2.cloudflarestorage.com`) and open-meteo; pictures and videos from any https host. A new host the
+  page talks to must be added there or the live site blocks it (`src/lib/csp.test.ts` checks the known ones). No inline scripts in
+  `index.html`: the theme boot is `public/theme-boot.js`. Crawled clean on the built site on 2026-11-26.
+- The publishable Supabase key is public by design. Every table has row level security: league data and snapshots are written only by
+  accounts in `admins`; votes, goals, picks and RSVPs only through their phone-key functions; push tables and private labels are
+  closed to visitors. The `league_state_alerts` trigger function is not callable through the API.
+- The `live-score` function takes actions from anyone with no sign-in or code (by design, so friends can score; Adam's Poolean app
+  posts to it too). Supabase's leaked-password check is off (a dashboard setting, Authentication, the editor's account).
+
 ## Votes and predictions
 
 Pick'em votes and preseason predictions belong to the phone that made them: `src/lib/deviceKey.ts` keeps a private key on the phone, and

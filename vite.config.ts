@@ -86,10 +86,45 @@ function ogImage(): Plugin {
   }
 }
 
+// The page's Content Security Policy, as a meta tag (GitHub Pages cannot send headers), in built pages only: the dev server runs
+// inline scripts. Code runs only from the site itself; data goes only to Supabase, the video bucket, R2 uploads and the weather API.
+// Pictures and videos may come from any https host (an editor can link a recording from anywhere). frame-ancestors and reporting
+// need a real header, so they are not here.
+const SUPABASE = "https://cthhlwvhmpvthpkivwps.supabase.co"
+export const CSP = [
+  "default-src 'self'",
+  "script-src 'self' https://www.youtube.com https://s.ytimg.com", // the live stream's YouTube player API
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' blob: https:",
+  `connect-src 'self' ${SUPABASE} ${SUPABASE.replace("https:", "wss:")} ${VIDEO_HOST} https://*.r2.cloudflarestorage.com https://api.open-meteo.com`,
+  "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "upgrade-insecure-requests",
+].join("; ")
+
+function securityHeaders(): Plugin {
+  return {
+    name: "security-meta",
+    apply: "build",
+    transformIndexHtml(html) {
+      return html.replace(
+        "<meta charset=\"UTF-8\" />",
+        `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />\n    <meta name="referrer" content="strict-origin-when-cross-origin" />`,
+      )
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   base: BASE,
-  plugins: [react(), tailwindcss(), clipPages(), ogImage()],
+  plugins: [react(), tailwindcss(), clipPages(), ogImage(), securityHeaders()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
