@@ -3,9 +3,11 @@ import { deviceKey } from "@/lib/deviceKey"
 import type { PlayOfYear, PooleanState } from "@/lib/types"
 
 // Play of the Year: the season's best shareable plays in a bracket (8 or 16, seeded by bestClips' order), voted on from any phone, one
-// vote per phone per match (the poty_votes table, written only through cast_poty_vote, supabase/poty.sql). Rounds open one after
-// another for `days` days each from startAt. A match goes to the play with more votes once its round closes; a tie goes to the higher
-// seed. Votes for a play that is not in the match (it lost earlier) are ignored, so the server only has to check the round is open.
+// vote per phone per match (the poty_votes table, written only through cast_poty_vote, supabase/poty.sql). Two ways to run it:
+// live (the default), everyone in the same room voting on one matchup at a time, which the editor opens and closes (openMatch, closed);
+// or over days, rounds opening one after another for `days` days each from startAt. A match goes to the play with more votes once it
+// closes; a tie goes to the higher seed. Votes for a play that is not in the match (it lost earlier) are ignored, and the server takes a
+// vote only for the open matchup (live) or the open round (over days).
 export const ROUND_DAYS = 3
 
 export interface PotyVote {
@@ -58,13 +60,17 @@ export function bracket(p: PlayOfYear, votes: PotyVote[], now: Date = new Date()
   const rounds: Match[][] = []
   let entrants: (string | null)[] = order.map((s) => p.seeds[s - 1] ?? null)
   let current: number | null = null
+  const shut = new Set(p.closed ?? [])
   for (let r = 0; r < roundsN; r++) {
     const ms: Match[] = []
-    const closed = now.getTime() >= closesAt(r).getTime()
-    const open = now.getTime() >= opensAt(r).getTime() && !closed
-    if (open) current = r
+    const roundClosed = now.getTime() >= closesAt(r).getTime()
+    const roundOpen = now.getTime() >= opensAt(r).getTime() && !roundClosed
+    if (!p.live && roundOpen) current = r
     for (let i = 0; i < entrants.length / 2; i++) {
       const id = `r${r}m${i}`
+      const closed = p.live ? shut.has(id) : roundClosed
+      const open = p.live ? p.openMatch === id : roundOpen
+      if (p.live && open) current = r
       const a = entrants[2 * i]
       const b = entrants[2 * i + 1]
       const mine = votes.filter((v) => v.bracket === p.id && v.match === id)
@@ -117,8 +123,25 @@ export async function myOwner(): Promise<string> {
 }
 
 // A new bracket from the season's best shareable plays (never rough, never a still), 16 when there are enough, else 8.
-export function newBracket(seeds: string[], label: string, now: Date = new Date()): PlayOfYear | null {
+export function newBracket(seeds: string[], label: string, now: Date = new Date(), live = true): PlayOfYear | null {
   const n = seeds.length >= 16 ? 16 : seeds.length >= 8 ? 8 : 0
   if (!n) return null
-  return { id: `poty${now.getTime().toString(36)}`, label, seeds: seeds.slice(0, n), startAt: now.toISOString(), days: ROUND_DAYS }
+  const p: PlayOfYear = { id: `poty${now.getTime().toString(36)}`, label, seeds: seeds.slice(0, n), startAt: now.toISOString(), days: ROUND_DAYS }
+  return live ? { ...p, live: true, openMatch: null, closed: [] } : p
 }
+
+// Live brackets: the next matchup to open (both plays known, not closed yet), in bracket order.
+export function nextMatch(b: Bracket): Match | null {
+  for (const ms of b.rounds) for (const m of ms) if (!m.winner && m.a && m.b && !m.open) return m
+  return null
+}
+const stamp = () => new Date().toISOString()
+export const openMatch = (p: PlayOfYear, id: string): PlayOfYear => ({ ...p, openMatch: id, lastAt: stamp() })
+export const closeMatch = (p: PlayOfYear): PlayOfYear => (p.openMatch ? { ...p, openMatch: null, closed: [...(p.closed ?? []), p.openMatch], lastAt: stamp() } : p)
+// Takes back the last close (a mistaken tap), reopening that matchup.
+export const undoClose = (p: PlayOfYear): PlayOfYear => (p.closed?.length && !p.openMatch ? { ...p, openMatch: p.closed.at(-1)!, closed: p.closed.slice(0, -1), lastAt: stamp() } : p)
+// A live vote in progress: a matchup open, or one closed in the last two hours with more to go. Phones refresh faster then.
+export const liveVoting = (p: PlayOfYear | null | undefined, now = Date.now()): boolean =>
+  !!p?.live && (!!p.openMatch || ((p.closed?.length ?? 0) < p.seeds.length - 1 && !!p.lastAt && now - Date.parse(p.lastAt) < 2 * 3_600_000))
+// Replaces the newest bracket.
+export const putBracket = (s: PooleanState, p: PlayOfYear): PooleanState => ({ ...s, playOfYear: [...(s.playOfYear ?? []).slice(0, -1), p] })

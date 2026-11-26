@@ -9,7 +9,7 @@ import { clipIdOf } from "@/lib/clipShare"
 import { bestClips, gameClips, type Clip } from "@/lib/clips"
 import { getClient } from "@/lib/cloud"
 import { useReadOnly } from "@/lib/mode"
-import { bracket, castPoty, currentBracket, loadPoty, myOwner, newBracket, roundName, type Bracket, type Match, type PotyVote } from "@/lib/playOfYear"
+import { bracket, castPoty, closeMatch, currentBracket, liveVoting, loadPoty, myOwner, newBracket, nextMatch, openMatch, putBracket, roundName, undoClose, type Bracket, type Match, type PotyVote } from "@/lib/playOfYear"
 import type { Update } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import type { PooleanState } from "@/lib/types"
@@ -42,7 +42,7 @@ function usePoty(state: PooleanState) {
   useEffect(() => {
     void myOwner().then(setMe)
     refresh()
-    const t = setInterval(refresh, 15000)
+    const t = setInterval(refresh, p?.live && p.openMatch ? 3000 : 15000)
     return () => clearInterval(t)
   }, [refresh])
   const b = useMemo(() => (p ? bracket(p, votes) : null), [p, votes])
@@ -59,6 +59,22 @@ export function PotyCard({ state, onOpen }: { state: PooleanState; onOpen: () =>
   const { b, p } = usePoty(state)
   if (!p || !b) return null
   const rounds = b.rounds.length
+  if (p.live && liveVoting(p))
+    return (
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-3">
+          <Trophy aria-hidden className="size-5 text-gold" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">Play of the Year is live</p>
+            <p className="text-xs text-muted-foreground">{p.openMatch ? "A matchup is open. One vote per phone." : "The next matchup opens soon."}</p>
+          </div>
+          <Button size="sm" onClick={onOpen}>
+            <Vote aria-hidden /> {p.openMatch ? "Vote" : "Watch"}
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  if (p.live && !b.champion) return null
   if (b.current !== null)
     return (
       <Card>
@@ -94,7 +110,7 @@ export function PotyCard({ state, onOpen }: { state: PooleanState; onOpen: () =>
   return null
 }
 
-function VoteMatch({ state, m, n, of, clips, mine, onVote, showCounts }: { state: PooleanState; m: Match; n: number; of: number; clips: Map<string, Clip>; mine?: string; onVote: (pick: string) => void; showCounts: boolean }) {
+function VoteMatch({ state, m, n, of, clips, mine, onVote, showCounts, title }: { state: PooleanState; m: Match; n: number; of: number; clips: Map<string, Clip>; mine?: string; onVote: (pick: string) => void; showCounts: boolean; title?: string }) {
   const side = (id: string | null, n: number) => {
     const c = id ? clips.get(id) : null
     const picked = !!id && mine === id
@@ -119,7 +135,7 @@ function VoteMatch({ state, m, n, of, clips, mine, onVote, showCounts }: { state
   return (
     <div className="flex flex-col gap-1.5">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Matchup {n} of {of}
+        {title ?? `Matchup ${n} of ${of}`}
         {mine && " · voted"}
       </h4>
       <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
@@ -169,6 +185,7 @@ function Start({ state, update }: { state: PooleanState; update: Update }) {
     return out
   }, [state])
   const [label, setLabel] = useState(`Summer ${new Date().getFullYear()}`)
+  const [live, setLive] = useState(true)
   const size = seeds.length >= 16 ? 16 : seeds.length >= 8 ? 8 : 0
   return (
     <Card>
@@ -177,8 +194,23 @@ function Start({ state, update }: { state: PooleanState; update: Update }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-2 text-sm">
         <p className="text-muted-foreground">
-          The {size || "best"} best shareable plays, seeded by the same ranking as Top plays (never one that goes badly for someone). Each round is open for 3 days, starting now.
+          The {size || "best"} best shareable plays, seeded by the same ranking as Top plays (never one that goes badly for someone).
         </p>
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="mb-1 text-xs text-muted-foreground">How to vote</legend>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="poty-mode" checked={live} onChange={() => setLive(true)} className="mt-1 accent-[var(--color-primary)]" />
+            <span>
+              <span className="font-medium">Live, together.</span> <span className="text-muted-foreground">One matchup at a time; you open each one and close it, and the room sees the winner.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="poty-mode" checked={!live} onChange={() => setLive(false)} className="mt-1 accent-[var(--color-primary)]" />
+            <span>
+              <span className="font-medium">Over days.</span> <span className="text-muted-foreground">A round every 3 days, starting now; phones vote whenever.</span>
+            </span>
+          </label>
+        </fieldset>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Name</span>
           <Input value={label} onChange={(e) => setLabel(e.target.value)} className="max-w-xs" />
@@ -187,7 +219,7 @@ function Start({ state, update }: { state: PooleanState; update: Update }) {
           className="self-start"
           disabled={!size || !label.trim()}
           onClick={() => {
-            const p = newBracket(seeds, label.trim())
+            const p = newBracket(seeds, label.trim(), new Date(), live)
             if (p) update((s) => ({ ...s, playOfYear: [...(s.playOfYear ?? []), p] }))
           }}
         >
@@ -196,6 +228,68 @@ function Start({ state, update }: { state: PooleanState; update: Update }) {
         {!size && <p className="text-xs text-muted-foreground">Needs at least 8 shareable plays; there are {seeds.length}.</p>}
       </CardContent>
     </Card>
+  )
+}
+
+// A live bracket: one matchup at a time, opened and closed by the editor. Phones see the open matchup and how many votes are in; the
+// split shows when the editor closes it, so the room finds out together.
+function LiveVote({ state, update, b, p, clips, mineFor, vote, readOnly }: { state: PooleanState; update: Update; b: Bracket; p: NonNullable<ReturnType<typeof currentBracket>>; clips: Map<string, Clip>; mineFor: (m: Match) => string | undefined; vote: (m: Match, pick: string) => void; readOnly: boolean }) {
+  const all = b.rounds.flat()
+  const open = all.find((m) => m.open) ?? null
+  const lastId = p.closed?.at(-1)
+  const last = lastId ? (all.find((m) => m.id === lastId) ?? null) : null
+  const next = nextMatch(b)
+  const where = (m: Match) => {
+    const ms = b.rounds[m.round]
+    return `${roundName(m.round, b.rounds.length)}${ms.length > 1 ? `, matchup ${ms.indexOf(m) + 1} of ${ms.length}` : ""}`
+  }
+  const set = (f: (x: typeof p) => typeof p) => update((s) => putBracket(s, f(p)))
+  return (
+    <section className="flex flex-col gap-3" aria-label="Live vote">
+      {open ? (
+        <>
+          <VoteMatch state={state} m={open} n={1} of={1} title={`Now voting: ${where(open)}`} clips={clips} mine={mineFor(open)} showCounts={false} onVote={(pick) => vote(open, pick)} />
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            {open.votesA + open.votesB} {open.votesA + open.votesB === 1 ? "vote" : "votes"} in. The split shows when voting closes.
+          </p>
+          {!readOnly && (
+            <Button className="self-start" onClick={() => set(closeMatch)}>
+              Close voting and show the winner
+            </Button>
+          )}
+        </>
+      ) : (
+        <>
+          {last?.winner && (
+            <Card>
+              <CardContent className="flex flex-col gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{where(last)}</span>
+                <p className="font-display text-lg font-bold">
+                  {titleOf(last.winner)} wins, {Math.max(last.votesA, last.votesB)} to {Math.min(last.votesA, last.votesB)}
+                  {last.votesA === last.votesB && " (a tie goes to the higher seed)"}
+                </p>
+                {clips.get(last.winner) && <ClipTile state={state} clip={clips.get(last.winner)!} />}
+              </CardContent>
+            </Card>
+          )}
+          {!b.champion && <p className="text-sm text-muted-foreground">{next ? `Up next: ${titleOf(next.a)} or ${titleOf(next.b)}.` : ""}</p>}
+          {!readOnly && (
+            <div className="flex flex-wrap gap-2">
+              {next && (
+                <Button onClick={() => set((x) => openMatch(x, next.id))}>
+                  <Vote aria-hidden /> Open {last ? "the next matchup" : "the first matchup"}
+                </Button>
+              )}
+              {last && (
+                <Button variant="ghost" onClick={() => set(undoClose)}>
+                  Reopen the last matchup
+                </Button>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </section>
   )
 }
 
@@ -232,18 +326,19 @@ export function PlayOfYearPage({ state, update, onBack }: { state: PooleanState;
           </CardContent>
         </Card>
       )}
-      {b && p && b.current !== null && (
+      {refused && <p className="text-sm text-destructive">That vote did not go through. Voting may have just closed.</p>}
+      {b && p && p.live && <LiveVote state={state} update={update} b={b} p={p} clips={clips} mineFor={mineFor} vote={(m, pick) => void vote(m, pick)} readOnly={readOnly} />}
+      {b && p && !p.live && b.current !== null && (
         <section className="flex flex-col gap-3" aria-label="Vote">
           <p className="text-sm text-muted-foreground">
             {roundName(b.current, b.rounds.length)}: pick one play from each pair, {left(b.closesAt(b.current))}. One vote per phone; you can change it until the round closes. The counts show once you have voted.
           </p>
-          {refused && <p className="text-sm text-destructive">That vote did not go through. The round may have just closed.</p>}
           {b.rounds[b.current].map((m, i, all) => (
             <VoteMatch key={m.id} state={state} m={m} n={i + 1} of={all.length} clips={clips} mine={mineFor(m)} showCounts={!!mineFor(m)} onVote={(pick) => void vote(m, pick)} />
           ))}
         </section>
       )}
-      {b && p && b.current === null && !done && <p className="text-sm text-muted-foreground">The next round opens {b.opensAt(0).getTime() > Date.now() ? b.opensAt(0).toLocaleString() : "soon"}.</p>}
+      {b && p && !p.live && b.current === null && !done && <p className="text-sm text-muted-foreground">The next round opens {b.opensAt(0).getTime() > Date.now() ? b.opensAt(0).toLocaleString() : "soon"}.</p>}
       {b && (
         <Card>
           <CardHeader>

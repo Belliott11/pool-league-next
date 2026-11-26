@@ -428,9 +428,13 @@ one, else the top of the standings.
   shots. On the At a glance card ("Plays like: ...") and the trading card.
 - Play of the Year (`src/lib/playOfYear.ts`, page `#/games/poty`, `src/pages/games/PlayOfYear.tsx`, a Games home button, a home card
   while a round is open or for 3 weeks after the final, search, Hall of Fame): the editor starts a bracket of the 16 (or 8) best
-  shareable plays by `bestClips` order (never rough, never stills), saved in `state.playOfYear` (seeds frozen). Rounds open one after
-  another for 3 days each from `startAt`. Votes: `poty_votes`, one per phone per match, only through `cast_poty_vote`
-  (`supabase/poty.sql`), which checks the newest bracket, the seed and that the round is open. Counts show after a phone votes. More
+  shareable plays by `bestClips` order (never rough, never stills), saved in `state.playOfYear` (seeds frozen). Live by default (it
+  will likely be done together at a party): one matchup at a time in bracket order, the editor opens it (`openMatch`), phones vote and
+  see how many votes are in, and "Close voting and show the winner" reveals the split to the room (`closed`; "Reopen the last
+  matchup" undoes a mistaken close). Phones refresh every 4 s while a live vote is going (`liveVoting`: a matchup open, or one opened
+  or closed in the last two hours, `lastAt`), votes every 3 s. The other mode, over days, opens a round every 3 days from `startAt`
+  and shows counts once a phone has voted. Votes: `poty_votes`, one per phone per match, only through `cast_poty_vote`
+  (`supabase/poty.sql`), which checks the newest bracket, the seed, and the open matchup (live) or the open round (over days). More
   votes wins; a tie goes to the higher seed; votes for a play not in the match are ignored.
 - Summer goals (`src/lib/goals.ts`, `src/components/SummerGoals.tsx` under At a glance): up to two goals a season, set from the player's
   own phone ("Who are you?" is that player); `season_goals`, only through `save_season_goal` (`supabase/goals.sql`); the first phone

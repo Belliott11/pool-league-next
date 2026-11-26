@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { bracket, newBracket, roundName, seedOrder, type PotyVote } from "./playOfYear"
+import { bracket, closeMatch, liveVoting, newBracket, nextMatch, openMatch, roundName, seedOrder, undoClose, type PotyVote } from "./playOfYear"
 
 const seeds = Array.from({ length: 8 }, (_, i) => `c${i + 1}`)
 const start = new Date("2026-12-01T00:00:00Z")
-const p = newBracket(seeds, "Summer 2026", start)!
+const p = newBracket(seeds, "Summer 2026", start, false)!
 const day = (n: number) => new Date(start.getTime() + n * 86_400_000 + 1000)
 const v = (match: string, pick: string, owner: string): PotyVote => ({ bracket: p.id, match, pick, owner })
 
@@ -29,5 +29,27 @@ describe("playOfYear", () => {
     expect(b.champion).toBe("c1")
     expect(roundName(2, 3)).toBe("Final")
     expect(roundName(0, 4)).toBe("Round of 16")
+  })
+
+  it("runs live, one matchup at a time, in bracket order", () => {
+    let q = newBracket(seeds, "Live", start)!
+    const lv = (match: string, pick: string, owner: string): PotyVote => ({ bracket: q.id, match, pick, owner })
+    expect(nextMatch(bracket(q, []))?.id).toBe("r0m0")
+    q = openMatch(q, "r0m0")
+    expect(liveVoting(q)).toBe(true)
+    const votes = [lv("r0m0", "c8", "x"), lv("r0m0", "c8", "y"), lv("r0m0", "c1", "z")]
+    let b = bracket(q, votes)
+    expect(b.rounds[0][0].open).toBe(true)
+    expect(b.rounds[0][0].winner).toBeNull()
+    q = closeMatch(q)
+    b = bracket(q, votes)
+    expect(b.rounds[0][0].winner).toBe("c8")
+    expect(b.rounds[1][0].a).toBe("c8")
+    expect(nextMatch(b)?.id).toBe("r0m1")
+    expect(undoClose(q).openMatch).toBe("r0m0")
+    // Close every remaining matchup with no votes: higher seeds go through, and the top seed left wins.
+    for (let i = 0; i < 6; i++) q = closeMatch(openMatch(q, nextMatch(bracket(q, votes))!.id))
+    expect(bracket(q, votes).champion).toBe("c2")
+    expect(nextMatch(bracket(q, votes))).toBeNull()
   })
 })

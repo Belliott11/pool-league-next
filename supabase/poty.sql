@@ -2,8 +2,9 @@
 --
 -- One vote per phone per match of a bracket (src/lib/playOfYear.ts). Like Pick'em, a vote belongs to the phone that cast it (owner_hash
 -- is the hash of the phone's private key) and is made or changed only through cast_poty_vote. Everyone can read the votes. It never
--- touches the league data. A vote is only taken for the newest bracket, for a play in its seeds, while that match's round is open (read
--- from the bracket in the league data: startAt plus days per round). Votes for a play not in the match are ignored when counting.
+-- touches the league data. A vote is only taken for the newest bracket, for a play in its seeds, and only for the matchup the editor has
+-- open (a live bracket: openMatch) or while that match's round is open (over days: startAt plus days per round). Votes for a play not in
+-- the match are ignored when counting.
 
 create table if not exists public.poty_votes (
   bracket    text not null,
@@ -42,10 +43,16 @@ begin
   if b is null or b->>'id' <> p_bracket or not (b->'seeds') ? p_pick then
     return false;
   end if;
-  r := substring(p_match from 2 for 1)::int;
-  opens := (b->>'startAt')::timestamptz + make_interval(days => r * (b->>'days')::int);
-  if now() < opens or now() >= opens + make_interval(days => (b->>'days')::int) then
-    return false;
+  if coalesce((b->>'live')::boolean, false) then
+    if p_match is distinct from b->>'openMatch' then
+      return false;
+    end if;
+  else
+    r := substring(p_match from 2 for 1)::int;
+    opens := (b->>'startAt')::timestamptz + make_interval(days => r * (b->>'days')::int);
+    if now() < opens or now() >= opens + make_interval(days => (b->>'days')::int) then
+      return false;
+    end if;
   end if;
   h := encode(sha256(convert_to(p_key, 'UTF8')), 'hex');
   insert into public.poty_votes as v (bracket, match, pick, owner_hash, updated_at)

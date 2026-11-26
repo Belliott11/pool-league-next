@@ -2,8 +2,8 @@ import { useMemo } from "react"
 import { glyphCells } from "@/components/FlipDigits"
 import { cn } from "@/lib/utils"
 
-// A tank-top jersey made of dots, like a flip-dot sign: the body is a grid of discs in the accent color and the stat
-// is picked out on the chest in brighter discs. The jersey is a polygon on a 64 by 72 sheet; every grid cell whose
+// A tank-top jersey made of dots, like a flip-dot sign: the body is a grid of discs in the primary color and the stat
+// is picked out on the chest in white discs. Two colors only (asked 2026-11-26): the digit box's unlit discs match the body. The jersey is a polygon on a 64 by 72 sheet; every grid cell whose
 // centre falls inside it becomes a disc, so the digits and the jersey share one grid.
 const SHAPE: [number, number][] = [
   [16, 3], [26, 3], [26.5, 8], [29, 11], [32, 12], [35, 11], [37.5, 8], [38, 3], [48, 3],
@@ -44,7 +44,7 @@ export function JerseyStat({ value, label, className }: { value: string; label: 
   return (
     <svg viewBox="0 0 64 72" role="img" aria-label={`${label} ${value}`} className={cn("h-28 w-auto shrink-0", className)}>
       {dots.out.map((d, i) => (
-        <circle key={i} cx={d.x} cy={d.y} r={dots.r} fill={d.kind === "on" ? "#ffffff" : d.kind === "off" ? "#000000" : "var(--primary)"} opacity={d.kind === "off" ? 0.28 : 1} />
+        <circle key={i} cx={d.x} cy={d.y} r={dots.r} fill={d.kind === "on" ? "#ffffff" : "var(--primary)"} />
       ))}
     </svg>
   )

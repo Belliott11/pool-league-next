@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { connect, fetchPublic, fetchRemote, isEditor, loadCloudConfig, saveRemote, type Remote } from "./cloud"
 import { adoptScorekeeperScores } from "./live"
 import { keepCloudMarks } from "./keepCloudMarks"
+import { liveVoting } from "./playOfYear"
 import { loadViewerCopy, saveViewerCopy, withoutLiveGames } from "./viewerCopy"
 import type { PooleanState } from "./types"
 
@@ -39,6 +40,7 @@ export const knownEditor = () => lsGet(ADMIN_KEY) !== null
 const POLL_MS = 60_000
 // While a live game is on, visitors refresh every few seconds so the score and odds follow along.
 const LIVE_POLL_MS = 10_000
+const POTY_POLL_MS = 4_000 // during a live Play of the Year vote
 
 // Everything the app needs from the cloud: whether it is configured, who is signed in, the shared
 // copy of the data, and a debounced save for editors.
@@ -196,12 +198,14 @@ export function useCloud() {
     return () => window.removeEventListener("poolean:refresh", now)
   }, [status, admin, adminPoll, refresh])
 
+  // A live Play of the Year vote in progress: phones follow each matchup within a few seconds.
+  const potyLive = liveVoting(remote?.state.playOfYear?.at(-1))
   const liveNow = !!remote?.state.games.some((g) => g.liveInProgress) || drafting
   // Viewers pick up the editor's changes: every minute, and whenever the tab comes back into view.
   useEffect(() => {
     if (status !== "ready" || admin) return
     const tick = () => void refresh()
-    const id = setInterval(tick, liveNow ? LIVE_POLL_MS : POLL_MS)
+    const id = setInterval(tick, potyLive ? POTY_POLL_MS : liveNow ? LIVE_POLL_MS : POLL_MS)
     const onVis = () => document.visibilityState === "visible" && tick()
     document.addEventListener("visibilitychange", onVis)
     window.addEventListener("online", tick) // signal back: fresh stats now, not at the next poll
@@ -210,7 +214,7 @@ export function useCloud() {
       document.removeEventListener("visibilitychange", onVis)
       window.removeEventListener("online", tick)
     }
-  }, [status, admin, refresh, liveNow])
+  }, [status, admin, refresh, liveNow, potyLive])
 
   const flush = useCallback(async () => {
     const c = clientRef.current

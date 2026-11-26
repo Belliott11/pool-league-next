@@ -191,6 +191,11 @@ export interface PlayOfYear {
   seeds: string[]
   startAt: string
   days: number
+  // Live: everyone votes in the same room, one matchup at a time; the editor opens each (openMatch) and closes it (closed, in order).
+  live?: boolean
+  openMatch?: string | null
+  closed?: string[]
+  lastAt?: string // when the editor last opened or closed a matchup
 }
 
 // One season team: a name, a color, its captain and its members (the captain included), in the order they were drafted.
