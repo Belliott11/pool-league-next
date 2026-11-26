@@ -17,6 +17,8 @@ import { DEFAULT_NIGHTS, titleOdds } from "@/lib/titleOdds"
 import { SEASON_TEAMS_PUBLIC } from "@/lib/visibility"
 import { makeCaptainLinks, parseCaptainLink, saveCaptainLink, savedCaptainLink, sendPick, sendUndo, type CaptainLink } from "@/lib/draftRoom"
 import type { Update } from "@/lib/store"
+import { DraftLottery } from "./DraftLottery"
+import { lotteryLive } from "@/lib/draftLottery"
 import { cn } from "@/lib/utils"
 import type { Game, PooleanState, SeasonTeam, SeasonTeamSet } from "@/lib/types"
 
@@ -738,7 +740,11 @@ export function SeasonTeamsPage({ state, update, onBack, onOpenPlayer, onOpenGam
           <Setup state={state} update={update} />
         )
       ) : set.drafting ? (
-        <Draft state={state} set={set} update={update} readOnly={readOnly} captain={captain} />
+        <>
+          <DraftLottery state={state} set={set} update={update} readOnly={readOnly} />
+          {/* The draft waits until every lottery pick is shown. */}
+          {!lotteryLive(set) && <Draft state={state} set={set} update={update} readOnly={readOnly} captain={captain} />}
+        </>
       ) : (
         <Standings state={state} set={set} onOpenPlayer={onOpenPlayer} onOpenGame={openGame} editor={!readOnly} update={update} />
       )}

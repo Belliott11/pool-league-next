@@ -402,6 +402,17 @@ each, the final is first to two (`FINAL_WINS`), all from rivalry games from that
 teams. "Call off finals" clears it (games stay). A finished set's champion (`champions`, Hall of Fame) is the finals winner when there is
 one, else the top of the standings.
 
+## Draft lottery night (2026-11-26)
+
+`src/lib/draftLottery.ts`, card `src/pages/games/DraftLottery.tsx` at the top of the Season teams page while a set is drafting and no pick
+is made. The editor draws the first round's order (weighted by default: the weakest captain by power ranking holds n balls down to 1 for
+the strongest; or even), each pick drawn without putting balls back (`crypto.getRandomValues`), with every team's exact odds per pick
+(`pickOdds`, every order gone through). Saved as `set.lottery` (order, balls, `revealed`), then revealed on everyone's phone one pick at
+a time, last pick first; phones refresh every 4 s meanwhile. The teams are only reordered on the last reveal (the snake follows
+`set.teams` order), and until then the draft board is hidden and the `season-draft` function (version 2) refuses picks. "Draw again"
+and "Call off the lottery" before the first reveal. The order sits in the public league data from the draw, so a curious friend could
+read it early.
+
 ## Title odds, draft room, props, milestones
 
 - Title odds (`src/lib/titleOdds.ts`, a card at the top of the Season teams standings): each team's chance of finishing first, from

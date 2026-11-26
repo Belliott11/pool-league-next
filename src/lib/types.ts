@@ -227,4 +227,7 @@ export interface SeasonTeamSet {
   // Finals night: seeds (team ids, best first) frozen from the standings when the editor starts it, and the date rivalry games start
   // counting for the bracket (seasonTeams.ts, `finals`).
   finals?: { from: string; seeds: string[] }
+  // Draft lottery night (draftLottery.ts): the drawn first-round order (team ids, first pick first), each team's balls, and how many
+  // picks have been revealed, counted from the last pick. The teams are reordered once every pick is shown.
+  lottery?: { mode: "weighted" | "even"; balls: Record<string, number>; order: string[]; revealed: number; at: string }
 }

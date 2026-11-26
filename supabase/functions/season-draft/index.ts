@@ -2,6 +2,7 @@
 //   pick  put an unpicked player on the team on the clock: from that team's captain link (key checked against the hash the editor saved
 //         in the set's captainKeys), or from a signed-in editor for any team
 //   undo  take back the last pick (editors only)
+// No picks while a draft lottery is still being revealed.
 // The order is the snake in seasonDraft.ts, a byte-for-byte copy of the site's own. Nothing else in the league data is touched.
 // In Supabase: Verify JWT is off (captains are not signed in; an editor's own token is checked here). SUPABASE_URL,
 // SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY come from Supabase.
@@ -38,6 +39,9 @@ function apply(state: State, body: Body, who: { editor: boolean; team: string | 
     return null
   }
   if (body.action !== "pick") return { error: "Unknown action.", status: 400 }
+  // A draft lottery still being revealed: the order is not final, so nobody picks yet (draftLottery.ts on the site).
+  const lottery = set.lottery as { order?: unknown[]; revealed?: number } | undefined
+  if (lottery && Array.isArray(lottery.order) && (lottery.revealed ?? 0) < lottery.order.length) return { error: "The draft lottery is still being revealed.", status: 409 }
   const clock = onTheClock(set)
   if (!clock) return { error: "Everyone has been picked.", status: 409 }
   if (!who.editor && who.team !== clock.id) return { error: "It is not your pick.", status: 409 }

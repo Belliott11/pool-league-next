@@ -198,8 +198,8 @@ export function useCloud() {
     return () => window.removeEventListener("poolean:refresh", now)
   }, [status, admin, adminPoll, refresh])
 
-  // A live Play of the Year vote in progress: phones follow each matchup within a few seconds.
-  const potyLive = liveVoting(remote?.state.playOfYear?.at(-1))
+  // A live Play of the Year vote, or a draft lottery being revealed: phones follow each step within a few seconds.
+  const potyLive = liveVoting(remote?.state.playOfYear?.at(-1)) || !!remote?.state.seasonTeamSets?.some((s) => s.lottery && s.lottery.revealed < s.lottery.order.length)
   const liveNow = !!remote?.state.games.some((g) => g.liveInProgress) || drafting
   // Viewers pick up the editor's changes: every minute, and whenever the tab comes back into view.
   useEffect(() => {
