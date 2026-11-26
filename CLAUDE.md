@@ -359,10 +359,9 @@ everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games ar
 
 ## Season teams
 
-`src/lib/seasonTeams.ts`, page `#/games/teams` (`src/pages/games/SeasonTeams.tsx`, a Games home button and in search). Hidden from visitors
-for now (asked 2026-11-26, until the players agree): `SEASON_TEAMS_PUBLIC` in `src/lib/visibility.ts`; App gives viewers the league data
-without `seasonTeamSets` (`forVisitors`), so every season-team surface disappears for them, search drops the page, and the editor sees a
-note on the page. Turn it on before a phone draft (captain links open on visitors' phones). Teams that exist
+`src/lib/seasonTeams.ts`, page `#/games/teams` (`src/pages/games/SeasonTeams.tsx`, a Games home button and in search). Shown to everyone
+since 2026-11-26 (`SEASON_TEAMS_PUBLIC` in `src/lib/visibility.ts`; set it to false to hide every season-team surface from visitors again,
+which `forVisitors` in App does by dropping `seasonTeamSets`). Visitors see the Games home button once a set exists. Teams that exist
 only in the stats for a season (`state.seasonTeamSets`, the last open set is current; types `SeasonTeamSet`, `SeasonTeam`). Game nights
 stay pickup. The editor names 2 to 6 teams with a captain each and runs a snake draft on the page (`onTheClock`, `draftPick`,
 `undoPick`; saved after every pick, `drafting` until "Finish the draft"). The first round goes weakest captain first by power ranking
