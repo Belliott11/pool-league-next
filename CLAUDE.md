@@ -260,7 +260,9 @@ games the stats count); each play is scored by how far it moves that. A miss is 
 in-bounds rebound rate for that shot times `ep`; the rebound settles the rest. A live-ball turnover costs `ep`, forcing one earns it, and
 the defenders on a shot take the other side of its value (split when two guarded it). Assisted makes split 65/35 (`CREDIT` in
 insight.ts). Over the league the offense's credits sum to zero once rebounds nobody is credited with are put back (`epa.test.ts`).
-Win chance added (insight.ts) now uses the live odds (`winProbabilityFrom` with `backtestPick`), not a 50/50 race.
+Win chance added (insight.ts) uses the race to the target from the pre-game read (`winProbabilityFrom` with `backtestPick`) on the score
+alone, without the live odds' learning which team is better (that would credit early baskets twice; measured 2026-11-26: first-third
+baskets +13.9 with the learning against +9.2 without, last third +13.1 against +13.2).
 Wins added (`src/lib/winsAdded.ts`, a column and a line on both Points added cards): points added per game turned into wins against an
 average player (not a replacement level: in a league of about a dozen friends that would only single out whoever plays least). A team
 whose player adds d points over an average game (PER points) gets half plus d/(2 PER) of the scoring, and `raceWin` with the league's
@@ -289,8 +291,8 @@ everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games ar
 - Odds tab on every game page (`src/components/OddsTimeline.tsx`, `src/lib/oddsTimeline.ts`): Team A's win chance after every basket (the
   live odds, from `backtestPick` or the saved pre-game call), pinned under the header, with every basket listed below it (who, the pass,
   the score, the move in win chance, the three biggest swings marked, a Watch link when the shot has a video time). An
-  IntersectionObserver marks the basket in the middle of the screen on the chart as the list scrolls; a tap marks it too. Live-scored
-  games use their live baskets.
+  IntersectionObserver marks the basket in the middle of the screen on the chart as the list scrolls; a tap or the arrows mark it too.
+  Live-scored games use their live baskets. It is not inside a Card: `Card` has `overflow-hidden`, which stops `position: sticky`.
 - "Do the live odds mean what they say?" (`src/lib/calibration.ts`, `src/pages/leaderboard/CalibrationCard.tsx`, Models tab): the same
   moments as `liveReplay.test.ts`, grouped by how sure the odds were. On 2026-11-25 the 60-70% calls won 85% and the 80-90% calls 56%.
 - Stat entry: a new shot's defender comes from the matchups list for that shooter at that moment when it names one, else the last

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useHeaderHeight } from "@/components/PageTabs"
 import { WatchTime } from "@/components/WatchTime"
 import { bigSwings, oddsTimeline, type OddsStep } from "@/lib/oddsTimeline"
@@ -22,7 +24,7 @@ function Chart({ start, steps, at, teamA, teamB }: { start: number; steps: OddsS
   const cur = at + 1 // the point after the active basket (0 is the tip)
   const line = pts.map((p, i) => `${x(i)},${y(p)}`).join(" ")
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-32 w-full" role="img" aria-label={`Team A's win chance through the game, from ${pct(start)} at the tip. Basket ${at + 1} of ${steps.length} is marked: ${pct(pts[cur])} after it.`}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-24 w-full sm:h-32" role="img" aria-label={`Team A's win chance through the game, from ${pct(start)} at the tip. Basket ${at + 1} of ${steps.length} is marked: ${pct(pts[cur])} after it.`}>
       <text x={PAD} y={PAD + 8} fontSize="9" fill="currentColor" fillOpacity="0.75">Team A ({teamA})</text>
       <text x={PAD} y={H - PAD - 2} fontSize="9" fill="currentColor" fillOpacity="0.75">Team B ({teamB})</text>
       <line x1={PAD} x2={W - PAD} y1={y(0.5)} y2={y(0.5)} stroke="currentColor" strokeOpacity="0.25" strokeDasharray="3 3" />
@@ -46,7 +48,7 @@ function Row({ state, game, s, big, active, onPick }: { state: PooleanState; gam
       <div
         aria-current={active ? "step" : undefined}
         onClick={onPick}
-        className={cn("flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 text-left transition-colors", active ? "border-foreground bg-muted" : "border-transparent")}
+        className={cn("flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-left transition-colors", active ? "border-foreground bg-muted" : "border-transparent")}
       >
       <span className={cn("mt-1 size-2.5 shrink-0 rounded-full", TEAM[s.side].dot)} aria-hidden />
       <div className="min-w-0 flex-1">
@@ -65,7 +67,7 @@ function Row({ state, game, s, big, active, onPick }: { state: PooleanState; gam
           )}
         </div>
       </div>
-      <span className={cn("shrink-0 font-display text-lg tabular-nums", move >= 10 && "font-bold")}>+{move}</span>
+      <span className={cn("shrink-0 font-display text-base tabular-nums", move >= 10 && "font-bold")}>+{move}</span>
       </div>
     </li>
   )
@@ -93,6 +95,11 @@ export function OddsTimelineCard({ state, game }: { state: PooleanState; game: G
     el.querySelectorAll("[data-step]").forEach((r) => io.observe(r))
     return () => io.disconnect()
   }, [t])
+  // The arrows step through the baskets and bring that basket's row into view below the chart.
+  const step = (i: number) => {
+    setAt(i)
+    list.current?.querySelector(`[data-step="${i}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }
   if (!t.steps.length) return <p className="text-sm text-muted-foreground">The odds fill in as baskets are scored.</p>
   const s = t.steps[Math.min(at, t.steps.length - 1)]
   const names = (ids: string[]) => ids.map((id) => playerName(state, id)).join(", ")
@@ -101,10 +108,18 @@ export function OddsTimelineCard({ state, game }: { state: PooleanState; game: G
       <div style={{ top }} className="sticky z-10 -mx-1 rounded-xl border bg-background/95 px-3 py-2 backdrop-blur">
         <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
           <span>
-            Tip: Team A {pct(t.start)}. First to {t.target}, win by 2.
+            Tip: {pct(t.start)}. To {t.target}.
           </span>
-          <span className="font-medium text-foreground tabular-nums">
-            {s.a}-{s.b}, Team A {pct(s.after)}
+          <span className="flex items-center gap-1">
+            <Button size="icon" variant="ghost" className="size-7" aria-label="Previous basket" disabled={at === 0} onClick={() => step(at - 1)}>
+              <ChevronLeft />
+            </Button>
+            <span className="font-medium text-foreground tabular-nums">
+              {s.a}-{s.b}, Team A {pct(s.after)}
+            </span>
+            <Button size="icon" variant="ghost" className="size-7" aria-label="Next basket" disabled={at >= t.steps.length - 1} onClick={() => step(at + 1)}>
+              <ChevronRight />
+            </Button>
           </span>
         </div>
         <Chart start={t.start} steps={t.steps} at={at} teamA={names(game.teamA)} teamB={names(game.teamB)} />

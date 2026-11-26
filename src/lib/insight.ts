@@ -332,20 +332,21 @@ export function winProbAdded(state: PooleanState): Wpa {
       r.points += pace(g)
     }
     const run: [number, number] = [0, 0]
-    const count: [number, number] = [0, 0]
     const order = orderOf(g).filter((e) => made(e) && side(g, e.scorerId) !== null)
-    // With the game's target logged, each moment is the live odds (live.ts): the pre-game read from the nights before, then the race
-    // to the target as the baskets come. Without one, the game length is guessed from the median total.
+    // With the game's target logged, each moment is the race to it from the pre-game read (live.ts), on the score alone. The live screen's
+    // odds also learn which team is better as baskets come in, which is right for a prediction but would credit an early basket twice
+    // (for its points and as evidence about the teams), so the counts are left out here: late, close baskets count most. Measured
+    // 2026-11-26: with the learning, baskets in the first third of a game averaged +13.9 against +13.1 in the last third; on the score
+    // alone, +9.2 against +13.2. Without a target, the game length is guessed from the median total.
     const target = targetOf(g)
     const pre = target ? (backtestPick(g) ?? null) : null
-    const chance = (left: number) => (target ? winProbabilityFrom(run[0], run[1], target, pre, count[0], count[1]) : winChance(run[0] - run[1], left, sq))
+    const chance = (left: number) => (target ? winProbabilityFrom(run[0], run[1], target, pre) : winChance(run[0] - run[1], left, sq))
     order.forEach((e, i) => {
       const t = side(g, e.scorerId) as 0 | 1
       const left = Math.max(expectedTotal, final[0] + final[1]) - (run[0] + run[1])
       const pA = chance(left)
       const from = t === 0 ? pA : 1 - pA
       run[t] += e.points
-      count[t]++
       const pA2 = chance(left - e.points)
       const to = i === order.length - 1 ? (t === winner ? 1 : 0) : t === 0 ? pA2 : 1 - pA2
       const d = to - from

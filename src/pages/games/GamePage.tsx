@@ -474,9 +474,11 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
           <TeamsTab state={state} game={game} onOpenGame={onOpenGame} />
         </TabsContent>
         <TabsContent value="odds">
-          <Panel title="How the odds moved" hint="Team A's chance of winning after every basket. Scroll the baskets and the chart follows.">
+          {/* Not inside a Card: a card clips what overflows it, and that stops the chart from staying pinned while the list scrolls. */}
+          <section className="flex flex-col gap-2">
+            <h3 className="font-display text-base font-bold">How the odds moved</h3>
             <OddsTimelineCard state={state} game={game} />
-          </Panel>
+          </section>
         </TabsContent>
         <TabsContent value="stats">
           {!reviewed ? (
