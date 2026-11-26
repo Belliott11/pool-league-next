@@ -243,32 +243,8 @@ export function champions(state: PooleanState): { set: SeasonTeamSet; line: Team
 // ---------- the draft ----------
 
 // Whose pick it is in a snake draft: round one in order, round two reversed, and so on. Captains are already on their teams.
-export function onTheClock(set: SeasonTeamSet): SeasonTeam | null {
-  const n = set.teams.length
-  if (!n) return null
-  const picked = set.teams.reduce((k, t) => k + t.members.filter((m) => m !== t.captain).length, 0)
-  const round = Math.floor(picked / n)
-  const slot = picked % n
-  return set.teams[round % 2 === 0 ? slot : n - 1 - slot]
-}
-
-export function draftPick(set: SeasonTeamSet, pid: string): SeasonTeamSet {
-  const t = onTheClock(set)
-  if (!t || set.teams.some((x) => x.members.includes(pid))) return set
-  return { ...set, teams: set.teams.map((x) => (x.id === t.id ? { ...x, members: [...x.members, pid] } : x)) }
-}
-
-// Takes back the last pick (never a captain).
-export function undoPick(set: SeasonTeamSet): SeasonTeamSet {
-  const n = set.teams.length
-  const picked = set.teams.reduce((k, t) => k + t.members.filter((m) => m !== t.captain).length, 0)
-  if (!picked) return set
-  const last = picked - 1
-  const round = Math.floor(last / n)
-  const slot = last % n
-  const t = set.teams[round % 2 === 0 ? slot : n - 1 - slot]
-  return { ...set, teams: set.teams.map((x) => (x.id === t.id ? { ...x, members: x.members.slice(0, -1) } : x)) }
-}
+// The snake draft itself lives in seasonDraft.ts, shared with the season-draft edge function.
+export { draftPick, onTheClock, picksMade, undoPick } from "@/lib/seasonDraft"
 
 // The first round's order: the weakest captain (by power ranking) picks first, so with the snake the strongest captain picks last in
 // round one and first in round two. A captain is a free first pick, and this evens out most of the head start. Ties go by name order.

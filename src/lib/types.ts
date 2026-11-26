@@ -202,4 +202,9 @@ export interface SeasonTeamSet {
   // Trades and newcomers after the draft: who moved, from which team (null: new) to which (null: left), from what date. A player's
   // nights count for the team they were on that night.
   moves?: { pid: string; from: string | null; to: string | null; date: string }[]
+  // Game nights planned for the season, for the title odds (titleOdds.ts). Unset: DEFAULT_NIGHTS.
+  nights?: number
+  // Phone draft: each captain's link key, hashed (sha-256 hex) so the public league data cannot be used to pick. Set by the editor.
+  captainKeys?: Record<string, string>
+  lastPickAt?: string
 }

@@ -7,6 +7,7 @@ import { formatDateDisplay } from "@/lib/format"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { castVote, liveOpenForVotes, loadVotes, openForVotes, pickemStandings, type Vote } from "@/lib/pickem"
 import { playerName } from "@/lib/players"
+import { PropStandings } from "./Props"
 import type { Side } from "@/lib/scorecard"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -30,7 +31,7 @@ export function PickEmCard({ state }: { state: PooleanState }) {
   }, [refresh, open.length])
   if (!client) return null
   const standings = pickemStandings(state, votes)
-  if (open.length === 0 && standings.rows.length === 0) return null
+  if (open.length === 0 && standings.rows.length === 0) return <PropOnly state={state} />
   const mine = (gameId: string) => votes.find((v) => v.gameId === gameId && v.voter === me)?.pick
   const vote = async (gameId: string, pick: Side) => {
     if (!me || busy) return
@@ -97,6 +98,16 @@ export function PickEmCard({ state }: { state: PooleanState }) {
           </ul>
         </div>
       )}
+      <PropStandings state={state} />
+    </section>
+  )
+}
+
+// With no Pick'em games yet, the points-lines standings can still show on their own.
+function PropOnly({ state }: { state: PooleanState }) {
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border bg-card p-4 empty:hidden" aria-label="Points lines">
+      <PropStandings state={state} />
     </section>
   )
 }

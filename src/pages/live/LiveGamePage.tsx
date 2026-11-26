@@ -24,6 +24,7 @@ import { liveScoreOf } from "@/lib/stats"
 import { useSwipeSteps } from "@/lib/useSwipe"
 import { LiveOdds } from "./LiveOdds"
 import { LivePickem } from "@/pages/games/PickEm"
+import { LiveProps } from "@/pages/games/Props"
 import type { Update } from "@/lib/store"
 import type { Game, PooleanState } from "@/lib/types"
 import { TEAM } from "@/lib/teamColors"
@@ -387,6 +388,7 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
         <TeamColumn side="B" ids={game.teamB} total={b} other={a} {...col} />
       </div>
       <LivePickem state={state} game={game} />
+      <LiveProps state={state} game={game} />
       <LiveOdds game={game} />
       {game.streamUrl && <LiveStream url={game.streamUrl} control={stream} />}
       <StreamLink current={game.streamUrl} onSave={(url) => (update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, streamUrl: url } : g)) })), true)} />

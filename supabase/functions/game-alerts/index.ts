@@ -4,12 +4,16 @@
 //                   call can only send what is true and not yet sent. "Game on" waits a minute (LIVE_DELAY_MS) and is sent only if
 //                   the game is still live and not marked as a test by then, so a game started by mistake can be discarded first.
 //                   Test games (game.test) never send anything.
+//                   A "Final" also names up to two milestones reached in that game (milestones.ts, a copy of the site's own, with the
+//                   old site's results in old-results.json from scripts/old-results.mjs).
 //   GET ?key=1      the site's public signing key, which a phone needs to turn alerts on.
 //   POST {hello}    a "you're set" notification to a phone that just turned alerts on (once per phone, and only a saved one).
 // The signing key is made here on first use and kept in push_vapid, which only this function can read.
 // In Supabase: Verify JWT is off (the trigger and visitors are not signed in). SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY come from Supabase.
 import { createClient } from "npm:@supabase/supabase-js@2"
 import { b64u, send, type Subscription, type Vapid } from "./webpush.ts"
+import { milestoneBook, reachedIn, type MGame, type OldResult } from "./milestones.ts"
+import oldResults from "./old-results.json" with { type: "json" }
 
 const SITE = "https://intel.poolean.net/"
 const FINAL_WITHIN_MS = 3 * 3600 * 1000 // a game that ended longer ago than this is not news
@@ -44,12 +48,20 @@ function alertsDue(state: State): { id: string; kind: "live" | "final"; title: s
   const names = (ids: string[]) => ids.map(name).join(", ")
   const score = (g: Game, team: string[]) => [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])].filter((s) => team.includes(s.pid)).reduce((n, s) => n + s.points, 0)
   const out: { id: string; kind: "live" | "final"; title: string; body: string; url: string }[] = []
+  let book: ReturnType<typeof milestoneBook> | null = null
+  const reached = (gameId: string) => {
+    book ??= milestoneBook(state.games as unknown as MGame[], oldResults as OldResult[])
+    return reachedIn(book, gameId)
+      .slice(0, 2)
+      .map((m) => ` ${name(m.pid)}: ${m.label.charAt(0).toLowerCase()}${m.label.slice(1)}.`)
+      .join("")
+  }
   for (const g of state.games ?? []) {
     if (g.test) continue
     if (g.liveInProgress) out.push({ id: g.id, kind: "live", title: "Game on", body: `${names(g.teamA)} vs ${names(g.teamB)}. Tap to watch and vote.`, url: `${SITE}#/games/live` })
     else if ((g.winner === "A" || g.winner === "B") && g.endedAt && Date.now() - Date.parse(g.endedAt) < FINAL_WITHIN_MS) {
       const [w, l] = g.winner === "A" ? [g.teamA, g.teamB] : [g.teamB, g.teamA]
-      out.push({ id: g.id, kind: "final", title: `Final: ${score(g, w)} to ${score(g, l)}`, body: `${names(w)} beat ${names(l)}.`, url: `${SITE}#/games/game/${encodeURIComponent(g.id)}` })
+      out.push({ id: g.id, kind: "final", title: `Final: ${score(g, w)} to ${score(g, l)}`, body: `${names(w)} beat ${names(l)}.${reached(g.id)}`, url: `${SITE}#/games/game/${encodeURIComponent(g.id)}` })
     }
   }
   return out

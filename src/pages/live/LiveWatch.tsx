@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { Confetti, useScorePops, type Pop } from "./LiveGamePage"
 import { LiveOdds } from "./LiveOdds"
 import { LivePickem } from "@/pages/games/PickEm"
+import { LiveProps } from "@/pages/games/Props"
 import { getClient } from "@/lib/cloud"
 import { Scorekeeper, ViewerSetup } from "./Scorekeeper"
 import { TvBoard } from "./TvBoard"
@@ -142,6 +143,7 @@ export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; on
         </p>
       )}
       {isLive && <LivePickem state={state} game={game} />}
+      {isLive && <LiveProps state={state} game={game} />}
       {isLive && <LiveOdds game={game} />}
       {isLive && <StreamLink current={game.streamUrl} onSave={async (url) => (await setStream(game.id, url)).ok} />}
       {isLive && <ReviewThat count={(game.reviews ?? []).length} onFlag={async (at, note) => (await flagReview(game.id, at, note, myPlayerId(who, state.players), game.streamUrl ? stream.current?.time() : null)).ok} />}

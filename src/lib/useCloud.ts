@@ -164,6 +164,8 @@ export function useCloud() {
     }
   }, [evaluateSession, refresh, attempt])
 
+  // A season team draft running (captains pick from their phones): poll as fast as during a live game.
+  const drafting = !!remote?.state.seasonTeamSets?.some((s) => s.drafting)
   const adminPoll = useCallback(async () => {
     const c = clientRef.current
     if (!c || pending.current || inflight.current) return
@@ -181,11 +183,19 @@ export function useCloud() {
   useEffect(() => {
     if (status !== "ready" || !admin) return
     // Quick while a game is live (friends add baskets); slow otherwise, to notice games others started or finished.
-    const id = setInterval(() => void adminPoll(), watchLive ? 6_000 : 20_000)
+    const id = setInterval(() => void adminPoll(), watchLive || drafting ? 6_000 : 20_000)
     return () => clearInterval(id)
-  }, [status, admin, watchLive, adminPoll])
+  }, [status, admin, watchLive, drafting, adminPoll])
 
-  const liveNow = !!remote?.state.games.some((g) => g.liveInProgress)
+  // A pick from the draft room asks for the fresh copy at once (draftRoom.ts).
+  useEffect(() => {
+    if (status !== "ready") return
+    const now = () => void (admin ? adminPoll() : refresh())
+    window.addEventListener("poolean:refresh", now)
+    return () => window.removeEventListener("poolean:refresh", now)
+  }, [status, admin, adminPoll, refresh])
+
+  const liveNow = !!remote?.state.games.some((g) => g.liveInProgress) || drafting
   // Viewers pick up the editor's changes: every minute, and whenever the tab comes back into view.
   useEffect(() => {
     if (status !== "ready" || admin) return

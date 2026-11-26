@@ -84,7 +84,7 @@ export function GamesPage({
   }
 
   if (kind === "teams") {
-    return <Lazy><SeasonTeamsPage state={state} update={update} onBack={goBack} onOpenPlayer={onOpenPlayer} onOpenGame={open} /></Lazy>
+    return <Lazy><SeasonTeamsPage state={state} update={update} onBack={goBack} onOpenPlayer={onOpenPlayer} onOpenGame={open} link={arg || undefined} onLinked={() => go("teams", true)} /></Lazy>
   }
 
   if (kind === "how") {

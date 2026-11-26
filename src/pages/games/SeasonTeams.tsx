@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react"
-import { Shield, Undo2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Check, Copy, Shield, Smartphone, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,8 @@ import { useReadOnly } from "@/lib/mode"
 import { playerName } from "@/lib/players"
 import { captainOrder, currentSet, draftPick, MIN_COUNTED, movePlayer, newSet, nextNewcomerTeam, undoMove, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
 import { powerOf } from "@/lib/matchup"
+import { DEFAULT_NIGHTS, titleOdds } from "@/lib/titleOdds"
+import { makeCaptainLinks, parseCaptainLink, saveCaptainLink, savedCaptainLink, sendPick, sendUndo, type CaptainLink } from "@/lib/draftRoom"
 import type { Update } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import type { Game, PooleanState, SeasonTeamSet } from "@/lib/types"
@@ -88,8 +90,110 @@ function Setup({ state, update }: { state: PooleanState; update: Update }) {
 
 // ---------- the draft ----------
 
-function Draft({ state, set, update, readOnly }: { state: PooleanState; set: SeasonTeamSet; update: Update; readOnly: boolean }) {
+// How long the team on the clock has had the pick, ticking.
+function PickClock({ since }: { since?: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  if (!since) return null
+  const s = Math.max(0, Math.floor((now - Date.parse(since)) / 1000))
+  return <span className="tabular-nums">, on the clock for {Math.floor(s / 60)}:{String(s % 60).padStart(2, "0")}</span>
+}
+
+// The editor's captain links for the draft room: one per team, made fresh (which turns off any older ones), with Copy or Share each.
+function CaptainLinks({ state, set, update }: { state: PooleanState; set: SeasonTeamSet; update: Update }) {
+  const [links, setLinks] = useState<{ teamId: string; url: string }[]>([])
+  const [copied, setCopied] = useState("")
+  const on = !!set.captainKeys
+  const make = async () => {
+    if (on && !confirm("Make new captain links? The links sent before stop working.")) return
+    const r = await makeCaptainLinks(set)
+    update((s) => putSet(s, { ...set, captainKeys: r.keys, lastPickAt: set.lastPickAt ?? new Date().toISOString() }))
+    setLinks(r.links)
+  }
+  const share = async (url: string, team: string) => {
+    const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> }
+    if (nav.share) {
+      try {
+        await nav.share({ title: `${team} draft link`, url })
+        return
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(url)
+      setTimeout(() => setCopied(""), 2000)
+    } catch {
+      /* nothing more to try */
+    }
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+      <p className="flex items-center gap-2 font-medium">
+        <Smartphone aria-hidden className="size-4" /> Draft room: captains pick from their own phones
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Send each captain their own link. It only lets them pick for their team, only on their turn. Everyone else can watch this page. You can still pick or take a pick back here.
+      </p>
+      {links.length > 0 && (
+        <ul className="flex flex-col gap-1.5">
+          {links.map((l) => {
+            const team = set.teams.find((t) => t.id === l.teamId)!
+            return (
+              <li key={l.teamId} className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  <TeamChip team={team} />
+                  {team.captain ? <span className="text-muted-foreground"> {playerName(state, team.captain)}</span> : null}
+                </span>
+                <Button size="sm" variant="outline" onClick={() => void share(l.url, team.name)}>
+                  {copied === l.url ? <Check aria-hidden /> : <Copy aria-hidden />} {copied === l.url ? "Copied" : "Send link"}
+                </Button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {on && !links.length && <p className="text-xs">Captain links are on. Links are shown only when made; make new ones if one went missing.</p>}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant={on ? "outline" : "default"} onClick={() => void make()}>
+          {on ? "Make new captain links" : "Make captain links"}
+        </Button>
+        {on && (
+          <Button size="sm" variant="ghost" onClick={() => (update((s) => putSet(s, { ...set, captainKeys: undefined })), setLinks([]))}>
+            Turn off captain links
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Draft({ state, set, update, readOnly, captain }: { state: PooleanState; set: SeasonTeamSet; update: Update; readOnly: boolean; captain: CaptainLink | null }) {
   const clock = onTheClock(set)
+  const [err, setErr] = useState("")
+  const [busy, setBusy] = useState(false)
+  const phone = !!set.captainKeys // picks go through the draft room function, so captains' and the editor's picks never collide
+  const mine = captain && captain.setId === set.id ? set.teams.find((t) => t.id === captain.teamId) ?? null : null
+  const myTurn = !!mine && clock?.id === mine.id
+  const canPick = (!readOnly || myTurn) && !busy
+  const pick = async (pid: string, name: string) => {
+    if (readOnly && !confirm(`Pick ${name} for ${mine?.name}?`)) return
+    if (!phone && !readOnly) return save({ ...draftPick(set, pid), lastPickAt: new Date().toISOString() })
+    setBusy(true)
+    const e = await sendPick(set.id, pid, readOnly ? captain : null)
+    setErr(e ?? "")
+    setBusy(false)
+  }
+  const undo = async () => {
+    if (!phone) return save({ ...undoPick(set), lastPickAt: new Date().toISOString() })
+    setBusy(true)
+    setErr((await sendUndo(set.id)) ?? "")
+    setBusy(false)
+  }
   const taken = new Set(set.teams.flatMap((t) => t.members))
   // Most games first, so the regulars are at the top of the board.
   const pool = useMemo(
@@ -113,7 +217,8 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
             {clock ? (
               <>
                 On the clock: <TeamChip team={clock} />
-                {clock.captain ? ` (${playerName(state, clock.captain)} picks)` : ""}. Pick {picks + 1}.
+                {clock.captain ? ` (${playerName(state, clock.captain)} picks)` : ""}
+                <PickClock since={set.lastPickAt} />. Pick {picks + 1}.
               </>
             ) : (
               "Everyone has been picked."
@@ -121,11 +226,21 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
-          {!readOnly && pool.length > 0 && (
+          {mine && (
+            <p className={cn("rounded-lg border p-2 font-medium", myTurn && "border-primary bg-primary/10")} role="status">
+              {myTurn ? `Your pick for ${mine.name}. Tap a player below.` : `You are drafting for ${mine.name}. The board unlocks when it is your turn.`}
+            </p>
+          )}
+          {err && (
+            <p role="alert" className="text-sm text-destructive">
+              {err}
+            </p>
+          )}
+          {(!readOnly || mine) && pool.length > 0 && (
             <ul className="flex flex-wrap gap-1.5" aria-label="Players still to pick">
               {pool.map(({ p, games, power }) => (
                 <li key={p.id}>
-                  <Button size="sm" variant="outline" onClick={() => save(draftPick(set, p.id))}>
+                  <Button size="sm" variant="outline" disabled={!canPick} onClick={() => void pick(p.id, p.name)}>
                     {p.name}
                     <span className="text-xs text-muted-foreground">{power !== null ? `${Math.round(power)} rank, ` : ""}{games} games</span>
                   </Button>
@@ -133,10 +248,10 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
               ))}
             </ul>
           )}
-          {readOnly && <p className="text-muted-foreground">The editor is running the draft. Picks show up here as they happen.</p>}
+          {readOnly && !mine && <p className="text-muted-foreground">The draft is on. Picks show up here as they happen.</p>}
           {!readOnly && (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" disabled={!picks} onClick={() => save(undoPick(set))}>
+              <Button size="sm" variant="outline" disabled={!picks || busy} onClick={() => void undo()}>
                 <Undo2 aria-hidden /> Undo last pick
               </Button>
               <Button size="sm" onClick={() => save({ ...set, drafting: false })}>
@@ -154,6 +269,7 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
             </p>
           )}
           {!readOnly && <p className="text-xs text-muted-foreground">Players who are not picked simply have no season team. Finish whenever the picks you want are in.</p>}
+          {!readOnly && <CaptainLinks state={state} set={set} update={update} />}
         </CardContent>
       </Card>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -190,6 +306,67 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
 }
 
 // ---------- standings ----------
+
+const pct = (p: number) => (p > 0 && p < 0.005 ? "<1%" : p < 1 && p > 0.995 ? ">99%" : `${Math.round(p * 100)}%`)
+
+// Each team's chance of finishing first, from playing out the nights left (src/lib/titleOdds.ts).
+function TitleOddsCard({ state, set, editor, update }: { state: PooleanState; set: SeasonTeamSet; editor: boolean; update: Update }) {
+  const t = useMemo(() => titleOdds(state, set), [state, set])
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-display">Title odds</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {t.left === 0
+            ? "The season is over."
+            : `${t.played} of ${t.planned} nights played. Each team's chance of finishing first, from playing out the ${t.left} ${t.left === 1 ? "night" : "nights"} left 4,000 times.`}
+        </p>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2 text-sm">
+        <ul className="flex flex-col gap-2">
+          {t.lines.map((l) => (
+            <li key={l.team.id} className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <TeamChip team={l.team} />
+                <span className="tabular-nums">
+                  <span className="font-display text-base font-bold">{pct(l.odds)}</span>
+                  {l.change !== null && Math.abs(l.change) >= 0.005 && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {l.change > 0 ? "up" : "down"} {Math.round(Math.abs(l.change) * 100)} since last night
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
+                <div className="h-full rounded-full" style={{ width: `${Math.max(1, l.odds * 100)}%`, background: l.team.color }} />
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          A team's nights so far say how good it is, leaned toward the league's average by 3 nights, so one big night does not settle it. Each night left is drawn
+          around that, as spread out as real nights have been.
+        </p>
+        {editor && (
+          <label className="flex flex-wrap items-center gap-2 text-xs">
+            <span>Nights planned this season</span>
+            <Input
+              type="number"
+              min={Math.max(1, t.played)}
+              max={60}
+              className="h-8 w-20"
+              value={set.nights ?? DEFAULT_NIGHTS}
+              onChange={(e) => {
+                const n = Math.round(Number(e.target.value))
+                if (n >= 1 && n <= 60) update((st) => putSet(st, { ...set, nights: n }))
+              }}
+            />
+          </label>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 const today = () => new Date().toLocaleDateString("en-CA")
 
@@ -305,6 +482,7 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
   const teamName = (id: string | null) => (id ? (set.teams.find((t) => t.id === id)?.name ?? "a team") : null)
   return (
     <div className="flex flex-col gap-4">
+      <TitleOddsCard state={state} set={set} editor={editor} update={update} />
       <Card>
         <CardHeader>
           <CardTitle className="font-display">Standings</CardTitle>
@@ -426,9 +604,18 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
   )
 }
 
-export function SeasonTeamsPage({ state, update, onBack, onOpenPlayer, onOpenGame }: { state: PooleanState; update: Update; onBack: () => void; onOpenPlayer: (id: string) => void; onOpenGame: (g: Game) => void }) {
+export function SeasonTeamsPage({ state, update, onBack, onOpenPlayer, onOpenGame, link, onLinked }: { state: PooleanState; update: Update; onBack: () => void; onOpenPlayer: (id: string) => void; onOpenGame: (g: Game) => void; link?: string; onLinked?: () => void }) {
   const readOnly = useReadOnly()
   const set = currentSet(state)
+  // A captain's link (#/games/teams/<set>.<team>.<key>): keep it on this phone, then show the page at its plain address.
+  const [captain, setCaptain] = useState<CaptainLink | null>(() => savedCaptainLink())
+  useEffect(() => {
+    const l = link ? parseCaptainLink(link) : null
+    if (!l) return
+    saveCaptainLink(l)
+    setCaptain(l)
+    onLinked?.()
+  }, [link, onLinked])
   const openGame = (id: string) => {
     const g = state.games.find((x) => x.id === id)
     if (g) onOpenGame(g)
@@ -450,7 +637,7 @@ export function SeasonTeamsPage({ state, update, onBack, onOpenPlayer, onOpenGam
           <Setup state={state} update={update} />
         )
       ) : set.drafting ? (
-        <Draft state={state} set={set} update={update} readOnly={readOnly} />
+        <Draft state={state} set={set} update={update} readOnly={readOnly} captain={captain} />
       ) : (
         <Standings state={state} set={set} onOpenPlayer={onOpenPlayer} onOpenGame={openGame} editor={!readOnly} update={update} />
       )}

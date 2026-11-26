@@ -324,6 +324,32 @@ the Player page's At a glance card (`src/components/TeamChip.tsx`), a rivalry ba
 live start screen (fills both pickup teams from two season teams), "Season team champions" in the Hall of Fame (`champions`) and the
 player's team finish in Season Wrapped's awards slide.
 
+## Title odds, draft room, props, milestones
+
+- Title odds (`src/lib/titleOdds.ts`, a card at the top of the Season teams standings): each team's chance of finishing first, from
+  4,000 seeded runs of the nights left. A team's level is its nights so far leaned on the league's average by 3 nights; each simulated
+  night adds the night-to-night spread seen across all teams' nights. "Up/down since last night" reruns it without the latest night.
+  Season length is `set.nights` (editor's "Nights planned this season", default `DEFAULT_NIGHTS` 12).
+- Draft room (`src/lib/draftRoom.ts`, the `season-draft` edge function, verify JWT off): the editor's "Make captain links" gives each
+  team a link `#/games/teams/<set>.<team>.<key>`; the league data keeps only each key's sha-256 (`set.captainKeys`), so the public data
+  cannot be used to pick. A captain's phone saves its link (localStorage `seasonCaptainLink`); the board unlocks on that team's turn.
+  The function checks the key and the turn, or a signed-in editor (its own token, checked against `admins`), and only places or takes
+  back picks (`undo` is editor-only). With captain links on, the editor's own picks also go through it, so picks never collide. The snake
+  is `src/lib/seasonDraft.ts`, a byte-for-byte copy in the function (`draftRoom.test.ts` checks). `src/lib/draft.ts` is something else
+  (the pickup-team draft helper). Pages poll every 6 to 10 s while a set is drafting, and a pick asks for a refresh at once
+  (`poolean:refresh` event in useCloud). `set.lastPickAt` drives the pick clock. Refusals checked live 2026-11-26; a real pick has not been
+  run against live data (it would write to it).
+- Points lines (`src/lib/props.ts`, `src/pages/games/Props.tsx`): over or under each player's points in a live game, on both live screens
+  under "Who wins this one?", until the first basket. Picks are phone-owned like Pick'em (`prop_picks`, `cast_prop_pick` in
+  `supabase/props.sql`), which refuses a pick on yourself, on a test game, or once the game has a basket. A line is points per point of
+  target over earlier games, leaned on the league's rate by 3 games, times the game's target, rounded down to a half; standings (in the
+  Pick'em card) score against the line worked out again from the data, never the line a phone sent. Backed up nightly with the rest.
+- Milestones (`src/lib/milestones.ts`, `src/components/Milestones.tsx` on the Player page's History tab): career points, 3s, assists,
+  wins and games, win streaks, first 10/15-point and 5-assist games, each dated to its game, plus "Next up". Results come from the old
+  site's list up to its last date, then this site's games; points, 3s and assists from this site's games. The `game-alerts` function
+  (version 4) adds up to two milestones from the game to its "Final" alert, using a byte-for-byte copy of the file and
+  `old-results.json` (`node scripts/old-results.mjs` after the old results change; `milestones.test.ts` checks both).
+
 ## Live win probability
 
 `src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:

@@ -33,6 +33,7 @@ import { IconChip } from "@/components/IconChip"
 import { panelIcon, sectionIcon } from "@/lib/panelIcons"
 import { PlayerGlance } from "@/pages/PlayerGlance"
 import { PageTabs, TabGroup, useJumpTab } from "@/components/PageTabs"
+import { PlayerMilestones } from "@/components/Milestones"
 import { syncLegacy } from "@/lib/legacy"
 import {
   PLAYER_PANELS,
@@ -314,6 +315,7 @@ export function PlayerDetailPage({
               {k === "passing" && <PlayerInsight state={season} pid={pid} />}
               {k === "trends" && (
                 <>
+                  <PlayerMilestones state={state} pid={pid} />
                   <PlayerGameFlow state={season} pid={pid} />
                   <PlayerOldSite state={state} pid={pid} />
                 </>
