@@ -471,6 +471,18 @@ one, else the top of the standings.
   drawable on the live site, where the bucket's CORS allows it), the player of the night (MVP with a box score, else the top scorer),
   every result and the address. Shared as a file, else downloaded.
 
+## Does the weather change the game? (2026-11-26)
+
+`src/lib/weatherGame.ts`, card `src/components/WeatherCard.tsx` on the Leaderboard's Trends tab. Each filmed game gets the weather of its
+hour (`startedAt` for live-scored games, else the night's 5 to 9 PM average; past recordings have no start time) from
+`src/data/night-weather.json`, which `scripts/night-weather.mjs` fills from Open-Meteo (archive after about five days, the forecast
+service's recent past before that, refetched from the archive later) and `.github/workflows/night-weather.yml` commits every morning.
+The archive host is blocked in cloud sessions, so run the workflow from the Actions tab rather than the script here. Games split at the
+median temperature (warmer against cooler) and at half cloud cover (sunnier against cloudier): field goal percentage, points per shot,
+share of 3s; a gap counts only past twice its standard error with 2+ nights a side. Players at 10+ shots each side, leaned toward no
+difference by 20 shots. Visitors see it from `MIN_NIGHTS` (6) filmed nights; the editor sees a preview before that. On 2026-11-26 only 3
+nights were filmed (the old site's results have no scores), so it says nothing yet. `src/lib/heat.ts` is unrelated (heat-map cell tints).
+
 ## Live win probability
 
 `src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:

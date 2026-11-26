@@ -1,0 +1,37 @@
+name: Save game-night weather
+
+# Saves each game night's hourly weather (scripts/night-weather.mjs) into src/data/night-weather.json and commits it, for the
+# "Does the weather change the game?" card. Runs every morning, and by hand from the Actions tab.
+on:
+  schedule:
+    - cron: "41 11 * * *" # 6:41 AM Eastern (7:41 in summer)
+  workflow_dispatch:
+
+permissions:
+  contents: write # commit the updated file
+
+concurrency:
+  group: night-weather
+  cancel-in-progress: false
+
+jobs:
+  weather:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node scripts/night-weather.mjs
+      - name: Commit the weather
+        run: |
+          if [ -z "$(git status --porcelain src/data/night-weather.json)" ]; then
+            echo "No new weather."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add src/data/night-weather.json
+          git commit -m "Game-night weather"
+          git pull --rebase -q
+          git push

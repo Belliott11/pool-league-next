@@ -25,6 +25,7 @@ import { FatiguePanel } from "./leaderboard/FatiguePanel"
 import { ThreeWorth } from "@/components/ThreeWorth"
 import { PointsAddedCard } from "@/components/PointsAdded"
 import { RuleChangeCard } from "@/components/RuleChanges"
+import { WeatherCard } from "@/components/WeatherCard"
 import { CalibrationCard } from "./leaderboard/CalibrationCard"
 
 // The classic Leaderboard tab's groups. The page shows them in tabs after Overview (TABS below).
@@ -112,6 +113,7 @@ export function LeaderboardPage({
       <TabGroup key={k} id={`lb-section-${k}`} title={groups.length > 1 ? sectionTitle(k) : null} icon={sectionIcon(k)} teaser={k === "defense" ? DEFENSE_TEASER : (teasers[k] ?? "")}>
         {k === "shooting" && <ThreeWorth state={state} onOpenPlayer={onOpenPlayer} />}
         {k === "comparison" && <RuleChangeCard state={state} />}
+        {k === "comparison" && <WeatherCard state={state} />}
         {k === "style" && <CalibrationCard state={state} />}
         <LegacyPanels state={season} section={k} onOpenPlayer={onOpenPlayer} version={version} />
         {k === "situational" && <FatiguePanel state={state} onOpenPlayer={onOpenPlayer} />}
