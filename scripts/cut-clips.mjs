@@ -60,7 +60,7 @@ const needPoster = plan.filter((c) => c.shareable && (!shares[c.id] || shares[c.
 // A shareable clip that knows where the play is (a follow path, or the editor's crop) also gets a vertical video for Instagram stories and
 // reels: 9:16, following the play across, with sound and a caption. Made again when the cut changes or VERTICAL_STYLE is bumped.
 const VERTICAL_STYLE = 2
-const canVertical = (c) => c.shareable && (c.follow || c.frameX !== null)
+const canVertical = (c) => c.shareable && !c.still && (c.follow || c.frameX !== null) // a still is a picture, never a video
 const needVertical = plan.filter((c) => canVertical(c) && (manifest[c.key] || todo.includes(c)) && (!shares[c.id]?.vertical || shares[c.id].key !== c.key || shares[c.id].vstyle !== VERTICAL_STYLE))
 if (!dry && (todo.length || needPoster.length || needVertical.length) && !account) {
   const list = api("/accounts").result

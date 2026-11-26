@@ -53,7 +53,7 @@ function Card({ state, game, clip, review, save, makeStill, followMode }: { stat
   return (
     <li className="@container flex flex-col gap-3 border-t pt-3">
       <div className="grid gap-3 @3xl:grid-cols-[minmax(0,28rem)_1fr]">
-        <CutPreview state={state} game={game} time={at} frame={frame} track={track} onTrack={clip.kind === "still" ? undefined : setTrack} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} onStillFrom={makeStill && ((t) => makeStill({ ...clip, time: t, kind: "still", label: "Moment", from: undefined, to: undefined, score: 18 }))} />
+        <CutPreview state={state} game={game} time={at} frame={frame} track={track} onTrack={clip.kind === "still" ? undefined : setTrack} from={from} to={to} still={clip.kind === "still"} onFrom={setFrom} onTo={setTo} onTime={setAt} onStillFrom={makeStill && ((t) => makeStill({ ...clip, time: t, kind: "still", label: "Still", from: undefined, to: undefined, score: 18 }))} />
         <div className="flex min-w-0 flex-col gap-2 text-sm">
           <p className="text-sm font-medium">{original(state, game, clip)}</p>
           <p className="text-xs text-muted-foreground">{done ? `${done}. Change it below and save again.` : still ? (review ? "A still you picked, saved." : "Not saved yet. Press Save this still to keep it.") : "Not reviewed yet."}</p>
@@ -120,7 +120,7 @@ function StillPicker({ state, game, pick }: { state: PooleanState; game: Game; p
             {people.map((id) => <option key={id} value={id}>{playerName(state, id)}</option>)}
           </select>
         </label>
-        <Button size="sm" disabled={!who} onClick={() => video.current && (pick({ gameId: game.id, date: game.date, time: video.current.currentTime, playerId: who, kind: "still", label: "Moment", score: 18 }), setAdded(true))}>Start a still from this frame</Button>
+        <Button size="sm" disabled={!who} onClick={() => video.current && (pick({ gameId: game.id, date: game.date, time: video.current.currentTime, playerId: who, kind: "still", label: "Still", score: 18 }), setAdded(true))}>Start a still from this frame</Button>
         {added && <span className="text-xs text-muted-foreground">A still card is at the top of the list below. Press Save this still there.</span>}
       </div>
     </div>

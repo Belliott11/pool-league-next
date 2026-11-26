@@ -59,7 +59,7 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
             <video ref={video} muted playsInline preload="none" className={playing ? "size-full object-cover" : "hidden"} aria-label={`${clip.label}, ${name}`} />
           </>
         ) : null}
-        {!playing && (
+        {!playing && clip.kind !== "still" && (
           <button type="button" onClick={file ? play : () => setPlaying(true)} className="absolute inset-0 grid place-items-center bg-black/10 text-white transition-colors hover:bg-black/25 focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary" aria-label={`Play: ${clip.label}, ${name}`}>
             <span className="grid size-12 place-items-center rounded-full bg-black/55 backdrop-blur-sm">
               <Play className="size-5 translate-x-px fill-current" />
@@ -74,7 +74,7 @@ export function ClipTile({ state, clip, className, caption = true }: { state: Po
             <span className="block truncate font-medium">{clip.label}</span>
             <span className="block truncate text-xs text-muted-foreground">{name}, {formatDateDisplay(clip.date)}</span>
           </span>
-          {id && verticalOf(id) && <VerticalClip url={verticalOf(id)!} title={`${clip.label}, ${name}`} />}
+          {id && clip.kind !== "still" && verticalOf(id) && <VerticalClip url={verticalOf(id)!} title={`${clip.label}, ${name}`} />}
           {id && <ShareClip id={id} title={`${clip.label}, ${name}`} />}
         </figcaption>
       )}

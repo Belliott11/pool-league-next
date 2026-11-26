@@ -17,7 +17,7 @@ const planFile = process.env.CLIP_PLAN
 describe.skipIf(!stateFile || !planFile)("clip cut plan", () => {
   it("lists every clip's cut", () => {
     const state = JSON.parse(readFileSync(stateFile!, "utf8")) as PooleanState
-    type Entry = { key: string; url: string; start: number; end: number; id: string; time: number; title: string; score: number; shareable: boolean; follow: ReturnType<typeof cutPath>; date: string; frameX: number | null }
+    type Entry = { key: string; url: string; start: number; end: number; id: string; time: number; title: string; score: number; shareable: boolean; follow: ReturnType<typeof cutPath>; date: string; frameX: number | null; still: boolean }
     const plan = new Map<string, Entry>()
     for (const g of state.games) {
       const url = gameVideoUrl(state, g)
@@ -28,7 +28,7 @@ describe.skipIf(!stateFile || !planFile)("clip cut plan", () => {
         const id = clipId(cutKey(url, w)) // share links stay the same whether or not a clip is followed
         // The picture for a share link is the moment of the play; where two clips share a cut, the better one names it.
         const prev = plan.get(key)
-        if (!prev || c.score > prev.score) plan.set(key, { key, url: url.split("#")[0], ...w, id, follow: cutPath(c), date: c.date, frameX: c.frame && c.frame.z > 1.02 ? c.frame.x : null, time: c.time, title: `${c.kind === "marked" ? "Highlight" : c.kind === "still" ? "Moment" : c.label}, ${playerName(state, c.playerId)}`, score: c.score, shareable: !c.rough?.length })
+        if (!prev || c.score > prev.score) plan.set(key, { key, url: url.split("#")[0], ...w, id, follow: cutPath(c), date: c.date, frameX: c.frame && c.frame.z > 1.02 ? c.frame.x : null, still: c.kind === "still", time: c.time, title: `${c.kind === "marked" ? "Highlight" : c.kind === "still" ? "Moment" : c.label}, ${playerName(state, c.playerId)}`, score: c.score, shareable: !c.rough?.length })
       }
     }
     writeFileSync(planFile!, JSON.stringify([...plan.values()], null, 1))
