@@ -241,7 +241,8 @@ The league check is how often the other team answers after one basket against af
 toward finding momentum (stronger teams have more runs), while splitting it per game leans the other way (the hot-hand trap). On
 2026-11-25: 54% against 52%, no sign of momentum. The hot hand is checked against each player's own shots shuffled within each game
 (the basket that ends a game is left out). The game page's Shots tab has "Was that run real?" (`src/components/RunCheck.tsx`), under "Replay the game"
-(`src/components/GameReplay.tsx`, `src/lib/replay.ts`): every shot in order on the court (filled for a make, a ring for a miss, team
+(`src/components/GameReplay.tsx`, `src/lib/replay.ts`): every shot in order on a two-way court (Team A attacks the bottom basket,
+Team B the top one, its spots turned round) (filled for a make, a ring for a miss, team
 colours), the score after it, play at 1x or 2x, step, a slider and a Watch link.
 
 ## Rulebook and rule changes

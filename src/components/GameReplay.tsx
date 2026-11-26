@@ -8,14 +8,20 @@ import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
 import type { Game, PooleanState } from "@/lib/types"
 
-// The game, shot by shot, on the court: each shot lands where it was taken (filled for a make, a ring for a miss, in its team's colour),
-// with the score after it. Play runs through it; the arrows and the slider step by hand. src/lib/replay.ts orders the shots.
+// The game, shot by shot, on a two-way court: Team A shoots at the basket at the bottom, Team B at the basket at the top (its shots turned
+// round, so each team attacks its own end, as on a TV court). Each shot lands where it was taken (filled for a make, a ring for a miss,
+// in its team's colour), with the score after it. Play runs through it; the arrows and the slider step by hand. src/lib/replay.ts orders
+// the shots.
 
 const W = 300
-const H = 360
+const HALF = 230 // one team's end
 const P = 8
+const H = P * 2 + HALF * 2
 const X = (v: number) => P + (v / 100) * (W - P * 2)
-const Y = (v: number) => H - P - (v / 100) * (H - P * 2)
+// A spot in court terms (0..100 across, 0..100 up from the basket) for the team taking it: Team A's end is the bottom half, Team B's the
+// top half, turned round.
+const spot = (side: "A" | "B" | null, at: { x: number; y: number }) =>
+  side === "B" ? { cx: X(100 - at.x), cy: P + (at.y / 100) * HALF } : { cx: X(at.x), cy: H - P - (at.y / 100) * HALF }
 const color = (side: "A" | "B" | null) => (side === "B" ? "var(--color-team-b)" : side === "A" ? "var(--color-team-a)" : "currentColor")
 
 export function GameReplay({ state, game }: { state: PooleanState; game: Game }) {
@@ -50,15 +56,24 @@ export function GameReplay({ state, game }: { state: PooleanState; game: Game })
       <div className="mx-auto w-full max-w-xs">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full rounded-xl border bg-card" role="img" aria-label={`Shot ${at} of ${steps.length}. ${what(last)} Score ${last?.a ?? 0} to ${last?.b ?? 0}.`}>
           <rect x={P} y={P} width={W - P * 2} height={H - P * 2} rx={4} className="fill-none stroke-foreground/40" />
-          <line x1={P} x2={W - P} y1={Y(60)} y2={Y(60)} className="stroke-foreground/30" strokeDasharray="4 4" />
-          <text x={W - P - 4} y={Y(60) - 5} textAnchor="end" fontSize="10" className="fill-muted-foreground">3-point range</text>
-          <circle cx={W / 2} cy={Y(7)} r={6} className="fill-none stroke-foreground/60" strokeWidth={2} />
+          <line x1={P} x2={W - P} y1={H / 2} y2={H / 2} className="stroke-foreground/40" />
+          {/* Each end: its 3-point range and its basket. */}
+          <line x1={P} x2={W - P} y1={H - P - 0.6 * HALF} y2={H - P - 0.6 * HALF} className="stroke-foreground/30" strokeDasharray="4 4" />
+          <line x1={P} x2={W - P} y1={P + 0.6 * HALF} y2={P + 0.6 * HALF} className="stroke-foreground/30" strokeDasharray="4 4" />
+          <text x={W - P - 4} y={H - P - 0.6 * HALF - 5} textAnchor="end" fontSize="10" className="fill-muted-foreground">3-point range</text>
+          <text x={P + 4} y={P + 0.6 * HALF + 13} fontSize="10" className="fill-muted-foreground">3-point range</text>
+          {/* The baskets: a backboard behind each rim, so a rim never reads as a missed shot. */}
+          <line x1={W / 2 - 16} x2={W / 2 + 16} y1={H - P - 4} y2={H - P - 4} className="stroke-foreground/70" strokeWidth={3} />
+          <circle cx={W / 2} cy={H - P - 13} r={6} className="fill-none stroke-foreground/70" strokeWidth={2} />
+          <line x1={W / 2 - 16} x2={W / 2 + 16} y1={P + 4} y2={P + 4} className="stroke-foreground/70" strokeWidth={3} />
+          <circle cx={W / 2} cy={P + 13} r={6} className="fill-none stroke-foreground/70" strokeWidth={2} />
+          <text x={P + 4} y={H / 2 + 14} fontSize="10" fill="var(--color-team-a)">Team A shoots down</text>
+          <text x={W - P - 4} y={H / 2 - 6} textAnchor="end" fontSize="10" fill="var(--color-team-b)">Team B shoots up</text>
           {shown.map((s, i) =>
             s.at ? (
               <circle
                 key={s.id}
-                cx={X(s.at.x)}
-                cy={Y(s.at.y)}
+                {...spot(s.side, s.at)}
                 r={i === at - 1 ? 8 : 5}
                 fill={s.made ? color(s.side) : "none"}
                 stroke={color(s.side)}
@@ -66,7 +81,10 @@ export function GameReplay({ state, game }: { state: PooleanState; game: Game })
               />
             ) : null,
           )}
-          {last?.at && <circle cx={X(last.at.x)} cy={Y(last.at.y)} r={14} fill="none" stroke={color(last.side)} strokeWidth={2} className="motion-safe:animate-ping" style={{ transformOrigin: `${X(last.at.x)}px ${Y(last.at.y)}px` }} />}
+          {last?.at && (() => {
+            const p = spot(last.side, last.at)
+            return <circle {...p} r={14} fill="none" stroke={color(last.side)} strokeWidth={2} className="motion-safe:animate-ping" style={{ transformOrigin: `${p.cx}px ${p.cy}px` }} />
+          })()}
         </svg>
       </div>
       <p className="min-h-10 text-center">
@@ -104,7 +122,10 @@ export function GameReplay({ state, game }: { state: PooleanState; game: Game })
         </span>
         <input type="range" min={0} max={steps.length} value={at} onChange={(e) => (setPlaying(false), setAt(Number(e.target.value)))} className="flex-1 accent-[var(--color-primary)]" aria-label="Move through the shots" />
       </label>
-      <p className="text-xs text-muted-foreground">Filled dots are makes, rings are misses, in each team's colour. Free throws and shots with no spot logged only move the score.</p>
+      <p className="text-xs text-muted-foreground">
+        Each team attacks its own end: Team A the basket at the bottom, Team B the one at the top. Filled dots are makes, rings are misses, in each team's colour. Free throws and shots
+        with no spot logged only move the score.
+      </p>
     </div>
   )
 }
