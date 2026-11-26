@@ -10,7 +10,8 @@ import type { Game, PooleanState, SeasonTeam, SeasonTeamSet } from "@/lib/types"
 // game played that night, so a long night is worth no more than a short one. Each
 // night, every team counts the average of its best few players' nights, the same number for every team: the fewest any team had there,
 // but at least 2 (a team with fewer there gets a bench night for each empty spot). So roster size and turnout do not decide it, a weak night never hurts,
-// and extra players are depth. A team's score is the average of its nights. Nights count for the team a player was on that night, so a
+// and extra players are depth. Every night counts for every team: a team with nobody there gets a bench night for each spot. A team's
+// score is the average of its nights. Nights count for the team a player was on that night, so a
 // trade or a newcomer only changes things from the day it happens.
 export const RIVALRY_WEIGHT = 2
 export const THIN_NIGHTS = 2 // team nights before a team's score is more than an early read
@@ -83,6 +84,7 @@ export interface MemberLine {
 export interface TeamLine {
   team: SeasonTeam
   nights: number // nights the team had someone there
+  allNights: number // every night in the set: the score averages over all of them
   wins: number
   winsAdded: number
   score: number // the average of its nightly scores
@@ -160,6 +162,13 @@ export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
       const team = set.teams.find((t) => t.id === teamId)
       if (team) scores.push({ team, score, present: list.length, filled })
     }
+    // A team with nobody there gets a bench night for every spot, so showing up is never worse than staying home (unless the player
+    // would score in the bottom quarter), and a team cannot protect its average by skipping a night.
+    for (const team of set.teams)
+      if (!perTeam.has(team.id)) {
+        ;(teamNights.get(team.id) ?? teamNights.set(team.id, []).get(team.id)!).push(bench)
+        scores.push({ team, score: bench, present: 0, filled: k })
+      }
     nights.push({ date, counted: k, scores: scores.sort((a, b) => b.score - a.score) })
   }
   for (const m of member.values()) m.score = m.nights ? m.score / m.nights : 0
@@ -167,11 +176,13 @@ export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
     const members = [...member.entries()].filter(([k]) => k.startsWith(`${team.id}|`)).map(([, m]) => m)
     for (const pid of team.members) if (!members.some((m) => m.id === pid)) members.push({ id: pid, nights: 0, counted: 0, games: 0, wins: 0, winsAdded: 0, score: 0, current: true })
     const list = teamNights.get(team.id) ?? []
+    const there = nights.filter((n) => n.scores.some((x) => x.team.id === team.id && x.present > 0)).length
     const rivalry: [number, number] = [0, 0]
     for (const r of rivalries) if (r.a.id === team.id || r.b.id === team.id) rivalry[r.winner.id === team.id ? 0 : 1]++
     return {
       team,
-      nights: list.length,
+      nights: there,
+      allNights: list.length,
       wins: members.reduce((n, m) => n + m.wins, 0),
       winsAdded: members.reduce((n, m) => n + m.winsAdded, 0),
       score: list.length ? list.reduce((n, v) => n + v, 0) / list.length : 0,
@@ -216,7 +227,7 @@ export function undoMove(set: SeasonTeamSet): SeasonTeamSet {
 // fewer players. Under best-nights scoring an extra player only adds depth, so this is a light catch-up for the trailing team.
 export function nextNewcomerTeam(state: PooleanState, set: SeasonTeamSet): SeasonTeam | null {
   const s = standings(state, set)
-  const order = [...s.rows].sort((a, b) => (a.nights ? a.score : -Infinity) - (b.nights ? b.score : -Infinity) || a.team.members.length - b.team.members.length)
+  const order = [...s.rows].sort((a, b) => a.score - b.score || a.team.members.length - b.team.members.length)
   return order[0]?.team ?? null
 }
 

@@ -334,7 +334,7 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
                   <TableCell className="text-right font-semibold tabular-nums">
                     {r.nights ? one(r.score) : "-"}
                     <span className="block text-xs font-normal text-muted-foreground">
-                      {r.nights} {r.nights === 1 ? "night" : "nights"}
+                      there {r.nights} of {r.allNights}
                     </span>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{r.wins}</TableCell>
@@ -348,8 +348,9 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
             Each night a player plays, they score their game wins plus their Wins added (filmed games), per game they played, so a long night counts the
             same as a short one. Each team counts the average of its best few players that night, the same
             number for every team: the fewest any team had there, but at least {MIN_COUNTED}. A team with fewer there than that gets a bench night ({one(s.bench)}, the bottom
-            quarter of all player-nights) for each empty spot, so sending one star alone never helps. So a big roster or a big turnout does not decide it, an off night never hurts, and
-            extra players are depth. A team's score is the average of its nights. Rivalry games, where the two pickup teams are two whole season teams, count{" "}
+            quarter of all player-nights) for each empty spot, so sending one star alone never helps. So a big roster does not decide it, an off night never hurts, and
+            extra players are depth. Every night counts for every team: a team with nobody there gets a bench night for each spot, so coming is never
+            worse than staying home. A team's score is the average of its nights. Rivalry games, where the two pickup teams are two whole season teams, count{" "}
             {RIVALRY_WEIGHT === 2 ? "double" : `${RIVALRY_WEIGHT} times`}. Nights stay with the team a player was on that night. Italic rows have fewer than {THIN_NIGHTS} nights.
           </p>
           {tonight?.scores[0] && (

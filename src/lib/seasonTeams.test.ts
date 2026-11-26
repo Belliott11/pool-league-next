@@ -49,16 +49,33 @@ describe("standings", () => {
     const sharks = s.rows.find((r) => r.team.name === "Sharks")!
     const jets = s.rows.find((r) => r.team.name === "Jets")!
     // Per game. Night 1, two games: a (1 + 2) / 2 = 1.5, b 2 / 2 = 1 (Sharks 1.25); c 1 / 2, d 0 (Jets 0.25). Night 2, one game:
-    // only Jets, c 1, d 0 (0.5). Jets average 0.375 over their two nights.
+    // only Jets, c 1, d 0 (0.5). Jets average 0.375. Sharks get a bench night on night 2: the bottom quarter of the player-nights
+    // 0, 0, 0.5, 1, 1, 1.5 is 0.125, so Sharks average (1.25 + 0.125) / 2.
+    expect(s.bench).toBeCloseTo(0.125, 10)
     expect(sharks.wins).toBe(5)
     expect(sharks.nights).toBe(1)
-    expect(sharks.score).toBeCloseTo(1.25, 10)
+    expect(sharks.allNights).toBe(2)
+    expect(sharks.score).toBeCloseTo(0.6875, 10)
     expect(jets.wins).toBe(2)
     expect(jets.nights).toBe(2)
     expect(jets.score).toBeCloseTo(0.375, 10)
     expect(jets.rivalry).toEqual([0, 1])
     expect(s.rows[0].team.name).toBe("Sharks")
     expect(s.nights.map((x) => x.scores[0].team.name)).toEqual(["Sharks", "Jets"])
+  })
+  it("never makes showing up alone worse than staying home, unless the night is in the bottom quarter", () => {
+    // Night 1: everyone goes 1 and 1. Night 2: Jets' d plays two games, with b in them or not.
+    const sharks = (night2: Game[]) => {
+      const games = [game("2027-06-01", ["a", "b"], ["d", "e"], "A"), game("2027-06-01", ["a", "b"], ["d", "e"], "B"), ...night2]
+      return st.standings({ players: [], games, seasonTeamSets: [set] } as unknown as PooleanState, set).rows.find((r) => r.team.name === "Sharks")!.score
+    }
+    const home = sharks([game("2027-06-08", ["d", "x"], ["y", "z"], "A"), game("2027-06-08", ["d", "x"], ["y", "z"], "B")])
+    // b comes alone and goes 1 and 1, an ordinary night: no worse than staying home.
+    const ordinary = sharks([game("2027-06-08", ["d", "b"], ["y", "z"], "A"), game("2027-06-08", ["d", "b"], ["y", "z"], "B")])
+    expect(ordinary).toBeGreaterThanOrEqual(home - 1e-9)
+    // b comes alone and wins both: better.
+    const good = sharks([game("2027-06-08", ["d", "b"], ["y", "z"], "A"), game("2027-06-08", ["b", "y"], ["d", "z"], "A")])
+    expect(good).toBeGreaterThan(home)
   })
   it("stops counting when the next season starts, but leaves a new season's teams open", () => {
     const next = startNewSeason({ ...state, currentSeasonStartedAt: "2027-06-01" }, "2028-06-01")
