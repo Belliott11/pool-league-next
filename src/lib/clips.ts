@@ -54,7 +54,7 @@ export function gameClips(state: PooleanState, g: Game): Clip[] {
 
 const reviewed = (c: Clip, r: ClipReview): Clip => {
   const looks = Object.entries(r.looks ?? {})
-  return { ...c, ...(r.note?.trim() ? { note: r.note.trim() } : {}), reviewed: true, frame: r.frame, ...(r.track?.length ? { track: r.track } : {}), ...(r.from !== undefined && r.to !== undefined && r.to > r.from ? { from: r.from, to: r.to } : {}), who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), rough: [...new Set([...(c.rough ?? []).filter((id) => r.looks?.[id] !== "good"), ...looks.filter(([, v]) => v === "bad").map(([id]) => id)])] }
+  return { ...c, ...(r.note?.trim() ? { note: r.note.trim() } : {}), reviewed: true, frame: r.frame, ...(r.track?.length && !r.still ? { track: r.track } : {}) /* a still is one frame: never followed, even if made from a followed clip */, ...(r.from !== undefined && r.to !== undefined && r.to > r.from ? { from: r.from, to: r.to } : {}), who: r.who, good: looks.filter(([, v]) => v === "good").map(([id]) => id), rough: [...new Set([...(c.rough ?? []).filter((id) => r.looks?.[id] !== "good"), ...looks.filter(([, v]) => v === "bad").map(([id]) => id)])] }
 }
 
 // Every candidate in one game before any review: the scorer, the blocker or the thief.

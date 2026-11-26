@@ -63,7 +63,8 @@ filters. Lines are only saved for visitors (`publishedStories`) at the default f
 - The followed version is the one shown everywhere: a clip with a follow path is cut with the follow camera baked in (below), and until
   its cut exists `ClipBackdrop` follows it in the browser at every size. The static crop onto the pool still applies only to backdrops
   narrower than 640px (`SMALL`). Tiles show the play's 1200px picture before the 400px frame saved in the browser (that one blurred
-  when zoomed). A hand-picked still shows as a picture: no play button, never played as video, no vertical video.
+  when zoomed). A still (picked by hand, or made from a clip's frame with "Start a still from this frame") shows as a picture: no play button, never
+  played as video, no vertical video, and never a follow path, even when made from a followed clip (`reviewed` in clips.ts drops it).
 - Video frames can only be read (stills, following) on the live origin: the R2 bucket's CORS allows only belliott11.github.io and
   intel.poolean.net. Headless
   browsers run IntersectionObserver fine; the user's hidden preview pane does not.

@@ -145,3 +145,11 @@ test("headlines shown together never reuse a clip: the extra ones get none", asy
   expect(got.filter(Boolean)).toHaveLength(2)
   expect(new Set(got.filter(Boolean).map((c) => c!.time)).size).toBe(2)
 })
+
+test("a still made from a followed clip is one frame: it keeps its crop but never a follow path", () => {
+  const g = { ...game("g1", "2026-01-01", [ev("1", "a", 10)]), clipReviews: [{ key: "still|12|a", verdict: "keep", still: { time: 12, playerId: "a" }, frame: { z: 2, x: 0.3, y: 0.5 }, track: [{ t: 11, x: 0.2, y: 0.5 }, { t: 13, x: 0.4, y: 0.5 }] }] }
+  const s = { players: [{ id: "a", name: "A" }], games: [g] } as unknown as PooleanState
+  const still = gameClips(s, s.games[0]).find((c) => c.kind === "still")!
+  expect(still).toMatchObject({ kind: "still", label: "Still", frame: { z: 2, x: 0.3, y: 0.5 } })
+  expect(still.track).toBeUndefined()
+})
