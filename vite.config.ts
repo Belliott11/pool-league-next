@@ -93,12 +93,13 @@ function ogImage(): Plugin {
 const SUPABASE = "https://cthhlwvhmpvthpkivwps.supabase.co"
 export const CSP = [
   "default-src 'self'",
-  "script-src 'self' https://www.youtube.com https://s.ytimg.com", // the live stream's YouTube player API
+  // YouTube's player API (live streams) and Cloudflare's visitor analytics, which Cloudflare adds to intel.poolean.net itself.
+  "script-src 'self' https://www.youtube.com https://s.ytimg.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
-  `connect-src 'self' ${SUPABASE} ${SUPABASE.replace("https:", "wss:")} ${VIDEO_HOST} https://*.r2.cloudflarestorage.com https://api.open-meteo.com`,
+  `connect-src 'self' ${SUPABASE} ${SUPABASE.replace("https:", "wss:")} ${VIDEO_HOST} https://*.r2.cloudflarestorage.com https://api.open-meteo.com https://cloudflareinsights.com`,
   "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
   "worker-src 'self'",
   "manifest-src 'self'",
