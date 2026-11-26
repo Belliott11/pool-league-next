@@ -97,8 +97,9 @@ address in `src/lib/site.ts` (`https://intel.poolean.net/`; the clip pages' copy
 ### Season trailer
 
 The same script joins the season's 8 best plays (two per game at most, none rough, followed where set) into
-`clips/trailer/season-<hash>.mp4` (`makeTrailer`): a title card ("POOLEAN INTEL, Top plays, summer <year>"), then each play with the
-run-up at normal speed and the play slowed to 60% (marked "SLOW MOTION"), a caption bar (what and who, the date, "Play n of 8"), a
+`clips/trailer/season-<hash>.mp4` (`makeTrailer`): a title card ("POOLEAN INTEL, Top plays, summer <year>"), then each play at normal
+speed from 3.5 s before its logged moment to the end of its cut (no slow motion: the logged moment is often the release or a late tap,
+so the old slowed stretch around it cut plays off before the basket; removed 2026-11-26), a caption bar (what and who, the date, "Play n of 8"), a
 different xfade transition into each, light colour grading, and an end card with the address. No sound. Fonts from `scripts/og-fonts`.
 Rebuilt when the plays change or `TRAILER_STYLE` is bumped; `--trailer-preview` builds it into the work folder from the uploaded cuts
 without uploading. Listed in `src/data/trailer.json`. The Top plays card on the home page
@@ -246,8 +247,9 @@ The league check is how often the other team answers after one basket against af
 toward finding momentum (stronger teams have more runs), while splitting it per game leans the other way (the hot-hand trap). On
 2026-11-25: 54% against 52%, no sign of momentum. The hot hand is checked against each player's own shots shuffled within each game
 (the basket that ends a game is left out). The game page's Shots tab has "Was that run real?" (`src/components/RunCheck.tsx`), under "Replay the game"
-(`src/components/GameReplay.tsx`, `src/lib/replay.ts`): every shot in order on a two-way court (Team A attacks the bottom basket,
-Team B the top one, its spots turned round) (filled for a make, a ring for a miss, team
+(`src/components/GameReplay.tsx`, `src/lib/replay.ts`): every shot in order on one court with a net at each end (Team A shoots at
+the bottom net, Team B at the top one; both share the whole court, each spot measured from the team's own net, so long shots reach past
+halfway) (filled for a make, a ring for a miss, team
 colours), the score after it, play at 1x or 2x, step, a slider and a Watch link.
 
 ## Rulebook and rule changes
@@ -308,6 +310,9 @@ everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games ar
   on the editor's screen; the `live-score` function, version 7, discards it on `finish` and accepts `test: true` on `start`), so it never
   reaches the stats. "Game on" also waits a minute (`LIVE_DELAY_MS` in the game-alerts function) and goes only if the game is still live
   and not a test then, so a game started by mistake can be discarded first; "Final" goes at once.
+- Game page kept short (2026-11-26): the score card holds the pre-game call and the summary lines; on the Shots tab only the replay is
+  open, and Was that run real?, the Shot Log and Other Events fold (`Panel folded`, a `<details>`), which took the tab from about 10,000
+  to 2,300 px on a phone.
 - Game summary (`src/lib/gameSummary.ts`, `src/components/GameSummaryCard.tsx` on the game page, and two lines on the share picture):
   the final score, the winners' basket that moved the live odds most (not the one that ended it), the most Points added in the game
   (`pointsAdded(state, { only })`, filmed games), and a link to the best shareable play or the game.

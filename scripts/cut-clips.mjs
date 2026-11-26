@@ -205,11 +205,11 @@ for (const c of plan) {
 }
 if (!dry) save(SHARES, shares)
 // 4. The season trailer: the season's best plays (followed where the clip has a follow) as a short edit, made again when the plays or the
-// look change. A title card, then each play: the run-up at normal speed and the play itself slowed down, with a caption (what, who, when,
+// look change. A title card, then each play at normal speed from its run-up to the end of its cut, with a caption (what, who, when,
 // and which play of how many), a different transition into each one, and an end card with the site's address. No sound. Listed in
 // src/data/trailer.json for the site. TRAILER_LOOK=1 makes it again with the same plays (to try a new look).
 const TRAILER = path.join(root, "src/data/trailer.json")
-const TRAILER_STYLE = 3 // bump when the look changes, so the next run makes it again
+const TRAILER_STYLE = 4 // bump when the look changes, so the next run makes it again
 const plays = (fs.existsSync(trailerFile) ? JSON.parse(fs.readFileSync(trailerFile, "utf8")) : []).filter((p) => manifest[p.key])
 const wanted = plays.map((p) => p.key)
 const had = fs.existsSync(TRAILER) ? JSON.parse(fs.readFileSync(TRAILER, "utf8")) : null
@@ -262,11 +262,12 @@ function makeTrailer(list, urlOf, out) {
     const src = path.join(tmp, `src${i}.mp4`)
     curl(["-o", src, urlOf(p.key)])
     const dur = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src]).toString().trim())
-    // The run-up (up to 3 s) at normal speed, then the play slowed to 60% for up to 2.4 s of the cut.
-    const at = Math.min(Math.max(0.6, p.at), dur - 0.4)
-    const a = Math.max(0, at - 3), b = Math.max(a + 0.2, at - 0.4), c = Math.min(dur, at + 2)
-    const slow = 1 / 0.6
-    const secs = b - a + (c - b) * slow
+    // From 3.5 s before the logged moment to the end of the cut, at normal speed. The logged moment is often the release, or a tap made
+    // after the basket, so a fixed stretch after it (and the old slow motion around it) cut plays off before the ball went in; the cut
+    // itself already ends 6 s after the moment, or where the editor trimmed it.
+    const at = Math.min(Math.max(0, p.at), dur)
+    const a = Math.max(0, at - 3.5), c = dur
+    const secs = c - a
     const fadeAt = secs - 1.1
     const caption = [
       // The bar slides in, and goes with its words (it used to stay up, empty, after the words faded).
@@ -274,13 +275,11 @@ function makeTrailer(list, urlOf, out) {
       `drawbox=x=0:y=ih-150:w=8:h=110:color=0x2f7de1:t=fill:enable='between(t,0.3,${(fadeAt + 0.15).toFixed(2)})'`,
       `drawtext=fontfile=${bold}:textfile=${text(`${p.label}, ${p.player}`)}:fontcolor=white:fontsize=42:x=36:y=h-136:alpha='min(1,max(0,(t-0.5)/0.3))*min(1,max(0,(${fadeAt}-t)/0.3))'`,
       `drawtext=fontfile=${regular}:textfile=${text(`${month(p.date)}   Play ${i + 1} of ${list.length}`)}:fontcolor=white@0.85:fontsize=26:x=38:y=h-80:alpha='min(1,max(0,(t-0.65)/0.3))*min(1,max(0,(${fadeAt}-t)/0.3))'`,
-      // The slow part is marked, top right.
-      `drawtext=fontfile=${bold}:textfile=${text("SLOW MOTION")}:fontcolor=white@0.8:fontsize=22:x=w-text_w-32:y=30:enable='gte(t,${(b - a).toFixed(2)})'`,
     ]
     const fit = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1`
     const file = path.join(tmp, `play${i}.mp4`)
     ff(["-i", src, "-filter_complex",
-      `[0:v]${fit},split[r][s];[r]trim=${a.toFixed(2)}:${b.toFixed(2)},setpts=PTS-STARTPTS[run];[s]trim=${b.toFixed(2)}:${c.toFixed(2)},setpts=(PTS-STARTPTS)*${slow.toFixed(4)},minterpolate=fps=${FPS}:mi_mode=blend[slo];[run][slo]concat=n=2:v=1:a=0,fps=${FPS},${look},${caption.join(",")}[v]`,
+      `[0:v]${fit},trim=${a.toFixed(2)}:${c.toFixed(2)},setpts=PTS-STARTPTS,fps=${FPS},${look},${caption.join(",")}[v]`,
       "-map", "[v]", "-an", ...enc, file])
     parts.push({ file, secs })
     fs.rmSync(src)

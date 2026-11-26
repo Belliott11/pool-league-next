@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ChevronDown } from "lucide-react"
 import { Explain } from "@/components/Explain"
 import { TAB_LIST, TAB_TRIGGER } from "@/components/PanelGroup"
 import { TeamsTab } from "./TeamsTab"
@@ -9,7 +10,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { useEffect, useMemo, useRef, type ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ClipboardPenLine, Play, Share2 } from "lucide-react"
 import { shareGameCard } from "@/lib/shareCard"
@@ -83,14 +84,20 @@ function signed(n: number) {
   return `${n >= 0 ? "+" : ""}${n.toFixed(1)}`
 }
 
-function Panel({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+// A section of the game page. `folded` starts it closed (a tap on its title opens it), so long sections do not make the page long.
+function Panel({ title, hint, children, folded = false }: { title: string; hint?: string; children: ReactNode; folded?: boolean }) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="font-display">{title}</CardTitle>
-        {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
-      </CardHeader>
-      <CardContent>{children}</CardContent>
+      <details open={!folded} className="group">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-2 px-(--card-spacing) [&::-webkit-details-marker]:hidden">
+          <span className="flex flex-col gap-1">
+            <span className="font-display font-semibold leading-none">{title}</span>
+            {hint && <span className="text-sm text-muted-foreground">{hint}</span>}
+          </span>
+          <ChevronDown aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="mt-4 px-(--card-spacing)">{children}</div>
+      </details>
     </Card>
   )
 }
@@ -446,17 +453,18 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
         </p>
       )}
       {!readOnly && <GameTagsEditor key={game.id} game={game} update={update} state={state} />}
+      {/* The score, the pre-game call and the game's lines in one card, so the video comes up sooner. */}
       <Card>
-        <CardContent className="flex items-center justify-around gap-4">
-          <TeamScore state={state} game={game} ids={game.teamA} label="Team A" score={scoreA} />
-          <span className="text-muted-foreground">vs.</span>
-          <TeamScore state={state} game={game} ids={game.teamB} label="Team B" score={scoreB} />
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex items-center justify-around gap-4">
+            <TeamScore state={state} game={game} ids={game.teamA} label="Team A" score={scoreA} />
+            <span className="text-muted-foreground">vs.</span>
+            <TeamScore state={state} game={game} ids={game.teamB} label="Team B" score={scoreB} />
+          </div>
+          {predictionNote(game) && <p className="text-center text-sm text-muted-foreground">{predictionNote(game)}{!game.prediction && <Explain term="Backtest pick" className="ml-1" />}</p>}
+          <GameSummaryCard state={state} game={game} />
         </CardContent>
       </Card>
-
-      {predictionNote(game) && <p className="-mt-2 text-center text-sm text-muted-foreground">{predictionNote(game)}{!game.prediction && <Explain term="Backtest pick" className="ml-1" />}</p>}
-
-      <GameSummaryCard state={state} game={game} />
 
       <div ref={videoBox}>
         <GameVideoPanel state={state} game={game} update={update} readOnly={readOnly} control={control} />
@@ -491,7 +499,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
           ) : (
             <Panel
               title="Game Stats"
-              hint="Everyone's line for this game, built from the shot log. eFG% and TS% measure scoring efficiency, Pts Allowed and Opp FG% show defense, and Two-Way adds offense and defense into one number."
+              hint="Everyone's line, from the shot log. Two-Way adds offense and defense into one number."
             >
               <GameStats state={state} game={game} />
             </Panel>
@@ -506,16 +514,16 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
             </Card>
           ) : (
             <div className="flex flex-col gap-4">
-              <Panel title="Replay the game" hint="Every shot in order, where it was taken, with the score after it.">
+              <Panel title="Replay the game" hint="Every shot in order, where it was taken.">
                 <GameReplay state={state} game={game} />
               </Panel>
-              <Panel title="Was that run real?" hint="The longest streak of baskets by one team, against what chance gives when the team scored on gets the ball.">
+              <Panel folded title="Was that run real?" hint="The longest run of baskets, against chance.">
                 <RunCheck state={state} game={game} />
               </Panel>
-              <Panel title="Shot Log" hint="Every shot, make or miss, with the defender and any assist.">
+              <Panel folded title="Shot Log" hint="Every shot, with the defender and any assist.">
                 <ShotLog state={state} game={game} />
               </Panel>
-              <Panel title="Other Events" hint="Every turnover, steal, and foul, tagged with the opponent involved where noted.">
+              <Panel folded title="Other Events" hint="Turnovers, steals and fouls.">
                 <OtherEvents state={state} game={game} />
               </Panel>
             </div>
