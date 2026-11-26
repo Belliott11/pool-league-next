@@ -222,23 +222,29 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
         {Object.keys(ranges).length > 0 && <p className="text-xs text-muted-foreground">The thin bar under a number shows where it sits between the lowest and highest in this list.</p>}
         {(allCards ? sorted : sorted.slice(0, PHONE_CARDS)).map((r, i) => (
           <Card key={rowKey(r, i)} className={thin(r) ? "border border-dashed italic" : undefined} title={thin(r) ? THIN_NOTE : undefined}>
-            <CardContent className="flex flex-col gap-2">
-              <div className="font-medium">{renderFirst ? renderFirst(r) : <Cell col={first} r={r} />}</div>
-              {hero && hero.key !== first.key && (
-                <div className="flex items-baseline justify-between rounded-md bg-accent/10 px-3 py-2">
-                  <span className="text-xs text-muted-foreground">{hero.label}</span>
-                  <span className="font-led text-2xl font-bold tabular-nums text-accent"><Cell col={hero} r={r} hideLow={hideLow} /></span>
+            <CardContent className="flex flex-col gap-3">
+              {/* The player and the column the list is sorted by, on one line: the place in the list, the name, and the number large. */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2 font-medium">
+                  <span className="w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+                  <span className="min-w-0">{renderFirst ? renderFirst(r) : <Cell col={first} r={r} />}</span>
                 </div>
-              )}
+                {hero && hero.key !== first.key && (
+                  <div className="flex shrink-0 flex-col items-end leading-none">
+                    <span className="font-display text-2xl font-bold tabular-nums text-accent"><Cell col={hero} r={r} hideLow={hideLow} /></span>
+                    <span className="mt-1 text-[11px] text-muted-foreground">{hero.label}</span>
+                  </div>
+                )}
+              </div>
               {(() => {
                 const stats = columns.filter((c) => c.key !== first.key && c.key !== hero?.key)
                 const renderStat = (c: Column<R>) => {
                   const v = hidden(c, r) ? null : c.accessor(r)
                   const rg = ranges[c.key]
                   return (
-                    <div key={c.key} className="flex flex-col gap-1">
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <span className="text-muted-foreground">{c.label}</span>
+                    <div key={c.key} className="flex min-w-0 flex-col gap-1">
+                      <div className="flex items-baseline justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate text-xs text-muted-foreground">{c.label}</span>
                         <span className="text-right tabular-nums font-medium"><Cell col={c} r={r} hideLow={hideLow} /></span>
                       </div>
                       {rg && typeof v === "number" && Number.isFinite(v) && (
@@ -255,14 +261,14 @@ export function DataTable<R>({ columns, rows, rowKey, defaultSort, renderFirst, 
                 }
                 return (
                   <>
-                    {stats.slice(0, PHONE_STATS).map(renderStat)}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 border-t pt-3">{stats.slice(0, PHONE_STATS).map(renderStat)}</div>
                     {stats.length > PHONE_STATS && (
                       <details className="group/more">
                         <summary className="cursor-pointer list-none rounded-md border py-2 text-center text-sm font-medium [&::-webkit-details-marker]:hidden">
                           <span className="group-open/more:hidden">More stats ({stats.length - PHONE_STATS})</span>
                           <span className="hidden group-open/more:inline">Fewer stats</span>
                         </summary>
-                        <div className="mt-2 flex flex-col gap-2">{stats.slice(PHONE_STATS).map(renderStat)}</div>
+                        <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2.5">{stats.slice(PHONE_STATS).map(renderStat)}</div>
                       </details>
                     )}
                   </>

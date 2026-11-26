@@ -1,3 +1,4 @@
+import { Hint } from "@/components/Hint"
 import type { ReactNode } from "react"
 import { IconChip } from "@/components/IconChip"
 import { Badge } from "@/components/ui/badge"
@@ -19,7 +20,7 @@ export function Panel({ title, hint, tag, children }: { title: string; hint?: Re
             </Badge>
           )}
         </CardTitle>
-        {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+        {hint && <Hint text={hint} />}
       </CardHeader>
       <CardContent className="flex min-w-0 flex-col gap-3">{children}</CardContent>
     </Card>

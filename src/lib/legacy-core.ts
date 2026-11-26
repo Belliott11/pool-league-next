@@ -957,7 +957,7 @@ function renderGames() {
       ? ` <span class="badge badge-review" title="Being scored live right now.">${icon("megaphone")} Live now</span>`
       : liveOnly ? ` <span class="badge badge-review" title="Only who scored was tracked live. Log it from film in Stat Entry for it to count toward stats.">${icon("megaphone")} Live score only</span>` : "";
     const stoppedEarlyBadge = game.stoppedEarly
-      ? ` <span class="badge badge-lowlight" title="This game ended early. Not comparable to a complete game -- excluded from Best/Worst Games, Power Ranking vs. Performance, Shot Attempt Differential, Pace/PPP, and Win Shares. Season-total rates still include it.">${icon("stop")} Stopped Early</span>`
+      ? ` <span class="badge badge-lowlight" title="This game ended early. Not comparable to a complete game: excluded from Best/Worst Games, Power Ranking vs. Performance, Shot Attempt Differential, Pace/PPP, and Win Shares. Season-total rates still include it.">${icon("stop")} Stopped Early</span>`
       : "";
     // Best/worst-of-the-game badge — same Two-Way score Best & Worst Individual Games ranks by
     // (Off Rating + Def Rating for that one game, not a per-game rate or season number), just
@@ -2896,7 +2896,7 @@ function renderShooterQualityDefPanel() {
   if (!body) return;
   if (gateEl) {
     const gate = computeShooterQualityGateStatus();
-    gateEl.textContent = `${gate.ready} of ${gate.total} players with any shots logged have the spec's recommended ${SHOOTER_QUALITY_GATE_FGA}+ tagged attempts for a trustworthy quality baseline -- read direction here, not magnitude.`;
+    gateEl.textContent = `${gate.ready} of ${gate.total} players with any shots logged have the spec's recommended ${SHOOTER_QUALITY_GATE_FGA}+ tagged attempts for a trustworthy quality baseline: read direction here, not magnitude.`;
   }
   renderSortableHeader(headerRow, SHOOTER_QUALITY_DEF_COLUMNS, shooterQualityDefSort, renderShooterQualityDefPanel);
   const rows = computeShooterQualityDefRows();
@@ -2942,7 +2942,7 @@ function renderDefenderQualityOffPanel() {
   if (!body) return;
   if (gateEl) {
     const gate = computeDefenderQualityGateStatus();
-    gateEl.textContent = `${gate.ready} of ${gate.total} defenders with real-contested volume have the spec's recommended ${DEFENDER_QUALITY_GATE_FGA}+ threshold for a trustworthy quality baseline -- read direction here, not magnitude.`;
+    gateEl.textContent = `${gate.ready} of ${gate.total} defenders with real-contested volume have the spec's recommended ${DEFENDER_QUALITY_GATE_FGA}+ threshold for a trustworthy quality baseline: read direction here, not magnitude.`;
   }
   renderSortableHeader(headerRow, DEFENDER_QUALITY_OFF_COLUMNS, defenderQualityOffSort, renderDefenderQualityOffPanel);
   const rows = computeDefenderQualityOffRows();
@@ -7381,10 +7381,10 @@ function computePlayerContestQualityEngagement(playerId) {
   if (realContested && dist.engagementRate !== null) {
     const highQuality = leagueMediumHeavyFg !== null && realContested.fgPct < leagueMediumHeavyFg;
     const highEngagement = dist.engagementRate >= 50;
-    if (highQuality && highEngagement) read = "Engages hard on most of your defensive assignments, and shoots down real contests well -- a complete, reliable defensive profile.";
-    else if (highQuality && !highEngagement) read = "Rarely engages hard when tagged, but very effective the few times you do -- the quality is real, it just doesn't show up often enough to carry a full workload.";
-    else if (!highQuality && highEngagement) read = "Engages hard on most of your assignments, but the shots you allow on those real contests are going in more than the league average -- real effort, and the results have room to catch up.";
-    else read = "Rarely engages hard when tagged, and the results on the contests you do bring aren't ahead of the league average yet -- defense is the easiest place to find extra value.";
+    if (highQuality && highEngagement) read = "Engages hard on most of your defensive assignments, and shoots down real contests well: a complete, reliable defensive profile.";
+    else if (highQuality && !highEngagement) read = "Rarely engages hard when tagged, but very effective the few times you do: the quality is real, it just doesn't show up often enough to carry a full workload.";
+    else if (!highQuality && highEngagement) read = "Engages hard on most of your assignments, but the shots you allow on those real contests are going in more than the league average: real effort, and the results have room to catch up.";
+    else read = "Rarely engages hard when tagged, and the results on the contests you do bring aren't ahead of the league average yet: defense is the easiest place to find extra value.";
   } else if (realContested) {
     read = "Not enough tagged assignments yet to read engagement alongside contest quality.";
   } else {
@@ -7420,10 +7420,10 @@ function computePlayerResistanceShotMaking(playerId) {
   if (avgResistance !== null && sma) {
     const highResistance = avgResistance >= 1.5;
     const positiveAdded = sma.added > 0;
-    if (highResistance && positiveAdded) read = "Faces real defensive resistance and still beats the difficulty of those shots -- efficient against real defense, not just in the abstract.";
-    else if (highResistance && !positiveAdded) read = "Faces real defensive resistance, and the shot difficulty isn't being beaten yet -- a tougher diet than most, worth tracking whether Shot-Making Added trends up.";
-    else if (!highResistance && positiveAdded) read = "Beats the difficulty of the shots taken, but those shots tend to come against lighter resistance than average -- worth checking how that holds up against tougher looks.";
-    else read = "Faces relatively light resistance and isn't beating the difficulty of those shots either -- the easiest version of this diet isn't outperforming its own difficulty yet.";
+    if (highResistance && positiveAdded) read = "Faces real defensive resistance and still beats the difficulty of those shots: efficient against real defense, not just in the abstract.";
+    else if (highResistance && !positiveAdded) read = "Faces real defensive resistance, and the shot difficulty isn't being beaten yet: a tougher diet than most, worth tracking whether Shot-Making Added trends up.";
+    else if (!highResistance && positiveAdded) read = "Beats the difficulty of the shots taken, but those shots tend to come against lighter resistance than average: worth checking how that holds up against tougher looks.";
+    else read = "Faces relatively light resistance and isn't beating the difficulty of those shots either: the easiest version of this diet isn't outperforming its own difficulty yet.";
   } else {
     read = "Not enough volume yet to read resistance faced alongside Shot-Making Added.";
   }
@@ -7452,9 +7452,9 @@ function computePlayerSelfCreationPanel(playerId) {
     const gap = rate.selfCreatedPct - rate.noHeaves.selfCreatedPct;
     if (gap >= 10) {
       const heaveShare = rate.selfCreated > 0 ? pct(rate.selfCreated - rate.noHeaves.selfCreated, rate.selfCreated) : 0;
-      gapNote = `${formatPct(heaveShare)} of your self-created shots are deep heaves -- a real gap between the raw number and what's actually created offense.`;
+      gapNote = `${formatPct(heaveShare)} of your self-created shots are deep heaves: a real gap between the raw number and what's actually created offense.`;
     } else {
-      gapNote = "Little difference once deep heaves are excluded -- the raw number already reflects real self-creation.";
+      gapNote = "Little difference once deep heaves are excluded: the raw number already reflects real self-creation.";
     }
   } else {
     gapNote = "Not enough non-heave attempts yet to check the gap.";
@@ -7491,10 +7491,10 @@ function computePlayerPassingPanel(playerId) {
     const medVolume = median(leagueVolumes);
     const highVolume = medVolume !== null && volume.shotsCreatedPer25 >= medVolume;
     const highQuality = medQuality !== null && quality.avgQuality >= medQuality;
-    if (highVolume && highQuality) read = "Passes often, and the shots those passes create are genuinely good -- real, high-value playmaking volume.";
-    else if (highVolume && !highQuality) read = "Passes often, but the shots created tend to be lower-value or more contested than average -- volume is there, the shot quality created isn't yet.";
-    else if (!highVolume && highQuality) read = "Doesn't create a lot of shots, but the ones created tend to be genuinely good looks -- quality over quantity so far.";
-    else read = "Below the league median on both playmaking volume and the quality of shots created -- passing isn't yet a real part of this player's offensive contribution.";
+    if (highVolume && highQuality) read = "Passes often, and the shots those passes create are genuinely good: real, high-value playmaking volume.";
+    else if (highVolume && !highQuality) read = "Passes often, but the shots created tend to be lower-value or more contested than average: volume is there, the shot quality created isn't yet.";
+    else if (!highVolume && highQuality) read = "Doesn't create a lot of shots, but the ones created tend to be genuinely good looks: quality over quantity so far.";
+    else read = "Below the league median on both playmaking volume and the quality of shots created: passing isn't yet a real part of this player's offensive contribution.";
   } else {
     read = "Not enough passing volume yet to read quality alongside volume.";
   }
@@ -7939,7 +7939,7 @@ const PLAYER_TREND_STATS = [
       return { value: r.twoWayPer25 - r.offRatingPer25, n: games.length };
     } },
   { key: "realContestedOppFg", label: "Real Contested Opp FG%", unit: "%", decimals: 0, minN: 2, lowerIsBetter: true,
-    about: "Opp FG% restricted to shots with a medium or heavy contest level -- a nominally-tagged defender and one who actually challenged the shot aren't the same thing. Needs at least 2 real-contested shots defended in a game.",
+    about: "Opp FG% restricted to shots with a medium or heavy contest level: a nominally-tagged defender and one who actually challenged the shot aren't the same thing. Needs at least 2 real-contested shots defended in a game.",
     compute: (pid, games) => {
       let made = 0, attempts = 0;
       games.forEach(g => g.scoringEvents.forEach(ev => {
@@ -7976,7 +7976,7 @@ const PLAYER_TREND_STATS = [
       return { value: n > 0 ? sum / n : null, n };
     } },
   { key: "shotMakingAdded", label: "Shot-Making Added per Attempt", unit: "pts", decimals: 2, minN: 3,
-    about: "Actual points minus xPTS (league average points-per-attempt for that shot's exact zone x shot type x contest level combo), averaged per attempt -- separates scoring a lot because the shots are easy from scoring efficiently on hard shots. Needs at least 3 attempts in a game.",
+    about: "Actual points minus xPTS (league average points-per-attempt for that shot's exact zone x shot type x contest level combo), averaged per attempt: separates scoring a lot because the shots are easy from scoring efficiently on hard shots. Needs at least 3 attempts in a game.",
     compute: (pid, games, ctx) => {
       let attempts = 0, added = 0;
       games.forEach(g => g.scoringEvents.forEach(ev => {
@@ -8257,7 +8257,7 @@ const LEADERBOARD_COLUMNS = [
       const v = r.expectedPoints.pointsOverExpected;
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
-    tooltip: "Points Over Expected: every field goal attempt gets an expected value from its own zone's real, empirical league-average points-per-attempt (this season's own League TS% by Shot Distance, expressed as points instead of a percentage) -- an unmarked shot location falls back to the league's overall average rather than being dropped. This player's actual points scored on those same attempts, minus that sum, across the whole season (a total, not a per-game rate). Positive means outscoring what an average shooter would on the exact same shot selection: real shooting skill on those specific shots, not just an easier shot diet. Free throws excluded entirely (no shot location, no zone, uncontested by rule)." },
+    tooltip: "Points Over Expected: every field goal attempt gets an expected value from its own zone's real, empirical league-average points-per-attempt (this season's own League TS% by Shot Distance, expressed as points instead of a percentage): an unmarked shot location falls back to the league's overall average rather than being dropped. This player's actual points scored on those same attempts, minus that sum, across the whole season (a total, not a per-game rate). Positive means outscoring what an average shooter would on the exact same shot selection: real shooting skill on those specific shots, not just an easier shot diet. Free throws excluded entirely (no shot location, no zone, uncontested by rule)." },
   { key: "shotdiff", label: "Shot Diff/G", advanced: true,
     accessor: r => r.shotAttemptDiff ? r.shotAttemptDiff.diffPerGame : null,
     display: r => {
@@ -8265,7 +8265,7 @@ const LEADERBOARD_COLUMNS = [
       const v = r.shotAttemptDiff.diffPerGame;
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
-    tooltip: "Shot Attempt Differential, per game: this player's own team's total field goal attempts (made or missed, regardless of outcome) minus the opponent's, averaged across the games they played. A real, separate signal from shooting efficiency (TS%/eFG% already cover that) -- closer to shot creation and tempo control, whether this player's side tends to generate (or allow) more total looks. Deliberately a plain per-game differential, not a normalized /G rate, matching the real stat's own simplicity: count every attempt equally, don't weight by quality. Excludes any game flagged Stopped Early (Export, Review Stopped-Early Games): a partial game's shot count isn't comparable to a complete one." },
+    tooltip: "Shot Attempt Differential, per game: this player's own team's total field goal attempts (made or missed, regardless of outcome) minus the opponent's, averaged across the games they played. A real, separate signal from shooting efficiency (TS%/eFG% already cover that): closer to shot creation and tempo control, whether this player's side tends to generate (or allow) more total looks. Deliberately a plain per-game differential, not a normalized /G rate, matching the real stat's own simplicity: count every attempt equally, don't weight by quality. Excludes any game flagged Stopped Early (Export, Review Stopped-Early Games): a partial game's shot count isn't comparable to a complete one." },
   { key: "rebdiff", label: "Reb Diff/G", advanced: true,
     accessor: r => r.reboundDiff ? r.reboundDiff.diffPerGame : null,
     display: r => {
@@ -8273,7 +8273,7 @@ const LEADERBOARD_COLUMNS = [
       const v = r.reboundDiff.diffPerGame;
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
-    tooltip: "Rebound Differential, per game: this player's own team's total rebounds (OREB+DREB combined) minus the opponent's, averaged across the games they played. Team-level, not individual rebound-battle attribution -- a missed shot only ever tracks one rebounderId, with no data on who else contested it, so 'who wins a specific ball' isn't something this tool can answer without new tracking. This is the real signal available now: does this player's side tend to control the boards overall. Same Stopped Early exclusion as Shot Diff/G." },
+    tooltip: "Rebound Differential, per game: this player's own team's total rebounds (OREB+DREB combined) minus the opponent's, averaged across the games they played. Team-level, not individual rebound-battle attribution: a missed shot only ever tracks one rebounderId, with no data on who else contested it, so 'who wins a specific ball' isn't something this tool can answer without new tracking. This is the real signal available now: does this player's side tend to control the boards overall. Same Stopped Early exclusion as Shot Diff/G." },
   { key: "pace", label: "Pace", advanced: true,
     accessor: r => r.paceAndPpp ? r.paceAndPpp.pace : null,
     display: r => r.paceAndPpp ? r.paceAndPpp.pace.toFixed(1) : "—",
@@ -8299,11 +8299,11 @@ const LEADERBOARD_COLUMNS = [
   { key: "realplaymaking", label: "Real Playmaking Volume/G", advanced: true,
     accessor: r => r.realPlaymaking ? r.realPlaymaking.shotsCreatedPer25 : null,
     display: r => r.realPlaymaking ? `${r.realPlaymaking.shotsCreatedPer25.toFixed(1)} (${r.realPlaymaking.shotsCreated} shots, ${r.realPlaymaking.pointsGenerated} pts, ${r.realPlaymaking.oldAssists} old assists)` : "—",
-    tooltip: `Every pass that led to ANY attempt, make or miss (passerId), per game -- same rate convention as every other /G column here, so this compares fairly across different games-played totals instead of just rewarding volume. Replaces raw assist count as the primary passing-volume stat, since assists alone silently hide every good pass that led to a miss. Season totals and the old assist count are shown underneath for reference. Needs ${REAL_PLAYMAKING_MIN}+ shots created before showing.` },
+    tooltip: `Every pass that led to ANY attempt, make or miss (passerId), per game: same rate convention as every other /G column here, so this compares fairly across different games-played totals instead of just rewarding volume. Replaces raw assist count as the primary passing-volume stat, since assists alone silently hide every good pass that led to a miss. Season totals and the old assist count are shown underneath for reference. Needs ${REAL_PLAYMAKING_MIN}+ shots created before showing.` },
   { key: "passquality", label: "Weighted Pass Quality", advanced: true,
     accessor: r => r.passQuality ? r.passQuality.avgQuality : null,
     display: r => r.passQuality ? `${r.passQuality.avgQuality.toFixed(2)} (${r.passQuality.volume} passes)` : "—",
-    tooltip: `Average zone value x openness weight across every shot this player passed into: separates "passes often" from "creates good shots when they do." Openness rewards a looser contest (the passer created more real separation) -- weights are a reasonable starting guess, not a validated formula yet. A contested shot the shooter held first is on the shooter, so it is left out of the average. Needs ${PASS_QUALITY_MIN_VOLUME}+ passes before showing.` },
+    tooltip: `Average zone value x openness weight across every shot this player passed into: separates "passes often" from "creates good shots when they do." Openness rewards a looser contest (the passer created more real separation): weights are a reasonable starting guess, not a validated formula yet. A contested shot the shooter held first is on the shooter, so it is left out of the average. Needs ${PASS_QUALITY_MIN_VOLUME}+ passes before showing.` },
   { key: "moneyzone", label: "Money Zone %", advanced: true,
     accessor: r => {
       const money = r.shooting.closeA + r.shooting.tpArcA;
@@ -8315,7 +8315,7 @@ const LEADERBOARD_COLUMNS = [
       const total = money + r.shooting.midA + r.shooting.tpDeepA;
       return total > 0 ? formatPct(pct(money, total)) : "—";
     },
-    tooltip: "Share of this player's own zone-marked field goal attempts from the two real-positive-value zones (Close, 3PT Line) rather than the two weak ones (Midrange, 3PT Deep) -- see the Shot Distance panel below for the four-way split this collapses into one number. How much of this diet is good shots, at a glance, not a read on whether they're making them." },
+    tooltip: "Share of this player's own zone-marked field goal attempts from the two real-positive-value zones (Close, 3PT Line) rather than the two weak ones (Midrange, 3PT Deep): see the Shot Distance panel below for the four-way split this collapses into one number. How much of this diet is good shots, at a glance, not a read on whether they're making them." },
   { key: "oreb", label: "OREB/G", accessor: r => r.rate.oreb, display: r => r.rate.oreb.toFixed(1), tooltip: "Offensive rebounds (grabbed by a teammate of the shooter), per game." },
   { key: "dreb", label: "DREB/G", accessor: r => r.rate.dreb, display: r => r.rate.dreb.toFixed(1), tooltip: "Defensive rebounds (grabbed by an opponent of the shooter), per game." },
   { key: "foughtreb", label: "Fought REB/G", accessor: r => foughtReboundsPer25(r), display: r => foughtReboundsPer25(r).toFixed(1), tooltip: "Rebounds per game, with a rebound nobody contested counted as half: separates winning boards from standing where the ball falls. Rebounds with no contest tag count in full." },
@@ -8324,10 +8324,10 @@ const LEADERBOARD_COLUMNS = [
   { key: "tovcredit", label: "TOV Credit %", advanced: true,
     accessor: r => r.turnoverCredit ? r.turnoverCredit.rate : null,
     display: r => r.turnoverCredit ? formatPct(r.turnoverCredit.rate) : "—",
-    tooltip: `Of every turnover the opponent committed in games this player's own team was on defense (credited or not -- the whole pool a credited one could come from), what share did this player individually get credited for forcing (a real steal, or being named on a standalone turnover)? A turnover with no one credited has no defender tag at all, so it can't honestly be pinned on one specific teammate over another; this only compares against the real, checkable pool. Separates active disruption from benefiting off sloppy opposing possessions without causing them. Needs ${TURNOVER_CREDIT_MIN_POOL}+ team turnovers forced.` },
+    tooltip: `Of every turnover the opponent committed in games this player's own team was on defense (credited or not: the whole pool a credited one could come from), what share did this player individually get credited for forcing (a real steal, or being named on a standalone turnover)? A turnover with no one credited has no defender tag at all, so it can't honestly be pinned on one specific teammate over another; this only compares against the real, checkable pool. Separates active disruption from benefiting off sloppy opposing possessions without causing them. Needs ${TURNOVER_CREDIT_MIN_POOL}+ team turnovers forced.` },
   { key: "blk", label: "BLK/G", accessor: r => r.rate.blk, display: r => r.rate.blk.toFixed(1), tooltip: "Blocks (credited on a missed shot when this player is tagged as the blocker), per game. Feeds Def Rating below, except when the block is already one of this player's own Stops (the usual case); see Def Rating's own tooltip." },
   { key: "tov", label: "TOV/G", accessor: r => r.rate.tov, display: r => r.rate.tov.toFixed(1), tooltip: "Turnovers (including ones forced by a steal, or a miss ruled out of bounds), per game." },
-  { key: "atov", label: "A/TO", accessor: r => r.tovSplit.liveBall === 0 ? (r.totals.ast === 0 ? 0 : Infinity) : r.totals.ast / r.tovSplit.liveBall, display: r => r.astTov, tooltip: "Assist-to-turnover ratio, counting live-ball turnovers only -- a missed shot ruled out of bounds isn't charged against it (see TOV Recomputed below)." },
+  { key: "atov", label: "A/TO", accessor: r => r.tovSplit.liveBall === 0 ? (r.totals.ast === 0 ? 0 : Infinity) : r.totals.ast / r.tovSplit.liveBall, display: r => r.astTov, tooltip: "Assist-to-turnover ratio, counting live-ball turnovers only: a missed shot ruled out of bounds isn't charged against it (see TOV Recomputed below)." },
   { key: "pf", label: "PF/G", accessor: r => r.rate.pf, display: r => r.rate.pf.toFixed(1), tooltip: "Personal fouls, per game." },
   { key: "ptsAllowed", label: "Pts Allowed/G", accessor: r => r.rateDefense.ptsAllowed, display: r => r.rateDefense.ptsAllowed.toFixed(1), tooltip: "Points scored by opponents on shots where this player was the tagged defender, per game." },
   { key: "oppfg", label: "Opp FG%", accessor: r => pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops), display: r => formatPct(pct(r.defense.timesBeaten, r.defense.timesBeaten + r.defense.stops)), tooltip: "Shooting percentage of everyone this player was tagged defending, make or miss: a real 'shooting percentage allowed.'" },
@@ -8345,7 +8345,7 @@ const LEADERBOARD_COLUMNS = [
       const v = r.expectedPointsAgainst.pointsAllowedUnderExpected;
       return `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
     },
-    tooltip: "Expected Points' defensive counterpart, using the same zone rates: every shot this player is tagged defending gets that shot zone's league-average points-per-attempt as its expected value (Close/Midrange/Line/Deep), summed and compared to what was actually scored on them. Positive means allowing fewer points than the shot difficulty they actually faced would predict, the good outcome for defense (opposite sign convention from offensive Pts +/- Exp, where scoring more than expected is good). Separates 'suppresses shooting below what's normal for the shots faced' from 'happens to face an easier or harder mix of shots than average' -- Opp FG% alone can't tell those apart. Needs 10+ tagged defended shots to show at all; inherits the same still-early zone-rate caveat as offensive Expected Points, and doesn't touch the separate, still-open question of whether a 'beaten' shot was genuinely well-defended or not." },
+    tooltip: "Expected Points' defensive counterpart, using the same zone rates: every shot this player is tagged defending gets that shot zone's league-average points-per-attempt as its expected value (Close/Midrange/Line/Deep), summed and compared to what was actually scored on them. Positive means allowing fewer points than the shot difficulty they actually faced would predict, the good outcome for defense (opposite sign convention from offensive Pts +/- Exp, where scoring more than expected is good). Separates 'suppresses shooting below what's normal for the shots faced' from 'happens to face an easier or harder mix of shots than average': Opp FG% alone can't tell those apart. Needs 10+ tagged defended shots to show at all; inherits the same still-early zone-rate caveat as offensive Expected Points, and doesn't touch the separate, still-open question of whether a 'beaten' shot was genuinely well-defended or not." },
   { key: "offrtg25", label: "Off Rating/G", accessor: r => r.offRatingPer25, display: r => r.offRatingPer25.toFixed(1), tooltip: "Offense-only Game Score: PTS, shooting efficiency, rebounds, assists, TOV, and fouls, adapted from the standard basketball Game Score formula, minus its STL and BLK terms, which live in Def Rating instead, per game." },
   { key: "twoway25", label: "Two-Way/G", accessor: r => r.twoWayPer25, display: r => r.twoWayPer25.toFixed(1), tooltip: "Off Rating plus Def Rating, per game." },
   { key: "last5", label: "Last 5", accessor: r => r.last5OffRatingPer25, display: r => r.last5Gp > 0 ? `${r.last5Trend} ${r.last5OffRatingPer25.toFixed(1)}` : "—", tooltip: "Off Rating/G over their last 5 games with real shots logged (fewer if they haven't played 5 yet). ▲/▼ shows whether that's above or below their season Off Rating/G; within ±0.5 counts as flat (–)." }
@@ -9318,7 +9318,7 @@ function renderPlayerGameLog(playerId) {
         ? ` <span class="badge" title="Lowest Two-Way score of any game this season. Every season has one.">Rough one</span>`
         : "";
     const stoppedEarlyBadge = r.game.stoppedEarly
-      ? ` <span class="badge badge-lowlight" title="This game ended early. Not comparable to a complete game -- excluded from Best/Worst Games, Power Ranking vs. Performance, Shot Attempt Differential, Pace/PPP, and Win Shares.">${icon("stop")}</span>`
+      ? ` <span class="badge badge-lowlight" title="This game ended early. Not comparable to a complete game: excluded from Best/Worst Games, Power Ranking vs. Performance, Shot Attempt Differential, Pace/PPP, and Win Shares.">${icon("stop")}</span>`
       : "";
     tr.innerHTML = `
       <td><button type="button" class="icon-btn game-log-date-btn" data-game-id="${r.game.id}" style="padding:0;font-weight:600;color:var(--accent)">${formatDateDisplay(r.game.date)}</button>${stoppedEarlyBadge}</td>
@@ -9610,7 +9610,7 @@ function renderLabelFrame() {
   const rangeText = labelShotStartIndex === null && labelShotEndIndex === null
     ? "Shot range: whole clip (not trimmed)."
     : `Shot range: frame ${(labelShotStartIndex ?? 0) + 1} to ${(labelShotEndIndex ?? labelFrameNames.length - 1) + 1}.`;
-  progressEl.textContent = `Frame ${labelFrameIndex + 1} of ${labelFrameNames.length} (${name}) -- ${labeledCount} of ${labelFrameNames.length} labeled so far. ${rangeText} Click the ball's center, or use "No ball visible."`;
+  progressEl.textContent = `Frame ${labelFrameIndex + 1} of ${labelFrameNames.length} (${name}): ${labeledCount} of ${labelFrameNames.length} labeled so far. ${rangeText} Click the ball's center, or use "No ball visible."`;
 
   wrap.innerHTML = `<img id="labelFrameImg" src="${labelFrameUrl(name)}" style="display:block;max-width:100%;cursor:crosshair" draggable="false">`;
   const img = document.getElementById("labelFrameImg");
@@ -10179,7 +10179,7 @@ function renderTurnoverTypeOverSeasonChart() {
   const { dates, series } = computeTurnoverTypeOverSeason();
   if (gateEl) {
     gateEl.textContent = dates.length < 8
-      ? `Only ${dates.length} game date${dates.length === 1 ? "" : "s"} logged so far -- too little date-range history for a real trend yet. Read this as a placeholder for the shape the chart will take, not a signal.`
+      ? `Only ${dates.length} game date${dates.length === 1 ? "" : "s"} logged so far: too little date-range history for a real trend yet. Read this as a placeholder for the shape the chart will take, not a signal.`
       : `${dates.length} game dates logged.`;
   }
   const types = Object.keys(series);
@@ -10347,7 +10347,7 @@ function renderOppAdjReboundPanel() {
 
 const CONTEST_LEVELS = [
   { key: "beat", label: "Got Beat", about: "The tagged defender was beaten right before the shot and is chasing the play." },
-  { key: "light", label: "Light Contest", about: "A defender is credited nearby but didn't meaningfully affect the shot -- a late closeout, trailing the play, a hand up from a step away." },
+  { key: "light", label: "Light Contest", about: "A defender is credited nearby but didn't meaningfully affect the shot: a late closeout, trailing the play, a hand up from a step away." },
   { key: "medium", label: "Medium Contest", about: "A real, in-position defender with a hand up, but not draped on the shooter or altering the release." },
   { key: "heavy", label: "Heavy Contest", about: "A hand in their face, verticality, or real physical pressure that could plausibly alter the shot." }
 ];
@@ -11976,17 +11976,17 @@ export const PLAYER_PANELS = [
   { title: "Personalized Tips", hint: "This player's numbers next to the league average, shown only when something stands out: best and favorite shot zones, and defenders or scorers they do unusually well or badly against (5+ shots each). Watch film links go to the games behind it.", tag: null, open: true, section: "overview", order: 5, html: "\r\n      <div id=\"playerTips\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerTips(pid); }, wires: [] },
   { title: "Areas to Work On", hint: "Where this player is ahead of or behind a typical player in the league, one area at a time. Each area needs a minimum number of plays before it shows.", tag: null, open: true, section: "overview", order: 6, html: "\r\n      <div id=\"areasToWorkOn\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderAreasToWorkOn(pid); }, wires: [] },
   { title: "Stat Trend", hint: "Pick a stat to see it game by game, against this player's average (dashed) and the league's. The line stays faded until there are 5 games.", tag: null, open: true, section: "shooting", order: 7, html: "\r\n      <label class=\"stat-trend-picker\">Stat <select id=\"playerStatTrendSelect\"></select></label>\r\n      <p id=\"playerStatTrendNote\" class=\"hint\" style=\"margin:6px 0 10px\"></p>\r\n      <div id=\"playerStatTrend\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerStatTrend(pid); }, wires: [] },
-  { title: "Resistance Faced & Shot-Making Added", hint: "How hard the shots were (Average Resistance Faced) and whether that difficulty got beaten (Shot-Making Added) -- two different questions, always shown together. A player facing high resistance with a modest Shot-Making Added number is a different story than one facing low resistance with the same number.", tag: null, open: true, section: "shooting", order: 8, html: "\r\n      <div id=\"playerResistanceShotMaking\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerResistanceShotMaking(pid); }, wires: [] },
-  { title: "Self-Creation", hint: "Raw self-created % and the version excluding deep heaves, shown together -- grabbing a loose ball and immediately heaving it up isn't the same skill as creating a real shot, and collapsing these into one number hides that gap.", tag: null, open: false, section: "shooting", order: 9, html: "\r\n      <div id=\"playerSelfCreationPanel\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerSelfCreationPanel(pid); }, wires: [] },
+  { title: "Resistance Faced & Shot-Making Added", hint: "How hard the shots were (Average Resistance Faced) and whether that difficulty got beaten (Shot-Making Added): two different questions, always shown together. A player facing high resistance with a modest Shot-Making Added number is a different story than one facing low resistance with the same number.", tag: null, open: true, section: "shooting", order: 8, html: "\r\n      <div id=\"playerResistanceShotMaking\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerResistanceShotMaking(pid); }, wires: [] },
+  { title: "Self-Creation", hint: "Raw self-created % and the version excluding deep heaves, shown together: grabbing a loose ball and immediately heaving it up isn't the same skill as creating a real shot, and collapsing these into one number hides that gap.", tag: null, open: false, section: "shooting", order: 9, html: "\r\n      <div id=\"playerSelfCreationPanel\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerSelfCreationPanel(pid); }, wires: [] },
   { title: "Shot Types", hint: "How this player's field goals were created and how each type has gone. Efficiency only shows once a type has at least 5 tagged attempts.", tag: null, open: false, section: "shooting", order: 10, html: "\r\n      <div id=\"playerShotTypes\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerShotTypes(pid); }, wires: [] },
   { title: "Shot Arc", hint: "The shape of this player's shots, from the ones followed on film from release to the hoop. It describes how the player shoots and does not predict whether a shot goes in. Needs 8 followed shots before it shows.", tag: null, open: false, section: "shooting", order: 11, html: "\r\n      <div id=\"playerShotArc\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerShotArc(pid); }, wires: [] },
   { title: "Shot Chart", hint: "Every marked shot at its spot on the court: aqua make, crimson miss. Shape shows shot type: circle catch-and-shoot, square drive, triangle deep heave, diamond move, faint circle not tagged yet.", tag: null, open: false, section: "shooting", order: 12, html: "\r\n      <div id=\"playerShotChart\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerShotChart(pid); }, wires: [] },
   { title: "Shot Heatmap", hint: "Every marked field goal this player has taken, bucketed by court zone. Each zone is tinted against this player's own FG%: aqua above it, crimson below, the number is attempts. Only shots with a marked location are included.", tag: null, open: false, section: "shooting", order: 13, html: "\r\n      <div id=\"playerHeatmap\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerHeatmap(pid); }, wires: [] },
   { title: "Shooting by Direction", hint: "Shooting split by which hoop this player's team faced, to check whether the sun costs shots. Needs the direction set in Stat Entry and 5+ attempts per side.", tag: null, open: false, section: "shooting", order: 14, html: "\r\n      <div id=\"playerShootingByDirection\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderShootingByDirection(pid); }, wires: [] },
   { title: "Assisted By", hint: "How many of this player's made shots were set up by someone else, and how good those passers are. Free throws aren't counted.", tag: null, open: true, section: "passing", order: 15, html: "\r\n      <div id=\"playerAssistedBy\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderAssistedByPanel(pid); }, wires: [] },
-  { title: "Passing Quality & Volume", hint: "Real Playmaking Volume and Weighted Pass Quality, shown together -- volume alone (like the old assist count) and quality alone each tell an incomplete story. A player can be high on one and unremarkable on the other.", tag: null, open: true, section: "passing", order: 16, html: "\r\n      <div id=\"playerPassingPanel\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerPassingPanel(pid); }, wires: [] },
+  { title: "Passing Quality & Volume", hint: "Real Playmaking Volume and Weighted Pass Quality, shown together: volume alone (like the old assist count) and quality alone each tell an incomplete story. A player can be high on one and unremarkable on the other.", tag: null, open: true, section: "passing", order: 16, html: "\r\n      <div id=\"playerPassingPanel\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerPassingPanel(pid); }, wires: [] },
   { title: "Turnover Mix", hint: "What kind of turnover this player tends to commit, with Self-Inflicted % read against the league median (not league-best, same convention as Areas to Work On).", tag: null, open: true, section: "passing", order: 17, html: "\r\n      <div id=\"playerTurnoverMixPanel\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerTurnoverMixPanel(pid); }, wires: [] },
-  { title: "Contest Quality & Engagement", hint: "Real Contested Opp FG% (quality) and Engagement Rate (how often that quality is even brought to bear), shown together -- never one without the other. A high-quality, low-engagement defender and a high-quality, high-engagement one look identical on Opp FG% alone but mean completely different things.", tag: null, open: true, section: "defense", order: 18, html: "\r\n      <div id=\"playerContestQualityEngagement\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerContestQualityEngagement(pid); }, wires: [] },
+  { title: "Contest Quality & Engagement", hint: "Real Contested Opp FG% (quality) and Engagement Rate (how often that quality is even brought to bear), shown together: never one without the other. A high-quality, low-engagement defender and a high-quality, high-engagement one look identical on Opp FG% alone but mean completely different things.", tag: null, open: true, section: "defense", order: 18, html: "\r\n      <div id=\"playerContestQualityEngagement\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerContestQualityEngagement(pid); }, wires: [] },
   { title: "Defensive Heatmap", hint: "Shots this player defended, by court zone. Each zone is tinted against the opponents' overall FG%: aqua where they were held below it. Shows whether their defense holds up at every distance.", tag: null, open: true, section: "defense", order: 19, html: "\r\n      <div id=\"playerDefensiveHeatmap\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerDefensiveHeatmap(pid); }, wires: [] },
   { title: "Defensive Load", hint: "How much of the team's defending this player does: 1.0 is an even share, and above is more. Shots off a beaten defender are left out. The note beside it reads this together with their other defensive numbers, since a low share alone could mean several things.", tag: null, open: false, section: "defense", order: 20, html: "\r\n      <div id=\"defensiveLoad\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderPlayerDefensiveLoadPanel(pid); }, wires: [] },
   { title: "Notable Matchups", hint: "The biggest shooting swings involving this player, as scorer or defender, with film links. Needs 5+ shots against that opponent and a 15-point swing.", tag: null, open: true, section: "matchups", order: 21, html: "\r\n      <div id=\"playerNotableMatchups\"></div>\r\n    ", render: (pid) => { currentPlayerId = pid; renderNotableMatchups(pid); }, wires: [] },
@@ -12150,7 +12150,7 @@ export const EXPORT_PANELS = [
   { title: "Review Possible Dunks", hint: "Close 2-point shots logged before dunks could be marked. Watch the film, then pick Dunk or Not a dunk.", tag: null, open: true, section: "review", order: 3, html: "\r\n          <div id=\"dunkReview\"></div>\r\n        ", render: () => { renderDunkReview(); }, wires: [] },
   { title: "Review Shot Types", hint: "Shots with no type yet, oldest first. Pick a player to start with, watch the clip, and pick the type. Skip hides one until you reload. The re-check views list tagged shots worth a second look.", tag: null, open: true, section: "review", order: 4, html: "\r\n          <div id=\"shotTypeReview\"></div>\r\n        ", render: () => { renderShotTypeReview(); }, wires: [] },
   { title: "Review Turnover Types", hint: "Turnovers with no type yet, oldest first: bad pass, lost handle, stripped, drive/finish error, possession/decision error, or other. Pick a player to start with, watch the clip, and pick the category. Skip hides one until you reload.", tag: null, open: true, section: "review", order: 5, html: "\r\n          <div id=\"turnoverTypeReview\"></div>\r\n        ", render: () => { renderTurnoverTypeReview(); }, wires: [] },
-  { title: "Review Contests & Passers", hint: "Shots that need a contest level (light, medium, or heavy -- for any shot that already has a defender tagged; no defender means no contest, so those never show up here), a passer (for misses -- an assist only ever gets logged on a make, so this is the same idea for misses), or both. Pick a player to start with, watch the clip, and answer whichever's still showing. Skip sets a shot aside for now -- Show skipped brings it back without reloading.", tag: null, open: true, section: "review", order: 6, html: "\r\n          <div id=\"shotReview\"></div>\r\n        ", render: () => { renderShotReview(); }, wires: [] },
+  { title: "Review Contests & Passers", hint: "Shots that need a contest level (light, medium, or heavy, for any shot that already has a defender tagged; no defender means no contest, so those never show up here), a passer (for misses, an assist only ever gets logged on a make, so this is the same idea for misses), or both. Pick a player to start with, watch the clip, and answer whichever's still showing. Skip sets a shot aside for now: Show skipped brings it back without reloading.", tag: null, open: true, section: "review", order: 6, html: "\r\n          <div id=\"shotReview\"></div>\r\n        ", render: () => { renderShotReview(); }, wires: [] },
   { title: "Review Shots at the Same Moment", hint: "Two shots at the exact same video time are usually a miss and its putback. Watch the film and give the putback its real time. Same moment is right hides the pair until you reload.", tag: null, open: true, section: "review", order: 7, html: "\r\n          <div id=\"sameMomentReview\"></div>\r\n        ", render: () => { renderSameMomentReview(); }, wires: [] },
   { title: "Check Against the Real Site", hint: "Each game here with a result (logged from film or scored live) is matched to the real site's game from the same night with the same teams. Games with a different winner, or with no matching real game, are listed so you can fix whichever side is wrong.", tag: "Old site data", open: true, section: "review", order: 8, html: "\r\n          <div id=\"realSiteCheck\"></div>\r\n        ", render: () => { renderRealSiteCheck(); }, wires: [] },
   { title: "Review Stopped-Early Games", hint: "Flag any game that was cut short, since a partial game throws off per-game panels like best games and power ranking comparisons. Season totals aren't affected.", tag: null, open: true, section: "review", order: 9, html: "\r\n          <div id=\"stoppedEarlyReview\"></div>\r\n        ", render: () => { renderStoppedEarlyReview(); }, wires: [] },

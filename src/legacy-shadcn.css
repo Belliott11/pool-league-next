@@ -507,3 +507,28 @@
 
 /* every classic icon is a Lucide glyph now: one size and baseline wherever it sits in text */
 .legacy.legacy svg.icon { width: 1.1em; height: 1.1em; flex: none; vertical-align: -0.17em; }
+
+/* ---- 2026-11-26: numbers and grids in the site's own type ----
+   The classic panels set numbers in a typewriter face (IBM Plex Mono, not loaded, so the system's). Use the site's font with
+   tabular figures instead, which keeps columns lined up. */
+.legacy.legacy { --font-mono: var(--font-sans); }
+.legacy.legacy td,
+.legacy.legacy th { font-variant-numeric: tabular-nums; }
+/* The teammate lift and matchup grids: rounded tiles with a gap, bold figures, instead of hard-edged blocks. */
+.legacy.legacy .matchup-grid-cell {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border-radius: 0.4rem;
+  box-shadow: inset 0 0 0 2px var(--card);
+  text-align: center;
+}
+/* Table headers: quieter, small caps-like labels, like the newer tables. */
+.legacy.legacy th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+}
+.legacy.legacy tbody tr:hover td { background: color-mix(in srgb, var(--sh-muted) 45%, transparent); }

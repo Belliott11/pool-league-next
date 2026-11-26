@@ -1,3 +1,4 @@
+import { Hint } from "@/components/Hint"
 import { ChevronRight } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { IconChip } from "@/components/IconChip"
@@ -71,7 +72,7 @@ export function PanelGroup({ title, section, tabs, frame }: { title: string; sec
         ))}
       </TabsList>
       <TabsContent key={current.title} value={current.title} className="flex min-w-0 flex-col gap-4">
-        {current.hint && <p className="text-sm text-muted-foreground">{current.hint}</p>}
+        {current.hint && <Hint key={current.title} text={current.hint} />}
         {current.tag && <Badge variant="secondary" className="self-start">{current.tag}</Badge>}
         {current.node(opened)}
       </TabsContent>
