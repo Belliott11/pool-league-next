@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useHeaderHeight } from "@/components/PageTabs"
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 import type { Game, PooleanState } from "@/lib/types"
 
 // The game page's Odds tab: Team A's win chance through the game, pinned at the top, and every basket below it with how far it moved the
-// odds. Scrolling the list moves the marker on the chart to the basket in the middle of the screen; tapping a row does the same.
+// odds. Tapping a basket, or the arrows on the chart, moves the marker to it; scrolling only scrolls.
 
 const pct = (p: number) => `${Math.round(p * 100)}%`
 const W = 360
@@ -44,7 +44,7 @@ function Row({ state, game, s, big, active, onPick }: { state: PooleanState; gam
   void game
   return (
     <li data-step={s.index}>
-      {/* Scrolling picks the row; a tap does too. The row holds the Watch button, so it is not a button itself. */}
+      {/* A tap picks the row. It holds the Watch button, so it is not a button itself. */}
       <div
         aria-current={active ? "step" : undefined}
         onClick={onPick}
@@ -79,22 +79,6 @@ export function OddsTimelineCard({ state, game }: { state: PooleanState; game: G
   const [at, setAt] = useState(0)
   const list = useRef<HTMLOListElement>(null)
   const top = useHeaderHeight()
-  // The row nearest the middle of the screen is the one the chart marks.
-  useEffect(() => {
-    const el = list.current
-    if (!el || typeof IntersectionObserver === "undefined") return
-    const seen = new Map<number, boolean>()
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) seen.set(Number((e.target as HTMLElement).dataset.step), e.isIntersecting)
-        const visible = [...seen].filter(([, v]) => v).map(([k]) => k)
-        if (visible.length) setAt(Math.min(...visible))
-      },
-      { rootMargin: "-45% 0px -45% 0px" },
-    )
-    el.querySelectorAll("[data-step]").forEach((r) => io.observe(r))
-    return () => io.disconnect()
-  }, [t])
   // The arrows step through the baskets and bring that basket's row into view below the chart.
   const step = (i: number) => {
     setAt(i)

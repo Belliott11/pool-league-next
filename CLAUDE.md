@@ -290,8 +290,8 @@ everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games ar
   (`pointsAdded(state, { only })`, filmed games), and a link to the best shareable play or the game.
 - Odds tab on every game page (`src/components/OddsTimeline.tsx`, `src/lib/oddsTimeline.ts`): Team A's win chance after every basket (the
   live odds, from `backtestPick` or the saved pre-game call), pinned under the header, with every basket listed below it (who, the pass,
-  the score, the move in win chance, the three biggest swings marked, a Watch link when the shot has a video time). An
-  IntersectionObserver marks the basket in the middle of the screen on the chart as the list scrolls; a tap or the arrows mark it too.
+  the score, the move in win chance, the three biggest swings marked, a Watch link when the shot has a video time). A tap on
+  a basket or the arrows on the chart mark it; scrolling does not change the selection (asked 2026-11-26).
   Live-scored games use their live baskets. It is not inside a Card: `Card` has `overflow-hidden`, which stops `position: sticky`.
 - "Do the live odds mean what they say?" (`src/lib/calibration.ts`, `src/pages/leaderboard/CalibrationCard.tsx`, Models tab): the same
   moments as `liveReplay.test.ts`, grouped by how sure the odds were. On 2026-11-25 the 60-70% calls won 85% and the 80-90% calls 56%.
