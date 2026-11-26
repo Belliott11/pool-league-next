@@ -47,7 +47,7 @@ export function PlayersToWatch({ state, onOpenPlayer }: { state: PooleanState; o
       )}
       {w.bounce.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-xs font-medium">Due a bounce back</p>
+          <p className="text-xs font-medium">Due for a bounce-back</p>
           <p className="text-xs text-muted-foreground">Cooled off late, but were above the middle of the league over the whole season.</p>
           <ul className="flex flex-col gap-1.5">
             {w.bounce.map((r) => (
