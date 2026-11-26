@@ -11,7 +11,7 @@ import { allTimeRecord } from "@/lib/debate"
 import { formatDateDisplay } from "@/lib/format"
 import { useReadOnly } from "@/lib/mode"
 import { playerName } from "@/lib/players"
-import { captainOrder, currentSet, draftPick, MIN_COUNTED, movePlayer, newSet, nextNewcomerTeam, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
+import { captainOrder, currentSet, draftPick, MIN_COUNTED, movePlayer, newSet, nextNewcomerTeam, undoMove, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
 import { powerOf } from "@/lib/matchup"
 import type { Update } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -194,7 +194,7 @@ function Draft({ state, set, update, readOnly }: { state: PooleanState; set: Sea
 const today = () => new Date().toLocaleDateString("en-CA")
 
 // Newcomers join the team lowest in the standings (ties to the team with fewer players), counting from the day they join.
-function Newcomers({ state, set, editor, update }: { state: PooleanState; set: SeasonTeamSet; editor: boolean; update: Update }) {
+function Newcomers({ state, set, editor, update, when }: { state: PooleanState; set: SeasonTeamSet; editor: boolean; update: Update; when: string }) {
   const next = useMemo(() => nextNewcomerTeam(state, set), [state, set])
   const [pid, setPid] = useState("")
   const onTeam = new Set(set.teams.flatMap((t) => t.members))
@@ -220,7 +220,7 @@ function Newcomers({ state, set, editor, update }: { state: PooleanState; set: S
             size="sm"
             disabled={!pid}
             onClick={() => {
-              update((s) => putSet(s, movePlayer(set, pid, next.id, today())))
+              update((s) => putSet(s, movePlayer(set, pid, next.id, when)))
               setPid("")
             }}
           >
@@ -232,9 +232,9 @@ function Newcomers({ state, set, editor, update }: { state: PooleanState; set: S
   )
 }
 
-function TeamCard({ state, line, rank, onOpenPlayer, editor, set, update }: { state: PooleanState; line: TeamLine; rank: number; onOpenPlayer: (id: string) => void; editor: boolean; set: SeasonTeamSet; update: Update }) {
-  // A trade: the editor moves a player to another team from today. Their earlier nights stay with this team.
-  const move = (pid: string, to: string) => update((s) => putSet(s, movePlayer(set, pid, to || null, today())))
+function TeamCard({ state, line, rank, onOpenPlayer, editor, set, update, when }: { state: PooleanState; line: TeamLine; rank: number; onOpenPlayer: (id: string) => void; editor: boolean; set: SeasonTeamSet; update: Update; when: string }) {
+  // A trade: the editor moves a player to another team from the chosen date. Their earlier nights stay with this team.
+  const move = (pid: string, to: string) => update((s) => putSet(s, movePlayer(set, pid, to || null, when)))
   return (
     <Card>
       <CardHeader>
@@ -254,7 +254,7 @@ function TeamCard({ state, line, rank, onOpenPlayer, editor, set, update }: { st
               <TableHead className="text-right">Nights</TableHead>
               <TableHead className="text-right">Wins</TableHead>
               <TableHead className="text-right">Wins added</TableHead>
-              <TableHead className="text-right">A night</TableHead>
+              <TableHead className="text-right">A game</TableHead>
               <TableHead className="text-right">Counted</TableHead>
               {editor && <TableHead>Move</TableHead>}
             </TableRow>
@@ -269,7 +269,10 @@ function TeamCard({ state, line, rank, onOpenPlayer, editor, set, update }: { st
                   {m.id === line.team.captain && <span className="ml-1 text-xs text-muted-foreground">captain</span>}
                   {!m.current && <span className="ml-1 text-xs">moved on</span>}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{m.nights}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {m.nights}
+                  <span className="block text-xs text-muted-foreground">{m.games} {m.games === 1 ? "game" : "games"}</span>
+                </TableCell>
                 <TableCell className="text-right tabular-nums">{m.wins}</TableCell>
                 <TableCell className="text-right tabular-nums">{signed(m.winsAdded)}</TableCell>
                 <TableCell className="text-right tabular-nums">{m.nights ? one(m.score) : "-"}</TableCell>
@@ -298,6 +301,8 @@ function TeamCard({ state, line, rank, onOpenPlayer, editor, set, update }: { st
 function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { state: PooleanState; set: SeasonTeamSet; onOpenPlayer: (id: string) => void; onOpenGame: (id: string) => void; editor: boolean; update: Update }) {
   const s = useMemo(() => standings(state, set), [state, set])
   const tonight = s.nights.at(-1)
+  const [when, setWhen] = useState(today())
+  const teamName = (id: string | null) => (id ? (set.teams.find((t) => t.id === id)?.name ?? "a team") : null)
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -313,7 +318,7 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
             <TableHeader>
               <TableRow>
                 <TableHead>Team</TableHead>
-                <TableHead className="text-right">A night</TableHead>
+                <TableHead className="text-right">A game</TableHead>
                 <TableHead className="text-right">Wins</TableHead>
                 <TableHead className="text-right">Wins added</TableHead>
                 <TableHead className="text-right">Rivalry</TableHead>
@@ -340,7 +345,8 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
             </TableBody>
           </Table>
           <p className="text-xs text-muted-foreground">
-            Each night a player plays, they score their game wins plus their Wins added (filmed games). Each team counts the average of its best few players that night, the same
+            Each night a player plays, they score their game wins plus their Wins added (filmed games), per game they played, so a long night counts the
+            same as a short one. Each team counts the average of its best few players that night, the same
             number for every team: the fewest any team had there, but at least {MIN_COUNTED}. A team with fewer there than that gets a bench night ({one(s.bench)}, the bottom
             quarter of all player-nights) for each empty spot, so sending one star alone never helps. So a big roster or a big turnout does not decide it, an off night never hurts, and
             extra players are depth. A team's score is the average of its nights. Rivalry games, where the two pickup teams are two whole season teams, count{" "}
@@ -348,12 +354,47 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
           </p>
           {tonight?.scores[0] && (
             <p>
-              Team of the night, {formatDateDisplay(tonight.date)}: <TeamChip team={tonight.scores[0].team} /> ({one(tonight.scores[0].score)} a player, best {tonight.counted} counted).
+              Team of the night, {formatDateDisplay(tonight.date)}: <TeamChip team={tonight.scores[0].team} /> ({one(tonight.scores[0].score)} a game, best {tonight.counted} counted).
             </p>
           )}
-          <Newcomers state={state} set={set} editor={editor} update={update} />
+          <Newcomers state={state} set={set} editor={editor} update={update} when={when} />
         </CardContent>
       </Card>
+      {(editor || (set.moves ?? []).length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-display">Trades and newcomers</CardTitle>
+            <p className="text-sm text-muted-foreground">Every move since the draft. Nights before a move stay with the team the player was on.</p>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm">
+            {editor && (
+              <label className="flex flex-wrap items-center gap-2">
+                <span>Moves take effect from</span>
+                <Input type="date" className="h-9 w-auto" value={when} onChange={(e) => setWhen(e.target.value || today())} />
+              </label>
+            )}
+            {(set.moves ?? []).length ? (
+              <ul className="flex flex-col gap-1">
+                {[...(set.moves ?? [])].reverse().map((m, i) => (
+                  <li key={`${m.pid}|${m.date}|${i}`} className="flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-1 odd:bg-muted/50">
+                    <span>
+                      <span className="tabular-nums text-muted-foreground">{formatDateDisplay(m.date)}:</span> <span className="font-semibold">{playerName(state, m.pid)}</span>
+                      {m.from ? `, ${teamName(m.from)} to ${teamName(m.to) ?? "off the teams"}` : ` joins ${teamName(m.to)}`}
+                    </span>
+                    {editor && i === 0 && (
+                      <Button size="sm" variant="ghost" onClick={() => update((st) => putSet(st, undoMove(set)))}>
+                        <Undo2 aria-hidden /> Undo
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground">No moves yet. Pick a date above, then use Move on a team card or add a newcomer.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
       {s.rivalries.length > 0 && (
         <Card>
           <CardHeader>
@@ -377,7 +418,7 @@ function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { s
       )}
       <div className="flex flex-col gap-3">
         {s.rows.map((r, i) => (
-          <TeamCard key={r.team.id} state={state} line={r} rank={i + 1} onOpenPlayer={onOpenPlayer} editor={editor} set={set} update={update} />
+          <TeamCard key={r.team.id} state={state} line={r} rank={i + 1} onOpenPlayer={onOpenPlayer} editor={editor} set={set} update={update} when={when} />
         ))}
       </div>
     </div>

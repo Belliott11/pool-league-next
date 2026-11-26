@@ -6,7 +6,8 @@ import type { Game, PooleanState, SeasonTeam, SeasonTeamSet } from "@/lib/types"
 
 // Season teams: teams that exist only in the stats. Game nights stay pickup, so season teammates play with and against each other, and
 // every player's own results feed their season team. A player's night is their game wins (a rivalry game, where the two pickup teams are
-// two whole season teams, counts double) plus their Wins added (winsAdded.ts: Points added turned into wins, filmed games only). Each
+// two whole season teams, counts double) plus their Wins added (winsAdded.ts: Points added turned into wins, filmed games only), per
+// game played that night, so a long night is worth no more than a short one. Each
 // night, every team counts the average of its best few players' nights, the same number for every team: the fewest any team had there,
 // but at least 2 (a team with fewer there gets a bench night for each empty spot). So roster size and turnout do not decide it, a weak night never hurts,
 // and extra players are depth. A team's score is the average of its nights. Nights count for the team a player was on that night, so a
@@ -72,9 +73,10 @@ export interface MemberLine {
   id: string
   nights: number // nights they played for this team
   counted: number // of those, nights that were among the team's best that night
+  games: number
   wins: number // game wins, rivalry games counted double
   winsAdded: number
-  score: number // (wins + winsAdded) per night
+  score: number // the average of their nights, each night (wins + winsAdded) per game
   current: boolean // still on the team
 }
 
@@ -106,7 +108,7 @@ export interface Standings {
 export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
   const games = gamesIn(state, set)
   // date -> player -> their night, with the team they played for that night
-  const by = new Map<string, Map<string, { team: string; wins: number; winsAdded: number }>>()
+  const by = new Map<string, Map<string, { team: string; games: number; wins: number; winsAdded: number }>>()
   const rivalries: Standings["rivalries"] = []
   for (const g of games) {
     const rv = rivalryOf(set, g)
@@ -118,7 +120,8 @@ export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
         const team = teamOn(set, pid, g.date || "")
         if (!team) continue
         const night = by.get(g.date) ?? by.set(g.date, new Map()).get(g.date)!
-        const c = night.get(pid) ?? night.set(pid, { team: team.id, wins: 0, winsAdded: 0 }).get(pid)!
+        const c = night.get(pid) ?? night.set(pid, { team: team.id, games: 0, wins: 0, winsAdded: 0 }).get(pid)!
+        c.games++
         if (g.winner === side) c.wins += weight
         c.winsAdded += wa.get(pid) ?? 0
       }
@@ -126,10 +129,12 @@ export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
   const member = new Map<string, MemberLine>() // key team|pid
   const line = (team: string, pid: string) =>
     member.get(`${team}|${pid}`) ??
-    member.set(`${team}|${pid}`, { id: pid, nights: 0, counted: 0, wins: 0, winsAdded: 0, score: 0, current: !!set.teams.find((t) => t.id === team)?.members.includes(pid) }).get(`${team}|${pid}`)!
+    member.set(`${team}|${pid}`, { id: pid, nights: 0, counted: 0, games: 0, wins: 0, winsAdded: 0, score: 0, current: !!set.teams.find((t) => t.id === team)?.members.includes(pid) }).get(`${team}|${pid}`)!
+  // A player's night is per game, so a long night is worth no more than a short one, and leaving early costs nothing but the games.
+  const perGame = (c: { games: number; wins: number; winsAdded: number }) => (c.wins + c.winsAdded) / c.games
   // A team with fewer players there than the night counts fills each empty spot with a bench night (the bottom quarter of every
   // player-night in the set), so one player cannot stand in for a full team, and a below-average player gains nothing by staying home.
-  const bench = quantile([...by.values()].flatMap((night) => [...night.values()].map((c) => c.wins + c.winsAdded)), BENCH_PCT)
+  const bench = quantile([...by.values()].flatMap((night) => [...night.values()].map(perGame)), BENCH_PCT)
   const teamNights = new Map<string, number[]>()
   const nights: NightLine[] = []
   for (const [date, night] of [...by].sort((a, b) => a[0].localeCompare(b[0]))) {
@@ -137,9 +142,11 @@ export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
     for (const [pid, c] of night) {
       const m = line(c.team, pid)
       m.nights++
+      m.games += c.games
       m.wins += c.wins
       m.winsAdded += c.winsAdded
-      ;(perTeam.get(c.team) ?? perTeam.set(c.team, []).get(c.team)!).push({ pid, v: c.wins + c.winsAdded })
+      m.score += perGame(c) // summed here, averaged below
+      ;(perTeam.get(c.team) ?? perTeam.set(c.team, []).get(c.team)!).push({ pid, v: perGame(c) })
     }
     const fewest = Math.min(...[...perTeam.values()].map((l) => l.length))
     const k = Math.max(MIN_COUNTED, fewest)
@@ -155,10 +162,10 @@ export function standings(state: PooleanState, set: SeasonTeamSet): Standings {
     }
     nights.push({ date, counted: k, scores: scores.sort((a, b) => b.score - a.score) })
   }
-  for (const m of member.values()) m.score = m.nights ? (m.wins + m.winsAdded) / m.nights : 0
+  for (const m of member.values()) m.score = m.nights ? m.score / m.nights : 0
   const rows: TeamLine[] = set.teams.map((team) => {
     const members = [...member.entries()].filter(([k]) => k.startsWith(`${team.id}|`)).map(([, m]) => m)
-    for (const pid of team.members) if (!members.some((m) => m.id === pid)) members.push({ id: pid, nights: 0, counted: 0, wins: 0, winsAdded: 0, score: 0, current: true })
+    for (const pid of team.members) if (!members.some((m) => m.id === pid)) members.push({ id: pid, nights: 0, counted: 0, games: 0, wins: 0, winsAdded: 0, score: 0, current: true })
     const list = teamNights.get(team.id) ?? []
     const rivalry: [number, number] = [0, 0]
     for (const r of rivalries) if (r.a.id === team.id || r.b.id === team.id) rivalry[r.winner.id === team.id ? 0 : 1]++
@@ -187,6 +194,21 @@ export function movePlayer(set: SeasonTeamSet, pid: string, to: string | null, d
     ...set,
     teams: set.teams.map((t) => ({ ...t, members: t.id === to ? [...t.members.filter((m) => m !== pid), pid] : t.members.filter((m) => m !== pid) })),
     moves: [...(set.moves ?? []), { pid, from, to, date }],
+  }
+}
+
+// Takes back the most recent move: the player goes back where they came from (or off the teams, for a newcomer).
+export function undoMove(set: SeasonTeamSet): SeasonTeamSet {
+  const moves = set.moves ?? []
+  const last = moves.at(-1)
+  if (!last) return set
+  return {
+    ...set,
+    teams: set.teams.map((t) => ({
+      ...t,
+      members: t.id === last.from ? [...t.members.filter((m) => m !== last.pid), last.pid] : t.members.filter((m) => m !== last.pid),
+    })),
+    moves: moves.slice(0, -1),
   }
 }
 

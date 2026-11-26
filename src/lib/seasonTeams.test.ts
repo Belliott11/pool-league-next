@@ -48,13 +48,14 @@ describe("standings", () => {
   it("counts each team's best nights, rivalry wins doubled", () => {
     const sharks = s.rows.find((r) => r.team.name === "Sharks")!
     const jets = s.rows.find((r) => r.team.name === "Jets")!
-    // Night 1: a 1 + 2 = 3, b 0 + 2 = 2 (Sharks 2.5); c 1, d 0 (Jets 0.5). Night 2: only Jets, c 1, d 0.
+    // Per game. Night 1, two games: a (1 + 2) / 2 = 1.5, b 2 / 2 = 1 (Sharks 1.25); c 1 / 2, d 0 (Jets 0.25). Night 2, one game:
+    // only Jets, c 1, d 0 (0.5). Jets average 0.375 over their two nights.
     expect(sharks.wins).toBe(5)
     expect(sharks.nights).toBe(1)
-    expect(sharks.score).toBeCloseTo(2.5, 10)
+    expect(sharks.score).toBeCloseTo(1.25, 10)
     expect(jets.wins).toBe(2)
     expect(jets.nights).toBe(2)
-    expect(jets.score).toBeCloseTo(0.5, 10)
+    expect(jets.score).toBeCloseTo(0.375, 10)
     expect(jets.rivalry).toEqual([0, 1])
     expect(s.rows[0].team.name).toBe("Sharks")
     expect(s.nights.map((x) => x.scores[0].team.name)).toEqual(["Sharks", "Jets"])
@@ -73,6 +74,15 @@ describe("best nights, trades and newcomers", () => {
   const base = { ...st.newSet("2027-06-01", [{ name: "Sharks", captain: "a" }, { name: "Jets", captain: "d" }]), drafting: false }
   base.teams[0].members = ["a", "b", "c"]
   base.teams[1].members = ["d", "e"]
+  it("scores a night per game, so a long night is worth no more than a short one", () => {
+    // Sharks win 4 of 8 one night, Jets win 1 of 2 another: the same per game.
+    const long = Array.from({ length: 8 }, (_, i) => game("2027-06-01", ["a", "b"], ["x", "y"], i % 2 ? "B" : "A"))
+    const state = { players: [], games: [...long, game("2027-06-08", ["d", "e"], ["x", "y"], "A"), game("2027-06-08", ["d", "e"], ["x", "y"], "B")], seasonTeamSets: [base] } as unknown as PooleanState
+    const s = st.standings(state, base)
+    const score = (n: string) => s.rows.find((r) => r.team.name === n)!.score
+    expect(score("Sharks")).toBeCloseTo(0.5, 10)
+    expect(score("Jets")).toBeCloseTo(0.5, 10)
+  })
   it("counts the same number for every team, so a weak extra night does not hurt", () => {
     // a and d win, b and e lose, c loses twice. Sharks have three there, Jets two: each counts its best two.
     const state = {
@@ -83,8 +93,8 @@ describe("best nights, trades and newcomers", () => {
     const s = st.standings(state, base)
     const sharks = s.rows.find((r) => r.team.name === "Sharks")!
     expect(s.nights[0].counted).toBe(2)
-    // a 2, b 1, c 0: best two average 1.5, and c's night is left out.
-    expect(sharks.score).toBeCloseTo(1.5, 10)
+    // Per game: a 2 of 2 = 1, b 1 of 3, c 0 of 2. The best two average 2/3, and c's night is left out.
+    expect(sharks.score).toBeCloseTo(2 / 3, 10)
     expect(sharks.members.find((m) => m.id === "c")!.counted).toBe(0)
   })
   it("gives a team with one player there a bench night for the empty spot", () => {
@@ -118,6 +128,10 @@ describe("best nights, trades and newcomers", () => {
     const joined = st.movePlayer(base, "z", base.teams[0].id, "2027-06-10")
     expect(joined.moves![0]).toEqual({ pid: "z", from: null, to: base.teams[0].id, date: "2027-06-10" })
     expect(st.teamOn(joined, "z", "2027-06-01")).toBeNull()
+    const back = st.undoMove(st.movePlayer(base, "b", base.teams[1].id, "2027-06-05"))
+    expect(back.teams[0].members).toContain("b")
+    expect(back.teams[1].members).not.toContain("b")
+    expect(back.moves).toEqual([])
   })
 })
 

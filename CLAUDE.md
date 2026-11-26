@@ -308,11 +308,13 @@ stay pickup. The editor names 2 to 6 teams with a captain each and runs a snake 
 (`captainOrder`, `powerOf` in matchup.ts), since a captain is a free first pick; the board lists players by power ranking; each team
 card shows its chance of beating the other teams from the pre-game model (`teamStrength`, near 50% when even). Captains for 2027:
 Adam, Ben, Reilly and Phillip. Each night a member plays, they score game wins (a rivalry game, where each pickup team is all from one
-season team and the two differ, counts double, `RIVALRY_WEIGHT`) plus their Wins added in filmed games. Each night every team counts the
+season team and the two differ, counts double, `RIVALRY_WEIGHT`) plus their Wins added in filmed games, divided by the games they
+played that night (so a long night is worth no more than a short one; changed 2026-11-26). Each night every team counts the
 average of its best K players' nights, K the same for every team: the fewest any team had there, at least 2 (`MIN_COUNTED`); a team with fewer there gets a bench night (`bench`, the set's 25th
 percentile player-night, `BENCH_PCT`) for each empty spot, so one star alone cannot stand in for a team (2026-11-26); a team's
 score is the average of its nights. So roster size and turnout do not decide it and a weak player never hurts (plain per-member averaging
-rewarded short rosters; changed 2026-11-26). Trades and newcomers are kept in `set.moves` (`movePlayer`), and `teamOn` gives the team a
+rewarded short rosters; changed 2026-11-26). Trades and newcomers are kept in `set.moves` (`movePlayer`, dated from the page's "Moves take effect from" date; the
+page lists every move for everyone, and the editor can undo the latest, `undoMove`), and `teamOn` gives the team a
 player was on for each game's date, so nights stay with the team they were played for. Newcomers go to the team lowest in the standings,
 ties to fewer players (`nextNewcomerTeam`, shown on the page with an "Add to" button). Teams count games from `from` to `to`; `startNewSeason` closes the open set (names it after the season) unless it starts on or
 after the new date. The page shows standings, team of the night, rivalry games and each team's members. Also: a "Season team" chip on
