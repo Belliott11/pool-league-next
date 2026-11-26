@@ -173,7 +173,30 @@ export interface PooleanState {
   currentSeasonStartedAt?: string | null
   // Seasons already closed, oldest first: each one's name and dates (see newSeason.ts).
   seasonHistory?: { label: string; startedAt: string | null; endedAt: string }[]
+  // Season teams (seasonTeams.ts): teams that exist only in the stats for a season, drafted by captains. The last set without `to` is
+  // the current one.
+  seasonTeamSets?: SeasonTeamSet[]
   // The first night of next season. While it is in the future the app is in the offseason.
   openingNight?: { date: string; time?: string } | null
   [key: string]: unknown
+}
+
+// One season team: a name, a color, its captain and its members (the captain included), in the order they were drafted.
+export interface SeasonTeam {
+  id: string
+  name: string
+  color: string
+  captain: string | null
+  members: string[]
+}
+
+// A season's teams: they count every finished game from `from` up to `to` (the next season's start, set when it begins). While
+// `drafting` is set the captains are still picking.
+export interface SeasonTeamSet {
+  id: string
+  from: string
+  to?: string | null
+  label?: string
+  teams: SeasonTeam[]
+  drafting?: boolean
 }

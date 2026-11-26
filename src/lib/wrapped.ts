@@ -8,6 +8,7 @@ import { ordinalOf } from "@/lib/ordinal"
 import { RECORD_LABEL, holders, recordBook } from "@/lib/records"
 import type { PooleanState } from "@/lib/types"
 import { writtenReadFor } from "@/lib/writtenReads"
+import { currentSet, standings, teamOf } from "@/lib/seasonTeams"
 
 // A player's season told one fact at a time, like a year-end recap. Slides with nothing to say are left out.
 export type Slide =
@@ -99,7 +100,7 @@ export function wrappedFor(full: PooleanState, id: string, old: RealGame[] = sea
 
   // The season's voted awards when the old site has a ballot for it, otherwise the race from the app's own games.
   const ballot = old.length > 0 ? ((currentRealSeason() as unknown as { awards?: Award[] } | null)?.awards ?? []) : []
-  const finishes = ballot.length > 0 ? ballotFinishes(ballot, id) : raceFinishes(full, id)
+  const finishes = [...(ballot.length > 0 ? ballotFinishes(ballot, id) : raceFinishes(full, id)), ...teamFinish(full, id)]
   if (finishes.length) slides.push({ kind: "awards", finishes })
 
   const rows = Object.values(recordBook(state))
@@ -192,4 +193,15 @@ export function slideClips(slides: Slide[], pool: Clip[]): (Clip | undefined)[] 
     if (c) used.push(c)
     return c
   })
+}
+
+// Where the player's season team finished (seasonTeams.ts), once the teams have played.
+function teamFinish(full: PooleanState, id: string): { label: string; place: string }[] {
+  const set = currentSet(full)
+  const team = set && !set.drafting ? teamOf(set, id) : null
+  if (!set || !team) return []
+  const s = standings(full, set)
+  const at = s.rows.findIndex((r) => r.team.id === team.id)
+  if (at < 0 || !s.rows[at].memberNights) return []
+  return [{ label: `Season team: ${team.name}`, place: ordinalOf(at + 1) }]
 }

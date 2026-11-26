@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { currentSet } from "@/lib/seasonTeams"
 import { uid } from "@/lib/format"
 import { PickChips, type PickMethodKey } from "@/components/GameTags"
 import {
@@ -34,6 +35,10 @@ function Setup({ state, update, onClose }: { state: PooleanState; update: Update
   const [target, setTarget] = useState(DEFAULT_TARGET)
   const [picked, setPicked] = useState<PickMethodKey | undefined>()
   const [test, setTest] = useState(false)
+  const seasonTeams = (() => {
+    const set = currentSet(state)
+    return set && !set.drafting ? set : null
+  })()
   const [name, setName] = useState("")
 
   // Tapping a team button moves the player there; tapping it again takes them off.
@@ -106,6 +111,37 @@ function Setup({ state, update, onClose }: { state: PooleanState; update: Update
         <span className="font-medium">How teams were picked</span>
         <PickChips value={picked} onChange={setPicked} />
       </div>
+      {seasonTeams && seasonTeams.teams.length > 1 && (
+        <div className="flex flex-col gap-1.5 rounded-lg border p-2">
+          <span className="font-medium">Rivalry game</span>
+          <span className="text-xs text-muted-foreground">Fill both teams from two season teams. Take off anyone who is not here; it still counts double while each side is from one season team.</span>
+          <div className="flex items-center gap-2">
+            {(["A", "B"] as const).map((side) => (
+              <select
+                key={side}
+                className="h-10 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm"
+                aria-label={`Team ${side} season team`}
+                defaultValue=""
+                onChange={(e) => {
+                  const t = seasonTeams.teams.find((x) => x.id === e.target.value)
+                  if (!t) return
+                  const other = side === "A" ? teamB : teamA
+                  const ids = t.members.filter((m) => !other.includes(m))
+                  if (side === "A") setA(ids)
+                  else setB(ids)
+                }}
+              >
+                <option value="">Team {side}</option>
+                {seasonTeams.teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            ))}
+          </div>
+        </div>
+      )}
       <label className="flex items-center justify-between gap-3 rounded-lg border p-2">
         <span>
           <span className="block font-medium">Test game</span>

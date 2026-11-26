@@ -10,6 +10,9 @@ export function startNewSeason(state: PooleanState, date: string, label?: string
     ...state,
     seasonHistory: [...(state.seasonHistory ?? []), { label: name, startedAt: state.currentSeasonStartedAt ?? null, endedAt: date }],
     currentSeasonStartedAt: date,
+    // The ending season's teams stop counting games from the new season on (their standings are kept for the Hall of Fame). Teams set up
+    // for the new season (starting on or after it) are left open.
+    ...(state.seasonTeamSets?.length ? { seasonTeamSets: state.seasonTeamSets.map((t) => (t.to || t.from >= date ? t : { ...t, to: date, label: t.label ?? name })) } : {}),
   }
 }
 

@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react"
 import { lazyPage } from "@/lib/lazyPage"
-import { Calculator, CalendarDays, Crown, Radio, Swords } from "lucide-react"
+import { Calculator, CalendarDays, Crown, Radio, Shield, Swords } from "lucide-react"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { getClient } from "@/lib/cloud"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,7 @@ const LiveGamePage = lazyPage(() => import("./live/LiveGamePage").then((m) => ({
 // The live screens and the editor's Set Up Tonight load only when opened, so a visitor's first load stays smaller.
 const LiveWatch = lazyPage(() => import("./live/LiveWatch").then((m) => ({ default: m.LiveWatch })))
 const SetUpTonight = lazyPage(() => import("./games/SetUpTonight").then((m) => ({ default: m.SetUpTonight })))
+const SeasonTeamsPage = lazyPage(() => import("./games/SeasonTeams").then((m) => ({ default: m.SeasonTeamsPage })))
 const HowItWorks = lazyPage(() => import("./games/HowItWorks").then((m) => ({ default: m.HowItWorks })))
 const NightRecap = lazyPage(() => import("./games/NightRecap").then((m) => ({ default: m.NightRecap })))
 const StatEntryPage = lazyPage(() => import("./statentry/StatEntryPage").then((m) => ({ default: m.StatEntryPage })))
@@ -80,6 +81,10 @@ export function GamesPage({
 
   if (kind === "h2h") {
     return <Lazy><HeadToHeadPage state={state} ids={arg} onBack={goBack} onOpenGame={open} onOpenPlayer={onOpenPlayer} onPick={(ids) => go("h2h:" + ids, true)} /></Lazy>
+  }
+
+  if (kind === "teams") {
+    return <Lazy><SeasonTeamsPage state={state} update={update} onBack={goBack} onOpenPlayer={onOpenPlayer} onOpenGame={open} /></Lazy>
   }
 
   if (kind === "how") {
@@ -149,6 +154,12 @@ export function GamesPage({
             <Button variant="outline" onClick={() => go("hall")}>
               <Crown />
               Hall of fame
+            </Button>
+          )}
+          {((state.seasonTeamSets ?? []).length > 0 || !readOnly) && (
+            <Button variant="outline" onClick={() => go("teams")}>
+              <Shield />
+              Season teams
             </Button>
           )}
           {state.players.length > 1 && (

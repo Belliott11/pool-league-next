@@ -17,6 +17,7 @@ import { GameVideoPanel } from "@/components/GameVideoPanel"
 import { ReviewsCard } from "./ReviewsCard"
 import { RunCheck } from "@/components/RunCheck"
 import { GameSummaryCard } from "@/components/GameSummaryCard"
+import { currentSet, rivalryOf } from "@/lib/seasonTeams"
 import { OddsTimelineCard } from "@/components/OddsTimeline"
 import { WatchContext, WatchTime } from "@/components/WatchTime"
 import type { PlayerControl } from "@/components/YouTubePlayer"
@@ -356,6 +357,8 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
   const videoBox = useRef<HTMLDivElement>(null)
   const hasVideo = !!gameVideoUrl(state, game)
   const tip = tipoffStatus(game)
+  const teamSet = currentSet(state)
+  const rivalry = teamSet && !teamSet.drafting && (game.date || "") >= teamSet.from ? rivalryOf(teamSet, game) : null
   // Event times are positions in the recording, so this plays from just before the moment.
   const clipTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   useEffect(() => () => clearInterval(clipTimer.current), [])
@@ -424,6 +427,11 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
           Share picture
         </Button>
         {game.stoppedEarly && <Badge variant="secondary">Stopped Early</Badge>}
+        {rivalry && (
+          <Badge variant="outline">
+            Rivalry game: {rivalry.a.name} vs {rivalry.b.name}, counts double
+          </Badge>
+        )}
         {!isBalancedGame(game) && (
           <Badge variant="secondary">
             {game.teamA.length}v{game.teamB.length}

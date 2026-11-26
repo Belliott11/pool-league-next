@@ -297,6 +297,20 @@ everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games ar
   shot's (`EventForm.tsx`); the contest level carries only with the same defenders. `src/pages/statentry/Untagged.tsx` lists shots with
   no defender and no contest, or a defender but no contest, with a jump to each.
 
+## Season teams
+
+`src/lib/seasonTeams.ts`, page `#/games/teams` (`src/pages/games/SeasonTeams.tsx`, a Games home button and in search). Teams that exist
+only in the stats for a season (`state.seasonTeamSets`, the last open set is current; types `SeasonTeamSet`, `SeasonTeam`). Game nights
+stay pickup. The editor names 2 to 6 teams with a captain each and runs a snake draft on the page (`onTheClock`, `draftPick`,
+`undoPick`; saved after every pick, `drafting` until "Finish the draft"); players can be moved between teams later (trades). Each night a
+member plays, they score game wins (a rivalry game, where each pickup team is all from one season team and the two differ, counts double,
+`RIVALRY_WEIGHT`) plus their Wins added in filmed games; a team's score is the average over its members' nights, so attendance does not
+decide it. Teams count games from `from` to `to`; `startNewSeason` closes the open set (names it after the season) unless it starts on or
+after the new date. The page shows standings, team of the night, rivalry games and each team's members. Also: a "Season team" chip on
+the Player page's At a glance card (`src/components/TeamChip.tsx`), a rivalry badge on the game page, a "Rivalry game" quick-fill on the
+live start screen (fills both pickup teams from two season teams), "Season team champions" in the Hall of Fame (`champions`) and the
+player's team finish in Season Wrapped's awards slide.
+
 ## Live win probability
 
 `src/lib/live.ts`: an exact race to the target (win by 2) from the pre-game read (`predictRealMatchup`, fitted on the old site's 60 results:

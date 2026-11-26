@@ -1,4 +1,6 @@
 import { useMemo } from "react"
+import { currentSet, teamOf } from "@/lib/seasonTeams"
+import { TeamChip } from "@/components/TeamChip"
 import { Card, CardContent } from "@/components/ui/card"
 import { computeLeaderboard } from "@/lib/legacy-core"
 import { metricsFor, scoutCard, type BoardRow } from "@/lib/scouting"
@@ -12,6 +14,8 @@ const RANKED_GP = 3
 // The few numbers someone opening a player's page wants first: where they stand, how often they win, how much they set up and how well they shoot, and one
 // line each on what they do best and what to work on (from the scouting report). Everything else is in the tabs below.
 export function PlayerGlance({ state, pid }: { state: PooleanState; pid: string }) {
+  const set = currentSet(state)
+  const team = set && !set.drafting ? teamOf(set, pid) : null
   const { row, rank, ranked, card } = useMemo(() => {
     const board = computeLeaderboard() as Row[]
     const row = board.find((r) => r.player.id === pid) ?? null
@@ -35,7 +39,15 @@ export function PlayerGlance({ state, pid }: { state: PooleanState; pid: string 
   return (
     <Card>
       <CardContent className="flex flex-col gap-3">
-        <h2 className="font-display text-sm font-semibold text-muted-foreground">At a glance</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-sm font-semibold text-muted-foreground">At a glance</h2>
+          {team && (
+            <a href="#/games/teams" className="text-xs hover:underline">
+              Season team: <TeamChip team={team} />
+              {team.captain === pid ? " (captain)" : ""}
+            </a>
+          )}
+        </div>
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {tiles.map((t) => (
             <div key={t.label} className="flex flex-col rounded-lg bg-muted/50 p-3">

@@ -1,0 +1,350 @@
+import { useMemo, useState } from "react"
+import { Shield, Undo2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { EmptyState } from "@/components/EmptyState"
+import { TeamChip } from "@/components/TeamChip"
+import { PlayerAvatar } from "@/components/PlayerAvatar"
+import { allTimeRecord } from "@/lib/debate"
+import { formatDateDisplay } from "@/lib/format"
+import { useReadOnly } from "@/lib/mode"
+import { playerName } from "@/lib/players"
+import { currentSet, draftPick, newSet, onTheClock, putSet, RIVALRY_WEIGHT, standings, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
+import type { Update } from "@/lib/store"
+import { cn } from "@/lib/utils"
+import type { Game, PooleanState, SeasonTeamSet } from "@/lib/types"
+
+// Season teams (#/games/teams): standings, each team's members and what they added, team of the night and rivalry games. The editor
+// sets the teams up here and runs the captains' draft (src/lib/seasonTeams.ts has the scoring).
+
+const one = (v: number) => `${v < -0.005 ? "−" : ""}${Math.abs(v).toFixed(2)}`
+const signed = (v: number) => `${v > 0.005 ? "+" : v < -0.005 ? "−" : ""}${Math.abs(v).toFixed(1)}`
+
+// ---------- setup ----------
+
+function Setup({ state, update }: { state: PooleanState; update: Update }) {
+  const [from, setFrom] = useState(state.openingNight?.date ?? state.currentSeasonStartedAt ?? new Date().toLocaleDateString("en-CA"))
+  const [count, setCount] = useState(4)
+  const [teams, setTeams] = useState<{ name: string; captain: string | null }[]>(Array.from({ length: 6 }, () => ({ name: "", captain: null })))
+  const players = [...state.players].sort((a, b) => a.name.localeCompare(b.name))
+  const shown = teams.slice(0, count)
+  const captains = shown.map((t) => t.captain).filter(Boolean)
+  const ok = captains.length === count && new Set(captains).size === count
+  const set = (i: number, patch: Partial<{ name: string; captain: string | null }>) => setTeams(teams.map((t, k) => (k === i ? { ...t, ...patch } : t)))
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-display">Set up season teams</CardTitle>
+        <p className="text-sm text-muted-foreground">Name the teams and pick a captain for each. The captains then draft everyone else, snake order: first pick goes last in round two.</p>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3 text-sm">
+        <label className="flex items-center justify-between gap-3">
+          <span className="font-medium">Teams</span>
+          <select className="h-10 rounded-md border bg-background px-2" value={count} onChange={(e) => setCount(Number(e.target.value))}>
+            {[2, 3, 4, 5, 6].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center justify-between gap-3">
+          <span>
+            <span className="block font-medium">Counts games from</span>
+            <span className="block text-xs text-muted-foreground">Usually opening night.</span>
+          </span>
+          <Input type="date" className="h-10 w-44" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </label>
+        {shown.map((t, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border p-2">
+            <Input className="h-10 min-w-0 flex-1" placeholder={`Team ${i + 1} name`} aria-label={`Team ${i + 1} name`} value={t.name} onChange={(e) => set(i, { name: e.target.value })} />
+            <select className="h-10 min-w-0 flex-1 rounded-md border bg-background px-2" aria-label={`Team ${i + 1} captain`} value={t.captain ?? ""} onChange={(e) => set(i, { captain: e.target.value || null })}>
+              <option value="">Captain</option>
+              {players.map((p) => (
+                <option key={p.id} value={p.id} disabled={captains.includes(p.id) && t.captain !== p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+        <Button disabled={!ok || !from} onClick={() => update((s) => putSet(s, newSet(from, shown)))}>
+          Start the draft
+        </Button>
+        {!ok && <p className="text-xs text-muted-foreground">Each team needs its own captain.</p>}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------- the draft ----------
+
+function Draft({ state, set, update, readOnly }: { state: PooleanState; set: SeasonTeamSet; update: Update; readOnly: boolean }) {
+  const clock = onTheClock(set)
+  const taken = new Set(set.teams.flatMap((t) => t.members))
+  // Most games first, so the regulars are at the top of the board.
+  const pool = useMemo(
+    () =>
+      state.players
+        .filter((p) => !taken.has(p.id))
+        .map((p) => ({ p, games: allTimeRecord(p.id)[0] + allTimeRecord(p.id)[1] }))
+        .sort((a, b) => b.games - a.games || a.p.name.localeCompare(b.p.name)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.players, set],
+  )
+  const picks = set.teams.reduce((k, t) => k + t.members.length - (t.captain ? 1 : 0), 0)
+  const save = (next: SeasonTeamSet) => update((s) => putSet(s, next))
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display">The draft</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {clock ? (
+              <>
+                On the clock: <TeamChip team={clock} />
+                {clock.captain ? ` (${playerName(state, clock.captain)} picks)` : ""}. Pick {picks + 1}.
+              </>
+            ) : (
+              "Everyone has been picked."
+            )}
+          </p>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 text-sm">
+          {!readOnly && pool.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5" aria-label="Players still to pick">
+              {pool.map(({ p, games }) => (
+                <li key={p.id}>
+                  <Button size="sm" variant="outline" onClick={() => save(draftPick(set, p.id))}>
+                    {p.name}
+                    <span className="text-xs text-muted-foreground">{games} games</span>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {readOnly && <p className="text-muted-foreground">The editor is running the draft. Picks show up here as they happen.</p>}
+          {!readOnly && (
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" disabled={!picks} onClick={() => save(undoPick(set))}>
+                <Undo2 aria-hidden /> Undo last pick
+              </Button>
+              <Button size="sm" onClick={() => save({ ...set, drafting: false })}>
+                Finish the draft
+              </Button>
+              <Button size="sm" variant="ghost" className="text-neg" onClick={() => confirm("Throw away these teams and start over?") && update((s) => ({ ...s, seasonTeamSets: (s.seasonTeamSets ?? []).filter((x) => x.id !== set.id) }))}>
+                Start over
+              </Button>
+            </div>
+          )}
+          {!readOnly && <p className="text-xs text-muted-foreground">Players who are not picked simply have no season team. Finish whenever the picks you want are in.</p>}
+        </CardContent>
+      </Card>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {set.teams.map((t) => (
+          <Card key={t.id} className={cn(clock?.id === t.id && "border-foreground")}>
+            <CardHeader>
+              <CardTitle className="font-display">
+                <TeamChip team={t} />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="flex flex-col gap-1 text-sm">
+                {t.members.map((m, i) => (
+                  <li key={m} className="flex items-center gap-2">
+                    <span className="w-5 text-right tabular-nums text-muted-foreground">{i + 1}.</span>
+                    <PlayerAvatar id={m} name={playerName(state, m)} size="sm" />
+                    {playerName(state, m)}
+                    {m === t.captain && <span className="text-xs text-muted-foreground">captain</span>}
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ---------- standings ----------
+
+function TeamCard({ state, line, rank, onOpenPlayer, editor, set, update }: { state: PooleanState; line: TeamLine; rank: number; onOpenPlayer: (id: string) => void; editor: boolean; set: SeasonTeamSet; update: Update }) {
+  // A trade or a late signing: the editor moves a player to another team (or onto this one).
+  const move = (pid: string, to: string) =>
+    update((s) =>
+      putSet(s, { ...set, teams: set.teams.map((t) => ({ ...t, members: t.id === to ? [...t.members.filter((m) => m !== pid), pid] : t.members.filter((m) => m !== pid) })) }),
+    )
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-2 font-display">
+          <span>
+            <span className="mr-2 text-muted-foreground tabular-nums">{rank}.</span>
+            <TeamChip team={line.team} />
+          </span>
+          <span className="font-display text-lg tabular-nums">{one(line.score)}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Player</TableHead>
+              <TableHead className="text-right">Nights</TableHead>
+              <TableHead className="text-right">Wins</TableHead>
+              <TableHead className="text-right">Wins added</TableHead>
+              <TableHead className="text-right">A night</TableHead>
+              {editor && <TableHead>Move</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {line.members.map((m) => (
+              <TableRow key={m.id}>
+                <TableCell>
+                  <button className="underline-offset-2 hover:underline" onClick={() => onOpenPlayer(m.id)}>
+                    {playerName(state, m.id)}
+                  </button>
+                  {m.id === line.team.captain && <span className="ml-1 text-xs text-muted-foreground">captain</span>}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{m.nights}</TableCell>
+                <TableCell className="text-right tabular-nums">{m.wins}</TableCell>
+                <TableCell className="text-right tabular-nums">{signed(m.winsAdded)}</TableCell>
+                <TableCell className="text-right tabular-nums">{m.nights ? one(m.score) : "-"}</TableCell>
+                {editor && (
+                  <TableCell>
+                    <select className="h-8 rounded-md border bg-background px-1 text-xs" aria-label={`Move ${playerName(state, m.id)}`} value={line.team.id} onChange={(e) => move(m.id, e.target.value)}>
+                      {set.teams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+function Standings({ state, set, onOpenPlayer, onOpenGame, editor, update }: { state: PooleanState; set: SeasonTeamSet; onOpenPlayer: (id: string) => void; onOpenGame: (id: string) => void; editor: boolean; update: Update }) {
+  const s = useMemo(() => standings(state, set), [state, set])
+  const tonight = s.nights.at(-1)
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-display">Standings</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Counting games from {formatDateDisplay(set.from)}
+            {set.to ? ` to ${formatDateDisplay(set.to)}` : ""}. {s.games} {s.games === 1 ? "game" : "games"} so far.
+          </p>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 text-sm">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Team</TableHead>
+                <TableHead className="text-right">A night</TableHead>
+                <TableHead className="text-right">Wins</TableHead>
+                <TableHead className="text-right">Wins added</TableHead>
+                <TableHead className="text-right">Rivalry</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {s.rows.map((r, i) => (
+                <TableRow key={r.team.id} className={cn(r.memberNights < THIN_NIGHTS && "italic")}>
+                  <TableCell>
+                    <span className="mr-1.5 tabular-nums text-muted-foreground">{i + 1}.</span>
+                    <TeamChip team={r.team} />
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">
+                    {r.memberNights ? one(r.score) : "-"}
+                    <span className="block text-xs font-normal text-muted-foreground">{r.memberNights} player-nights</span>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{r.wins}</TableCell>
+                  <TableCell className="text-right tabular-nums">{signed(r.winsAdded)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{r.rivalry[0] + r.rivalry[1] ? `${r.rivalry[0]}-${r.rivalry[1]}` : "-"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <p className="text-xs text-muted-foreground">
+            Each night a player plays, they score their game wins plus their Wins added (filmed games). A night is the team's average over its players' nights, so a team is not
+            ahead just because its players came more often. Rivalry games, where the two pickup teams are two whole season teams, count {RIVALRY_WEIGHT === 2 ? "double" : `${RIVALRY_WEIGHT} times`}.
+            Italic rows have fewer than {THIN_NIGHTS} player-nights.
+          </p>
+          {tonight?.best && (
+            <p>
+              Team of the night, {formatDateDisplay(tonight.date)}: <TeamChip team={tonight.best} /> ({one(tonight.score)} a player).
+            </p>
+          )}
+        </CardContent>
+      </Card>
+      {s.rivalries.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-display">Rivalry games</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col gap-1 text-sm">
+              {[...s.rivalries].reverse().map((r) => (
+                <li key={r.game.id}>
+                  <button type="button" onClick={() => onOpenGame(r.game.id)} className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted">
+                    <span>{formatDateDisplay(r.game.date)}</span>
+                    <span>
+                      <TeamChip team={r.winner} /> beat <TeamChip team={r.winner.id === r.a.id ? r.b : r.a} />
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+      <div className="flex flex-col gap-3">
+        {s.rows.map((r, i) => (
+          <TeamCard key={r.team.id} state={state} line={r} rank={i + 1} onOpenPlayer={onOpenPlayer} editor={editor} set={set} update={update} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function SeasonTeamsPage({ state, update, onBack, onOpenPlayer, onOpenGame }: { state: PooleanState; update: Update; onBack: () => void; onOpenPlayer: (id: string) => void; onOpenGame: (g: Game) => void }) {
+  const readOnly = useReadOnly()
+  const set = currentSet(state)
+  const openGame = (id: string) => {
+    const g = state.games.find((x) => x.id === id)
+    if (g) onOpenGame(g)
+  }
+  return (
+    <div className="anim-page flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="outline" size="sm" onClick={onBack}>
+          &larr; Back to Games
+        </Button>
+        <h2 className="flex items-center gap-2 font-display text-xl font-bold">
+          <Shield aria-hidden className="size-5" /> Season teams
+        </h2>
+      </div>
+      {!set ? (
+        readOnly ? (
+          <EmptyState title="No season teams yet" hint="Once the captains draft them, the season teams and their standings show up here." />
+        ) : (
+          <Setup state={state} update={update} />
+        )
+      ) : set.drafting ? (
+        <Draft state={state} set={set} update={update} readOnly={readOnly} />
+      ) : (
+        <Standings state={state} set={set} onOpenPlayer={onOpenPlayer} onOpenGame={openGame} editor={!readOnly} update={update} />
+      )}
+    </div>
+  )
+}
