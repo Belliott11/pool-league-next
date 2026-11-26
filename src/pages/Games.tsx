@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react"
+import { PotyCard } from "./games/PlayOfYear"
 import { lazyPage } from "@/lib/lazyPage"
-import { Calculator, CalendarDays, Crown, Radio, Shield, Swords } from "lucide-react"
+import { Calculator, CalendarDays, Crown, Radio, Shield, Swords, Trophy } from "lucide-react"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { getClient } from "@/lib/cloud"
 import { Button } from "@/components/ui/button"
@@ -36,6 +37,7 @@ const NightRecap = lazyPage(() => import("./games/NightRecap").then((m) => ({ de
 const StatEntryPage = lazyPage(() => import("./statentry/StatEntryPage").then((m) => ({ default: m.StatEntryPage })))
 const HallOfFame = lazyPage(() => import("./games/HallOfFame").then((m) => ({ default: m.HallOfFame })))
 const Wrapped = lazyPage(() => import("./games/Wrapped").then((m) => ({ default: m.Wrapped })))
+const PlayOfYearPage = lazyPage(() => import("./games/PlayOfYear").then((m) => ({ default: m.PlayOfYearPage })))
 const HeadToHeadPage = lazyPage(() => import("./games/HeadToHeadPage").then((m) => ({ default: m.HeadToHeadPage })))
 const ClipPage = lazyPage(() => import("./games/ClipPage").then((m) => ({ default: m.ClipPage })))
 const Lazy = ({ children }: { children: ReactNode }) => <Suspense fallback={<PageSkeleton label="Loading" />}>{children}</Suspense>
@@ -85,6 +87,10 @@ export function GamesPage({
 
   if (kind === "teams") {
     return <Lazy><SeasonTeamsPage state={state} update={update} onBack={goBack} onOpenPlayer={onOpenPlayer} onOpenGame={open} link={arg || undefined} onLinked={() => go("teams", true)} /></Lazy>
+  }
+
+  if (kind === "poty") {
+    return <Lazy><PlayOfYearPage state={state} update={update} onBack={goBack} /></Lazy>
   }
 
   if (kind === "how") {
@@ -162,6 +168,12 @@ export function GamesPage({
               Season teams
             </Button>
           )}
+          {((state.playOfYear ?? []).length > 0 || !readOnly) && (
+            <Button variant="outline" onClick={() => go("poty")}>
+              <Trophy />
+              Play of the Year
+            </Button>
+          )}
           {state.players.length > 1 && (
             <Button variant="outline" onClick={() => go("h2h")}>
               <Swords />
@@ -176,6 +188,7 @@ export function GamesPage({
           )}
         </div>
         <MyCard state={state} onOpenPlayer={onOpenPlayer} />
+        <PotyCard state={state} onOpen={() => go("poty")} />
         <TopPlays state={state} />
         {showHub(state) && <OffseasonHub state={state} onWrapped={() => go("wrapped")} onOpenPlayer={onOpenPlayer} onLive={() => go("live")} onOpenGame={open} />}
         <GameAlerts />

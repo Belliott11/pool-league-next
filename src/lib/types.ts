@@ -176,9 +176,21 @@ export interface PooleanState {
   // Season teams (seasonTeams.ts): teams that exist only in the stats for a season, drafted by captains. The last set without `to` is
   // the current one.
   seasonTeamSets?: SeasonTeamSet[]
+  // Play of the Year brackets (playOfYear.ts), newest last. Votes live in the poty_votes table, never here.
+  playOfYear?: PlayOfYear[]
   // The first night of next season. While it is in the future the app is in the offseason.
   openingNight?: { date: string; time?: string } | null
   [key: string]: unknown
+}
+
+// A Play of the Year bracket: the seeded plays (share ids from clip-shares.json, best first), when voting opened and how long each round
+// stays open. Who won each match is worked out from the votes.
+export interface PlayOfYear {
+  id: string
+  label: string
+  seeds: string[]
+  startAt: string
+  days: number
 }
 
 // One season team: a name, a color, its captain and its members (the captain included), in the order they were drafted.

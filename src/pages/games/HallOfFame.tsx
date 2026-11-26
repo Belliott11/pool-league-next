@@ -16,6 +16,8 @@ import { getClient } from "@/lib/cloud"
 import { loadAllPredictions, pastSeasons, type PastSeason } from "@/lib/predictions"
 import type { PooleanState } from "@/lib/types"
 import { reviewTally } from "@/lib/reviews"
+import shares from "@/data/clip-shares.json"
+import { loadPoty, potyWinners } from "@/lib/playOfYear"
 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
 
@@ -84,6 +86,12 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
     const client = getClient()
     if (client) void loadAllPredictions(client).then((all) => setCalled(pastSeasons(state, all)))
   }, [state])
+  // Play of the Year winners, from the votes.
+  const [poty, setPoty] = useState<{ label: string; id: string }[]>([])
+  useEffect(() => {
+    const client = getClient()
+    if (client && (state.playOfYear ?? []).length) void loadPoty(client).then((v) => setPoty(potyWinners(state, v)))
+  }, [state])
   return (
     <div className="anim-page flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -118,6 +126,19 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
                 <span className="text-muted-foreground">{c.finals ? " won the finals: " : ` ${c.line.score.toFixed(2)} a game: `}</span>
                 {c.line.team.members.map((m) => poolNameOf(state, m)).join(", ")}
               </span>
+            </div>
+          ))}
+        </Board>
+      )}
+
+      {poty.length > 0 && (
+        <Board title="Play of the Year" hint="Each bracket's winner, voted on from everyone's phones.">
+          {poty.map((w) => (
+            <div key={w.label} className="flex flex-col gap-0.5 border-t pt-1.5 first:border-t-0 first:pt-0">
+              <span className="text-xs text-muted-foreground">{w.label}</span>
+              <a href={`#/games/clip/${w.id}`} className="hover:underline">
+                {(shares as Record<string, { title?: string }>)[w.id]?.title ?? "A play"}
+              </a>
             </div>
           ))}
         </Board>

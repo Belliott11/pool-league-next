@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type MutableRefObject, type ReactNode } f
 import type { PlayerControl } from "@/components/YouTubePlayer"
 import { oddsTimeline } from "@/lib/oddsTimeline"
 import { playerName } from "@/lib/players"
+import { lineAt, playByPlay, type PlayLine } from "@/lib/playByPlay"
 import { scoreAt, type ScoreNow } from "@/lib/scoreAt"
 import { cn } from "@/lib/utils"
 import type { Game, PooleanState } from "@/lib/types"
@@ -21,12 +22,18 @@ export function ScoreOverlay({ state, game, control, children }: { state: Poolea
       return true
     }
   })
+  const lines = useMemo(() => playByPlay(game, (pid) => playerName(state, pid)), [game, state])
   const [now, setNow] = useState<ScoreNow | null>(null)
+  const [line, setLine] = useState<PlayLine | null>(null)
   useEffect(() => {
     if (!timed || !on || !control) return
-    const id = setInterval(() => setNow(scoreAt(t.steps, t.start, control.current?.time() ?? -1)), 250)
+    const id = setInterval(() => {
+      const at = control.current?.time() ?? -1
+      setNow(scoreAt(t.steps, t.start, at))
+      setLine(lineAt(lines, at))
+    }, 250)
     return () => clearInterval(id)
-  }, [timed, on, control, t])
+  }, [timed, on, control, t, lines])
   const toggle = () => {
     setOn(!on)
     try {
@@ -59,10 +66,17 @@ export function ScoreOverlay({ state, game, control, children }: { state: Poolea
             )}
           </div>
         )}
+        {on && now && line && (
+          <div aria-hidden className="pointer-events-none absolute inset-x-2 bottom-12 flex justify-center sm:bottom-14">
+            <span key={line.t} className="animate-in fade-in slide-in-from-bottom-1 max-w-full rounded-md bg-black/70 px-2.5 py-1 text-center text-xs leading-snug text-white shadow-lg backdrop-blur-sm duration-300 sm:text-sm">
+              {line.text}
+            </span>
+          </div>
+        )}
       </div>
       <label className="flex items-center gap-2 self-start text-xs text-muted-foreground">
         <input type="checkbox" checked={on} onChange={toggle} className="accent-[var(--color-primary)]" />
-        Score on the video
+        Score and play-by-play on the video
       </label>
     </div>
   )

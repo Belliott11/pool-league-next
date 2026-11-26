@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { SITE } from "@/lib/site"
+import { nbaComps } from "@/lib/nbaComps"
+import { metricsFor } from "@/lib/scouting"
 import { startNewSeason, suggestSeasonName } from "@/lib/newSeason"
 // The classic site's compute layer, column definitions and dependencies, taken verbatim so the numbers match the
 // classic site exactly. It started as generated output; the generator is gone, so edit this file directly.
@@ -4309,6 +4311,12 @@ async function generateTradingCardCanvas(playerId) {
     ctx.font = "22px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.75)";
     ctx.fillText(`${row.rate.pts.toFixed(1)} PTS/G · ${row.rate.ast.toFixed(1)} AST/G${tsPct !== null ? ` · ${tsPct}% TS` : ""} · ${row.twoWayPer25.toFixed(1)} Two-Way/G`, W / 2, y);
     y += 40;
+  }
+  // "Plays like" (src/lib/nbaComps.ts), when the player's style is close enough to one.
+  const comp = nbaComps(metricsFor(state, computeLeaderboard())).get(player.id);
+  if (comp) {
+    ctx.font = "italic 24px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillText(`Plays like ${comp.name}`, W / 2, y); y += 36;
   }
   y += 12;
   ctx.font = "24px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.85)";

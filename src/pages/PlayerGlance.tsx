@@ -6,6 +6,7 @@ import { MixtapeButton } from "@/components/ReelButton"
 import { playerName } from "@/lib/players"
 import { computeLeaderboard } from "@/lib/legacy-core"
 import { metricsFor, scoutCard, type BoardRow } from "@/lib/scouting"
+import { nbaComps } from "@/lib/nbaComps"
 import type { PooleanState } from "@/lib/types"
 
 type Row = BoardRow & { wins: number; losses: number; ties: number; winPct: number | null; twoWayPer25: number; totals: { pts: number }; shooting: { fga: number; fta?: number } }
@@ -18,12 +19,13 @@ const RANKED_GP = 3
 export function PlayerGlance({ state, pid }: { state: PooleanState; pid: string }) {
   const set = currentSet(state)
   const team = set && !set.drafting ? teamOf(set, pid) : null
-  const { row, rank, ranked, card } = useMemo(() => {
+  const { row, rank, ranked, card, comp } = useMemo(() => {
     const board = computeLeaderboard() as Row[]
     const row = board.find((r) => r.player.id === pid) ?? null
     const order = board.filter((r) => r.gp >= RANKED_GP).sort((a, b) => b.twoWayPer25 - a.twoWayPer25)
     const at = order.findIndex((r) => r.player.id === pid)
-    return { row, rank: at >= 0 ? at + 1 : null, ranked: order.length, card: scoutCard(metricsFor(state, board), pid) }
+    const metrics = metricsFor(state, board)
+    return { row, rank: at >= 0 ? at + 1 : null, ranked: order.length, card: scoutCard(metrics, pid), comp: nbaComps(metrics).get(pid) ?? null }
   }, [state, pid])
   if (!row || row.gp === 0) return null
 
@@ -59,8 +61,14 @@ export function PlayerGlance({ state, pid }: { state: PooleanState; pid: string 
             </div>
           ))}
         </dl>
-        {(best || work) && (
+        {(best || work || comp) && (
           <ul className="flex flex-col gap-1 text-sm">
+            {comp && (
+              <li>
+                <span className="font-semibold">Plays like:</span> {comp.name}
+                {comp.why && <span className="text-muted-foreground"> ({comp.why})</span>}
+              </li>
+            )}
             {best && (
               <li>
                 <span className="font-semibold">Best at:</span> {best.label} ({best.text}; {best.vs})

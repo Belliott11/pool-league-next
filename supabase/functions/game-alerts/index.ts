@@ -6,6 +6,8 @@
 //                   Test games (game.test) never send anything.
 //                   A "Final" also names up to two milestones reached in that game (milestones.ts, a copy of the site's own, with the
 //                   old site's results in old-results.json from scripts/old-results.mjs).
+//   POST {close}    called by the trigger when a live game's baskets change: sends one "close game" alert per game when it is tight near
+//                   the end (the leader within CLOSE_GAP of the other team and within CLOSE_LEFT of the target). Never for a test game.
 //   GET ?key=1      the site's public signing key, which a phone needs to turn alerts on.
 //   POST {hello}    a "you're set" notification to a phone that just turned alerts on (once per phone, and only a saved one).
 // The signing key is made here on first use and kept in push_vapid, which only this function can read.
@@ -17,12 +19,14 @@ import oldResults from "./old-results.json" with { type: "json" }
 
 const SITE = "https://intel.poolean.net/"
 const FINAL_WITHIN_MS = 3 * 3600 * 1000 // a game that ended longer ago than this is not news
+const CLOSE_GAP = 2 // points between the teams for a "close game" alert
+const CLOSE_LEFT = 2 // and the leader at most this far from the target
 const LIVE_DELAY_MS = 60 * 1000 // how long "Game on" waits, so a mistaken or test start can be undone first
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } })
 
 type Score = { pid: string; points: number }
-type Game = { test?: boolean; id: string; date: string; teamA: string[]; teamB: string[]; liveInProgress?: boolean; winner?: string | null; endedAt?: string; liveScores?: Score[]; scorekeeperScores?: Score[] }
+type Game = { test?: boolean; id: string; date: string; teamA: string[]; teamB: string[]; liveInProgress?: boolean; winner?: string | null; endedAt?: string; liveScores?: Score[]; scorekeeperScores?: Score[]; liveTarget?: number }
 type State = { games: Game[]; players: { id: string; name: string }[] }
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } })
@@ -43,11 +47,13 @@ const publicKey = (v: Vapid) => {
   return b64u(new Uint8Array([4, ...un(v.x), ...un(v.y)]))
 }
 
-function alertsDue(state: State): { id: string; kind: "live" | "final"; title: string; body: string; url: string }[] {
+type Kind = "live" | "final" | "close"
+
+function alertsDue(state: State): { id: string; kind: Kind; title: string; body: string; url: string }[] {
   const name = (id: string) => state.players.find((p) => p.id === id)?.name ?? id
   const names = (ids: string[]) => ids.map(name).join(", ")
   const score = (g: Game, team: string[]) => [...(g.liveScores ?? []), ...(g.scorekeeperScores ?? [])].filter((s) => team.includes(s.pid)).reduce((n, s) => n + s.points, 0)
-  const out: { id: string; kind: "live" | "final"; title: string; body: string; url: string }[] = []
+  const out: { id: string; kind: Kind; title: string; body: string; url: string }[] = []
   let book: ReturnType<typeof milestoneBook> | null = null
   const reached = (gameId: string) => {
     book ??= milestoneBook(state.games as unknown as MGame[], oldResults as OldResult[])
@@ -58,8 +64,22 @@ function alertsDue(state: State): { id: string; kind: "live" | "final"; title: s
   }
   for (const g of state.games ?? []) {
     if (g.test) continue
-    if (g.liveInProgress) out.push({ id: g.id, kind: "live", title: "Game on", body: `${names(g.teamA)} vs ${names(g.teamB)}. Tap to watch and vote.`, url: `${SITE}#/games/live` })
-    else if ((g.winner === "A" || g.winner === "B") && g.endedAt && Date.now() - Date.parse(g.endedAt) < FINAL_WITHIN_MS) {
+    if (g.liveInProgress) {
+      out.push({ id: g.id, kind: "live", title: "Game on", body: `${names(g.teamA)} vs ${names(g.teamB)}. Tap to watch and vote.`, url: `${SITE}#/games/live` })
+      const a = score(g, g.teamA)
+      const b = score(g, g.teamB)
+      const t = g.liveTarget
+      if (t && Math.max(a, b) >= t - CLOSE_LEFT && Math.abs(a - b) <= CLOSE_GAP && Math.max(a, b) < t + 10) {
+        const [hi, lo, lead, trail] = a >= b ? [a, b, g.teamA, g.teamB] : [b, a, g.teamB, g.teamA]
+        out.push({
+          id: g.id,
+          kind: "close",
+          title: hi === lo ? `Tied at ${hi}, game to ${t}` : `${hi} to ${lo}, game to ${t}`,
+          body: hi === lo ? `${names(g.teamA)} and ${names(g.teamB)}, all square. Tap to watch.` : `${names(lead)} lead ${names(trail)}. Tap to watch.`,
+          url: `${SITE}#/games/live`,
+        })
+      }
+    } else if ((g.winner === "A" || g.winner === "B") && g.endedAt && Date.now() - Date.parse(g.endedAt) < FINAL_WITHIN_MS) {
       const [w, l] = g.winner === "A" ? [g.teamA, g.teamB] : [g.teamB, g.teamA]
       out.push({ id: g.id, kind: "final", title: `Final: ${score(g, w)} to ${score(g, l)}`, body: `${names(w)} beat ${names(l)}.${reached(g.id)}`, url: `${SITE}#/games/game/${encodeURIComponent(g.id)}` })
     }
@@ -68,7 +88,7 @@ function alertsDue(state: State): { id: string; kind: "live" | "final"; title: s
 }
 
 // Sends every alert of this kind that is due and not sent yet; returns how many phones got one.
-async function sendDue(kind: "live" | "final"): Promise<number> {
+async function sendDue(kind: Kind): Promise<number> {
   const { data: row, error } = await db.from("league_state").select("data").eq("id", 1).single()
   if (error || !row) return 0
   const due = alertsDue(row.data as State).filter((a) => a.kind === kind)
@@ -98,13 +118,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS })
   try {
     if (req.method === "GET") return json({ publicKey: publicKey(await vapid()) })
-    const body = (await req.json().catch(() => ({}))) as { hello?: string }
+    const body = (await req.json().catch(() => ({}))) as { hello?: string; close?: boolean }
     if (typeof body.hello === "string") {
       const { data: rows } = await db.from("push_subscriptions").update({ hello_at: new Date().toISOString() }).eq("endpoint", body.hello).is("hello_at", null).select("endpoint, p256dh, auth")
       if (!rows?.length) return json({ hello: false })
-      const status = await send(rows[0] as Subscription, JSON.stringify({ title: "You're set", body: "Poolean Intel will let you know when a game goes live and when it ends.", url: SITE, tag: "hello" }), await vapid())
+      const status = await send(rows[0] as Subscription, JSON.stringify({ title: "You're set", body: "Poolean Intel will let you know when a game goes live, when one gets close at the end, and when it ends.", url: SITE, tag: "hello" }), await vapid())
       return json({ hello: status < 300, status })
     }
+    if (body.close) return json({ sent: await sendDue("close") })
     // Finals go at once; "Game on" waits a minute and is checked again then.
     const sent = await sendDue("final")
     const wait = (async () => {

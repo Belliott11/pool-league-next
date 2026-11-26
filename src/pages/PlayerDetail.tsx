@@ -32,6 +32,7 @@ import { ChevronRight } from "lucide-react"
 import { IconChip } from "@/components/IconChip"
 import { panelIcon, sectionIcon } from "@/lib/panelIcons"
 import { PlayerGlance } from "@/pages/PlayerGlance"
+import { SummerGoals } from "@/components/SummerGoals"
 import { PageTabs, TabGroup, useJumpTab } from "@/components/PageTabs"
 import { PlayerMilestones } from "@/components/Milestones"
 import { syncLegacy } from "@/lib/legacy"
@@ -283,6 +284,7 @@ export function PlayerDetailPage({
       />
 
       <PlayerGlance state={season} pid={pid} />
+      <SummerGoals state={state} pid={pid} />
 
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">

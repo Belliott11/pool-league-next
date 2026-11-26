@@ -3,7 +3,7 @@ import { Bell, BellOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { alertSupport, alertsOn, turnAlertsOff, turnAlertsOn } from "@/lib/alerts"
 
-// "Game alerts" on the Games home: a notification when a game goes live and when it ends (src/lib/alerts.ts).
+// "Game alerts" on the Games home: a notification when a game goes live, when it gets close at the end, and when it ends (src/lib/alerts.ts).
 export function GameAlerts() {
   const support = alertSupport()
   const [on, setOn] = useState<boolean | null>(null)
@@ -35,8 +35,8 @@ export function GameAlerts() {
           {support === "home-screen-first"
             ? "On an iPhone, add Poolean Intel to your Home Screen (Share, then Add to Home Screen), open it from there, and turn alerts on here."
             : on
-              ? "On. You'll get a notification when a game goes live and when it ends."
-              : "A notification when a game goes live and when it ends, so you can watch and vote."}
+              ? "On. You'll get a notification when a game goes live, when it gets close at the end, and when it ends."
+              : "A notification when a game goes live, when it gets close at the end, and when it ends, so you can watch and vote."}
         </div>
         {note && (
           <div role="status" className="mt-1 text-xs">

@@ -23,11 +23,14 @@ alter table public.push_subscriptions add column if not exists hello_at timestam
 
 create table if not exists public.push_sent (
   game_id text not null,
-  kind    text not null check (kind in ('live', 'final')),
+  kind    text not null check (kind in ('live', 'final', 'close')),
   sent_at timestamptz not null default now(),
   primary key (game_id, kind)
 );
 alter table public.push_sent enable row level security;
+-- 'close': one "close game" alert per game, sent when a live game is tight near the end (added 2026-11-26).
+alter table public.push_sent drop constraint if exists push_sent_kind_check;
+alter table public.push_sent add constraint push_sent_kind_check check (kind in ('live', 'final', 'close'));
 
 create table if not exists public.push_vapid (
   id int primary key default 1 check (id = 1),
@@ -82,7 +85,8 @@ revoke all on function public.delete_push_subscription(text, text) from public;
 grant execute on function public.save_push_subscription(text, text, text, text) to anon, authenticated;
 grant execute on function public.delete_push_subscription(text, text) to anon, authenticated;
 
--- Ping the game-alerts function when the set of live games changes (a game went live, finished or was discarded).
+-- Ping the game-alerts function when the set of live games changes (a game went live, finished or was discarded), and with {close}
+-- when a live game's baskets change, for the "close game" alert.
 create or replace function public.league_state_alerts()
 returns trigger
 language plpgsql
@@ -92,17 +96,29 @@ as $$
 declare
   was jsonb;
   now_live jsonb;
+  was_n int;
+  now_n int;
+  body jsonb;
 begin
-  select coalesce(jsonb_agg(g->>'id' order by g->>'id'), '[]'::jsonb) into was
+  select coalesce(jsonb_agg(g->>'id' order by g->>'id'), '[]'::jsonb),
+         coalesce(sum(coalesce(jsonb_array_length(g->'liveScores'), 0) + coalesce(jsonb_array_length(g->'scorekeeperScores'), 0)), 0)
+    into was, was_n
   from jsonb_array_elements(coalesce(old.data->'games', '[]'::jsonb)) g where (g->>'liveInProgress') = 'true';
-  select coalesce(jsonb_agg(g->>'id' order by g->>'id'), '[]'::jsonb) into now_live
+  select coalesce(jsonb_agg(g->>'id' order by g->>'id'), '[]'::jsonb),
+         coalesce(sum(coalesce(jsonb_array_length(g->'liveScores'), 0) + coalesce(jsonb_array_length(g->'scorekeeperScores'), 0)), 0)
+    into now_live, now_n
   from jsonb_array_elements(coalesce(new.data->'games', '[]'::jsonb)) g where (g->>'liveInProgress') = 'true';
   if was is distinct from now_live then
+    body := '{}'::jsonb;
+  elsif now_n > was_n then
+    body := '{"close": true}'::jsonb;
+  end if;
+  if body is not null then
     -- Never let an alert problem stop the league data from saving.
     begin
       perform net.http_post(
         url := 'https://cthhlwvhmpvthpkivwps.supabase.co/functions/v1/game-alerts',
-        body := '{}'::jsonb,
+        body := body,
         headers := '{"Content-Type": "application/json"}'::jsonb
       );
     exception when others then

@@ -412,8 +412,35 @@ one, else the top of the standings.
 - Milestones (`src/lib/milestones.ts`, `src/components/Milestones.tsx` on the Player page's History tab): career points, 3s, assists,
   wins and games, win streaks, first 10/15-point and 5-assist games, each dated to its game, plus "Next up". Results come from the old
   site's list up to its last date, then this site's games; points, 3s and assists from this site's games. The `game-alerts` function
-  (version 4) adds up to two milestones from the game to its "Final" alert, using a byte-for-byte copy of the file and
+  (version 6) adds up to two milestones from the game to its "Final" alert, using a byte-for-byte copy of the file and
   `old-results.json` (`node scripts/old-results.mjs` after the old results change; `milestones.test.ts` checks both).
+
+## Play-by-play, guard plan, NBA comparisons, Play of the Year, goals, close-game alerts (2026-11-26)
+
+- Play-by-play (`src/lib/playByPlay.ts`): a line under the score on the game video for every logged shot and steal with a video time
+  ("Zach from deep, off Ben's pass. Good."), shown `SHOW` 4 s from its moment; same switch as the score ("Score and play-by-play on
+  the video").
+- Who should guard whom (`src/lib/guardPlan.ts`, `src/components/GuardPlan.tsx`, both live screens until the first basket): for each
+  team, the assignment that saves the most points, from "Who stops whom" pairs (leaning toward zero by `LEAN` 6 shots; pairs that never
+  met use the defender's overall rate at half weight), weighted by each shooter's shots a game, every ordering tried. Only shown when at
+  least one pair has 4+ shots. A suggestion; sets nothing.
+- Plays like (`src/lib/nbaComps.ts`): eight traits measured against the league (spreads, clipped), matched to hand-described NBA
+  players by angle, no two players sharing one unless that leaves a player under `WEAK` 0.3 (then nothing shows). Needs 3 games and 15
+  shots. On the At a glance card ("Plays like: ...") and the trading card.
+- Play of the Year (`src/lib/playOfYear.ts`, page `#/games/poty`, `src/pages/games/PlayOfYear.tsx`, a Games home button, a home card
+  while a round is open or for 3 weeks after the final, search, Hall of Fame): the editor starts a bracket of the 16 (or 8) best
+  shareable plays by `bestClips` order (never rough, never stills), saved in `state.playOfYear` (seeds frozen). Rounds open one after
+  another for 3 days each from `startAt`. Votes: `poty_votes`, one per phone per match, only through `cast_poty_vote`
+  (`supabase/poty.sql`), which checks the newest bracket, the seed and that the round is open. Counts show after a phone votes. More
+  votes wins; a tie goes to the higher seed; votes for a play not in the match are ignored.
+- Summer goals (`src/lib/goals.ts`, `src/components/SummerGoals.tsx` under At a glance): up to two goals a season, set from the player's
+  own phone ("Who are you?" is that player); `season_goals`, only through `save_season_goal` (`supabase/goals.sql`); the first phone
+  to set a player's goal owns that player's goals for the season. Progress from that calendar year's games; averages and percentages
+  need `min` games or shots to count as done. Hidden for other players when none are set.
+- Close-game alerts: the `league_state` trigger also pings `game-alerts` (version 6) with `{close}` when a live game's baskets grow;
+  one "close game" alert per game when the leader is within 2 of the other team and within 2 of `liveTarget` (`push_sent` kind
+  `close`). Never for test games. Checked live with a call (sends nothing with no live game); delivery to a phone not yet seen.
+- Backups also save `poty_votes` and `season_goals`.
 
 ## Live win probability
 
