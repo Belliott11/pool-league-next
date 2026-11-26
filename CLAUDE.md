@@ -101,7 +101,9 @@ The same script joins the season's 8 best plays (two per game at most, none roug
 speed from 3.5 s before its logged moment to the end of its cut (no slow motion: the logged moment is often the release or a late tap,
 so the old slowed stretch around it cut plays off before the basket; removed 2026-11-26), a caption bar (what and who, the date, "Play n of 8"), a
 different xfade transition into each, light colour grading, and an end card with the address. No sound. Fonts from `scripts/og-fonts`.
-Rebuilt when the plays change or `TRAILER_STYLE` is bumped; `--trailer-preview` builds it into the work folder from the uploaded cuts
+Reels (the trailer and mixtapes) cut each play's own stretch straight from the recording (`reelWindow` in clipCuts.ts: at least 3 s
+before the moment and 5 s after, or 1.5 s past the editor's end), with the follow camera over it, because clips' trims are often tight
+and cut plays off before the basket (2026-11-26). Rebuilt when the plays change or `TRAILER_STYLE` is bumped; `--trailer-preview` builds it into the work folder from the uploaded cuts
 without uploading. Listed in `src/data/trailer.json`. The Top plays card on the home page
 (`src/pages/games/TopPlays.tsx`) has the button.
 

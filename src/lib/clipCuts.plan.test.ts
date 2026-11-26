@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { describe, it } from "vitest"
 import { bestClips, gameClips, type Clip } from "@/lib/clips"
 import { seasonState } from "@/lib/offseason"
-import { clipCutKey, cutKey, cutPath, cutWindow } from "@/lib/clipCuts"
+import { clipCutKey, cutKey, cutPath, cutWindow, reelWindow } from "@/lib/clipCuts"
 import { clipId } from "@/lib/clipShare"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
@@ -39,7 +39,10 @@ describe.skipIf(!stateFile || !planFile)("clip cut plan", () => {
       const g = state.games.find((x) => x.id === c.gameId)!
       const url = gameVideoUrl(state, g)
       if (!isDirectVideoUrl(url)) return null
-      return { key: clipCutKey(url, c), at: Math.round((c.time - cutWindow(c).start) * 100) / 100, label: c.kind === "marked" ? "Highlight" : c.label, player: playerName(state, c.playerId), date: c.date }
+      // The reel's own stretch of the recording (reelWindow), with the follow camera over that stretch, so a tight trim on the clip
+      // does not cut the play short in the reel. `key` stays the clip's cut, which says whether the play is ready.
+      const rw = reelWindow(c)
+      return { key: clipCutKey(url, c), url: url.split("#")[0], reel: rw, reelFollow: cutPath(c, rw), at: Math.round((c.time - rw.start) * 100) / 100, label: c.kind === "marked" ? "Highlight" : c.label, player: playerName(state, c.playerId), date: c.date }
     }
     // The season trailer: the season's best plays (marked and kept highlights first), at most two from a game, none that goes badly for
     // anyone, in the order they happened.

@@ -20,6 +20,7 @@ const BUCKET = process.env.CLIP_BUCKET || "pooleanintel"
 const dry = process.argv.includes("--dry")
 const work = process.env.CLIP_WORK || fs.mkdtempSync(path.join(os.tmpdir(), "clip-cuts-")) // CLIP_WORK keeps cuts between runs
 fs.mkdirSync(work, { recursive: true })
+const reelSources = new Set() // recordings downloaded for reels, removed once every reel is made
 const token = process.env.CLOUDFLARE_API_TOKEN
 const auth = token ? ["-H", `Authorization: Bearer ${token}`] : []
 
@@ -210,7 +211,7 @@ if (!dry) save(SHARES, shares)
 // and which play of how many), a different transition into each one, and an end card with the site's address. No sound. Listed in
 // src/data/trailer.json for the site. TRAILER_LOOK=1 makes it again with the same plays (to try a new look).
 const TRAILER = path.join(root, "src/data/trailer.json")
-const TRAILER_STYLE = 4 // bump when the look changes, so the next run makes it again
+const TRAILER_STYLE = 5 // bump when the look changes, so the next run makes it again
 const plays = (fs.existsSync(trailerFile) ? JSON.parse(fs.readFileSync(trailerFile, "utf8")) : []).filter((p) => manifest[p.key])
 const wanted = plays.map((p) => p.key)
 const had = fs.existsSync(TRAILER) ? JSON.parse(fs.readFileSync(TRAILER, "utf8")) : null
@@ -233,7 +234,7 @@ if (!dry && plays.length >= 3 && stale) {
 // anyone with at least three good plays. Made again when a player's plays change or MIXTAPE_STYLE is bumped. Listed in
 // src/data/mixtapes.json; the Player page has the button.
 const MIXTAPES = path.join(root, "src/data/mixtapes.json")
-const MIXTAPE_STYLE = 1
+const MIXTAPE_STYLE = 2
 const tapes = (fs.existsSync(mixtapeFile) ? JSON.parse(fs.readFileSync(mixtapeFile, "utf8")) : []).map((t) => ({ ...t, plays: t.plays.filter((p) => manifest[p.key]) })).filter((t) => t.plays.length >= 3)
 const hadTapes = fs.existsSync(MIXTAPES) ? JSON.parse(fs.readFileSync(MIXTAPES, "utf8")) : {}
 if (!dry && tapes.length) {
@@ -297,13 +298,19 @@ function makeTrailer(list, urlOf, out, style = {}) {
   ]))
   list.forEach((p, i) => {
     const src = path.join(tmp, `src${i}.mp4`)
-    curl(["-o", src, urlOf(p.key)])
+    if (p.reel && p.url) {
+      // The play's own reel stretch, cut from the recording with its follow camera (reelWindow in clipCuts.ts): a clip's trim can be
+      // tight, and the reel should not stop before the basket.
+      const rec = sourceOf(p.url).local
+      reelSources.add(rec)
+      const vf = p.reelFollow ? ["-vf", `${followCrop(p.reelFollow)},scale=1280:720:flags=lanczos,setsar=1`] : []
+      ff(["-ss", String(p.reel.start), "-i", rec, "-t", String(Math.max(0.5, p.reel.end - p.reel.start)), ...vf, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", src])
+    } else curl(["-o", src, urlOf(p.key)])
     const dur = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src]).toString().trim())
-    // From 3.5 s before the logged moment to the end of the cut, at normal speed. The logged moment is often the release, or a tap made
-    // after the basket, so a fixed stretch after it (and the old slow motion around it) cut plays off before the ball went in; the cut
-    // itself already ends 6 s after the moment, or where the editor trimmed it.
+    // The whole reel stretch at normal speed: from 3 s before the logged moment (or the editor's earlier start) to 5 s after it (or past
+    // the editor's end). An old cut without a reel stretch plays from 3.5 s before the moment to its end.
     const at = Math.min(Math.max(0, p.at), dur)
-    const a = Math.max(0, at - 3.5), c = dur
+    const a = p.reel ? 0 : Math.max(0, at - 3.5), c = dur
     const secs = c - a
     const fadeAt = secs - 1.1
     const caption = [
@@ -344,4 +351,5 @@ function makeTrailer(list, urlOf, out, style = {}) {
   return Math.round(t)
 }
 
+for (const f of reelSources) if (f.startsWith(work) && fs.existsSync(f)) fs.rmSync(f)
 console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts, ${needPoster.length} pictures and ${needVertical.length} vertical videos; commit src/data/clip-cuts.json, src/data/clip-shares.json, src/data/trailer.json and src/data/mixtapes.json`)

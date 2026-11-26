@@ -46,10 +46,9 @@ export function clipCutKey(url: string, c: { time: number; from?: number; to?: n
 
 // The camera's path through a cut, for scripts/cut-clips.mjs: cut time (0 at the cut's start) and place (0..1 of the picture), every
 // 0.2 s, smoothed the same way as the camera in the browser.
-export function cutPath(c: { time: number; from?: number; to?: number; track?: TrackPoint[]; frame?: { z: number } }): { zoom: number; path: TrackPoint[] } | null {
+export function cutPath(c: { time: number; from?: number; to?: number; track?: TrackPoint[]; frame?: { z: number } }, w = cutWindow(c)): { zoom: number; path: TrackPoint[] } | null {
   const f = followOf(c)
   if (!f) return null
-  const w = cutWindow(c)
   const sm = smooth(f.track)
   const path: TrackPoint[] = []
   for (let t = w.start; t <= w.end + 1e-6; t += 0.2) {
@@ -57,6 +56,17 @@ export function cutPath(c: { time: number; from?: number; to?: number; track?: T
     path.push({ t: r2(t - w.start), x: Math.round(p.x * 1000) / 1000, y: Math.round(p.y * 1000) / 1000 })
   }
   return { zoom: f.zoom, path }
+}
+
+// The stretch a reel (the season trailer, a player's mixtape) shows of a play: at least REEL_LEAD before the logged moment and REEL_TAIL
+// after it, or REEL_PAST past the editor's own end, whichever is later. The editor's trim is often tight (set while placing a follow,
+// or the default 4 s after the moment), which cut plays off before the basket in the reels; the clip itself keeps the trim.
+export const REEL_LEAD = 3
+export const REEL_TAIL = 5
+export const REEL_PAST = 1.5
+export const reelWindow = (c: { time: number; from?: number; to?: number }) => {
+  const w = cutWindow(c)
+  return { start: r2(Math.max(0, Math.min(w.start, c.time - REEL_LEAD))), end: r2(Math.max(w.end + REEL_PAST, c.time + REEL_TAIL)) }
 }
 
 const table = cuts as Record<string, string>
