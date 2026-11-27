@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useHeaderHeight } from "@/components/PageTabs"
 import { WatchTime } from "@/components/WatchTime"
+import { ballRates } from "@/lib/liveBall"
 import { bigSwings, oddsTimeline, type OddsStep } from "@/lib/oddsTimeline"
 import { playerName } from "@/lib/players"
 import { TEAM } from "@/lib/teamColors"
@@ -74,7 +75,7 @@ function Row({ state, game, s, big, active, onPick }: { state: PooleanState; gam
 }
 
 export function OddsTimelineCard({ state, game }: { state: PooleanState; game: Game }) {
-  const t = useMemo(() => oddsTimeline(game), [game])
+  const t = useMemo(() => oddsTimeline(game, ballRates(state)), [game, state])
   const big = useMemo(() => bigSwings(t), [t])
   const [at, setAt] = useState(0)
   const list = useRef<HTMLOListElement>(null)
@@ -92,7 +93,7 @@ export function OddsTimelineCard({ state, game }: { state: PooleanState; game: G
       <div style={{ top }} className="sticky z-10 -mx-1 rounded-xl border bg-background/95 px-3 py-2 backdrop-blur">
         <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
           <span>
-            Tip: {pct(t.start)}. To {t.target}.
+            Tip: {pct(t.start)}. To {t.target}.{t.ball ? " Knows who had the ball, so misses and turnovers between baskets count." : ""}
           </span>
           <span className="flex items-center gap-1">
             <Button size="icon" variant="ghost" className="size-7" aria-label="Previous basket" disabled={at === 0} onClick={() => step(at - 1)}>

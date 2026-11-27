@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type MutableRefObject, type ReactNode } from "react"
 import type { PlayerControl } from "@/components/YouTubePlayer"
+import { ballRates } from "@/lib/liveBall"
 import { oddsTimeline } from "@/lib/oddsTimeline"
 import { playerName } from "@/lib/players"
 import { lineAt, playByPlay, type PlayLine } from "@/lib/playByPlay"
@@ -13,7 +14,7 @@ import type { Game, PooleanState } from "@/lib/types"
 const KEY = "pooleanScoreOverlay"
 
 export function ScoreOverlay({ state, game, control, children }: { state: PooleanState; game: Game; control?: MutableRefObject<PlayerControl | null>; children: ReactNode }) {
-  const t = useMemo(() => oddsTimeline(game), [game])
+  const t = useMemo(() => oddsTimeline(game, ballRates(state)), [game, state])
   const timed = t.steps.some((s) => s.videoTime !== null)
   const [on, setOn] = useState(() => {
     try {

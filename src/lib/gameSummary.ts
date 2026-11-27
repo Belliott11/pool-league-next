@@ -2,11 +2,9 @@ import shares from "@/data/clip-shares.json"
 import { bestClips } from "@/lib/clips"
 import { clipIdOf, shareLink } from "@/lib/clipShare"
 import { pointsAdded } from "@/lib/epa"
-import { liveTargetOf, winProbabilityFrom } from "@/lib/live"
-import { backtestPick } from "@/lib/matchup"
-import { basketsOf } from "@/lib/momentum"
+import { ballRates, type BallRates } from "@/lib/liveBall"
+import { oddsTimeline } from "@/lib/oddsTimeline"
 import { playerName } from "@/lib/players"
-import { gameOver } from "@/lib/race"
 import { SITE } from "@/lib/site"
 import { isLiveScoreOnly, liveScoreOf, teamScore } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
@@ -33,30 +31,14 @@ export interface GameSummary {
   text: string
 }
 
-// The game's baskets in order: the shot log when it was filmed, else the live-scored baskets.
-function basketsIn(game: Game): { side: "A" | "B"; points: number; scorerId: string }[] {
-  if (!isLiveScoreOnly(game) && game.scoringEvents.length) return basketsOf(game)
-  return [...(game.liveScores ?? []), ...(game.scorekeeperScores ?? [])]
-    .map((s) => ({ side: game.teamA.includes(s.pid) ? ("A" as const) : game.teamB.includes(s.pid) ? ("B" as const) : null, points: s.points, scorerId: s.pid }))
-    .filter((k): k is { side: "A" | "B"; points: number; scorerId: string } => k.side !== null)
-}
-
-export function swingOf(game: Game, winner?: "A" | "B" | null): Swing | null {
-  const target = liveTargetOf(game)
-  const pre = backtestPick(game) ?? game.prediction?.pA ?? null
-  let a = 0
-  let b = 0
-  let nA = 0
-  let nB = 0
+// The winners' basket that moved the odds most, not counting the one that ended it. Read off the same odds as the game page's Odds tab
+// (oddsTimeline.ts), so the summary and the chart always agree; with `rates`, they know who had the ball.
+export function swingOf(game: Game, winner?: "A" | "B" | null, rates?: BallRates | null): Swing | null {
   let best: Swing | null = null
-  for (const k of basketsIn(game)) {
-    const before = winProbabilityFrom(a, b, target, pre, nA, nB)
-    const at: [number, number] = [a, b]
-    if (k.side === "A") (a += k.points), nA++
-    else (b += k.points), nB++
-    if (gameOver(a, b, target)) break
-    const after = winProbabilityFrom(a, b, target, pre, nA, nB)
-    const gain = (k.side === "A" ? after - before : before - after) * 100
+  for (const k of oddsTimeline(game, rates).steps) {
+    if (k.ends) break
+    const gain = (k.side === "A" ? k.after - k.before : k.before - k.after) * 100
+    const at: [number, number] = k.side === "A" ? [k.a - k.points, k.b] : [k.a, k.b - k.points]
     if ((!winner || k.side === winner) && (!best || gain > best.gain)) best = { scorerId: k.scorerId, points: k.points, side: k.side, before: at, gain }
   }
   return best
@@ -67,7 +49,7 @@ export function gameSummary(state: PooleanState, game: Game): GameSummary {
   const a = live ? liveScoreOf(game, game.teamA) : teamScore(game, game.teamA)
   const b = live ? liveScoreOf(game, game.teamB) : teamScore(game, game.teamB)
   const winner = game.winner === "A" || game.winner === "B" ? game.winner : a > b ? "A" : b > a ? "B" : null
-  const swing = swingOf(game, winner)
+  const swing = swingOf(game, winner, ballRates(state))
   const rows = game.scoringEvents.length ? pointsAdded(state, { only: game.id }).rows : []
   const best = [...rows].sort((x, y) => y.total - x.total)[0]
   const top = best && best.total > 0 ? { id: best.id, value: best.total } : null

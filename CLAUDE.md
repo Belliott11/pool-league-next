@@ -605,7 +605,15 @@ Checked 2026-11-24 on all 44 games with a pre-game call (35 unfilmed results at 
 each game counted once, calls from earlier nights only): 0.7 is best (log loss 0.582; 0.5 gave 0.591, the full read 0.611), flat from 0.6
 to 0.8. The 9 filmed games alone pointed to 0.5 or less, but they come mostly from the read's two worst nights. Over all its calls the read
 is right 73% of the time, better late in the season (78%) than early (68%), and too sure at the top (its 80%+ calls won 67%). A team-specific
-point mix and moving the odds by points did not help. `src/lib/liveReplay.test.ts` reruns the combined check with live data and fails if
+point mix and moving the odds by points did not help. Replays use the odds with the ball (asked 2026-11-27): `src/lib/liveBall.ts` keeps the pre-game read at `PREGAME_WEIGHT_LIVE` and learning
+from the game, but races by trips with the ball (each team's trip scoring rate set by the read's gap, then moved by this game's trips,
+leaning on the read by `PRIOR_TRIPS` 50). `oddsTimeline(game, ballRates(state))` uses it for any game with every play in order (shots,
+live-ball turnovers, free throws all with video times), so the Odds tab (says so in its header), the score on the game video and the game
+summary's biggest basket (`swingOf`, now read off the same timeline) agree; other games fall back to the score-only odds. Checked against
+who won at every play of the 6 complete games: log loss 0.438 against 0.451 (0.442 against 0.450 at baskets alone), better in 5 of 6,
+PRIOR_TRIPS 25 to 100 all better; `src/lib/liveBall.test.ts` reruns it with live data and says what to do when it fails. The live
+screen keeps the score-only odds (a live game logs baskets only, so there are no trips to learn from; that variant is untested).
+`src/lib/liveReplay.test.ts` reruns the combined check with live data and fails if
 the full read or 50/50 ever does better: then sweep the weight again with all games. The pre-game model itself is compared with
 `npm run compare-models` and should not change until about 100 games.
 
