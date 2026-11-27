@@ -24,6 +24,7 @@ import { DeepDiveCard } from "./leaderboard/DeepDiveCard"
 import { FatiguePanel } from "./leaderboard/FatiguePanel"
 import { ThreeWorth } from "@/components/ThreeWorth"
 import { PointsAddedCard } from "@/components/PointsAdded"
+import { ClutchSquaredCard } from "@/components/ClutchSquared"
 import { RuleChangeCard } from "@/components/RuleChanges"
 import { WeatherCard } from "@/components/WeatherCard"
 import { CalibrationCard } from "./leaderboard/CalibrationCard"
@@ -147,6 +148,9 @@ export function LeaderboardPage({
             </Later>
             <Later id="lb-epa">
               <PointsAddedCard state={season} onOpenPlayer={onOpenPlayer} />
+            </Later>
+            <Later id="lb-clutch2">
+              <ClutchSquaredCard state={season} onOpenPlayer={onOpenPlayer} />
             </Later>
           </>
         ) : (

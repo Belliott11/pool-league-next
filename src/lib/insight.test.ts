@@ -82,6 +82,19 @@ describe("win probability added", () => {
   it("debits the defenders of baskets scored against them", () => {
     expect(w.rows.find((r) => r.id === "b1")!.allowed).toBeGreaterThan(0)
   })
+  it("adds up clutch squared as each basket's swing squared, shared with the passer", () => {
+    const a1 = w.rows.find((r) => r.id === "a1")!
+    const a2 = w.rows.find((r) => r.id === "a2")!
+    const b1 = w.rows.find((r) => r.id === "b1")!
+    const total = a1.clutch2 + a2.clutch2 + b1.clutch2
+    expect(total).toBeGreaterThan(0)
+    // The last basket decides the game, so a1 (who scored it) has the biggest swing and counts it as a big basket.
+    expect(a1.biggest).toBeGreaterThanOrEqual(a2.biggest)
+    expect(a1.bigBaskets).toBeGreaterThan(0)
+    // Squaring rewards the deciding basket more than adding does: a1's share of clutch squared beats their share of win chance added.
+    const sumAdded = a1.added + a2.added + b1.added
+    expect(a1.clutch2 / total).toBeGreaterThan(a1.added / sumAdded)
+  })
 })
 
 describe("turnover cost", () => {

@@ -2,7 +2,7 @@ import { Lightbulb } from "lucide-react"
 import { useMemo } from "react"
 import { ViewTabs } from "@/components/PanelGroup"
 import { Section } from "@/components/Section"
-import { marginBreakdown, shotsCreated, turnoverCost, winProbAdded } from "@/lib/insight"
+import { BIG_SWING, marginBreakdown, shotsCreated, turnoverCost, winProbAdded } from "@/lib/insight"
 import { PER } from "@/lib/per"
 import type { PooleanState } from "@/lib/types"
 import { bodyEffort } from "@/lib/bodyEffort"
@@ -102,12 +102,13 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
             label: "Win chance added",
             node: (
               <>
-                <Hint>How their baskets and passes moved their team's chance of winning, and what shots scored against them while they defended gave up. In points of win chance per {PER} points.</Hint>
+                <Hint>How their baskets and passes moved their team's chance of winning, and what shots scored against them while they defended gave up. In points of win chance per {PER} points. Clutch squared weights each basket by its swing, squared, over the season, so game-deciding baskets count most.</Hint>
                 {mw ? (
                   <>
                     <Line label="Added" value={(mw.added25 * 100).toFixed(0)} sub={`${mw.baskets} baskets in ${mw.games} games`} />
                     <Line label="Allowed" value={(mw.allowed25 * 100).toFixed(0)} />
                     <Line label="Net" value={sign(mw.net25 * 100, 0)} />
+                    <Line label="Clutch squared" value={mw.clutch2.toFixed(1)} sub={`${mw.bigBaskets} ${mw.bigBaskets === 1 ? "basket" : "baskets"} that moved it ${Math.round(BIG_SWING * 100)}+ points; biggest ${Math.round(mw.biggest * 100)}`} />
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">No baskets logged yet.</p>
