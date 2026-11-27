@@ -6,7 +6,8 @@ import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
 import type { AwardBallot, PooleanState } from "@/lib/types"
 
 // Season awards voted by the players, set beside what the numbers say (awardRace.ts). The editor starts a ballot at the end of a season;
-// every player votes once per award from their own phone ("Who are you?" picks who they are), never for themselves; then the editor
+// every player ranks the candidates for each award from their own phone ("Who are you?" picks who they are), never themselves, as many
+// as they like; the winner is found by instant runoff (`runoff`); then the editor
 // closes voting and reveals the awards one at a time, MVP last, at a party. Votes are secret until an award is revealed: the
 // award_votes table cannot be read by visitors, and the database hands out only vote counts, this phone's own votes, and the picks for
 // awards already revealed (supabase/awards.sql).
@@ -61,18 +62,66 @@ export const revealing = (b: AwardBallot | null | undefined, now = Date.now()): 
 export const showCard = (b: AwardBallot | null | undefined, now = Date.now()): boolean =>
   !!b && (b.open || !finished(b) || now - Date.parse(b.lastAt ?? b.startedAt) < 21 * 86_400_000)
 
-export interface Tally {
-  winners: string[] // the most votes; more than one on a tie
-  votes: { id: string; n: number }[] // most first
-  total: number
+export interface Round {
+  counts: { id: string; n: number }[] // each player still in, by ballots ranking them highest among those still in; most first
+  out: string[] // knocked out after this round
+  active: number // ballots still ranking someone still in
 }
 
-export function tally(picks: string[]): Tally {
-  const m = new Map<string, number>()
-  for (const p of picks) m.set(p, (m.get(p) ?? 0) + 1)
-  const votes = [...m].map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n || a.id.localeCompare(b.id))
-  const top = votes[0]?.n ?? 0
-  return { winners: top ? votes.filter((v) => v.n === top).map((v) => v.id) : [], votes, total: picks.length }
+export interface Tally {
+  winners: string[] // more than one only on a tie that cannot be broken
+  rounds: Round[]
+  total: number // ballots cast
+}
+
+// Instant runoff: every ballot counts for its highest-ranked player still in. A player with more than half of the ballots still
+// counting wins. Otherwise the player (or players, on a tie) with the fewest is knocked out and their ballots move to their next
+// choice; a ballot with nobody left on it stops counting. When everyone left is tied, they share the award.
+export function runoff(ballots: string[][]): Tally {
+  const total = ballots.length
+  const rounds: Round[] = []
+  const left = new Set(ballots.flat())
+  while (left.size) {
+    const m = new Map<string, number>([...left].map((id) => [id, 0]))
+    let active = 0
+    for (const b of ballots) {
+      const top = b.find((id) => left.has(id))
+      if (!top) continue
+      m.set(top, m.get(top)! + 1)
+      active++
+    }
+    const counts = [...m].map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n || a.id.localeCompare(b.id))
+    const most = counts[0].n
+    if (most * 2 > active) {
+      rounds.push({ counts, out: [], active })
+      return { winners: [counts[0].id], rounds, total }
+    }
+    const fewest = counts[counts.length - 1].n
+    if (fewest === most) {
+      rounds.push({ counts, out: [], active })
+      return { winners: active ? counts.map((c) => c.id) : [], rounds, total }
+    }
+    const out = counts.filter((c) => c.n === fewest).map((c) => c.id)
+    rounds.push({ counts, out, active })
+    for (const id of out) left.delete(id)
+  }
+  return { winners: [], rounds, total }
+}
+
+// A ranking after a tap on a player: added at the end, or taken out (the rest move up).
+export function toggleRank(ranking: string[], id: string): string[] {
+  return ranking.includes(id) ? ranking.filter((x) => x !== id) : [...ranking, id]
+}
+
+// The rounds in words, for a revealed award: "Ian was knocked out and their ballots moved on." Only when it took more than one round.
+export function roundsInWords(t: Tally, name: (id: string) => string): string[] {
+  if (t.rounds.length < 2) return []
+  const list = (ids: string[]) => (ids.length === 1 ? name(ids[0]) : `${ids.slice(0, -1).map(name).join(", ")} and ${name(ids.at(-1)!)}`)
+  return t.rounds.map((r, i) => {
+    const line = r.counts.map((c) => `${name(c.id)} ${c.n}`).join(", ")
+    const end = r.out.length ? ` ${list(r.out)} ${r.out.length === 1 ? "was" : "were"} knocked out, and those ballots moved to the next choice.` : t.winners.length === 1 ? ` ${name(t.winners[0])} has a majority.` : " Tied."
+    return `Round ${i + 1}: ${line}.${end}`
+  })
 }
 
 // What the numbers say for each award: the award race's leader (awardRace.ts uses the same keys).
@@ -95,26 +144,26 @@ export function verdict(t: Tally, numbers: string[] | undefined, name: (id: stri
 export interface Counts {
   voters: number // phones that have voted on at least one award
   byAward: Record<string, number>
-  picks: Record<string, string[]> // revealed awards only
+  picks: Record<string, string[][]> // every ranking, revealed awards only
 }
 
 export async function loadCounts(client: SupabaseClient, ballot: string): Promise<Counts> {
   const { data, error } = await client.rpc("award_vote_counts", { p_ballot: ballot })
   const out: Counts = { voters: 0, byAward: {}, picks: {} }
   if (error || !data) return out
-  const d = data as { voters?: number; by_award?: Record<string, number>; picks?: Record<string, string[]> }
+  const d = data as { voters?: number; by_award?: Record<string, number>; picks?: Record<string, string[][]> }
   return { voters: d.voters ?? 0, byAward: d.by_award ?? {}, picks: d.picks ?? {} }
 }
 
-export async function loadMine(client: SupabaseClient, ballot: string): Promise<Record<string, string>> {
+export async function loadMine(client: SupabaseClient, ballot: string): Promise<Record<string, string[]>> {
   const { data, error } = await client.rpc("my_award_votes", { p_ballot: ballot, p_key: deviceKey() })
   if (error || !data) return {}
-  return data as Record<string, string>
+  return data as Record<string, string[]>
 }
 
 // "ok", or why it was refused: "taken" (another phone already voted as this player), "closed", or "no".
-export async function castAward(client: SupabaseClient, ballot: string, award: string, voter: string, pick: string): Promise<string> {
-  const { data, error } = await client.rpc("cast_award_vote", { p_ballot: ballot, p_award: award, p_voter: voter, p_pick: pick, p_key: deviceKey() })
+export async function castAward(client: SupabaseClient, ballot: string, award: string, voter: string, ranking: string[]): Promise<string> {
+  const { data, error } = await client.rpc("cast_award_vote", { p_ballot: ballot, p_award: award, p_voter: voter, p_ranking: ranking, p_key: deviceKey() })
   if (error) return "no"
   return String(data ?? "no")
 }

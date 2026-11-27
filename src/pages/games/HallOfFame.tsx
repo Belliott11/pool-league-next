@@ -18,7 +18,7 @@ import type { PooleanState } from "@/lib/types"
 import { reviewTally } from "@/lib/reviews"
 import shares from "@/data/clip-shares.json"
 import { loadPoty, potyWinners } from "@/lib/playOfYear"
-import { awardDef, finished, loadCounts, tally } from "@/lib/awardVote"
+import { awardDef, finished, loadCounts, runoff } from "@/lib/awardVote"
 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
 
@@ -99,7 +99,7 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
     const client = getClient()
     const done = (state.awardBallots ?? []).filter(finished)
     if (!client || !done.length) return
-    void Promise.all(done.map((b) => loadCounts(client, b.id).then((c) => ({ label: b.label, rows: [...b.awards].reverse().map((a) => ({ award: a, ids: tally(c.picks[a] ?? []).winners })) })))).then((v) => setVoted(v.reverse()))
+    void Promise.all(done.map((b) => loadCounts(client, b.id).then((c) => ({ label: b.label, rows: [...b.awards].reverse().map((a) => ({ award: a, ids: runoff(c.picks[a] ?? []).winners })) })))).then((v) => setVoted(v.reverse()))
   }, [state])
   return (
     <div className="anim-page flex flex-col gap-4">

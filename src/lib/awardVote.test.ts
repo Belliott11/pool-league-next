@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { AWARDS, closeVoting, finished, newBallot, reopenVoting, revealNext, revealing, showCard, tally, undoReveal, verdict } from "@/lib/awardVote"
+import { AWARDS, closeVoting, finished, newBallot, reopenVoting, revealNext, revealing, roundsInWords, runoff, showCard, toggleRank, undoReveal, verdict } from "@/lib/awardVote"
 import { nextSteps } from "@/lib/nextSteps"
 import { newGame } from "@/lib/store"
 import type { AwardBallot, PooleanState } from "@/lib/types"
@@ -17,10 +17,35 @@ describe("season award votes", () => {
     expect(newBallot({ ...state, games: games.slice(0, 1) } as PooleanState, "x")).toBeNull()
   })
 
-  it("counts votes, with ties as co-winners", () => {
-    expect(tally(["ben", "zach", "ben"])).toEqual({ winners: ["ben"], votes: [{ id: "ben", n: 2 }, { id: "zach", n: 1 }], total: 3 })
-    expect(tally(["ben", "zach"]).winners).toEqual(["ben", "zach"])
-    expect(tally([]).winners).toEqual([])
+  it("wins outright with a majority of first choices", () => {
+    const t = runoff([["ben", "zach"], ["ben"], ["zach", "ben"]])
+    expect(t.winners).toEqual(["ben"])
+    expect(t.rounds).toHaveLength(1)
+    expect(t.total).toBe(3)
+  })
+
+  it("knocks out the fewest and moves those ballots to their next choice", () => {
+    // First choices: Zach 2, Ben 2, Ian 1. Ian goes, and that ballot moves to Ben, who wins 3 to 2.
+    const t = runoff([["zach"], ["zach", "ian"], ["ben"], ["ben", "zach"], ["ian", "ben"]])
+    expect(t.rounds[0].counts).toEqual([{ id: "ben", n: 2 }, { id: "zach", n: 2 }, { id: "ian", n: 1 }])
+    expect(t.rounds[0].out).toEqual(["ian"])
+    expect(t.winners).toEqual(["ben"])
+    expect(t.rounds[1].counts).toEqual([{ id: "ben", n: 3 }, { id: "zach", n: 2 }])
+    expect(roundsInWords(t, (id) => id)[0]).toBe("Round 1: ben 2, zach 2, ian 1. ian was knocked out, and those ballots moved to the next choice.")
+  })
+
+  it("lets a ballot with nobody left on it stop counting, and shares a tie it cannot break", () => {
+    const t = runoff([["ian"], ["ben"], ["zach"], ["ben"], ["zach"]])
+    expect(t.rounds[0].out).toEqual(["ian"])
+    expect(t.rounds[1].active).toBe(4)
+    expect(t.winners).toEqual(["ben", "zach"])
+    expect(runoff([]).winners).toEqual([])
+  })
+
+  it("puts a tapped player at the end of a ranking, or takes them out", () => {
+    expect(toggleRank([], "ben")).toEqual(["ben"])
+    expect(toggleRank(["ben"], "zach")).toEqual(["ben", "zach"])
+    expect(toggleRank(["ben", "zach", "ian"], "zach")).toEqual(["ben", "ian"])
   })
 
   it("reveals one award at a time, closing voting first", () => {
@@ -44,10 +69,10 @@ describe("season award votes", () => {
 
   it("says whether the players agreed with the numbers", () => {
     const name = (id: string) => id
-    expect(verdict(tally(["ben"]), ["ben"], name)).toBe("The players and the numbers agree.")
-    expect(verdict(tally(["ben"]), ["zach"], name)).toBe("The numbers had zach.")
-    expect(verdict(tally(["ben", "zach"]), ["zach"], name)).toBe("The numbers had zach too.")
-    expect(verdict(tally([]), ["zach"], name)).toBeNull()
+    expect(verdict(runoff([["ben"]]), ["ben"], name)).toBe("The players and the numbers agree.")
+    expect(verdict(runoff([["ben"]]), ["zach"], name)).toBe("The numbers had zach.")
+    expect(verdict(runoff([["ben"], ["zach"]]), ["zach"], name)).toBe("The numbers had zach too.")
+    expect(verdict(runoff([]), ["zach"], name)).toBeNull()
   })
 
   it("puts voting in a player's next steps while it is open", () => {

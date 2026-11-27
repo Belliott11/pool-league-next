@@ -471,14 +471,17 @@ until the first basket: each player's go-to kind of shot (5+ shots, not 2s/3s/op
 `src/lib/awardVote.ts`, page `#/games/awards` (`src/pages/games/AwardVote.tsx`: `AwardsPage`, the Games home `AwardsCard`, an Explore
 tile, search, a "Next up for you" step while voting is open, and "Voted by the players" in the Hall of Fame). The editor opens a ballot
 (`state.awardBallots`, newest last: label, awards in reveal order `mip`, `clutch`, `dpoy`, `mvp`, candidates frozen at the start: players
-with `MIN_GAMES` (5) games this season, at least 3). Each player votes once per award from their own phone ("Who are you?"), never for
-themselves, and can change a vote while it is open. The editor closes voting, then "Reveal <award>" one at a time, MVP last ("Hide the
+with `MIN_GAMES` (5) games this season, at least 3). Ranked choice (asked 2026-11-27): each player ranks as many candidates as they like
+per award from their own phone ("Who are you?"; tap in order, tap again to take out, `toggleRank`; saved after every tap), never
+themselves, and can change it while voting is open. The winner is found by instant runoff (`runoff`: a majority of the ballots still
+counting wins, else everyone tied for the fewest is knocked out and those ballots move to their next choice; a ballot with nobody left
+stops counting; a tie it cannot break is shared). The reveal shows the final round's counts and "How the count went" (`roundsInWords`). The editor closes voting, then "Reveal <award>" one at a time, MVP last ("Hide the
 last award again" undoes one; revealing always closes voting; "Reopen voting" only before the first reveal). Phones refresh every 4 s
-while open or during a reveal (`revealing`, also in useCloud). Each revealed award shows the winner (ties are co-winners), the vote split
+while open or during a reveal (`revealing`, also in useCloud). Each revealed award shows the winner, the vote split
 and what the numbers had (`numbersPick`, the award race leader for the same key; `verdict`). A secret ballot (`supabase/awards.sql`):
 `award_votes` has row level security and no policies, so visitors cannot read it, even through the backup's anon key (not backed up);
-`award_vote_counts` returns voters, votes per award and the picks of revealed awards only; `my_award_votes` this phone's own;
-`cast_award_vote` returns ok, closed, taken (another phone already votes as that player, or this phone already voted as someone else) or
+`award_vote_counts` returns voters, ballots per award and every ranking of revealed awards only; `my_award_votes` this phone's own;
+`cast_award_vote` (a `ranking` jsonb array: distinct candidates, not the voter) returns ok, closed, taken (another phone already votes as that player, or this phone already voted as someone else) or
 no. Checked on 2026-11-27 inside a rolled-back transaction on live data: every rule held and nothing was left behind.
 
 ## Title odds, draft room, props, milestones
