@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { pregamePrediction } from "@/lib/scorecard"
+import { teamForm } from "@/lib/formTeams"
 import {
   BUILD_LABELS,
   computeBalanceQualityMap,
@@ -229,6 +230,10 @@ function OptionCard({
           &Delta;{option.spread.toFixed(1)} Two-Way/G between strongest and weakest team
         </span>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Form rating:{" "}
+        {option.teams.map((t, ti) => `Team ${ti + 1} ${signedForm(teamForm(state, t))}`).join(", ")} (points added a game, added up; shown beside the odds, not used to rank yet)
+      </p>
       <div className="flex flex-wrap gap-2">
         {option.teams.map((team, ti) => (
           <TeamCard
@@ -433,3 +438,5 @@ export function BalanceTeams({
     </Card>
   )
 }
+
+const signedForm = (n: number) => `${n > 0.05 ? "+" : n < -0.05 ? "−" : ""}${Math.abs(n).toFixed(1)}`

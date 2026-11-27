@@ -31,6 +31,7 @@ import { RuleChangeCard } from "@/components/RuleChanges"
 import { WeatherCard } from "@/components/WeatherCard"
 import { ImprovingCard } from "@/components/Improving"
 import { CalibrationCard } from "./leaderboard/CalibrationCard"
+import { FormVsReadCard } from "./leaderboard/FormVsReadCard"
 
 // The classic Leaderboard tab's groups. The page shows them in tabs after Overview (TABS below).
 const SECTIONS: { key: string; title: string }[] = [
@@ -120,6 +121,7 @@ export function LeaderboardPage({
         {k === "comparison" && <ImprovingCard state={state} onOpenPlayer={onOpenPlayer} />}
         {k === "comparison" && <WeatherCard state={state} />}
         {k === "style" && <CalibrationCard state={state} />}
+        {k === "style" && <FormVsReadCard state={state} />}
         <LegacyPanels state={season} section={k} onOpenPlayer={onOpenPlayer} version={version} />
         {k === "situational" && <FatiguePanel state={state} onOpenPlayer={onOpenPlayer} />}
       </TabGroup>

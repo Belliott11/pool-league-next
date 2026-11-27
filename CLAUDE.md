@@ -372,6 +372,11 @@ Who's improving (asked 2026-11-27; `src/lib/improving.ts`, `src/components/Impro
 before their last `LATELY` (3) games, and the part (`FormPoint.parts`) that moved most; players need more than 3 filmed games. A card on
 the Leaderboard's Trends tab, and a closed "What the numbers say" fold (top 3) on the Most Improved (this season) ballot card. On
 2026-11-27 Adam led (+0.5, mostly defense).
+Form rating and the team balancer (asked 2026-11-27; `src/lib/formTeams.ts`): the balancer (`BalanceTeams.tsx`) shows each split's combined
+form rating beside its odds but still ranks by the pre-game read (which waits for about 100 games). `formVsRead` scores both on every
+filmed game, each called from earlier nights only (did the side with more form win; did the read's favourite win); the Models tab card
+`src/pages/leaderboard/FormVsReadCard.tsx` shows it and says when `READY_AT` (30) games are in. On 2026-11-27: 8 games, form 5, read 4,
+too few. Switch the ranking only if form leads at 30, and check closeness of games too, not just winners.
 Wins added (`src/lib/winsAdded.ts`, a column and a line on both Points added cards): points added per game turned into wins against an
 average player (not a replacement level: in a league of about a dozen friends that would only single out whoever plays least). A team
 whose player adds d points over an average game (PER points) gets half plus d/(2 PER) of the scoring, and `raceWin` with the league's
