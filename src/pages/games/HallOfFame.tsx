@@ -6,7 +6,8 @@ import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay } from "@/lib/format"
-import { bestGames, careerTable, longestStreaks, oldGames, pastMvps } from "@/lib/hallOfFame"
+import { bestGames, careerTable, longestStreaks, oldGames } from "@/lib/hallOfFame"
+import { pastSeasonAwards } from "@/lib/pastAwards"
 import { playerName } from "@/lib/players"
 import { poolNameOf } from "@/lib/real"
 import { joinNames, tiedRanks } from "@/lib/format"
@@ -76,7 +77,6 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
       book: recordBook(state),
       streaks: longestStreaks(state),
       rivals: rivalries(state, 5, oldGames()),
-      mvps: pastMvps(),
       teams: champions(state),
     }),
     [state],
@@ -94,12 +94,13 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
     if (client && (state.playOfYear ?? []).length) void loadPoty(client).then((v) => setPoty(potyWinners(state, v)))
   }, [state])
   // The players' own award votes, for every ballot whose awards are all out.
+  const past = useMemo(() => pastSeasonAwards().map((p) => ({ label: `${p.season}, in Poolean`, rows: p.awards.map((a) => ({ award: a.label, ids: a.winners })) })), [])
   const [voted, setVoted] = useState<{ label: string; rows: { award: string; ids: string[] }[] }[]>([])
   useEffect(() => {
     const client = getClient()
     const done = (state.awardBallots ?? []).filter(finished)
     if (!client || !done.length) return
-    void Promise.all(done.map((b) => loadCounts(client, b.id).then((c) => ({ label: b.label, rows: [...b.awards].reverse().map((a) => ({ award: a, ids: runoff(c.picks[a] ?? []).winners })) })))).then((v) => setVoted(v.reverse()))
+    void Promise.all(done.map((b) => loadCounts(client, b.id).then((c) => ({ label: b.label, rows: [...b.awards].reverse().map((a) => ({ award: awardDef(a)?.label ?? a, ids: runoff(c.picks[a] ?? []).winners })) })))).then((v) => setVoted(v.reverse()))
   }, [state])
   return (
     <div className="anim-page flex flex-col gap-4">
@@ -111,17 +112,6 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
           <Crown aria-hidden className="size-5 text-gold" /> Hall of fame
         </h2>
       </div>
-
-      {data.mvps.length > 0 && (
-        <Board title="MVP" hint="Each past season's voted MVP.">
-          {data.mvps.map((m) => (
-            <div key={m.season} className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground">{m.season}</span>
-              <span className="font-semibold">{m.ids.map((id) => poolNameOf(state, id)).join(" and ")}</span>
-            </div>
-          ))}
-        </Board>
-      )}
 
       {data.teams.length > 0 && (
         <Board title="Season team champions" hint="Each finished season's champion: the finals winner, or the top of the standings when no finals were played.">
@@ -140,15 +130,15 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
         </Board>
       )}
 
-      {voted.length > 0 && (
-        <Board title="Voted by the players" hint="Each season's awards, voted on by the players themselves.">
-          {voted.map((v) => (
+      {voted.length + past.length > 0 && (
+        <Board title="Voted by the players" hint="Each season's awards, voted on by the players themselves. Summer 2026 was voted in Adam's Poolean app.">
+          {[...voted, ...past].map((v) => (
             <div key={v.label} className="flex flex-col gap-0.5 border-t pt-1.5 first:border-t-0 first:pt-0">
               <span className="text-xs text-muted-foreground">{v.label}</span>
               {v.rows.map((r) => (
                 <div key={r.award} className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">{awardDef(r.award)?.label ?? r.award}</span>
-                  <span className="font-semibold">{r.ids.length ? r.ids.map((id) => poolNameOf(state, id)).join(" and ") : "No votes"}</span>
+                  <span className="text-muted-foreground">{r.award}</span>
+                  <span className="font-semibold">{r.ids.length ? r.ids.map((id) => poolNameOf(state, id)).join(r.ids.length > 2 ? ", " : " and ") : "No votes"}</span>
                 </div>
               ))}
             </div>

@@ -484,6 +484,15 @@ and what the numbers had (`numbersPick`, the award race leader for the same key;
 `cast_award_vote` (a `ranking` jsonb array: distinct candidates, not the voter) returns ok, closed, taken (another phone already votes as that player, or this phone already voted as someone else) or
 no. Checked on 2026-11-27 inside a rolled-back transaction on live data: every rule held and nothing was left behind.
 
+Last season's voted awards (`src/lib/pastAwards.ts`, `src/components/PastAwards.tsx`, under this season's vote on the Season awards page,
+and in the Hall of Fame's "Voted by the players" board, which replaced the MVP-only board): Summer 2026 was voted in Adam's Poolean app,
+where each ballot's top three scored 3/2/1 and a points tie went to attendance. Only the final points are here (`awards` in
+`src/data/poolean-seasons.json`); the ballots are private in Poolean's `award_votes` (admin or the voter only), so they cannot be re-counted.
+First and second team are one combined vote (places 1 to 3 and 4 to 6). The user chose to keep instant runoff for this site's own vote
+(2026-11-27) even though Poolean moved to points. Clutch was corrected from Phillip to Zach on 2026-11-27 in both
+`poolean-seasons.json` and `legacy-core.ts`: 7 to 7, and Poolean's re-tally (its docs/STATE.md, 2026-08-24) gave it to Zach on
+attendance, 15 parties to 4, the winner announced.
+
 ## Title odds, draft room, props, milestones
 
 - Title odds (`src/lib/titleOdds.ts`, a card at the top of the Season teams standings): each team's chance of finishing first, from

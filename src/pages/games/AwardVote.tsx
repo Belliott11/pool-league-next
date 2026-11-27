@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Award, Check, Vote } from "lucide-react"
+import { PastAwards } from "@/components/PastAwards"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { IdentityPrompt } from "@/components/WhoAmI"
 import { Button } from "@/components/ui/button"
@@ -146,7 +147,7 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
       </p>
 
       {!readOnly && <EditorControls state={state} update={update} b={b} />}
-      {!b && <p className="text-sm text-muted-foreground">No vote yet. The editor starts one at the end of a season.</p>}
+      {!b && <p className="text-sm text-muted-foreground">No vote yet this season. The editor opens it at the end of the season. Last season's results are below.</p>}
 
       {b && b.revealed > 0 && (
         <section aria-label="Revealed awards" className="flex flex-col gap-3">
@@ -280,6 +281,7 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
           {me && <p className="text-xs text-muted-foreground">Rank as many players as you like. Tap a ranked player to take them out. You can change your ballot until voting closes, and nobody sees it.</p>}
         </section>
       )}
+      <PastAwards state={state} />
     </div>
   )
 }

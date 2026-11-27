@@ -3179,7 +3179,7 @@ const MANUAL_AWARD_RESULTS = [
     { slug: "will", name: "Will", points: 2 }, { slug: "evan", name: "Evan", points: 1 },
     { slug: "zach", name: "Zach", points: 1 }
   ] },
-  { season: 2026, key: "clutch", label: "Clutch", winners: ["phillip"], statKey: "closeGameTs", votedStandings: [
+  { season: 2026, key: "clutch", label: "Clutch", winners: ["zach"], statKey: "closeGameTs", votedStandings: [
     { slug: "phillip", name: "Phillip", points: 7 }, { slug: "zach", name: "Zach", points: 7 },
     { slug: "adam", name: "Adam", points: 5 }, { slug: "evan", name: "Evan", points: 5 },
     { slug: "alex", name: "Alex", points: 4 }, { slug: "reilly", name: "Reilly", points: 4 },
