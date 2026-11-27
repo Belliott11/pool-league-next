@@ -383,6 +383,12 @@ else the recording's part number parsed from its name, "pt 2" after "pt 1", sinc
 then the league's points a shot, made share and turnovers per 10 trips by game number (1, 2, 3, 4+), early (games 1 to `EARLY` 2)
 against late with a twice-the-standard-error check, and each player's Points added a game early against late, leaned toward no
 difference by `LEAN` 3 games. On 2026-11-27: 0.71 against 0.68 points a shot, within chance; Zach better late, Ben and Evan early.
+Who makes you better (asked 2026-11-27; `src/lib/teammates.ts`, `src/components/Teammates.tsx`): on the Player page's Matchups tab, each
+teammate's lift on the player's Points added a game (filmed games with them on the team less without, leaned toward no difference by
+`LEAN` 6 games, only with `MIN_TOGETHER` 2 games together and apart, else "too few" or "no film"), baskets either set up for the other,
+and the record together over every result (`recordTogether`: the old site's list, then this site's results after it ends). The team
+balancer's option cards add "Good fits kept together" (`strongPairs`: both players' lifts averaged, 0.5 or more) with the pair's record.
+Shown only; nothing ranks by it. On 2026-11-27 (9 filmed games) the samples are tiny: Zach +1.8 with Adam, though they are 5-15 together.
 Wins added (`src/lib/winsAdded.ts`, a column and a line on both Points added cards): points added per game turned into wins against an
 average player (not a replacement level: in a league of about a dozen friends that would only single out whoever plays least). A team
 whose player adds d points over an average game (PER points) gets half plus d/(2 PER) of the scoring, and `raceWin` with the league's

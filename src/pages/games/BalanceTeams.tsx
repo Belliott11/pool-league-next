@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { pregamePrediction } from "@/lib/scorecard"
 import { teamForm } from "@/lib/formTeams"
+import { PairNote } from "@/components/Teammates"
 import {
   BUILD_LABELS,
   computeBalanceQualityMap,
@@ -234,6 +235,7 @@ function OptionCard({
         Form rating:{" "}
         {option.teams.map((t, ti) => `Team ${ti + 1} ${signedForm(teamForm(state, t))}`).join(", ")} (points added a game, added up; shown beside the odds, not used to rank yet)
       </p>
+      <PairNote state={state} teams={option.teams} />
       <div className="flex flex-wrap gap-2">
         {option.teams.map((team, ti) => (
           <TeamCard

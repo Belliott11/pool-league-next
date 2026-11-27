@@ -5,6 +5,7 @@ import { PlayerPointsAdded } from "@/components/PointsAdded"
 import { PlayerFormCard } from "@/components/FormRating"
 import { NightReportCard } from "@/components/NightReport"
 import { PlayerFatigue } from "@/components/Fatigue"
+import { PlayerTeammates } from "@/components/Teammates"
 import { PlayerRead } from "@/pages/PlayerRead"
 import { PlayerCompare } from "@/pages/PlayerCompare"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
@@ -330,6 +331,7 @@ export function PlayerDetailPage({
               {k === "defense" && <PlayerBeatRate state={season} pid={pid} />}
               {k === "shooting" && <ThreeWorth state={state} pid={pid} />}
               {k === "passing" && <PlayerLiveTov state={season} pid={pid} />}
+              {k === "matchups" && <PlayerTeammates state={state} pid={pid} />}
               <Panels section={k} pid={pid} version={version} />
               {k === "passing" && <PlayerInsight state={season} pid={pid} />}
               {k === "trends" && (
