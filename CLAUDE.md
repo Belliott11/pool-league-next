@@ -368,6 +368,10 @@ worse (strict check 20.4 against 16.6); from then each part's measured spread (m
 was slightly worse on 3 nights; recheck at 20). Range is 1.28 sd (about 80%). Strict check on 2026-11-27 (each night predicted from
 earlier nights only, 43 player-games): 16.3 against 16.8 for the props' lean-by-3-games average (squared miss); `src/lib/form.test.ts`
 reruns it with live data. Shown only; it feeds no prediction yet (the pre-game model waits for about 100 games).
+Who's improving (asked 2026-11-27; `src/lib/improving.ts`, `src/components/Improving.tsx`): each player's form rating now against
+before their last `LATELY` (3) games, and the part (`FormPoint.parts`) that moved most; players need more than 3 filmed games. A card on
+the Leaderboard's Trends tab, and a closed "What the numbers say" fold (top 3) on the Most Improved (this season) ballot card. On
+2026-11-27 Adam led (+0.5, mostly defense).
 Wins added (`src/lib/winsAdded.ts`, a column and a line on both Points added cards): points added per game turned into wins against an
 average player (not a replacement level: in a league of about a dozen friends that would only single out whoever plays least). A team
 whose player adds d points over an average game (PER points) gets half plus d/(2 PER) of the scoring, and `raceWin` with the league's

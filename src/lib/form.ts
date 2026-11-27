@@ -32,6 +32,7 @@ export interface FormPoint {
   mean: number // after this game
   sd: number
   actual: number // their Points added in this game
+  parts: Record<keyof Parts, number> // each part's rating after this game
 }
 
 export interface FormRow {
@@ -125,7 +126,8 @@ export function currentForm(state: PooleanState, drift = DRIFT): Form {
     const history = list.map((l, i) => {
       const mean = tracks.reduce((a, t) => a + t[i].mean, 0)
       const sd = Math.sqrt(tracks.reduce((a, t) => a + t[i].v, 0))
-      return { gameId: l.gameId, date: l.date, mean, sd, actual: l.total }
+      const parts = Object.fromEntries(PARTS.map((p, j) => [p, tracks[j][i].mean])) as Record<keyof Parts, number>
+      return { gameId: l.gameId, date: l.date, mean, sd, actual: l.total, parts }
     })
     const last = history[history.length - 1]
     const parts = Object.fromEntries(PARTS.map((p, j) => [p, tracks[j][tracks[j].length - 1].mean])) as Record<keyof Parts, number>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Award, Check, Vote, X } from "lucide-react"
 import { PastAwards } from "@/components/PastAwards"
+import { ImprovingCard } from "@/components/Improving"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { IdentityPrompt } from "@/components/WhoAmI"
 import { Button } from "@/components/ui/button"
@@ -265,6 +266,14 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
                       )}
                     </div>
                     {def && <p className="text-sm text-muted-foreground">{def.description}</p>}
+                    {k === "mip-season" && (
+                      <details className="text-sm">
+                        <summary className="cursor-pointer text-muted-foreground">What the numbers say</summary>
+                        <div className="mt-2">
+                          <ImprovingCard state={state} limit={3} />
+                        </div>
+                      </details>
+                    )}
                     {def?.kind === "duo" ? (
                       <DuoBallot candidates={b.candidates.filter((id) => id !== me)} ranking={ranking} half={half[k] ?? null} name={name} onTap={(id) => tapDuo(k, id)} onRemove={(pair) => void save(k, ranking.filter((x) => x !== pair))} />
                     ) : (
