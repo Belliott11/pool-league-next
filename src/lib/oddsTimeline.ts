@@ -35,6 +35,22 @@ export interface OddsTimeline {
   start: number // Team A's chance at the tip
   steps: OddsStep[]
   ball: boolean // the odds knew who had the ball
+  whatIfs: WhatIf[] // every play that could have gone the other way, in order
+}
+
+// What if a play had gone the other way: Team A's chance right after it as it happened, and as it would have been (the rest of the game
+// cannot be known, so only the moment). A made basket becomes a miss the defense takes, a miss goes in, a turnover becomes the trip
+// going on. With the odds that know who had the ball every play counts; otherwise only baskets, whose miss leaves the odds where they were.
+export interface WhatIf {
+  kind: "made" | "miss" | "turnover"
+  side: "A" | "B"
+  playerId: string
+  points: number
+  a: number // score before the play
+  b: number
+  actual: number // Team A's chance right after, as it happened
+  flipped: number // and had it gone the other way
+  videoTime: number | null
 }
 
 // Every play of a filmed game in order, or null when any of them has no video time.
@@ -77,6 +93,8 @@ function withBall(target: number, pre: number | null, rates: BallRates, plays: P
   let ball: "A" | "B" | null = null
   const trips: Trips = { tripsA: 0, scoredA: 0, tripsB: 0, scoredB: 0 }
   const chance = () => winProbabilityWithBall(a, b, target, pre, ball, rates, trips)
+  const chanceAt = (x: number, y: number, who: "A" | "B", t: Trips) => (gameOver(x, y, target) ? (x > y ? 1 : 0) : winProbabilityWithBall(x, y, target, pre, who, rates, t))
+  const whatIfs: WhatIf[] = []
   const start = chance()
   let p = start
   const steps: OddsStep[] = []
@@ -86,6 +104,19 @@ function withBall(target: number, pre: number | null, rates: BallRates, plays: P
     else (trips.tripsB++, scored && trips.scoredB++)
   }
   for (const k of plays) {
+    const a0 = a
+    const b0 = b
+    const scored = (who: "A" | "B", yes: boolean): Trips =>
+      who === "A" ? { ...trips, tripsA: trips.tripsA + 1, scoredA: trips.scoredA + (yes ? 1 : 0) } : { ...trips, tripsB: trips.tripsB + 1, scoredB: trips.scoredB + (yes ? 1 : 0) }
+    // Had it gone the other way: a make missed (the defense's ball), a miss made, a turnover never happened (the same team's ball).
+    const flipped =
+      k.kind === "made"
+        ? chanceAt(a0, b0, other(k.side), scored(k.side, false))
+        : k.kind === "turnover"
+          ? chanceAt(a0, b0, k.side, trips)
+          : k.kind === "ft"
+            ? null
+            : chanceAt(k.side === "A" ? a0 + k.points : a0, k.side === "B" ? b0 + k.points : b0, other(k.side), scored(k.side, true))
     if (k.kind === "ft" || k.kind === "made") {
       if (k.side === "A") a += k.points
       else b += k.points
@@ -96,6 +127,7 @@ function withBall(target: number, pre: number | null, rates: BallRates, plays: P
       const ends = gameOver(a, b, target)
       const after = ends ? (a > b ? 1 : 0) : chance()
       steps.push({ index: steps.length, side: k.side, scorerId: k.scorerId, assistId: k.assistId, points: k.points, a, b, before: p, after, videoTime: k.t, ends })
+      if (flipped !== null) whatIfs.push({ kind: "made", side: k.side, playerId: k.scorerId, points: k.points, a: a0, b: b0, actual: after, flipped, videoTime: k.t })
       p = after
       if (ends) break
       continue
@@ -106,8 +138,9 @@ function withBall(target: number, pre: number | null, rates: BallRates, plays: P
       ball = other(k.side)
     }
     p = chance()
+    if (flipped !== null) whatIfs.push({ kind: k.kind === "turnover" ? "turnover" : "miss", side: k.side, playerId: k.scorerId, points: k.points, a: a0, b: b0, actual: p, flipped, videoTime: k.t })
   }
-  return { target, start, steps, ball: true }
+  return { target, start, steps, ball: true, whatIfs }
 }
 
 export function oddsTimeline(game: Game, rates?: BallRates | null): OddsTimeline {
@@ -128,19 +161,29 @@ export function oddsTimeline(game: Game, rates?: BallRates | null): OddsTimeline
   let nB = 0
   let p = start
   const steps: OddsStep[] = []
+  const whatIfs: WhatIf[] = []
   baskets.forEach((k, index) => {
+    const a0 = a
+    const b0 = b
     if (k.side === "A") (a += k.points), nA++
     else (b += k.points), nB++
     const ends = gameOver(a, b, target)
     const after = ends ? (a > b ? 1 : 0) : winProbabilityFrom(a, b, target, pre, nA, nB)
     steps.push({ index, side: k.side, scorerId: k.scorerId, assistId: k.assistId ?? null, points: k.points, a, b, before: p, after, videoTime: k.videoTime ?? null, ends })
+    // These odds know only the score, so a missed basket leaves them where they were.
+    whatIfs.push({ kind: "made", side: k.side, playerId: k.scorerId, points: k.points, a: a0, b: b0, actual: after, flipped: p, videoTime: k.videoTime ?? null })
     p = after
   })
-  return { target, start, steps, ball: false }
+  return { target, start, steps, ball: false, whatIfs }
 }
 
 // The baskets that moved the odds most (for the scoring side), biggest first, leaving out the one that ended the game.
 export function bigSwings(t: OddsTimeline, n = 3): Set<number> {
   const gain = (s: OddsStep) => (s.side === "A" ? s.after - s.before : s.before - s.after)
   return new Set([...t.steps].filter((s) => !s.ends).sort((x, y) => gain(y) - gain(x)).slice(0, n).map((s) => s.index))
+}
+
+// The plays whose flip would have moved the odds most, biggest first.
+export function biggestWhatIfs(t: OddsTimeline, n = 5): WhatIf[] {
+  return [...t.whatIfs].sort((x, y) => Math.abs(y.flipped - y.actual) - Math.abs(x.flipped - x.actual)).slice(0, n)
 }

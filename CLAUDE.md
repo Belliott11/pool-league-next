@@ -428,6 +428,15 @@ that night, the best play (as shooter or passer, with video) and one to fix (as 
 (`PlaysToWatch`), the form rating before and after the night, and a link when they played in the game of the night (drama.ts). The game
 alerts carry no grade: a push subscription has no player attached.
 
+## What if (2026-11-27)
+
+`whatIfs` on `oddsTimeline` (`WhatIf`, `biggestWhatIfs`), the "What if" section on the game page's Odds tab (`WhatIfs` in
+`src/components/OddsTimeline.tsx`): for each play, Team A's chance right after it as it happened and had it gone the other way, the
+moment only (the rest of the game cannot be known). With the odds that know who had the ball (games with every play in order): a make
+missing becomes the defense's ball, a miss going in the other team's ball after a score, a turnover undone the same team's ball, each
+with this game's trips as they stood. Otherwise baskets only, and a missed basket leaves the score-only odds where they were. The five
+biggest flips are listed (2+ points of win chance), with Watch links. `src/lib/whatIf.test.ts`.
+
 ## Season teams
 
 `src/lib/seasonTeams.ts`, page `#/games/teams` (`src/pages/games/SeasonTeams.tsx`, a Games home button and in search). Shown to everyone

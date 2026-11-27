@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { useHeaderHeight } from "@/components/PageTabs"
 import { WatchTime } from "@/components/WatchTime"
 import { ballRates } from "@/lib/liveBall"
-import { bigSwings, oddsTimeline, type OddsStep } from "@/lib/oddsTimeline"
+import { bigSwings, biggestWhatIfs, oddsTimeline, type OddsStep, type OddsTimeline, type WhatIf } from "@/lib/oddsTimeline"
 import { playerName } from "@/lib/players"
 import { TEAM } from "@/lib/teamColors"
 import { cn } from "@/lib/utils"
@@ -114,10 +114,55 @@ export function OddsTimelineCard({ state, game }: { state: PooleanState; game: G
           <Row key={step.index} state={state} game={game} s={step} big={big.has(step.index)} active={step.index === at} onPick={() => setAt(step.index)} />
         ))}
       </ol>
+      <WhatIfs state={state} t={t} />
       <p className="text-xs text-muted-foreground">
         The live odds from the screen everyone watched: the pre-game read from the nights before, then the race to {t.target} as the baskets came. The number on the right is how many
         points of win chance the basket gave the scoring team. How it works is on the How the numbers work page.
       </p>
     </div>
+  )
+}
+
+// What if: the plays whose flip would have moved the odds most. Only the moment right after the play: nobody can know the rest.
+function whatIfText(w: WhatIf, name: (id: string) => string): string {
+  const at = `at ${w.a}-${w.b}`
+  if (w.kind === "made") return `If ${name(w.playerId)}'s ${w.points} ${at} had missed`
+  if (w.kind === "miss") return `If ${name(w.playerId)}'s missed ${w.points} ${at} had gone in`
+  return `If ${name(w.playerId)} had not turned it over ${at}`
+}
+
+function WhatIfs({ state, t }: { state: PooleanState; t: OddsTimeline }) {
+  const list = useMemo(() => biggestWhatIfs(t).filter((w) => Math.abs(w.flipped - w.actual) >= 0.02), [t])
+  if (!list.length) return null
+  const name = (id: string) => playerName(state, id)
+  return (
+    <section aria-label="What if" className="flex flex-col gap-2 rounded-xl border bg-card p-3">
+      <h3 className="font-display text-base font-bold">What if</h3>
+      <p className="text-xs text-muted-foreground">
+        The plays that would have moved the odds most had they gone the other way{t.ball ? ", misses and turnovers included" : ""}. Only the moment right after the play: nobody can say how the rest would have gone.
+      </p>
+      <ol className="flex flex-col gap-2 text-sm">
+        {list.map((w, i) => {
+          const move = Math.round(Math.abs(w.flipped - w.actual) * 100)
+          return (
+            <li key={i} className="flex items-start justify-between gap-3">
+              <span className="min-w-0">
+                {whatIfText(w, name)}:{" "}
+                <span className="text-muted-foreground">
+                  Team A would have been at {pct(w.flipped)} instead of {pct(w.actual)}
+                </span>
+                {w.videoTime !== null && (
+                  <>
+                    {" "}
+                    <WatchTime t={w.videoTime} />
+                  </>
+                )}
+              </span>
+              <span className="shrink-0 font-display tabular-nums">{move}</span>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
   )
 }
