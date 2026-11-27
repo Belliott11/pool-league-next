@@ -2,6 +2,8 @@
 // (see dashboard/README.md "Data schema (JSON)"). Only the fields this app's first slice reads
 // are typed strictly; everything else stays loosely typed so a real export round-trips untouched.
 
+import type { TradeOffer } from "@/lib/seasonTrades"
+
 export interface Player {
   id: string
   name: string
@@ -230,4 +232,7 @@ export interface SeasonTeamSet {
   // Draft lottery night (draftLottery.ts): the drawn first-round order (team ids, first pick first), each team's balls, and how many
   // picks have been revealed, counted from the last pick. The teams are reordered once every pick is shown.
   lottery?: { mode: "weighted" | "even"; balls: Record<string, number>; order: string[]; revealed: number; at: string }
+  // Trade offers between captains (seasonTrades.ts): made and answered from captains' phones through the season-draft function, approved
+  // by the editor.
+  offers?: TradeOffer[]
 }

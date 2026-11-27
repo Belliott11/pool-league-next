@@ -1,5 +1,5 @@
 import { SEASON_TEAMS_PUBLIC } from "@/lib/visibility"
-import { CalendarDays, FileText, Search, Swords, User } from "lucide-react"
+import { CalendarDays, FileText, Lightbulb, Search, Swords, User } from "lucide-react"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -7,12 +7,13 @@ import { formatDateLong } from "@/lib/format"
 import type { View } from "@/lib/nav"
 import { playerName } from "@/lib/players"
 import { pairRecord } from "@/lib/headToHead"
+import { answer } from "@/lib/statAnswers"
 import type { PooleanState } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-type Hit = { key: string; kind: "page" | "player" | "game" | "pair"; label: string; detail: string; words: string; go: () => void }
+type Hit = { key: string; kind: "page" | "player" | "game" | "pair" | "answer"; label: string; detail: string; words: string; go: () => void }
 
-const ICON = { page: FileText, player: User, game: CalendarDays, pair: Swords }
+const ICON = { page: FileText, player: User, game: CalendarDays, pair: Swords, answer: Lightbulb }
 
 // "ben vs zach", "ben v zach": two names to compare. Each must match one player, by the start of their name or their id.
 const VS = /\s+(?:vs\.?|v\.?|versus)\s+/i
@@ -95,13 +96,31 @@ export function SiteSearch({ state, open, onOpenChange, go, openPlayer, readOnly
       go: () => go({ tab: "games", sub: `h2h:${x},${y}`, player: null }),
     }
   }, [q, state, go])
+  // Stat questions ("most points in a game", "Ben's best game"), answered first (src/lib/statAnswers.ts).
+  const answers = useMemo<Hit[]>(
+    () =>
+      pair
+        ? []
+        : answer(state, q).map((a) => ({
+            key: `answer:${a.key}`,
+            kind: "answer",
+            label: a.label,
+            detail: a.detail,
+            words: "",
+            go: () => (a.target.kind === "player" ? openPlayer(a.target.id) : go({ tab: "games", sub: a.target.kind === "game" ? `game:${a.target.id}` : a.target.sub, player: null })),
+          })),
+    [q, state, pair, go, openPlayer],
+  )
   const hits = pair
     ? [pair]
     : needle
-    ? all
-        .filter((h) => needle.split(/\s+/).every((w) => `${h.label} ${h.detail} ${h.words}`.toLowerCase().includes(w)))
-        .sort((a, b) => Number(b.label.toLowerCase().startsWith(needle)) - Number(a.label.toLowerCase().startsWith(needle)))
-        .slice(0, 12)
+    ? [
+        ...answers,
+        ...all
+          .filter((h) => needle.split(/\s+/).every((w) => `${h.label} ${h.detail} ${h.words}`.toLowerCase().includes(w)))
+          .sort((a, b) => Number(b.label.toLowerCase().startsWith(needle)) - Number(a.label.toLowerCase().startsWith(needle)))
+          .slice(0, 12),
+      ]
     : all.filter((h) => h.kind !== "game")
   const pick = (h: Hit) => {
     onOpenChange(false)
@@ -128,7 +147,7 @@ export function SiteSearch({ state, open, onOpenChange, go, openPlayer, readOnly
               else return
               e.preventDefault()
             }}
-            placeholder="A player, a date, or Ben vs Zach"
+            placeholder="A player, Ben vs Zach, or most 3s in a game"
             aria-label="Search the site"
             role="combobox"
             aria-expanded

@@ -1,20 +1,25 @@
-// Season team draft room: lets each captain make their team's pick from their own phone. It can do two things and nothing else:
+// Season team draft room: lets each captain make their team's pick from their own phone, and trade once the draft is done. It can do
+// these things and nothing else:
 //   pick  put an unpicked player on the team on the clock: from that team's captain link (key checked against the hash the editor saved
 //         in the set's captainKeys), or from a signed-in editor for any team
 //   undo  take back the last pick (editors only)
-// No picks while a draft lottery is still being revealed.
+//   offer     a trade offer from a captain's link to another team (seasonTrades.ts, a byte-for-byte copy of the site's own)
+//   respond   the asked captain accepts or declines it
+//   withdraw  the offering captain takes it back
+// Trades only move players once the editor approves them, on the site. No picks while a draft lottery is still being revealed.
 // The order is the snake in seasonDraft.ts, a byte-for-byte copy of the site's own. Nothing else in the league data is touched.
 // In Supabase: Verify JWT is off (captains are not signed in; an editor's own token is checked here). SUPABASE_URL,
 // SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY come from Supabase.
 import { createClient } from "npm:@supabase/supabase-js@2"
 import { draftPick, onTheClock, undoPick, type DraftTeam } from "./seasonDraft.ts"
+import { makeOffer, respondToOffer, withdrawOffer, type TradeOffer } from "./seasonTrades.ts"
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info", "Access-Control-Allow-Methods": "POST, OPTIONS" }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } })
 
-type Set = { id: string; drafting?: boolean; to?: string; teams: DraftTeam[]; captainKeys?: Record<string, string>; lastPickAt?: string; [k: string]: unknown }
+type Set = { id: string; drafting?: boolean; to?: string; teams: DraftTeam[]; captainKeys?: Record<string, string>; lastPickAt?: string; offers?: TradeOffer[]; [k: string]: unknown }
 type State = { players: { id: string }[]; seasonTeamSets?: Set[]; [k: string]: unknown }
-type Body = { action?: string; setId?: string; teamId?: string; key?: string; pid?: string }
+type Body = { action?: string; setId?: string; teamId?: string; key?: string; pid?: string; to?: string; give?: unknown; get?: unknown; offerId?: string; accept?: boolean }
 
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, "0")).join("")
 
@@ -32,6 +37,21 @@ function apply(state: State, body: Body, who: { editor: boolean; team: string | 
   const sets = state.seasonTeamSets ?? []
   const i = sets.findIndex((s) => s.id === body.setId)
   const set = sets[i]
+  if (body.action === "offer" || body.action === "respond" || body.action === "withdraw") {
+    if (!set || set.drafting || set.to) return { error: "Trades open once the draft is done, for the current season teams.", status: 409 }
+    if (!who.team) return { error: "Trades come from a captain's link.", status: 403 }
+    const now = new Date().toISOString()
+    const list = (x: unknown) => (Array.isArray(x) ? x.map(String).slice(0, 10) : [])
+    const next =
+      body.action === "offer"
+        ? makeOffer(set, who.team, String(body.to ?? ""), list(body.give), list(body.get), `o_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, now)
+        : body.action === "respond"
+          ? respondToOffer(set, String(body.offerId ?? ""), who.team, body.accept === true, now)
+          : withdrawOffer(set, String(body.offerId ?? ""), who.team, now)
+    if (typeof next === "string") return { error: next, status: 409 }
+    sets[i] = next
+    return null
+  }
   if (!set || !set.drafting) return { error: "That draft is over.", status: 409 }
   if (body.action === "undo") {
     if (!who.editor) return { error: "Only the editor can take a pick back.", status: 403 }

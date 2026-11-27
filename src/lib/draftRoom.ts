@@ -80,3 +80,8 @@ async function call(body: Record<string, unknown>): Promise<string | null> {
   }
   return "No signal. Try the pick again."
 }
+
+// Trade offers (seasonTrades.ts) go through the same function, from a captain's link.
+export const sendOffer = (link: CaptainLink, to: string, give: string[], get: string[]) => call({ action: "offer", setId: link.setId, teamId: link.teamId, key: link.key, to, give, get })
+export const sendResponse = (link: CaptainLink, offerId: string, accept: boolean) => call({ action: "respond", setId: link.setId, teamId: link.teamId, key: link.key, offerId, accept })
+export const sendWithdraw = (link: CaptainLink, offerId: string) => call({ action: "withdraw", setId: link.setId, teamId: link.teamId, key: link.key, offerId })

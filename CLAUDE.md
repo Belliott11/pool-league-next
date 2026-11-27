@@ -413,6 +413,25 @@ a time, last pick first; phones refresh every 4 s meanwhile. The teams are only 
 and "Call off the lottery" before the first reveal. The order sits in the public league data from the draw, so a curious friend could
 read it early.
 
+## Trade offers between captains (2026-11-27)
+
+Rules in `src/lib/seasonTrades.ts` (no imports: the `season-draft` function, version 3, runs a byte-for-byte copy,
+`supabase/functions/season-draft/seasonTrades.ts`, checked by `seasonTrades.test.ts`); card `src/pages/games/Trades.tsx` under the
+standings once the draft is done (current set only). A captain with their link (`savedCaptainLink`) offers up to `MAX_SIDE` (3) of
+their players for up to 3 of another team's (captains stay; `MAX_OPEN` 4 open offers a team) through the function's `offer` action;
+the asked captain uses `respond` (accept or decline), the offering one `withdraw`. An accepted trade waits for the editor: "Approve the
+trade" re-checks it and moves the players with `movePlayer` dated today (so earlier nights stay with the old team), "Turn it down"
+leaves everyone where they are. Saved in `set.offers`, shown to everyone with each status. The editor's captain links (`CaptainLinks`)
+sit in the card after the draft, worded for trades.
+
+## Stat questions in search (2026-11-27)
+
+`src/lib/statAnswers.ts`, shown first in site search with a light bulb: single-game records ("most points in a game", "assist record",
+from `recordBook`), career leaders ("who has the most 3s", "career rebounds"; box-score stats from filmed games), most wins and games
+(every result, old site included), longest streaks (overall or a named player's), and a named player's best game, record and averages
+("Ben's best game", "adam record", "evan average"). Plain word matching on stat words and player names; a question it does not
+recognise gets no answer and search works as before. Each answer opens its game, player or the Hall of Fame.
+
 ## Title odds, draft room, props, milestones
 
 - Title odds (`src/lib/titleOdds.ts`, a card at the top of the Season teams standings): each team's chance of finishing first, from

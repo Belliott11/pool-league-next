@@ -18,6 +18,7 @@ import { SEASON_TEAMS_PUBLIC } from "@/lib/visibility"
 import { makeCaptainLinks, parseCaptainLink, saveCaptainLink, savedCaptainLink, sendPick, sendUndo, type CaptainLink } from "@/lib/draftRoom"
 import type { Update } from "@/lib/store"
 import { DraftLottery } from "./DraftLottery"
+import { Trades } from "./Trades"
 import { lotteryLive } from "@/lib/draftLottery"
 import { cn } from "@/lib/utils"
 import type { Game, PooleanState, SeasonTeam, SeasonTeamSet } from "@/lib/types"
@@ -137,10 +138,12 @@ function CaptainLinks({ state, set, update }: { state: PooleanState; set: Season
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
       <p className="flex items-center gap-2 font-medium">
-        <Smartphone aria-hidden className="size-4" /> Draft room: captains pick from their own phones
+        <Smartphone aria-hidden className="size-4" /> {set.drafting ? "Draft room: captains pick from their own phones" : "Captain links: trade offers from captains' phones"}
       </p>
       <p className="text-xs text-muted-foreground">
-        Send each captain their own link. It only lets them pick for their team, only on their turn. Everyone else can watch this page. You can still pick or take a pick back here.
+        {set.drafting
+          ? "Send each captain their own link. It only lets them pick for their team, only on their turn. Everyone else can watch this page. You can still pick or take a pick back here."
+          : "Send each captain their own link. It lets them offer trades for their team and answer offers made to them. Nothing moves until you approve it here."}
       </p>
       {links.length > 0 && (
         <ul className="flex flex-col gap-1.5">
@@ -746,7 +749,10 @@ export function SeasonTeamsPage({ state, update, onBack, onOpenPlayer, onOpenGam
           {!lotteryLive(set) && <Draft state={state} set={set} update={update} readOnly={readOnly} captain={captain} />}
         </>
       ) : (
-        <Standings state={state} set={set} onOpenPlayer={onOpenPlayer} onOpenGame={openGame} editor={!readOnly} update={update} />
+        <>
+          <Standings state={state} set={set} onOpenPlayer={onOpenPlayer} onOpenGame={openGame} editor={!readOnly} update={update} />
+          {!set.to && <Trades state={state} set={set} update={update} readOnly={readOnly} captain={captain} links={!readOnly ? <CaptainLinks state={state} set={set} update={update} /> : null} />}
+        </>
       )}
     </div>
   )
