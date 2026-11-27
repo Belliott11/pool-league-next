@@ -2,6 +2,7 @@ import { Lightbulb } from "lucide-react"
 import { useMemo } from "react"
 import { ViewTabs } from "@/components/PanelGroup"
 import { Section } from "@/components/Section"
+import { winChancePlays } from "@/lib/wpaPlays"
 import { BIG_SWING, marginBreakdown, shotsCreated, turnoverCost, winProbAdded } from "@/lib/insight"
 import { PER } from "@/lib/per"
 import type { PooleanState } from "@/lib/types"
@@ -79,6 +80,8 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
   const c = useMemo(() => shotsCreated(state), [state])
   const w = useMemo(() => winProbAdded(state), [state])
   const t = useMemo(() => turnoverCost(state), [state])
+  const wp = useMemo(() => winChancePlays(state), [state])
+  const mp = wp.rows.find((r) => r.id === pid)
   if (b.games === 0) return null
   const mc = c.rows.find((r) => r.id === pid)
   const mw = w.rows.find((r) => r.id === pid)
@@ -102,12 +105,19 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
             label: "Win chance added",
             node: (
               <>
-                <Hint>How their baskets and passes moved their team's chance of winning, and what shots scored against them while they defended gave up. In points of win chance per {PER} points. Clutch squared weights each basket by its swing, squared, over the season, so game-deciding baskets count most.</Hint>
+                <Hint>How their baskets and passes moved their team's chance of winning, and what shots scored against them while they defended gave up. In points of win chance per {PER} points. Every play counts misses, rebounds, turnovers and stops too, with a win chance that knows who has the ball (a season total). Clutch squared weights each basket by its swing, squared, over the season, so game-deciding baskets count most.</Hint>
                 {mw ? (
                   <>
                     <Line label="Added" value={(mw.added25 * 100).toFixed(0)} sub={`${mw.baskets} baskets in ${mw.games} games`} />
                     <Line label="Allowed" value={(mw.allowed25 * 100).toFixed(0)} />
                     <Line label="Net" value={sign(mw.net25 * 100, 0)} />
+                    {mp && (
+                      <Line
+                        label="Every play"
+                        value={sign(mp.total * 100, 0)}
+                        sub={`shots ${sign(mp.shots * 100, 0)}, passes ${sign(mp.passes * 100, 0)}, boards ${sign(mp.boards * 100, 0)}, defense ${sign(mp.defense * 100, 0)}, turnovers ${sign(mp.turnovers * 100, 0)}, over ${mp.games} ${mp.games === 1 ? "game" : "games"} (season total)`}
+                      />
+                    )}
                     <Line label="Clutch squared" value={mw.clutch2.toFixed(1)} sub={`${mw.bigBaskets} ${mw.bigBaskets === 1 ? "basket" : "baskets"} that moved it ${Math.round(BIG_SWING * 100)}+ points; biggest ${Math.round(mw.biggest * 100)}`} />
                   </>
                 ) : (

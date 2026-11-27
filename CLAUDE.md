@@ -344,6 +344,15 @@ insight.ts). Over the league the offense's credits sum to zero once rebounds nob
 Win chance added (insight.ts) uses the race to the target from the pre-game read (`winProbabilityFrom` with `backtestPick`) on the score
 alone, without the live odds' learning which team is better (that would credit early baskets twice; measured 2026-11-26: first-third
 baskets +13.9 with the learning against +9.2 without, last third +13.1 against +13.2).
+Win chance added, every play (asked 2026-11-27; `src/lib/wpaPlays.ts`, card `src/components/WinChancePlays.tsx` on the Leaderboard
+Overview, a line in the Player page's "Win chance added" tab): the win chance from `possessionOdds` (shotChoice.ts, knows who has the
+ball, first to the game's target, win by 2, the league's trip rates, even teams, no pre-game read), applied to every play from
+`playValues` in video-time order with the free throws. Splits like Points added: shooter 65/35 with the passer, the defenders (and a
+blocker) take the other side of the shot, an in-bounds miss is valued at the usual miss (`keep2`/`keep3`) and the rebound settles the
+rest (credited only to the rebounder, so it counts once), a live-ball turnover to who lost it and the other side to who forced it, free
+throws' points to the shooter. Only games with every play's video time count. `wpaPlays.test.ts` checks the credits add back to the
+game's whole win-chance climb. On 2026-11-27, 6 games: Evan +101, Ben +59, Adam +58; Alex went from +29 on baskets only to -30 and Zach
+from +3 to -40, mostly turnovers.
 Clutch squared (asked 2026-11-27, "weighted by stakes"): `clutch2` on `winProbAdded`'s rows, each basket's swing in win chance (the same
 score-alone swing as win chance added) squared and times 100, so a 30-point swing is 9 clutch points and counts 36 times a 5-point one;
 shared with the passer by `CREDIT`, a season total. Also `bigBaskets` (swings of `BIG_SWING` 0.15 or more) and `biggest`. Card
