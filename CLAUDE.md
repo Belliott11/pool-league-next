@@ -428,7 +428,10 @@ last quarter of the baskets). On the game page under the summary lines (with its
 
 `src/lib/nightReport.ts`, `src/components/NightReport.tsx` (under At a glance on the Player page; "Your night" on your own page) and a
 "Next up for you" step: a player's last filmed night. Graded against their own level only (asked 2026-11-27, so a newer or weaker
-player is never marked down for it): their Points added a game that night against their form rating going in (`usual`), in units of how
+player is never marked down for it): their Points added a game that night against a bar (`barFor`): their form rating going in (`usual`),
+or for a player below the league average a quarter of the way (`STEP`) up toward it, so matching a low usual is a C+ and a B means a small
+step forward (asked the same day: purely personal grading could reinforce staying the same; above-average players keep their usual), in
+units of how
 much a night swings by chance (the parts' game noise together over the night's games, plus the rating's own uncertainty), turned into the
 share of their own nights it would beat (`normalCdf`) and a grade (`GRADES`, A+ the top tenth down to D; no F). A first filmed night gets
 no grade (nothing to compare with yet). Also their record and points
