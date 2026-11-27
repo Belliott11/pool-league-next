@@ -1,7 +1,8 @@
 import { Suspense, type ReactNode } from "react"
 import { PotyCard } from "./games/PlayOfYear"
+import { AwardsCard } from "./games/AwardVote"
 import { lazyPage } from "@/lib/lazyPage"
-import { Calculator, CalendarDays, Crown, Radio, Shield, Swords, Trophy } from "lucide-react"
+import { Award, Calculator, CalendarDays, Crown, Radio, Shield, Swords, Trophy } from "lucide-react"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { getClient } from "@/lib/cloud"
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,7 @@ const StatEntryPage = lazyPage(() => import("./statentry/StatEntryPage").then((m
 const HallOfFame = lazyPage(() => import("./games/HallOfFame").then((m) => ({ default: m.HallOfFame })))
 const Wrapped = lazyPage(() => import("./games/Wrapped").then((m) => ({ default: m.Wrapped })))
 const FilmPlayPage = lazyPage(() => import("./games/FilmPlayPage").then((m) => ({ default: m.FilmPlayPage })))
+const AwardsPage = lazyPage(() => import("./games/AwardVote").then((m) => ({ default: m.AwardsPage })))
 const PlayOfYearPage = lazyPage(() => import("./games/PlayOfYear").then((m) => ({ default: m.PlayOfYearPage })))
 const HeadToHeadPage = lazyPage(() => import("./games/HeadToHeadPage").then((m) => ({ default: m.HeadToHeadPage })))
 const ClipPage = lazyPage(() => import("./games/ClipPage").then((m) => ({ default: m.ClipPage })))
@@ -92,6 +94,10 @@ export function GamesPage({
 
   if (kind === "film") {
     return <Lazy><FilmPlayPage state={state} arg={arg} onBack={goBack} onOpenGame={(id) => go("game:" + id)} /></Lazy>
+  }
+
+  if (kind === "awards") {
+    return <Lazy><AwardsPage state={state} update={update} onBack={goBack} /></Lazy>
   }
 
   if (kind === "poty") {
@@ -160,11 +166,13 @@ export function GamesPage({
             state.games.length > 0 && { key: "recap", Icon: CalendarDays, title: "Night recap", text: "Every game from the last night, the player of the night and the plays.", onClick: () => showRecap() },
             ((state.seasonTeamSets ?? []).length > 0 || !readOnly) && { key: "teams", Icon: Shield, title: "Season teams", text: "The teams for the season, the standings and trades.", onClick: () => go("teams") },
             ((state.playOfYear ?? []).length > 0 || !readOnly) && { key: "poty", Icon: Trophy, title: "Play of the Year", text: "The best plays in a bracket, voted on together.", onClick: () => go("poty") },
+            ((state.awardBallots ?? []).length > 0 || !readOnly) && { key: "awards", Icon: Award, title: "Season awards", text: "The players vote MVP and more, next to what the numbers say.", onClick: () => go("awards") },
             state.players.length > 1 && { key: "h2h", Icon: Swords, title: "Settle it", text: "Any two players head to head: the record and the tale of the tape.", onClick: () => go("h2h") },
             state.games.length > 0 && { key: "hall", Icon: Crown, title: "Hall of fame", text: "Records, champions and the best games ever played.", onClick: () => go("hall") },
             state.games.some((g) => g.scoringEvents.length > 0) && { key: "how", Icon: Calculator, title: "How the numbers work", text: "The odds, runs and Two-Way explained on real moments.", onClick: () => go("how") },
           ]}
         />
+        <AwardsCard state={state} onOpen={() => go("awards")} />
         <PotyCard state={state} onOpen={() => go("poty")} />
         <TopPlays state={state} />
         {showHub(state) && <div id="offseason-hub" className="scroll-mt-24"><OffseasonHub state={state} onWrapped={() => go("wrapped")} onOpenPlayer={onOpenPlayer} onLive={() => go("live")} onOpenGame={open} /></div>}

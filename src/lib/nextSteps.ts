@@ -18,7 +18,7 @@ export interface Step {
 
 export const MAX_STEPS = 4
 
-export function nextSteps(state: PooleanState, me: string, opts: { mixtape?: boolean; rival?: string | null; today?: string } = {}): Step[] {
+export function nextSteps(state: PooleanState, me: string, opts: { mixtape?: boolean; rival?: string | null; today?: string; ballotDone?: boolean } = {}): Step[] {
   const out: Step[] = []
   const live = findLiveGame(state)
   if (live && !live.test) {
@@ -26,6 +26,8 @@ export function nextSteps(state: PooleanState, me: string, opts: { mixtape?: boo
     out.push({ key: "live", text: playing ? "You are in the game on now." : "A game is on now.", button: "Follow it live", go: { kind: "sub", sub: "live" } })
   }
   if (openForVotes(state).some((g) => !g.test)) out.push({ key: "pickem", text: "Pick'em is open: call who wins before the first basket.", button: "Make your pick", go: { kind: "scroll", id: "pickem-card" } })
+  const ballot = state.awardBallots?.at(-1)
+  if (ballot?.open && !opts.ballotDone) out.push({ key: "awards", text: `Vote for the ${ballot.label} awards: MVP and more. Nobody sees your ballot.`, button: "Vote", go: { kind: "sub", sub: "awards" } })
   const next = upcomingRsvp(state, opts.today)
   if (next && showHub(state) && !next.playerIds.includes(me)) out.push({ key: "rsvp", text: "Opening night is coming. Let everyone know if you are in.", button: "Answer", go: { kind: "scroll", id: "offseason-hub" } })
   const team = teamOf(currentSet(state), me)

@@ -4,6 +4,7 @@ import { connect, fetchPublic, fetchRemote, isEditor, loadCloudConfig, saveRemot
 import { adoptScorekeeperScores } from "./live"
 import { keepCloudMarks } from "./keepCloudMarks"
 import { liveVoting } from "./playOfYear"
+import { revealing } from "./awardVote"
 import { loadViewerCopy, saveViewerCopy, withoutLiveGames } from "./viewerCopy"
 import type { PooleanState } from "./types"
 
@@ -199,7 +200,7 @@ export function useCloud() {
   }, [status, admin, adminPoll, refresh])
 
   // A live Play of the Year vote, or a draft lottery being revealed: phones follow each step within a few seconds.
-  const potyLive = liveVoting(remote?.state.playOfYear?.at(-1)) || !!remote?.state.seasonTeamSets?.some((s) => s.lottery && s.lottery.revealed < s.lottery.order.length)
+  const potyLive = liveVoting(remote?.state.playOfYear?.at(-1)) || !!remote?.state.seasonTeamSets?.some((s) => s.lottery && s.lottery.revealed < s.lottery.order.length) || revealing(remote?.state.awardBallots?.at(-1))
   const liveNow = !!remote?.state.games.some((g) => g.liveInProgress) || drafting
   // Viewers pick up the editor's changes: every minute, and whenever the tab comes back into view.
   useEffect(() => {

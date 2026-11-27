@@ -180,6 +180,8 @@ export interface PooleanState {
   seasonTeamSets?: SeasonTeamSet[]
   // Play of the Year brackets (playOfYear.ts), newest last. Votes live in the poty_votes table, never here.
   playOfYear?: PlayOfYear[]
+  // Season awards voted by the players (awardVote.ts), newest last. Votes live in the award_votes table, never here.
+  awardBallots?: AwardBallot[]
   // The first night of next season. While it is in the future the app is in the offseason.
   openingNight?: { date: string; time?: string } | null
   [key: string]: unknown
@@ -187,6 +189,17 @@ export interface PooleanState {
 
 // A Play of the Year bracket: the seeded plays (share ids from clip-shares.json, best first), when voting opened and how long each round
 // stays open. Who won each match is worked out from the votes.
+export interface AwardBallot {
+  id: string
+  label: string // "Summer 2026"
+  awards: string[] // award keys in reveal order, MVP last
+  candidates: string[] // who can be voted for, frozen when the vote starts
+  open: boolean // taking votes
+  revealed: number // how many awards have been revealed, in `awards` order
+  startedAt: string
+  lastAt?: string // the last open, close or reveal, for refreshing phones during a reveal
+}
+
 export interface PlayOfYear {
   id: string
   label: string

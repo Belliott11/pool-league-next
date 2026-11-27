@@ -18,6 +18,7 @@ import type { PooleanState } from "@/lib/types"
 import { reviewTally } from "@/lib/reviews"
 import shares from "@/data/clip-shares.json"
 import { loadPoty, potyWinners } from "@/lib/playOfYear"
+import { awardDef, finished, loadCounts, tally } from "@/lib/awardVote"
 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
 
@@ -92,6 +93,14 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
     const client = getClient()
     if (client && (state.playOfYear ?? []).length) void loadPoty(client).then((v) => setPoty(potyWinners(state, v)))
   }, [state])
+  // The players' own award votes, for every ballot whose awards are all out.
+  const [voted, setVoted] = useState<{ label: string; rows: { award: string; ids: string[] }[] }[]>([])
+  useEffect(() => {
+    const client = getClient()
+    const done = (state.awardBallots ?? []).filter(finished)
+    if (!client || !done.length) return
+    void Promise.all(done.map((b) => loadCounts(client, b.id).then((c) => ({ label: b.label, rows: [...b.awards].reverse().map((a) => ({ award: a, ids: tally(c.picks[a] ?? []).winners })) })))).then((v) => setVoted(v.reverse()))
+  }, [state])
   return (
     <div className="anim-page flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -126,6 +135,22 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
                 <span className="text-muted-foreground">{c.finals ? " won the finals: " : ` ${c.line.score.toFixed(2)} a game: `}</span>
                 {c.line.team.members.map((m) => poolNameOf(state, m)).join(", ")}
               </span>
+            </div>
+          ))}
+        </Board>
+      )}
+
+      {voted.length > 0 && (
+        <Board title="Voted by the players" hint="Each season's awards, voted on by the players themselves.">
+          {voted.map((v) => (
+            <div key={v.label} className="flex flex-col gap-0.5 border-t pt-1.5 first:border-t-0 first:pt-0">
+              <span className="text-xs text-muted-foreground">{v.label}</span>
+              {v.rows.map((r) => (
+                <div key={r.award} className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">{awardDef(r.award)?.label ?? r.award}</span>
+                  <span className="font-semibold">{r.ids.length ? r.ids.map((id) => poolNameOf(state, id)).join(" and ") : "No votes"}</span>
+                </div>
+              ))}
             </div>
           ))}
         </Board>
