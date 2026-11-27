@@ -470,7 +470,9 @@ until the first basket: each player's go-to kind of shot (5+ shots, not 2s/3s/op
 
 `src/lib/awardVote.ts`, page `#/games/awards` (`src/pages/games/AwardVote.tsx`: `AwardsPage`, the Games home `AwardsCard`, an Explore
 tile, search, a "Next up for you" step while voting is open, and "Voted by the players" in the Hall of Fame). The editor opens a ballot
-(`state.awardBallots`, newest last: label, awards in reveal order `mip`, `clutch`, `dpoy`, `mvp`, candidates frozen at the start: players
+(`state.awardBallots`, newest last: label, awards in reveal order `mip`, `clutch`, `dpoy`, `best-player`, `mvp`; what each rewards is
+written once in `src/lib/awardText.ts`, shown on the ballot, the reveal and last season's results: MVP counts attendance, Best Player is
+peak ability without it, asked 2026-11-27; candidates frozen at the start: players
 with `MIN_GAMES` (5) games this season, at least 3). Ranked choice (asked 2026-11-27): each player ranks as many candidates as they like
 per award from their own phone ("Who are you?"; tap in order, tap again to take out, `toggleRank`; saved after every tap), never
 themselves, and can change it while voting is open. The winner is found by instant runoff (`runoff`: a majority of the ballots still

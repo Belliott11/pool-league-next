@@ -1,4 +1,5 @@
 import data from "@/data/poolean-seasons.json"
+import { AWARD_TEXT } from "@/lib/awardText"
 
 // The end-of-season awards the players voted on in Adam's Poolean app, for seasons before this site ran its own vote (awardVote.ts).
 // Only the final point totals are kept (src/data/poolean-seasons.json): Poolean scored each ballot's top three 3, 2 and 1 and broke a
@@ -8,6 +9,7 @@ import data from "@/data/poolean-seasons.json"
 export interface PastAward {
   key: string
   label: string
+  description: string
   winners: string[]
   standings: { ids: string[]; points: number }[] // most first
   tieWon: boolean // the winner was level on points at the top, and Poolean's tiebreak decided it
@@ -49,7 +51,7 @@ export function pastSeasonAwards(): PastSeason[] {
         const shown = key === "first-team" ? standings.slice(0, 3) : key === "second-team" ? standings.slice(3, 6) : standings
         const top = standings[0]?.points ?? 0
         const tieWon = key !== "first-team" && key !== "second-team" && standings.filter((s) => s.points === top).length > 1
-        return [{ key, label, winners: a.winners, standings: shown, tieWon }]
+        return [{ key, label, description: AWARD_TEXT[key] ?? "", winners: a.winners, standings: shown, tieWon }]
       })
       return awards.length ? { season: `Summer ${year}`, awards } : null
     })

@@ -160,7 +160,10 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
             return (
               <Card key={k} className={cn(k === b.awards[b.revealed - 1] && "ring-2 ring-gold/60")}>
                 <CardContent className="flex flex-col gap-3">
-                  <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{def?.label ?? k}</p>
+                  <div>
+                    <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{def?.label ?? k}</p>
+                    {def && <p className="mt-0.5 text-xs text-muted-foreground">{def.description}</p>}
+                  </div>
                   {t.winners.length ? (
                     <div className="flex flex-wrap items-center gap-3">
                       {t.winners.map((id) => (
@@ -240,7 +243,7 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
                         </span>
                       )}
                     </div>
-                    {def && <p className="text-sm text-muted-foreground">{def.question}</p>}
+                    {def && <p className="text-sm text-muted-foreground">{def.description}</p>}
                     <div role="group" aria-label={`Rank players for ${def?.label ?? k}`} className="flex flex-wrap gap-2">
                       {b.candidates
                         .filter((id) => id !== me)

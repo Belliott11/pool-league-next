@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { awardRace } from "@/lib/awardRace"
+import { AWARD_TEXT } from "@/lib/awardText"
 import { deviceKey } from "@/lib/deviceKey"
 import { isCurrentSeasonGame } from "@/lib/stats"
 import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
@@ -15,16 +16,19 @@ import type { AwardBallot, PooleanState } from "@/lib/types"
 export interface AwardDef {
   key: string
   label: string
-  question: string
+  description: string // what the award rewards (awardText.ts)
 }
 
-// In reveal order: MVP last.
-export const AWARDS: AwardDef[] = [
-  { key: "mip", label: "Most Improved", question: "Who got better the most this season?" },
-  { key: "clutch", label: "Clutch Player", question: "Who do you want with the ball at game point?" },
-  { key: "dpoy", label: "Defensive Player", question: "Who was the hardest to score on?" },
-  { key: "mvp", label: "MVP", question: "Who was the most valuable player this season?" },
-]
+// In reveal order: MVP last, Best Player just before it.
+export const AWARDS: AwardDef[] = (
+  [
+    ["mip", "Most Improved"],
+    ["clutch", "Clutch Player"],
+    ["dpoy", "Defensive Player"],
+    ["best-player", "Best Player"],
+    ["mvp", "MVP"],
+  ] as const
+).map(([key, label]) => ({ key, label, description: AWARD_TEXT[key] }))
 export const awardDef = (k: string) => AWARDS.find((a) => a.key === k) ?? null
 
 // Anyone with MIN_RANKED games this season can be voted for (the same bar as the award race and the standings).

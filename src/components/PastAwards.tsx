@@ -32,6 +32,7 @@ export function PastAwards({ state }: { state: PooleanState }) {
                       <span className="text-muted-foreground">{a.label}</span>
                       <span className="text-right font-semibold">{winner}</span>
                     </summary>
+                    {a.description && <p className="mt-1.5 text-xs text-muted-foreground">{a.description}</p>}
                     <ul className="mt-2 flex flex-col gap-1 text-sm">
                       {a.standings.map((x) => (
                         <li key={x.ids.join("|")} className="flex items-center gap-2">
