@@ -442,7 +442,8 @@ shot with the most and fewest points per shot, 3+ shots a kind and 0.3 apart: dr
 heavily contested, 2s, 3s) and "What hurt them" (the other team's best kind). The Player page's "Film" tab: their own best plays (as
 shooter, or passer on a make) and plays to fix, stops and shots scored on them on defense, "How <name> got beaten" (`beatenBy`: every
 shot where the shooter got past them, by shooter and how, with Watch all), their shot kinds (5+ a kind), and "Study an opponent" (both
-directions, points per shot and the plays). Plays read like the play-by-play ("Zach from deep, off Ben's pass, got past Ian: good.") with
+directions, points per shot and the plays). Plays are plain sentences (`src/lib/playWords.ts`: "Zach hits a 3 off Ben's pass after getting past Ian.", "Ian blocks Ben's drive.",
+"Zach misses a 3 wide open. It goes out of bounds."; no "good"/"no good" verdict, asked 2026-11-27) with
 a small court showing the spot (`spot`, the shot's `shotLocation`).
 Every play opens in the film room's own viewer (`FilmViewer`): from the play's short cut when one exists, else the recording, 4 s before
 to 3 s after the logged moment, muted autoplay, 1x/0.5x/0.25x, Loop, previous/next and "Watch all" (a list back to back), "Send this
@@ -482,7 +483,7 @@ until the first basket: each player's go-to kind of shot (5+ shots, not 2s/3s/op
 ## Play-by-play, guard plan, NBA comparisons, Play of the Year, goals, close-game alerts (2026-11-26)
 
 - Play-by-play (`src/lib/playByPlay.ts`): a line under the score on the game video for every logged shot and steal with a video time
-  ("Zach from deep, off Ben's pass. Good."), shown `SHOW` 4 s from its moment; same switch as the score ("Score and play-by-play on
+  ("Zach hits a 3 off Ben's pass.", worded by `src/lib/playWords.ts`, shared with the film room), shown `SHOW` 4 s from its moment; same switch as the score ("Score and play-by-play on
   the video").
 - Who should guard whom (`src/lib/guardPlan.ts`, `src/components/GuardPlan.tsx`, both live screens until the first basket): for each
   team, the assignment that saves the most points, from "Who stops whom" pairs (leaning toward zero by `LEAN` 6 shots; pairs that never

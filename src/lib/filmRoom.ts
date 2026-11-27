@@ -1,4 +1,5 @@
 import { playValues, type PlayValue } from "@/lib/epa"
+import { shotSentence, turnoverSentence, type Name } from "@/lib/playWords"
 import type { PooleanState } from "@/lib/types"
 
 // The film room: which plays to watch to learn and adjust, for a game (each team's) or a player (their own, their defense, and against
@@ -10,22 +11,13 @@ export const SHOW = 4 // plays per list
 export const MIN_GAME = 3 // shots of a kind before a game takeaway
 export const MIN_PLAYER = 5 // across a player's games
 
-export type Name = (pid: string) => string
+export type { Name }
 
-const HOW: Record<string, string> = { drive: "on the drive", move: "off a move", catchAndShoot: "off the catch", deepHeave: "with a deep heave", dunk: "with a dunk" }
 
-// One play in a sentence: "Zach from deep off Ben's pass, Ian guarding: good."
+// One play in a sentence (playWords.ts): "Zach hits a 3 off Ben's pass after getting past Ian."
 export function describe(p: PlayValue, name: Name): string {
-  if (p.kind === "turnover") return `${name(p.player)} turned it over${p.forcer ? `, picked off by ${name(p.forcer)}` : ""}.`
-  const how = p.points === 3 ? (p.shotType === "deepHeave" ? "with a deep heave" : "from deep") : (p.shotType && HOW[p.shotType]) || "for two"
-  const pass = p.passer ? `, off ${name(p.passer)}'s pass` : ""
-  const d = p.defenders.map(name).join(" and ")
-  const guard = !p.defenders.length
-    ? p.contest === "none" ? ", open" : ""
-    : p.contest === "beat" ? `, got past ${d}` : p.contest === "heavy" ? `, ${d} all over it` : p.contest === "medium" ? `, ${d} contesting` : p.contest === "light" ? `, ${d} close` : p.contest === "none" ? `, ${d} not close` : `, ${d} guarding`
-  const end =
-    p.end === "made" ? "good" : p.blocker ? `blocked by ${name(p.blocker)}` : p.end === "out" ? "missed, out of bounds" : p.end === "kept" ? `missed, ${p.rebounder ? `${name(p.rebounder)} kept it alive` : "back to them"}` : `missed${p.rebounder ? `, ${name(p.rebounder)} with the board` : ""}`
-  return `${name(p.player)} ${how}${pass}${guard}: ${end}.`
+  if (p.kind === "turnover") return turnoverSentence(p.player, p.forcer, name)
+  return shotSentence({ player: p.player, points: p.points, made: p.made, shotType: p.shotType, passer: p.passer, defenders: p.defenders, contest: p.contest, blocker: p.blocker, end: p.end, rebounder: p.rebounder }, name)
 }
 
 interface Kind {

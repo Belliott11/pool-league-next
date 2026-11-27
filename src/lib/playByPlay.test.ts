@@ -16,8 +16,8 @@ const name = (p: string) => ({ z: "Zach", b: "Ben", r: "Reilly" })[p] ?? p
 describe("playByPlay", () => {
   it("writes each logged play in order", () => {
     expect(playByPlay(game, name).map((l) => l.text)).toEqual([
-      "Zach from deep, off Ben's pass. Good.",
-      "Reilly on the drive, Zach all over it. No good. Ben with the board.",
+      "Zach hits a 3 off Ben's pass.",
+      "Reilly misses on the drive with Zach all over it. Ben grabs the board.",
       "Ben picks off Reilly.",
     ])
   })
