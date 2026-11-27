@@ -439,10 +439,18 @@ recognise gets no answer and search works as before. Each answer opens its game,
 turnover costs `ep`). Only plays with a video time are listed. A game page's "Film" tab (filmed games with video): for each team, what
 worked and what did not (top and bottom by value, at most two of the same kind of play in a list), "Went in" / "Did not" (the kinds of
 shot with the most and fewest points per shot, 3+ shots a kind and 0.3 apart: drives, moves, catch and shoot, held, heaves, open,
-heavily contested, 2s, 3s) and "What hurt them" (the other team's best kind); Watch jumps the game video (WatchContext). The Player
-page's "Film" tab: their own best plays (as shooter, or passer on a make) and plays to fix, stops and shots scored on them on defense,
-their shot kinds (5+ a kind), and "Study an opponent" (both directions, points per shot and the plays), played inline in a clip tile
-cut from the recording. Plays read like the play-by-play ("Zach from deep, off Ben's pass, got past Ian: good.").
+heavily contested, 2s, 3s) and "What hurt them" (the other team's best kind). The Player page's "Film" tab: their own best plays (as
+shooter, or passer on a make) and plays to fix, stops and shots scored on them on defense, "How <name> got beaten" (`beatenBy`: every
+shot where the shooter got past them, by shooter and how, with Watch all), their shot kinds (5+ a kind), and "Study an opponent" (both
+directions, points per shot and the plays). Plays read like the play-by-play ("Zach from deep, off Ben's pass, got past Ian: good.") with
+a small court showing the spot (`spot`, the shot's `shotLocation`).
+Every play opens in the film room's own viewer (`FilmViewer`): from the play's short cut when one exists, else the recording, 4 s before
+to 3 s after the logged moment, muted autoplay, 1x/0.5x/0.25x, Loop, previous/next and "Watch all" (a list back to back), "Send this
+play" (`#/games/film/<game>.<play>`, `src/pages/games/FilmPlayPage.tsx`, share sheet or copied link) and notes. It stays pinned while
+scrolling on wide screens only. Notes (`src/lib/filmNotes.ts`, `supabase/filmNotes.sql`): up to 280 characters on a play, signed with
+the phone's "Who are you?", owned by the phone (`add_film_note`, `delete_film_note`; 40 a day per phone; the play must exist in the league
+data), shown to everyone, backed up nightly. "Film before you play" (`src/components/PregameFilm.tsx`, `scoutGame`) on both live screens
+until the first basket: each player's go-to kind of shot (5+ shots, not 2s/3s/open/contested) with two of their makes of it to watch.
 
 ## Title odds, draft room, props, milestones
 

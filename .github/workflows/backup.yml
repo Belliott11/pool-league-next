@@ -31,10 +31,11 @@ jobs:
           get "prop_picks?select=game_id,pid,voter,pick,line,updated_at" prop_picks
           get "poty_votes?select=*" poty_votes
           get "season_goals?select=*" season_goals
+          get "film_notes?select=*" film_notes
           games=$(jq '.[0].data.games | length' backup/league_state.json)
           players=$(jq '.[0].data.players | length' backup/league_state.json)
           echo "League data: $games games, $players players, updated $(jq -r '.[0].updated_at' backup/league_state.json)"
-          echo "Pick'em votes: $(jq length backup/pickem_votes.json), predictions: $(jq length backup/season_predictions.json), RSVP replies: $(jq length backup/rsvp_replies.json), prop picks: $(jq length backup/prop_picks.json), Play of the Year votes: $(jq length backup/poty_votes.json), goals: $(jq length backup/season_goals.json)"
+          echo "Pick'em votes: $(jq length backup/pickem_votes.json), predictions: $(jq length backup/season_predictions.json), RSVP replies: $(jq length backup/rsvp_replies.json), prop picks: $(jq length backup/prop_picks.json), Play of the Year votes: $(jq length backup/poty_votes.json), goals: $(jq length backup/season_goals.json), film notes: $(jq length backup/film_notes.json)"
           # A wiped or broken row should not pass quietly.
           test "$games" -ge 5 && test "$players" -ge 5
       - uses: actions/upload-artifact@v7

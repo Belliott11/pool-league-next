@@ -37,6 +37,7 @@ const NightRecap = lazyPage(() => import("./games/NightRecap").then((m) => ({ de
 const StatEntryPage = lazyPage(() => import("./statentry/StatEntryPage").then((m) => ({ default: m.StatEntryPage })))
 const HallOfFame = lazyPage(() => import("./games/HallOfFame").then((m) => ({ default: m.HallOfFame })))
 const Wrapped = lazyPage(() => import("./games/Wrapped").then((m) => ({ default: m.Wrapped })))
+const FilmPlayPage = lazyPage(() => import("./games/FilmPlayPage").then((m) => ({ default: m.FilmPlayPage })))
 const PlayOfYearPage = lazyPage(() => import("./games/PlayOfYear").then((m) => ({ default: m.PlayOfYearPage })))
 const HeadToHeadPage = lazyPage(() => import("./games/HeadToHeadPage").then((m) => ({ default: m.HeadToHeadPage })))
 const ClipPage = lazyPage(() => import("./games/ClipPage").then((m) => ({ default: m.ClipPage })))
@@ -87,6 +88,10 @@ export function GamesPage({
 
   if (kind === "teams") {
     return <Lazy><SeasonTeamsPage state={state} update={update} onBack={goBack} onOpenPlayer={onOpenPlayer} onOpenGame={open} link={arg || undefined} onLinked={() => go("teams", true)} /></Lazy>
+  }
+
+  if (kind === "film") {
+    return <Lazy><FilmPlayPage state={state} arg={arg} onBack={goBack} onOpenGame={(id) => go("game:" + id)} /></Lazy>
   }
 
   if (kind === "poty") {

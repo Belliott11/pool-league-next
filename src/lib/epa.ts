@@ -243,6 +243,7 @@ export interface PlayValue {
   catchAndShoot: boolean | null
   rebounder: string | null
   blocker: string | null
+  spot: { x: number; y: number } | null // where the shot was taken (0..100 across and up from the basket's end)
 }
 
 export function playValues(state: PooleanState, gameIds?: string[]): PlayValue[] {
@@ -264,7 +265,7 @@ export function playValues(state: PooleanState, gameIds?: string[]): PlayValue[]
         gameId: g.id, date: g.date, id: e.id, kind: "shot", t: e.videoTime ?? null, side: s, player: e.scorerId, passer,
         defenders: defendersOf(g, e).filter((x) => side(g, x) === 1 - s), forcer: null, points: e.points, made: made(e), end,
         value: left - v.ep, contest: e.contestLevel ?? null, shotType: e.dunk ? "dunk" : (e.shotType ?? null), catchAndShoot: e.catchAndShoot ?? null,
-        rebounder: e.rebounderId ?? null, blocker: e.blockerId ?? null,
+        rebounder: e.rebounderId ?? null, blocker: e.blockerId ?? null, spot: e.shotLocation ?? null,
       })
     }
     const steals = new Map(g.stealEvents.map((x) => [x.id, x]))
@@ -276,7 +277,7 @@ export function playValues(state: PooleanState, gameIds?: string[]): PlayValue[]
       out.push({
         gameId: g.id, date: g.date, id: t.id, kind: "turnover", t: t.videoTime ?? steal?.videoTime ?? null, side: s, player: t.playerId, passer: null,
         defenders: forcer ? [forcer] : [], forcer, points: 0, made: false, end: null, value: -v.ep, contest: null, shotType: null, catchAndShoot: null,
-        rebounder: null, blocker: null,
+        rebounder: null, blocker: null, spot: null,
       })
     }
   }

@@ -1,5 +1,6 @@
 import { gameOver, raceLine } from "@/lib/race"
 import { GuardPlanCard } from "@/components/GuardPlan"
+import { PregameFilm } from "@/components/PregameFilm"
 import { Announcer } from "@/components/Announcer"
 import { LiveStream } from "@/components/LiveStream"
 import { StreamLink } from "@/components/StreamLink"
@@ -392,6 +393,7 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
       <LivePickem state={state} game={game} />
       <LiveProps state={state} game={game} />
       <GuardPlanCard state={state} game={game} />
+      <PregameFilm state={state} game={game} />
       <LiveOdds game={game} />
       {game.streamUrl && <LiveStream url={game.streamUrl} control={stream} />}
       <StreamLink current={game.streamUrl} onSave={(url) => (update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, streamUrl: url } : g)) })), true)} />

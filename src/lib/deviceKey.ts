@@ -20,3 +20,9 @@ export function deviceKey(): string {
   }
   return key
 }
+
+// This phone's owner hash (the sha-256 of its key, as the database keeps it), to find its own rows among everyone's.
+export async function ownerHash(): Promise<string> {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(deviceKey()))
+  return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, "0")).join("")
+}

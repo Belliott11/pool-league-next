@@ -1,5 +1,6 @@
 import { gameOver, raceLine } from "@/lib/race"
 import { GuardPlanCard } from "@/components/GuardPlan"
+import { PregameFilm } from "@/components/PregameFilm"
 import { Announcer } from "@/components/Announcer"
 import { ReviewThat } from "@/components/ReviewThat"
 import { flagReview, setStream } from "@/lib/scorekeeper"
@@ -148,6 +149,7 @@ export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; on
       {isLive && <LivePickem state={state} game={game} />}
       {isLive && <LiveProps state={state} game={game} />}
       {isLive && <GuardPlanCard state={state} game={game} />}
+      {isLive && <PregameFilm state={state} game={game} />}
       {isLive && <LiveOdds game={game} />}
       {isLive && <StreamLink current={game.streamUrl} onSave={async (url) => (await setStream(game.id, url)).ok} />}
       {isLive && <ReviewThat count={(game.reviews ?? []).length} onFlag={async (at, note) => (await flagReview(game.id, at, note, myPlayerId(who, state.players), game.streamUrl ? stream.current?.time() : null)).ok} />}

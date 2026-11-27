@@ -166,3 +166,70 @@ export function opponentsOf(state: PooleanState, pid: string): { id: string; n: 
   }
   return [...m].map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n)
 }
+
+// How a player got beaten on defense: every shot where the shooter got past them, grouped by shooter, with how (shot kind) and the
+// plays to watch, most often first.
+export interface BeatenBy {
+  id: string
+  times: number
+  made: number
+  how: { label: string; n: number }[]
+  plays: PlayValue[]
+}
+
+const HOW_LABEL: Record<string, string> = { drive: "on the drive", move: "off a move", catchAndShoot: "off the catch", deepHeave: "with a heave", dunk: "with a dunk" }
+
+export function beatenBy(state: PooleanState, pid: string): BeatenBy[] {
+  const filmed = state.games.filter((g) => !g.liveInProgress && !g.test && g.scoringEvents.length > 0).map((g) => g.id)
+  const m = new Map<string, PlayValue[]>()
+  for (const p of playValues(state, filmed)) if (p.kind === "shot" && p.contest === "beat" && p.defenders.includes(pid)) m.set(p.player, [...(m.get(p.player) ?? []), p])
+  return [...m]
+    .map(([id, ps]) => {
+      const how = new Map<string, number>()
+      for (const p of ps) {
+        const k = p.points === 3 && p.shotType !== "deepHeave" ? "from deep" : (p.shotType && HOW_LABEL[p.shotType]) || "for two"
+        how.set(k, (how.get(k) ?? 0) + 1)
+      }
+      return {
+        id,
+        times: ps.length,
+        made: ps.filter((p) => p.made).length,
+        how: [...how].map(([label, n]) => ({ label, n })).sort((a, b) => b.n - a.n),
+        plays: watchable(ps).sort((a, b) => b.value - a.value),
+      }
+    })
+    .sort((a, b) => b.times - a.times || b.made - a.made)
+}
+
+// Film before you play: for each player in tonight's game, the kind of shot they score most on (5+ of that kind over every filmed game),
+// with up to two of their made shots of that kind to watch. Shown on the live screens until the first basket.
+export interface Scout {
+  id: string
+  best: Takeaway
+  plays: PlayValue[]
+}
+
+export function scoutGame(state: PooleanState, ids: string[]): Scout[] {
+  const filmed = state.games.filter((g) => !g.liveInProgress && !g.test && g.scoringEvents.length > 0).map((g) => g.id)
+  const plays = playValues(state, filmed)
+  const out: Scout[] = []
+  for (const id of ids) {
+    const mine = plays.filter((p) => p.player === id && p.kind === "shot")
+    const rows = KINDS.filter((k) => !["two", "three", "open", "heavy"].includes(k.key))
+      .map((k) => {
+        const s = mine.filter(k.test)
+        return { k, s, label: k.label, shots: s.length, pps: s.length ? s.reduce((n, p) => n + (p.made ? p.points : 0), 0) / s.length : 0 }
+      })
+      .filter((r) => r.shots >= MIN_PLAYER)
+      .sort((a, b) => b.pps - a.pps)
+    const best = rows[0]
+    if (!best) continue
+    out.push({ id, best: { label: best.label, shots: best.shots, pps: best.pps }, plays: watchable(best.s.filter((p) => p.made)).sort((a, b) => b.value - a.value).slice(0, 2) })
+  }
+  return out
+}
+
+// One play by its game and event id, for a shared link.
+export function findPlay(state: PooleanState, gameId: string, id: string): PlayValue | null {
+  return playValues(state, [gameId]).find((p) => p.id === id) ?? null
+}

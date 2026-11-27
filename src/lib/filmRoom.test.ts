@@ -4,7 +4,7 @@ import { describe, takeaways } from "./filmRoom"
 
 const play = (o: Partial<PlayValue>): PlayValue => ({
   gameId: "g", date: "2027-06-01", id: Math.random().toString(36), kind: "shot", t: 10, side: 0, player: "z", passer: null, defenders: [], forcer: null,
-  points: 2, made: true, end: "made", value: 1.4, contest: null, shotType: null, catchAndShoot: null, rebounder: null, blocker: null, ...o,
+  points: 2, made: true, end: "made", value: 1.4, contest: null, shotType: null, catchAndShoot: null, rebounder: null, blocker: null, spot: null, ...o,
 })
 const name = (p: string) => ({ z: "Zach", b: "Ben", i: "Ian" })[p] ?? p
 
