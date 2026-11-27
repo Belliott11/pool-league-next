@@ -1,6 +1,7 @@
 import { Crown } from "lucide-react"
 import { champions } from "@/lib/seasonTeams"
 import { TeamChip } from "@/components/TeamChip"
+import { DramaList } from "@/components/Drama"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { Button } from "@/components/ui/button"
@@ -240,6 +241,10 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
             </div>
           )
         })}
+      </Board>
+
+      <Board title="Most dramatic games" hint="Games worth rewatching: how far the win chance moved in all, basket by basket. Filmed and live-scored games.">
+        <DramaList state={state} onOpenGame={onOpenGame} names={(g) => `${g.teamA.map((id) => poolNameOf(state, id)).join(", ")} against ${g.teamB.map((id) => poolNameOf(state, id)).join(", ")}`} />
       </Board>
 
       <ReplayBoard state={state} onOpenPlayer={onOpenPlayer} />

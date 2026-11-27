@@ -17,6 +17,7 @@ import { predictRealMatchup } from "@/lib/matchup"
 import { joinNames } from "@/lib/format"
 import { RECORD_KEYS, RECORD_LABEL, holders, nightCallouts, recordBook } from "@/lib/records"
 import { CountUp } from "@/components/CountUp"
+import { DramaList } from "@/components/Drama"
 import { StoryList } from "@/components/StoryList"
 import { predictionNote } from "@/lib/scorecard"
 import { nightStories } from "@/lib/storylines"
@@ -205,6 +206,14 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
             </div>
           </ClipBackdrop>
           <ClipStrip state={state} clips={clips.slice(1)} />
+        </section>
+      )}
+
+      {date && (
+        <section className="flex flex-col gap-1.5" aria-label="Game of the night">
+          <h3 className="font-display text-lg font-bold">Game of the night</h3>
+          <p className="text-xs text-muted-foreground">The most dramatic game: how far the win chance moved in all.</p>
+          <DramaList state={state} onOpenGame={onOpenGame} date={date} limit={1} names={(g) => `${names(g.teamA)} against ${names(g.teamB)}`} />
         </section>
       )}
 

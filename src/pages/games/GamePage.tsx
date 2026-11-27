@@ -18,6 +18,7 @@ import { GameVideoPanel } from "@/components/GameVideoPanel"
 import { ReviewsCard } from "./ReviewsCard"
 import { RunCheck } from "@/components/RunCheck"
 import { GameSummaryCard } from "@/components/GameSummaryCard"
+import { GameDrama } from "@/components/Drama"
 import { currentSet, rivalryOf } from "@/lib/seasonTeams"
 import { OddsTimelineCard } from "@/components/OddsTimeline"
 import { WatchContext, WatchTime } from "@/components/WatchTime"
@@ -464,6 +465,7 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
           </div>
           {predictionNote(game) && <p className="text-center text-sm text-muted-foreground">{predictionNote(game)}{!game.prediction && <Explain term="Backtest pick" className="ml-1" />}</p>}
           <GameSummaryCard state={state} game={game} />
+          {!game.liveInProgress && <GameDrama state={state} game={game} />}
         </CardContent>
       </Card>
 

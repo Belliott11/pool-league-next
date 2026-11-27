@@ -407,6 +407,14 @@ everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games ar
   shot's (`EventForm.tsx`); the contest level carries only with the same defenders. `src/pages/statentry/Untagged.tsx` lists shots with
   no defender and no contest, or a defender but no contest, with a jump to each.
 
+## Game drama rating (2026-11-27)
+
+`src/lib/drama.ts`, `src/components/Drama.tsx`: each finished game with 4+ baskets scored by the excitement index, the total of every
+basket's swing in win chance from `oddsTimeline(game, ballRates(state))` (shown times 100: "Drama: 190"), plus the winner's lowest
+chance (`comeback`, "came back from a 4% chance" at 30% or under), lead changes (2+) and `lateDoubt` (the winner at 60% or under in the
+last quarter of the baskets). On the game page under the summary lines (with its rank), "Game of the night" on the night recap, and
+"Most dramatic games" in the Hall of Fame. On 2026-11-27 the top game was July 29's comeback from 4%.
+
 ## Season teams
 
 `src/lib/seasonTeams.ts`, page `#/games/teams` (`src/pages/games/SeasonTeams.tsx`, a Games home button and in search). Shown to everyone
