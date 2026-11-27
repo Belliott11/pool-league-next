@@ -432,6 +432,18 @@ from `recordBook`), career leaders ("who has the most 3s", "career rebounds"; bo
 ("Ben's best game", "adam record", "evan average"). Plain word matching on stat words and player names; a question it does not
 recognise gets no answer and search works as before. Each answer opens its game, player or the Hall of Fame.
 
+## Film room (2026-11-27)
+
+`src/lib/filmRoom.ts`, `src/components/FilmRoom.tsx`: plays to watch to learn and adjust, valued by Points added (`playValues` in
+`epa.ts`, the same model and league rates as `pointsAdded`; a shot's value is what it left the trip worth less `ep`, a live-ball
+turnover costs `ep`). Only plays with a video time are listed. A game page's "Film" tab (filmed games with video): for each team, what
+worked and what did not (top and bottom by value, at most two of the same kind of play in a list), "Went in" / "Did not" (the kinds of
+shot with the most and fewest points per shot, 3+ shots a kind and 0.3 apart: drives, moves, catch and shoot, held, heaves, open,
+heavily contested, 2s, 3s) and "What hurt them" (the other team's best kind); Watch jumps the game video (WatchContext). The Player
+page's "Film" tab: their own best plays (as shooter, or passer on a make) and plays to fix, stops and shots scored on them on defense,
+their shot kinds (5+ a kind), and "Study an opponent" (both directions, points per shot and the plays), played inline in a clip tile
+cut from the recording. Plays read like the play-by-play ("Zach from deep, off Ben's pass, got past Ian: good.").
+
 ## Title odds, draft room, props, milestones
 
 - Title odds (`src/lib/titleOdds.ts`, a card at the top of the Season teams standings): each team's chance of finishing first, from

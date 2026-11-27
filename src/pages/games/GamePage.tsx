@@ -21,6 +21,7 @@ import { GameSummaryCard } from "@/components/GameSummaryCard"
 import { currentSet, rivalryOf } from "@/lib/seasonTeams"
 import { OddsTimelineCard } from "@/components/OddsTimeline"
 import { WatchContext, WatchTime } from "@/components/WatchTime"
+import { GameFilm } from "@/components/FilmRoom"
 import type { PlayerControl } from "@/components/YouTubePlayer"
 import { JUMP_LEAD_SECONDS } from "@/lib/legacy-core"
 import { gameVideoUrl } from "@/lib/video"
@@ -478,6 +479,11 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
           <TabsTrigger value="stats" {...TAB_TRIGGER}>Stats</TabsTrigger>
           <TabsTrigger value="shots" {...TAB_TRIGGER}>Shots</TabsTrigger>
           <TabsTrigger value="reel" {...TAB_TRIGGER}>Reel</TabsTrigger>
+          {reviewed && hasVideo && (
+            <TabsTrigger value="film" {...TAB_TRIGGER}>
+              Film
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="teams">
           <TeamsTab state={state} game={game} onOpenGame={onOpenGame} />
@@ -529,6 +535,11 @@ export function GamePage({ state, update, game, onBack, onStatEntry, onOpenGame,
             </div>
           )}
         </TabsContent>
+        {reviewed && hasVideo && (
+          <TabsContent value="film">
+            <GameFilm state={state} game={game} />
+          </TabsContent>
+        )}
         <TabsContent value="reel">
           {!reviewed ? (
             <Card>

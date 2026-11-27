@@ -33,6 +33,7 @@ import { IconChip } from "@/components/IconChip"
 import { panelIcon, sectionIcon } from "@/lib/panelIcons"
 import { PlayerGlance } from "@/pages/PlayerGlance"
 import { SummerGoals } from "@/components/SummerGoals"
+import { PlayerFilm } from "@/components/FilmRoom"
 import { PageTabs, TabGroup, useJumpTab } from "@/components/PageTabs"
 import { PlayerMilestones } from "@/components/Milestones"
 import { syncLegacy } from "@/lib/legacy"
@@ -157,6 +158,7 @@ const TABS: { key: string; title: string; sections: string[] }[] = [
   { key: "passing", title: "Passing", sections: ["passing"] },
   { key: "matchups", title: "Matchups", sections: ["matchups", "team"] },
   { key: "history", title: "History", sections: ["trends", "media"] },
+  { key: "film", title: "Film", sections: [] },
 ]
 const tabOf = (section: string) => TABS.find((t) => t.sections.includes(section))?.key ?? "overview"
 
@@ -305,6 +307,7 @@ export function PlayerDetailPage({
             <ScoutingCard state={season} pid={pid} update={update} />
           </>
         )}
+        {tab === "film" && <PlayerFilm state={state} pid={pid} />}
         {TABS.find((t) => t.key === tab)!
           .sections.filter((k) => k !== "overview")
           .map((k, i, all) => (

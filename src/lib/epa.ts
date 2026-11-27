@@ -219,3 +219,66 @@ export function pointsAdded(state: PooleanState, opts: { only?: string } = {}): 
     ],
   }
 }
+
+// Every play in the given games (default: the games the stats count) with its value, at the same league rates as pointsAdded, for the
+// film room (filmRoom.ts). A shot's value is what it left the trip worth less `ep`, from the shooting team's side; a live-ball turnover
+// costs `ep`. Defenders are the same as Who stops whom's.
+export interface PlayValue {
+  gameId: string
+  date: string
+  id: string
+  kind: "shot" | "turnover"
+  t: number | null // video time
+  side: 0 | 1 // the team with the ball
+  player: string // the shooter, or who turned it over
+  passer: string | null // on a made, assisted shot
+  defenders: string[]
+  forcer: string | null // who forced the turnover
+  points: number
+  made: boolean
+  end: MissEnd | null
+  value: number
+  contest: string | null
+  shotType: string | null
+  catchAndShoot: boolean | null
+  rebounder: string | null
+  blocker: string | null
+}
+
+export function playValues(state: PooleanState, gameIds?: string[]): PlayValue[] {
+  const gs = games(state)
+  const newest = gs.map((g) => g.date || "").sort().at(-1)
+  const v = leagueValues(sameMathRules(gs, newest))
+  const keep = (k: number) => (k === 2 ? v.keep2 : v.keep3)
+  const pool = gameIds ? state.games.filter((g) => gameIds.includes(g.id) && g.scoringEvents.length > 0) : gs
+  const out: PlayValue[] = []
+  for (const g of pool) {
+    const outs = new Set(g.turnoverEvents.map((t) => t.missEventId).filter(Boolean) as string[])
+    for (const e of g.scoringEvents) {
+      const s = side(g, e.scorerId)
+      if (!isShot(e) || s === null) continue
+      const end = shotEnd(g, e, outs)
+      const left = end === "made" ? e.points : end === "out" ? 0 : keep(e.points) * v.ep
+      const passer = made(e) && e.assistId && e.assistId !== e.scorerId && side(g, e.assistId) === s ? e.assistId : null
+      out.push({
+        gameId: g.id, date: g.date, id: e.id, kind: "shot", t: e.videoTime ?? null, side: s, player: e.scorerId, passer,
+        defenders: defendersOf(g, e).filter((x) => side(g, x) === 1 - s), forcer: null, points: e.points, made: made(e), end,
+        value: left - v.ep, contest: e.contestLevel ?? null, shotType: e.dunk ? "dunk" : (e.shotType ?? null), catchAndShoot: e.catchAndShoot ?? null,
+        rebounder: e.rebounderId ?? null, blocker: e.blockerId ?? null,
+      })
+    }
+    const steals = new Map(g.stealEvents.map((x) => [x.id, x]))
+    for (const t of liveTurnovers(g)) {
+      const s = side(g, t.playerId)
+      if (s === null) continue
+      const steal = t.stealEventId ? steals.get(t.stealEventId) : undefined
+      const forcer = steal?.playerId ?? (t.opponentId && side(g, t.opponentId) === 1 - s ? t.opponentId : null)
+      out.push({
+        gameId: g.id, date: g.date, id: t.id, kind: "turnover", t: t.videoTime ?? steal?.videoTime ?? null, side: s, player: t.playerId, passer: null,
+        defenders: forcer ? [forcer] : [], forcer, points: 0, made: false, end: null, value: -v.ep, contest: null, shotType: null, catchAndShoot: null,
+        rebounder: null, blocker: null,
+      })
+    }
+  }
+  return out
+}
