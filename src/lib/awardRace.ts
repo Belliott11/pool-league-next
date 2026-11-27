@@ -125,7 +125,7 @@ export function awardRace(state: PooleanState): RaceRow[] {
   const fmt = (d: (typeof pairs)[number]): Leader => ({ ids: d.ids, value: `${d.w}-${d.gp - d.w} together` })
   if (pairs.length) {
     rows.push({ key: "best-duo", label: "Best duo", basis: `Record together, ${MIN_GAMES}+ games, both with ${MIN_RANKED}+`, field: pairs.length, leaders: top([...pairs].sort((a, b) => b.rate - a.rate || b.gp - a.gp).map(fmt)) })
-    rows.push({ key: "worst-duo", label: "Rough-patch duo", basis: `Record together, ${MIN_GAMES}+ games, both with ${MIN_RANKED}+`, field: pairs.length, leaders: top([...pairs].sort((a, b) => a.rate - b.rate || b.gp - a.gp).map(fmt)) })
+    rows.push({ key: "worst-duo", label: "Worst duo", basis: `Record together, ${MIN_GAMES}+ games, both with ${MIN_RANKED}+`, field: pairs.length, leaders: top([...pairs].sort((a, b) => a.rate - b.rate || b.gp - a.gp).map(fmt)) })
   }
   void nameOf
   return rows

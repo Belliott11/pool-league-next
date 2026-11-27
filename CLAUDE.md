@@ -5,7 +5,7 @@ and https://intel.poolean.net (the user's domain, served from the same Pages bui
 
 ## Rules
 
-- No em dashes in any site text. Avoid "worst" style labels. Use they/them for anyone whose pronouns are not stated (the regulars are
+- No em dashes in any site text. Avoid "worst" style labels (one exception, asked 2026-11-27: the voted award is called "Worst Duo"). Use they/them for anyone whose pronouns are not stated (the regulars are
   he, Kayla is she).
 - Before pushing: `npx tsc -p tsconfig.app.json --noEmit`, `npx vitest run`, `npm run build`. After pushing to `main`, check the deploy
   run passed before saying anything is live. If it fails with "No artifacts named github-pages were found", rerun it.
@@ -484,7 +484,7 @@ until the first basket: each player's go-to kind of shot (5+ shots, not 2s/3s/op
 
 `src/lib/awardVote.ts`, page `#/games/awards` (`src/pages/games/AwardVote.tsx`: `AwardsPage`, the Games home `AwardsCard`, an Explore
 tile, search, a "Next up for you" step while voting is open, and "Voted by the players" in the Hall of Fame). The editor opens a ballot
-(`state.awardBallots`, newest last: label, every award Poolean had (asked 2026-11-27), in reveal order `worst-duo` (Rough-patch Duo),
+(`state.awardBallots`, newest last: label, every award Poolean had (asked 2026-11-27), in reveal order `worst-duo` (Worst Duo),
 `best-duo`, `teammate`, `mip-yoy`, `mip-season`, `clutch`, `dpoy`, `teams`, `best-player`, `mvp`. Kinds (`AwardDef.kind`): single;
 `teams`, one ranking of players whose places come from `places` (instant runoff for place 1, that player taken off every ballot, again for
 place 2...; 1 to 3 the first team, 4 to 6 the second, `teamsOf`); and `duo`, a ranking of pairs `pairId` ("a|b", ids sorted; tap two

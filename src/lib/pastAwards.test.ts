@@ -26,6 +26,6 @@ describe("last season's voted awards", () => {
     expect(award("clutch").standings[0].ids).toEqual(["zach"])
     expect(award("mvp").tieWon).toBe(false)
     expect(award("best-duo").standings[0].ids).toEqual(["ben", "phillip"])
-    expect(award("worst-duo").label).not.toMatch(/worst/i)
+    expect(award("worst-duo").label).toBe("Worst Duo") // the award's own name (asked 2026-11-27)
   })
 })

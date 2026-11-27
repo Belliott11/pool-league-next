@@ -32,7 +32,7 @@ const LABELS: [string, string][] = [
   ["mip-yoy", "Most Improved (year over year)"],
   ["teammate", "Best Teammate"],
   ["best-duo", "Best Duo"],
-  ["worst-duo", "Rough-patch Duo"],
+  ["worst-duo", "Worst Duo"],
 ]
 
 type Raw = { key: string; winners: string[]; votedStandings?: { slug: string; points: number }[] }

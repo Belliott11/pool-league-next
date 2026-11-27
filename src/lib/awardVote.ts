@@ -26,7 +26,7 @@ export interface AwardDef {
 // ranks players, places 1 to 3 make the first team and 4 to 6 the second (`places`). A duo ballot ranks pairs ("a|b", sorted ids).
 export const AWARDS: AwardDef[] = (
   [
-    ["worst-duo", "Rough-patch Duo", "duo"],
+    ["worst-duo", "Worst Duo", "duo"],
     ["best-duo", "Best Duo", "duo"],
     ["teammate", "Best Teammate", "single"],
     ["mip-yoy", "Most Improved (year over year)", "single"],
