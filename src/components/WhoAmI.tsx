@@ -1,5 +1,5 @@
 import { UserRound } from "lucide-react"
-import { useId } from "react"
+import { useEffect, useId } from "react"
 import { buttonVariants } from "@/components/ui/button"
 import { GUEST, myPlayerId, setWho, useWho } from "@/lib/identity"
 import type { PooleanState } from "@/lib/types"
@@ -82,47 +82,71 @@ export function WhoPrompt({ state }: { state: PooleanState }) {
   )
 }
 
-// The first thing a new visitor sees on the Games home: what the site is and three steps to make it theirs. Picking a player (or "Just
-// looking") ends it; after that the Games home opens with "Next up for you" (src/pages/games/MyCard.tsx) instead.
+// The first thing a new visitor sees: a full-screen welcome, so nobody scrolls past it. What the site is and three steps to make it
+// theirs. Picking a player, "Just looking" or Escape saves a choice on the phone (identity.ts), so it shows only on a first visit;
+// after that the Games home opens with "Next up for you" (src/pages/games/MyCard.tsx).
 export function Welcome({ state }: { state: PooleanState }) {
   const who = useWho()
   const id = useId()
-  if (who !== null) return null
+  const open = who === null
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    document.getElementById(id)?.focus({ preventScroll: true })
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setWho(GUEST)
+    window.addEventListener("keydown", onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener("keydown", onKey)
+    }
+  }, [open, id])
+  if (!open) return null
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-4 rounded-2xl border bg-card p-4 sm:p-5">
-      <div>
-        <h2 id={`${id}-h`} className="font-display text-xl font-bold">
-          Welcome to Poolean Intel
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">Scores, stats, film and odds from our pool basketball games, all from the videos.</p>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`${id}-h`}
+      className="fixed inset-0 z-[60] overflow-y-auto bg-background px-4 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)]"
+    >
+      <div className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6">
+        <div className="flex flex-col gap-2">
+          <p className="font-display text-sm font-bold tracking-wide">
+            POOLEAN <span className="text-primary">INTEL</span>
+          </p>
+          <h2 id={`${id}-h`} className="font-display text-3xl font-bold leading-tight">
+            Welcome
+          </h2>
+          <p className="text-muted-foreground">Scores, stats, film and odds from our pool basketball games, all from the videos.</p>
+        </div>
+        <ol className="flex flex-col gap-5">
+          <li className="flex gap-3">
+            <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">1</span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <label htmlFor={id} className="font-semibold">
+                Tell us who you are
+              </label>
+              <WhoSelect state={state} id={id} />
+              <span className="text-xs text-muted-foreground">No password or account. It is kept on this phone.</span>
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full border text-sm font-bold">2</span>
+            <span>
+              <span className="font-semibold">The You tab is your page:</span> where you stand, your best plays and your film.
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full border text-sm font-bold">3</span>
+            <span>
+              <span className="font-semibold">The Games tab has what is on now:</span> live games, Pick'em, the last night and the season teams.
+            </span>
+          </li>
+        </ol>
+        <button type="button" className="min-h-11 self-start text-sm text-muted-foreground underline" onClick={() => setWho(GUEST)}>
+          Just looking
+        </button>
       </div>
-      <ol className="flex flex-col gap-3 text-sm">
-        <li className="flex gap-3">
-          <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">1</span>
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <label htmlFor={id} className="font-medium">
-              Tell us who you are
-            </label>
-            <WhoSelect state={state} id={id} />
-            <span className="text-xs text-muted-foreground">No password or account. It is kept on this phone.</span>
-          </div>
-        </li>
-        <li className="flex gap-3">
-          <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full border text-xs font-bold">2</span>
-          <span>
-            <span className="font-medium">The You tab is your page:</span> where you stand, your best plays and your film.
-          </span>
-        </li>
-        <li className="flex gap-3">
-          <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full border text-xs font-bold">3</span>
-          <span>
-            <span className="font-medium">This page has what is on now:</span> live games, Pick'em, the last night and the season teams.
-          </span>
-        </li>
-      </ol>
-      <button type="button" className="min-h-10 self-start text-sm text-muted-foreground underline" onClick={() => setWho(GUEST)}>
-        Just looking
-      </button>
-    </section>
+    </div>
   )
 }

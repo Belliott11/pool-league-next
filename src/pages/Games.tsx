@@ -21,7 +21,6 @@ import { showHub } from "@/lib/offseason"
 import { OffseasonHub } from "./games/OffseasonHub"
 import { NewSeasonPrompt } from "./games/NewSeasonPrompt"
 import { MyCard } from "./games/MyCard"
-import { Welcome } from "@/components/WhoAmI"
 import { TopPlays } from "./games/TopPlays"
 import { GameAlerts } from "@/components/GameAlerts"
 
@@ -155,7 +154,6 @@ export function GamesPage({
             {findLiveGame(state) ? "Resume live game" : "Start a live game"}
           </Button>
         )}
-        <Welcome state={state} />
         <MyCard state={state} onOpenPlayer={onOpenPlayer} go={go} />
         <Explore
           tiles={[

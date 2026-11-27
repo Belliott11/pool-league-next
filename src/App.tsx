@@ -12,7 +12,7 @@ import { loadLabels, saveLabels, type LabelBook } from "@/lib/labelStore"
 import { setPronouns } from "@/lib/pronouns"
 import { APPROVED, HIDDEN, LabelsContext } from "@/lib/labelsContext"
 import { lineKey, setApprovedLines, setHiddenLines, setLineNames, stripRetired } from "@/lib/labels"
-import { WhoAmI, WhoPrompt } from "@/components/WhoAmI"
+import { Welcome, WhoAmI, WhoPrompt } from "@/components/WhoAmI"
 import { Ticker } from "@/components/Ticker"
 import { headlinesBehind, headlinesFormulaStale } from "@/lib/published"
 import { readsBehind, readsFormulaStale } from "@/lib/writtenReads"
@@ -397,8 +397,9 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       <div aria-hidden className="lane-rope -mt-2" />
       {/* Not on a shared play or Wrapped: the visitor came for that. */}
       {readOnly && cloud && <SavedCopyNote cloud={cloud} />}
-      {/* The Games home has the full welcome (Welcome in WhoAmI.tsx) instead. */}
-      {!/^(clip|wrapped)/.test(view.sub) && !(view.tab === "games" && view.sub === "") && <WhoPrompt state={state} />}
+      {/* A first visit gets the full-screen welcome, except on a shared play, Wrapped or film link: the visitor came for that, so they
+          get the small bar instead. */}
+      {!/^(clip|wrapped|film)/.test(view.sub) ? <Welcome state={state} /> : view.sub.startsWith("film") && <WhoPrompt state={state} />}
       {/* One prompt at a time: the home screen tip waits until "Who are you?" has been answered or put off. */}
       {view.tab === "games" && view.sub === "" && who !== null && <HomeScreenTip />}
       {mode === "admin" && cloud && cloud.sync === "conflict" && (
