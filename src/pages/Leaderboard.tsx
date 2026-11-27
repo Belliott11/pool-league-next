@@ -26,6 +26,7 @@ import { ThreeWorth } from "@/components/ThreeWorth"
 import { PointsAddedCard } from "@/components/PointsAdded"
 import { ClutchSquaredCard } from "@/components/ClutchSquared"
 import { WinChancePlaysCard } from "@/components/WinChancePlays"
+import { FormRatingCard } from "@/components/FormRating"
 import { RuleChangeCard } from "@/components/RuleChanges"
 import { WeatherCard } from "@/components/WeatherCard"
 import { CalibrationCard } from "./leaderboard/CalibrationCard"
@@ -149,6 +150,9 @@ export function LeaderboardPage({
             </Later>
             <Later id="lb-epa">
               <PointsAddedCard state={season} onOpenPlayer={onOpenPlayer} />
+            </Later>
+            <Later id="lb-form">
+              <FormRatingCard state={state} onOpenPlayer={onOpenPlayer} />
             </Later>
             <Later id="lb-wpa-plays">
               <WinChancePlaysCard state={season} onOpenPlayer={onOpenPlayer} />

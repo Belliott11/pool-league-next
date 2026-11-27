@@ -359,6 +359,15 @@ sign stays with the play (a turnover at game point takes a lot away) and a share
 clutch points and counts 36 times a 5-point one. Also `bigPlays` (swings of `BIG_SWING` 0.15 or more their team's way, with them in the
 play) and `biggest`. Card `src/components/ClutchSquared.tsx` on the Leaderboard Overview and a line in the Player page's "Win chance
 added" tab. On 2026-11-27: Evan 8.5, Adam 6.8 ... Viraj -7.1.
+Form rating (asked 2026-11-27, DARKO-style; `src/lib/form.ts`, `src/components/FormRating.tsx`: a card on the Leaderboard Overview and a
+chart on the Player page's Overview): each part of Points added per game (shots, passes, turnovers, offensive rebounds, defense, from
+`pointsAdded(state, { only })` per filmed game) followed with a Kalman filter (`filter`): start at the league average with the talent
+spread as the uncertainty, each game moves it by spread^2 / (spread^2 + noise^2), noise per part measured from the games (within-player
+variance). Until `FORM_MEASURE_AT` (20) filmed games the spread is noise / sqrt(`PRIOR_GAMES` 8), since early measured spreads predicted
+worse (strict check 20.4 against 16.6); from then each part's measured spread (method of moments, floored). `DRIFT` 0 (recency weighting
+was slightly worse on 3 nights; recheck at 20). Range is 1.28 sd (about 80%). Strict check on 2026-11-27 (each night predicted from
+earlier nights only, 43 player-games): 16.3 against 16.8 for the props' lean-by-3-games average (squared miss); `src/lib/form.test.ts`
+reruns it with live data. Shown only; it feeds no prediction yet (the pre-game model waits for about 100 games).
 Wins added (`src/lib/winsAdded.ts`, a column and a line on both Points added cards): points added per game turned into wins against an
 average player (not a replacement level: in a league of about a dozen friends that would only single out whoever plays least). A team
 whose player adds d points over an average game (PER points) gets half plus d/(2 PER) of the scoring, and `raceWin` with the league's
