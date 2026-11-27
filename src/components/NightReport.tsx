@@ -17,7 +17,7 @@ const signed = (n: number) => {
 export function NightReportCard({ state, pid }: { state: PooleanState; pid: string }) {
   const me = myPlayerId(useWho(), state.players)
   const r = useMemo(() => nightReport(state, pid), [state, pid])
-  if (!r || r.nights < 5) return null
+  if (!r) return null
   const name = (id: string) => playerName(state, id)
   const own = me === pid
   const record = `${r.wins}-${r.losses}`
@@ -28,9 +28,10 @@ export function NightReportCard({ state, pid }: { state: PooleanState; pid: stri
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">
         <div className="flex items-center gap-4">
-          <span className={cn("font-display text-5xl font-bold", r.grade.startsWith("A") ? "text-pos" : "")}>{r.grade}</span>
+          {r.grade && <span className={cn("font-display text-5xl font-bold", r.grade.startsWith("A") ? "text-pos" : "")}>{r.grade}</span>}
           <p>
-            {record} with {r.points} {r.points === 1 ? "point" : "points"}, and {signed(r.added)} points added a game: better than {Math.round(r.beat * 100)}% of the {r.nights} player-nights on record.
+            {record} with {r.points} {r.points === 1 ? "point" : "points"}, and {signed(r.added)} points added a game
+            {r.usual !== null ? <> against {own ? "your" : "their"} usual {signed(r.usual)}.</> : <>. {own ? "Your" : "Their"} first filmed night: a grade comes after the next one.</>}
           </p>
         </div>
         {r.best && (
@@ -67,7 +68,11 @@ export function NightReportCard({ state, pid }: { state: PooleanState; pid: stri
             .
           </p>
         )}
-        <p className="text-xs text-muted-foreground">The grade compares points added a game that night with every player-night on record: A+ is the top tenth, D the bottom.</p>
+        {r.grade && (
+          <p className="text-xs text-muted-foreground">
+            Graded against {own ? "your" : "their"} own level only, never anyone else&apos;s: how the night compares with {own ? "your" : "their"} usual (the form rating going in), allowing for how much any night swings by chance. A+ is one of {own ? "your" : "their"} best nights, B about usual, C or D an off night.
+          </p>
+        )}
       </CardContent>
     </Card>
   )

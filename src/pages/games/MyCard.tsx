@@ -39,7 +39,7 @@ export function MyCard({ state, onOpenPlayer, go }: { state: PooleanState; onOpe
       mvp: season.mvp.some((p) => p.id === me) ? season.mvp.filter((p) => p.now > season.mvp.find((x) => x.id === me)!.now).length : -1,
       rival,
       next: upcomingRsvp(state),
-      steps: nextSteps(state, me, { mixtape: me in (mixtapes as Record<string, unknown>), rival: rival ? (rival.a === me ? rival.b : rival.a) : null, night: report && report.nights >= 5 ? { grade: report.grade, date: report.date } : null }),
+      steps: nextSteps(state, me, { mixtape: me in (mixtapes as Record<string, unknown>), rival: rival ? (rival.a === me ? rival.b : rival.a) : null, night: report && report.grade ? { grade: report.grade, date: report.date } : null }),
     }
   }, [state, me])
   if (!me || !d) return null

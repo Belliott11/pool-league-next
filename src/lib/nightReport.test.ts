@@ -29,5 +29,14 @@ describe("night report", () => {
     expect(r.best?.made).toBe(true)
     expect(r.fix?.made).toBe(false)
     expect(nightReport(state, "nobody")).toBeNull()
+    expect(r.grade).not.toBeNull() // a second night is graded against the first
+    const first = { ...state, games: state.games.slice(0, 1) } as PooleanState
+    expect(nightReport(first, "a")!.grade).toBeNull() // a first night has no usual level to compare with
+  })
+
+  it("grades only against the player's own level", async () => {
+    const { normalCdf } = await import("@/lib/nightReport")
+    expect(normalCdf(0)).toBeCloseTo(0.5, 6)
+    expect(normalCdf(1.2816)).toBeCloseTo(0.9, 3)
   })
 })

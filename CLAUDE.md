@@ -427,8 +427,11 @@ last quarter of the baskets). On the game page under the summary lines (with its
 ## Your night, graded (2026-11-27)
 
 `src/lib/nightReport.ts`, `src/components/NightReport.tsx` (under At a glance on the Player page; "Your night" on your own page) and a
-"Next up for you" step: a player's last filmed night. The grade is where their Points added a game that night falls among every
-player-night on record (`GRADES`, A+ for the top tenth down to D; no F), shown once there are 5 player-nights. Also their record and points
+"Next up for you" step: a player's last filmed night. Graded against their own level only (asked 2026-11-27, so a newer or weaker
+player is never marked down for it): their Points added a game that night against their form rating going in (`usual`), in units of how
+much a night swings by chance (the parts' game noise together over the night's games, plus the rating's own uncertainty), turned into the
+share of their own nights it would beat (`normalCdf`) and a grade (`GRADES`, A+ the top tenth down to D; no F). A first filmed night gets
+no grade (nothing to compare with yet). Also their record and points
 that night, the best play (as shooter or passer, with video) and one to fix (as shooter or who lost the ball), both in the film viewer
 (`PlaysToWatch`), the form rating before and after the night, and a link when they played in the game of the night (drama.ts). The game
 alerts carry no grade: a push subscription has no player attached.
