@@ -419,6 +419,15 @@ chance (`comeback`, "came back from a 4% chance" at 30% or under), lead changes 
 last quarter of the baskets). On the game page under the summary lines (with its rank), "Game of the night" on the night recap, and
 "Most dramatic games" in the Hall of Fame. On 2026-11-27 the top game was July 29's comeback from 4%.
 
+## Your night, graded (2026-11-27)
+
+`src/lib/nightReport.ts`, `src/components/NightReport.tsx` (under At a glance on the Player page; "Your night" on your own page) and a
+"Next up for you" step: a player's last filmed night. The grade is where their Points added a game that night falls among every
+player-night on record (`GRADES`, A+ for the top tenth down to D; no F), shown once there are 5 player-nights. Also their record and points
+that night, the best play (as shooter or passer, with video) and one to fix (as shooter or who lost the ball), both in the film viewer
+(`PlaysToWatch`), the form rating before and after the night, and a link when they played in the game of the night (drama.ts). The game
+alerts carry no grade: a push subscription has no player attached.
+
 ## Season teams
 
 `src/lib/seasonTeams.ts`, page `#/games/teams` (`src/pages/games/SeasonTeams.tsx`, a Games home button and in search). Shown to everyone

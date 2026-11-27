@@ -3,6 +3,7 @@ import { SITE } from "@/lib/site"
 import { ThreeWorth } from "@/components/ThreeWorth"
 import { PlayerPointsAdded } from "@/components/PointsAdded"
 import { PlayerFormCard } from "@/components/FormRating"
+import { NightReportCard } from "@/components/NightReport"
 import { PlayerRead } from "@/pages/PlayerRead"
 import { PlayerCompare } from "@/pages/PlayerCompare"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
@@ -296,6 +297,7 @@ export function PlayerDetailPage({
       />
 
       <PlayerGlance state={season} pid={pid} />
+      <NightReportCard state={state} pid={pid} />
       <SummerGoals state={state} pid={pid} />
 
       <div className="flex items-center gap-2">

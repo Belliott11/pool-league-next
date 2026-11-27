@@ -16,6 +16,7 @@ import type { PooleanState } from "@/lib/types"
 import mixtapes from "@/data/mixtapes.json"
 import { openPageTab } from "@/lib/jump"
 import { nextSteps, type Step } from "@/lib/nextSteps"
+import { nightReport } from "@/lib/nightReport"
 import { ChevronRight } from "lucide-react"
 
 // The top of the Games page for someone who has said who they are: where they stand, what they are close to, who their rival is
@@ -28,6 +29,7 @@ export function MyCard({ state, onOpenPlayer, go }: { state: PooleanState; onOpe
     const row = board.find((r) => r.player.id === me)
     const season = projectSeason(state)
     const rival = rivalries(state, 200).find((r) => r.a === me || r.b === me)
+    const report = nightReport(state, me)
     return {
       row,
       rank: row ? board.filter((r) => r.twoWayPer25 > row.twoWayPer25).length + 1 : null,
@@ -37,7 +39,7 @@ export function MyCard({ state, onOpenPlayer, go }: { state: PooleanState; onOpe
       mvp: season.mvp.some((p) => p.id === me) ? season.mvp.filter((p) => p.now > season.mvp.find((x) => x.id === me)!.now).length : -1,
       rival,
       next: upcomingRsvp(state),
-      steps: nextSteps(state, me, { mixtape: me in (mixtapes as Record<string, unknown>), rival: rival ? (rival.a === me ? rival.b : rival.a) : null }),
+      steps: nextSteps(state, me, { mixtape: me in (mixtapes as Record<string, unknown>), rival: rival ? (rival.a === me ? rival.b : rival.a) : null, night: report && report.nights >= 5 ? { grade: report.grade, date: report.date } : null }),
     }
   }, [state, me])
   if (!me || !d) return null
