@@ -348,7 +348,7 @@ Clutch squared (asked 2026-11-27, "weighted by stakes"): `clutch2` on `winProbAd
 score-alone swing as win chance added) squared and times 100, so a 30-point swing is 9 clutch points and counts 36 times a 5-point one;
 shared with the passer by `CREDIT`, a season total. Also `bigBaskets` (swings of `BIG_SWING` 0.15 or more) and `biggest`. Card
 `src/components/ClutchSquared.tsx` on the Leaderboard Overview, and a line in the Player page's "Win chance added" tab. On 2026-11-27
-Adam led with 18.9 from 9 filmed games.
+Adam led with 18.9 (2 big baskets, biggest 22).
 Wins added (`src/lib/winsAdded.ts`, a column and a line on both Points added cards): points added per game turned into wins against an
 average player (not a replacement level: in a league of about a dozen friends that would only single out whoever plays least). A team
 whose player adds d points over an average game (PER points) gets half plus d/(2 PER) of the scoring, and `raceWin` with the league's
