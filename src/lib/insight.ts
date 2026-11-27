@@ -304,15 +304,7 @@ export interface PlayerWpa {
   added25: number // the same, per game
   allowed25: number
   net25: number
-  // Clutch squared: each basket's swing in win chance, squared, so a basket that decides a game counts far more than many small ones
-  // (a 30-point swing is worth 36 times a 5-point one, not 6). In clutch points: 100 times the swing squared, so a 30-point swing is 9.
-  // Shared with the passer like win chance added (CREDIT).
-  clutch2: number
-  bigBaskets: number // their baskets that moved the win chance BIG_SWING or more
-  biggest: number // their largest single swing (0 to 1)
 }
-
-export const BIG_SWING = 0.15
 export interface Wpa {
   games: number
   expectedTotal: number
@@ -328,8 +320,8 @@ export function winProbAdded(state: PooleanState): Wpa {
   const expectedTotal = totals.length ? totals[Math.floor((totals.length - 1) / 2)] : 0
   const made2 = gs.flatMap((g) => g.scoringEvents.filter(made).map((e) => e.points * e.points))
   const sq = made2.length ? made2.reduce((a, b) => a + b, 0) / made2.length : 4
-  const by = new Map<string, { games: number; baskets: number; added: number; allowed: number; points: number; clutch2: number; bigBaskets: number; biggest: number }>()
-  const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, baskets: 0, added: 0, allowed: 0, points: 0, clutch2: 0, bigBaskets: 0, biggest: 0 }).get(id)!
+  const by = new Map<string, { games: number; baskets: number; added: number; allowed: number; points: number }>()
+  const row = (id: string) => by.get(id) ?? by.set(id, { games: 0, baskets: 0, added: 0, allowed: 0, points: 0 }).get(id)!
   const swings: Swing[] = []
   for (const g of gs) {
     const final = score(g)
@@ -362,11 +354,6 @@ export function winProbAdded(state: PooleanState): Wpa {
       row(e.scorerId).baskets++
       row(e.scorerId).added += d * (passer ? CREDIT.scorer : 1)
       if (passer) row(passer).added += d * CREDIT.assister
-      const c2 = d * d * 100
-      row(e.scorerId).clutch2 += c2 * (passer ? CREDIT.scorer : 1)
-      if (passer) row(passer).clutch2 += c2 * CREDIT.assister
-      if (d >= BIG_SWING) row(e.scorerId).bigBaskets++
-      row(e.scorerId).biggest = Math.max(row(e.scorerId).biggest, d)
       const defenders = (e.defenderIds ?? []).filter((x) => side(g, x) === 1 - t)
       for (const x of defenders) row(x).allowed += d / defenders.length
       swings.push({ gameId: g.id, date: g.date, id: e.scorerId, points: e.points, from, to })
@@ -374,7 +361,7 @@ export function winProbAdded(state: PooleanState): Wpa {
   }
   const rows = [...by]
     .filter(([, r]) => r.baskets > 0 || r.added !== 0)
-    .map(([id, r]) => ({ id, games: r.games, baskets: r.baskets, added: r.added, allowed: r.allowed, net: r.added - r.allowed, added25: r.points ? (r.added / r.points) * PER : 0, allowed25: r.points ? (r.allowed / r.points) * PER : 0, net25: r.points ? ((r.added - r.allowed) / r.points) * PER : 0, clutch2: r.clutch2, bigBaskets: r.bigBaskets, biggest: r.biggest }))
+    .map(([id, r]) => ({ id, games: r.games, baskets: r.baskets, added: r.added, allowed: r.allowed, net: r.added - r.allowed, added25: r.points ? (r.added / r.points) * PER : 0, allowed25: r.points ? (r.allowed / r.points) * PER : 0, net25: r.points ? ((r.added - r.allowed) / r.points) * PER : 0 }))
     .sort((a, b) => b.net25 - a.net25)
   return { games: gs.length, expectedTotal, rows, swings: swings.sort((a, b) => b.to - b.from - (a.to - a.from)).slice(0, 3) }
 }

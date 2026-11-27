@@ -29,7 +29,16 @@ export interface PlayWpaRow {
   defense: number
   turnovers: number
   perGame: number
+  // Clutch squared: every play's swing in win chance, squared with its sign kept, and shared out like the play itself. A play that swings
+  // a game 30 points counts 36 times one that moves it 5, so the moments that decided games dominate: a big stop or basket late adds a
+  // lot, a turnover at game point takes a lot away, early plays barely register. In clutch points: 100 times the swing squared (a
+  // 30-point swing is 9). A season total.
+  clutch2: number
+  bigPlays: number // plays that swung it BIG_SWING or more their team's way, with them in the play
+  biggest: number // their largest single swing their team's way (0 to 1)
 }
+
+export const BIG_SWING = 0.15
 
 export interface PlayWpa {
   games: number // games counted (every play in order)
@@ -65,12 +74,17 @@ export function winChancePlays(state: PooleanState): PlayWpa {
   const tableFor = (target: number) => tables.get(target) ?? tables.set(target, possessionOdds(target, t2, t3)).get(target)!
 
   const by = new Map<string, PlayWpaRow>()
-  const row = (id: string) => by.get(id) ?? by.set(id, { id, games: 0, total: 0, shots: 0, passes: 0, boards: 0, defense: 0, turnovers: 0, perGame: 0 }).get(id)!
-  const credit = (id: string | null | undefined, part: Part, d: number) => {
+  const row = (id: string) => by.get(id) ?? by.set(id, { id, games: 0, total: 0, shots: 0, passes: 0, boards: 0, defense: 0, turnovers: 0, perGame: 0, clutch2: 0, bigPlays: 0, biggest: 0 }).get(id)!
+  // d is this person's share of a play; whole is the play's full swing from their team's side (the same as d unless it is shared).
+  // Their clutch squared is their share of the whole swing squared: d times |whole|, so the sign stays with the play.
+  const credit = (id: string | null | undefined, part: Part, d: number, whole = d) => {
     if (!id || !d) return
     const r = row(id)
     r[part] += d
     r.total += d
+    r.clutch2 += d * Math.abs(whole) * 100
+    if (d > 0 && whole >= BIG_SWING) r.bigPlays++
+    if (d > 0) r.biggest = Math.max(r.biggest, whole)
   }
 
   let counted = 0
@@ -128,11 +142,11 @@ export function winChancePlays(state: PooleanState): PlayWpa {
         rest = (p.end === "kept" ? back : away) - expected
       }
       if (p.passer) {
-        credit(p.player, "shots", shot * CREDIT.scorer)
-        credit(p.passer, "passes", shot * CREDIT.assister)
+        credit(p.player, "shots", shot * CREDIT.scorer, shot)
+        credit(p.passer, "passes", shot * CREDIT.assister, shot)
       } else credit(p.player, "shots", shot)
       const guards = [...new Set([...p.defenders, ...(p.blocker && side(g, p.blocker) === 1 - s ? [p.blocker] : [])])]
-      for (const x of guards) credit(x, "defense", -shot / guards.length)
+      for (const x of guards) credit(x, "defense", -shot / guards.length, -shot)
       // The rebound settles the rest: the offensive rebounder's gain, or the defensive rebounder's (the other side of the loss).
       if (rest && p.rebounder) {
         const rs = side(g, p.rebounder)

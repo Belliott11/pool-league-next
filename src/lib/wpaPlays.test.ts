@@ -60,3 +60,14 @@ describe("win chance added, every play", () => {
     expect(r("a1").shots).toBeGreaterThan(r("a2").shots)
   })
 })
+
+describe("clutch squared, every play", () => {
+  it("keeps each play's sign and weights the big swings", () => {
+    // a1 scored the winning basket; b2 only missed a shot and gave up that winner.
+    expect(r("a1").clutch2).toBeGreaterThan(0)
+    expect(r("b2").clutch2).toBeLessThan(0)
+    expect(r("a1").bigPlays).toBeGreaterThan(0)
+    expect(r("a1").biggest).toBeGreaterThanOrEqual(0.15)
+  })
+
+})
