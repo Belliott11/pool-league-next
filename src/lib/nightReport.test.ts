@@ -34,8 +34,10 @@ describe("night report", () => {
     expect(nightReport(first, "a")!.grade).toBeNull() // a first night has no usual level to compare with
   })
 
-  it("grades only against the player's own level", async () => {
-    const { normalCdf } = await import("@/lib/nightReport")
+  it("grades only against the player's own level, asking below-average players for a small step up", async () => {
+    const { barFor, normalCdf } = await import("@/lib/nightReport")
+    expect(barFor(-2)).toBeCloseTo(-1.5, 9) // a quarter of the way toward the league average
+    expect(barFor(1.5)).toBe(1.5) // above average: their usual is the bar
     expect(normalCdf(0)).toBeCloseTo(0.5, 6)
     expect(normalCdf(1.2816)).toBeCloseTo(0.9, 3)
   })

@@ -31,7 +31,14 @@ export function NightReportCard({ state, pid }: { state: PooleanState; pid: stri
           {r.grade && <span className={cn("font-display text-5xl font-bold", r.grade.startsWith("A") ? "text-pos" : "")}>{r.grade}</span>}
           <p>
             {record} with {r.points} {r.points === 1 ? "point" : "points"}, and {signed(r.added)} points added a game
-            {r.usual !== null ? <> against {own ? "your" : "their"} usual {signed(r.usual)}.</> : <>. {own ? "Your" : "Their"} first filmed night: a grade comes after the next one.</>}
+            {r.usual !== null ? (
+              <>
+                {" "}against {own ? "your" : "their"} usual {signed(r.usual)}
+                {r.bar !== null && r.bar !== r.usual ? <> (the bar for a B: {signed(r.bar)}, a small step up)</> : null}.
+              </>
+            ) : (
+              <>. {own ? "Your" : "Their"} first filmed night: a grade comes after the next one.</>
+            )}
           </p>
         </div>
         {r.best && (
@@ -70,7 +77,7 @@ export function NightReportCard({ state, pid }: { state: PooleanState; pid: stri
         )}
         {r.grade && (
           <p className="text-xs text-muted-foreground">
-            Graded against {own ? "your" : "their"} own level only, never anyone else&apos;s: how the night compares with {own ? "your" : "their"} usual (the form rating going in), allowing for how much any night swings by chance. A+ is one of {own ? "your" : "their"} best nights, B about usual, C or D an off night.
+            Graded against {own ? "your" : "their"} own level, never anyone else&apos;s: the night against {own ? "your" : "their"} usual (the form rating going in), allowing for how much any night swings by chance. Below the league average, the bar for a B sits a quarter of the way up toward it, so a B means a step forward. A+ is one of {own ? "your" : "their"} best nights, C or D an off night.
           </p>
         )}
       </CardContent>
