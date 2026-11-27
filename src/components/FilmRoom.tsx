@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ChevronLeft, ChevronRight, Clapperboard, ListVideo, Play, Repeat, Share2, Trash2, X } from "lucide-react"
+import { useHeaderHeight } from "@/components/PageTabs"
+import { ChevronLeft, ChevronRight, Clapperboard, ListVideo, MessageSquare, Play, Repeat, Share2, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -114,8 +115,9 @@ function MiniCourt({ p }: { p: PlayValue }) {
 }
 
 // ---- the viewer: one play at a time from its game's recording (its short cut when there is one), with speed, loop, and the list.
-function FilmViewer({ state, queue, index, onIndex, onClose, notes }: { state: PooleanState; queue: PlayValue[]; index: number; onIndex: (i: number) => void; onClose: () => void; notes: Notes }) {
+function FilmViewer({ state, queue, index, onIndex, onClose, notes, pinned = false }: { state: PooleanState; queue: PlayValue[]; index: number; onIndex: (i: number) => void; onClose: () => void; notes: Notes; pinned?: boolean }) {
   const play = queue[index]
+  const [showNotes, setShowNotes] = useState(!pinned)
   const video = useRef<HTMLVideoElement>(null)
   const [speed, setSpeed] = useState(1)
   const [loop, setLoop] = useState(false)
@@ -152,12 +154,12 @@ function FilmViewer({ state, queue, index, onIndex, onClose, notes }: { state: P
     }
   }
   return (
-    <div className="flex flex-col gap-2 rounded-xl border bg-card p-2">
+    <div className={cn("flex flex-col gap-2 rounded-xl border bg-card p-2", pinned && "shadow-lg")}>
       <video
         key={`${play.gameId}|${play.id}|${src.src}`}
         ref={video}
         src={`${src.src}#t=${start.toFixed(2)}`}
-        className="aspect-video w-full rounded-lg bg-black"
+        className={cn("aspect-video w-full rounded-lg bg-black", pinned && "max-h-[30vh] object-contain")}
         playsInline
         muted
         autoPlay
@@ -170,7 +172,7 @@ function FilmViewer({ state, queue, index, onIndex, onClose, notes }: { state: P
         }}
         onTimeUpdate={onTime}
       />
-      <p className="px-1 text-sm">
+      <p className={cn("px-1 text-sm", pinned && "line-clamp-2")}>
         {describe(play, (id) => playerName(state, id))}{" "}
         <span className="text-muted-foreground">
           {formatDateDisplay(play.date)}
@@ -198,16 +200,23 @@ function FilmViewer({ state, queue, index, onIndex, onClose, notes }: { state: P
             </Button>
           </>
         )}
-        <Button size="sm" variant="outline" onClick={() => void share()}>
-          <Share2 aria-hidden /> {copied ? "Link copied" : "Send this play"}
+        <Button size="sm" variant="outline" onClick={() => void share()} aria-label="Send this play">
+          <Share2 aria-hidden /> {copied ? "Link copied" : pinned ? "Send" : "Send this play"}
         </Button>
+        {pinned && (
+          <Button size="sm" variant={showNotes ? "default" : "outline"} aria-pressed={showNotes} onClick={() => setShowNotes(!showNotes)}>
+            <MessageSquare aria-hidden /> Notes{(notes.byPlay.get(noteKey(play.gameId, play.id))?.length ?? 0) ? ` (${notes.byPlay.get(noteKey(play.gameId, play.id))!.length})` : ""}
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={onClose} aria-label="Close the viewer" className="ml-auto">
           <X aria-hidden />
         </Button>
       </div>
-      <div className="px-1 pb-1">
-        <PlayNotes state={state} play={play} notes={notes} />
-      </div>
+      {showNotes && (
+        <div className="max-h-[25vh] overflow-y-auto px-1 pb-1">
+          <PlayNotes state={state} play={play} notes={notes} />
+        </div>
+      )}
     </div>
   )
 }
@@ -270,12 +279,27 @@ function Plays({ state, plays, title, empty, dated, viewer, notes }: { state: Po
   )
 }
 
-// The viewer, kept in view at the top of the card while a play is open.
+// The viewer, kept in view while the lists scroll: pinned just below the site header and any pinned tab row (the Player page's), on
+// phones too, and slimmed down while pinned (a shorter video, notes behind a button).
+function useStickyTop(): number {
+  const header = useHeaderHeight()
+  const [tabs, setTabs] = useState(0)
+  useEffect(() => {
+    const el = document.querySelector<HTMLElement>('[role="tablist"].sticky')
+    if (!el || typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver(() => setTabs(el.getBoundingClientRect().height))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return header + tabs + 8
+}
+
 function Stage({ state, viewer, notes }: { state: PooleanState; viewer: ReturnType<typeof useViewer>; notes: Notes }) {
+  const top = useStickyTop()
   if (!viewer.current) return null
   return (
-    <div className="z-10 lg:sticky lg:top-20">
-      <FilmViewer state={state} queue={viewer.queue} index={viewer.index} onIndex={viewer.setIndex} onClose={viewer.close} notes={notes} />
+    <div className="sticky z-10" style={{ top }}>
+      <FilmViewer state={state} queue={viewer.queue} index={viewer.index} onIndex={viewer.setIndex} onClose={viewer.close} notes={notes} pinned />
     </div>
   )
 }
