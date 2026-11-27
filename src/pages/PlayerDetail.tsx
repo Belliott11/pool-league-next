@@ -4,6 +4,7 @@ import { ThreeWorth } from "@/components/ThreeWorth"
 import { PlayerPointsAdded } from "@/components/PointsAdded"
 import { PlayerFormCard } from "@/components/FormRating"
 import { NightReportCard } from "@/components/NightReport"
+import { PlayerFatigue } from "@/components/Fatigue"
 import { PlayerRead } from "@/pages/PlayerRead"
 import { PlayerCompare } from "@/pages/PlayerCompare"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
@@ -334,6 +335,7 @@ export function PlayerDetailPage({
               {k === "trends" && (
                 <>
                   <PlayerMilestones state={state} pid={pid} />
+                  <PlayerFatigue state={state} pid={pid} />
                   <PlayerGameFlow state={season} pid={pid} />
                   <PlayerOldSite state={state} pid={pid} />
                 </>

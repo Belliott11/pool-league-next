@@ -30,6 +30,7 @@ import { FormRatingCard } from "@/components/FormRating"
 import { RuleChangeCard } from "@/components/RuleChanges"
 import { WeatherCard } from "@/components/WeatherCard"
 import { ImprovingCard } from "@/components/Improving"
+import { FatigueCard } from "@/components/Fatigue"
 import { CalibrationCard } from "./leaderboard/CalibrationCard"
 import { FormVsReadCard } from "./leaderboard/FormVsReadCard"
 
@@ -119,6 +120,7 @@ export function LeaderboardPage({
         {k === "shooting" && <ThreeWorth state={state} onOpenPlayer={onOpenPlayer} />}
         {k === "comparison" && <RuleChangeCard state={state} />}
         {k === "comparison" && <ImprovingCard state={state} onOpenPlayer={onOpenPlayer} />}
+        {k === "comparison" && <FatigueCard state={state} onOpenPlayer={onOpenPlayer} />}
         {k === "comparison" && <WeatherCard state={state} />}
         {k === "style" && <CalibrationCard state={state} />}
         {k === "style" && <FormVsReadCard state={state} />}

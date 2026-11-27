@@ -377,6 +377,12 @@ form rating beside its odds but still ranks by the pre-game read (which waits fo
 filmed game, each called from earlier nights only (did the side with more form win; did the read's favourite win); the Models tab card
 `src/pages/leaderboard/FormVsReadCard.tsx` shows it and says when `READY_AT` (30) games are in. On 2026-11-27: 8 games, form 5, read 4,
 too few. Switch the ranking only if form leads at 30, and check closeness of games too, not just winners.
+Do players tire? (asked 2026-11-27; `src/lib/fatigue.ts`, `src/components/Fatigue.tsx`: a card on the Leaderboard's Trends tab and
+"Early or late?" on the Player page's History tab): each night's games in order (`nightOrder`: live `startedAt` when every game has one,
+else the recording's part number parsed from its name, "pt 2" after "pt 1", since recordings store no start time, then `videoStart`),
+then the league's points a shot, made share and turnovers per 10 trips by game number (1, 2, 3, 4+), early (games 1 to `EARLY` 2)
+against late with a twice-the-standard-error check, and each player's Points added a game early against late, leaned toward no
+difference by `LEAN` 3 games. On 2026-11-27: 0.71 against 0.68 points a shot, within chance; Zach better late, Ben and Evan early.
 Wins added (`src/lib/winsAdded.ts`, a column and a line on both Points added cards): points added per game turned into wins against an
 average player (not a replacement level: in a league of about a dozen friends that would only single out whoever plays least). A team
 whose player adds d points over an average game (PER points) gets half plus d/(2 PER) of the scoring, and `raceWin` with the league's
