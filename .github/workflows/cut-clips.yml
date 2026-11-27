@@ -39,13 +39,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet -- src/data/clip-cuts.json src/data/clip-shares.json src/data/trailer.json src/data/mixtapes.json && ! git status --porcelain src/data/trailer.json src/data/mixtapes.json | grep -q .; then
+          if git diff --quiet -- src/data/clip-cuts.json src/data/clip-shares.json src/data/trailer.json src/data/mixtapes.json src/data/night-reels.json && ! git status --porcelain src/data/trailer.json src/data/mixtapes.json src/data/night-reels.json | grep -q .; then
             echo "No new clips tonight."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add src/data/clip-cuts.json src/data/clip-shares.json src/data/trailer.json src/data/mixtapes.json
+          git add src/data/clip-cuts.json src/data/clip-shares.json src/data/trailer.json src/data/mixtapes.json src/data/night-reels.json
           git commit -m "New clip cuts"
           # Someone may push to main while this runs (a run takes minutes), so catch up and retry rather than fail.
           for i in 1 2 3 4; do

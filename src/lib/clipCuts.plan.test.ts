@@ -6,6 +6,7 @@ import { seasonState } from "@/lib/offseason"
 import { clipCutKey, cutKey, cutPath, cutWindow, reelWindow } from "@/lib/clipCuts"
 import { clipId } from "@/lib/clipShare"
 import { playerName } from "@/lib/players"
+import { nightOrder } from "@/lib/fatigue"
 import type { PooleanState } from "@/lib/types"
 import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
 
@@ -14,6 +15,8 @@ import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
 const TRAILER_PLAYS = 8
 const MIXTAPE_PLAYS = 6
 const MIXTAPE_MIN = 3
+const NIGHT_PLAYS = 6
+const NIGHT_MIN = 3
 const stateFile = process.env.CLIP_STATE
 const planFile = process.env.CLIP_PLAN
 describe.skipIf(!stateFile || !planFile)("clip cut plan", () => {
@@ -42,7 +45,7 @@ describe.skipIf(!stateFile || !planFile)("clip cut plan", () => {
       // The reel's own stretch of the recording (reelWindow), with the follow camera over that stretch, so a tight trim on the clip
       // does not cut the play short in the reel. `key` stays the clip's cut, which says whether the play is ready.
       const rw = reelWindow(c)
-      return { key: clipCutKey(url, c), url: url.split("#")[0], reel: rw, reelFollow: cutPath(c, rw), at: Math.round((c.time - rw.start) * 100) / 100, label: c.kind === "marked" ? "Highlight" : c.label, player: playerName(state, c.playerId), date: c.date }
+      return { key: clipCutKey(url, c), url: url.split("#")[0], reel: rw, reelFollow: cutPath(c, rw), x: c.frame && c.frame.z > 1.02 ? c.frame.x : null, at: Math.round((c.time - rw.start) * 100) / 100, label: c.kind === "marked" ? "Highlight" : c.label, player: playerName(state, c.playerId), date: c.date }
     }
     // The season trailer: the season's best plays (marked and kept highlights first), at most two from a game, none that goes badly for
     // anyone, in the order they happened.
@@ -71,6 +74,24 @@ describe.skipIf(!stateFile || !planFile)("clip cut plan", () => {
         })
         .filter((t) => t.plays.length >= MIXTAPE_MIN)
       writeFileSync(process.env.CLIP_MIXTAPES, JSON.stringify(tapes))
+    }
+    // The night in 60 seconds: each filmed night's best plays (up to NIGHT_PLAYS, two from a game at most, none that goes badly for anyone,
+    // no stills), in the order they happened, for any night with at least NIGHT_MIN.
+    if (process.env.CLIP_NIGHTS) {
+      const dates = [...new Set(state.games.filter((g) => !g.test && !g.liveInProgress).map((g) => g.date))].sort()
+      const nights = dates
+        .map((date) => {
+          const order = nightOrder(state, date).map((g) => g.id) // the games in the order they were played
+          const plays = bestClips(state, { gameIds: order, limit: 30, perGame: 2 })
+            .filter((c) => !c.rough?.length && c.kind !== "still")
+            .slice(0, NIGHT_PLAYS)
+            .sort((x, y) => order.indexOf(x.gameId) - order.indexOf(y.gameId) || x.time - y.time)
+            .map(toPlay)
+            .filter((k) => !!k)
+          return { date, plays }
+        })
+        .filter((n) => n.plays.length >= NIGHT_MIN)
+      writeFileSync(process.env.CLIP_NIGHTS, JSON.stringify(nights))
     }
   })
 })

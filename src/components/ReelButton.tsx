@@ -1,7 +1,9 @@
-import { Play } from "lucide-react"
+import { useState } from "react"
+import { Play, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import mixtapes from "@/data/mixtapes.json"
+import nightReels from "@/data/night-reels.json"
 
 const VIDEO_HOST = "https://pub-fe959ca0159c462e9b4e69082ac20db5.r2.dev" // the video bucket (see vite.config.ts)
 const table = mixtapes as Record<string, { file: string; seconds: number }>
@@ -22,5 +24,55 @@ export function MixtapeButton({ pid, name }: { pid: string; name: string }) {
         <video src={`${VIDEO_HOST}/${t.file}`} controls autoPlay muted playsInline preload="auto" className="aspect-video w-full rounded-lg bg-black" aria-label={`${name}'s best plays of the season`} />
       </DialogContent>
     </Dialog>
+  )
+}
+
+const nights = nightReels as Record<string, { file: string; vertical: string; seconds: number }>
+
+// The night in 60 seconds (the night's best plays, made by the nightly clip run, scripts/cut-clips.mjs), in a dialog, with its vertical
+// copy for Instagram stories handed to the share sheet as a file (else downloaded). Nothing shows for a night without one.
+export function NightReelButton({ date, label }: { date: string; label: string }) {
+  const n = nights[date]
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  if (!n) return null
+  const share = async () => {
+    setBusy(true)
+    setFailed(false)
+    try {
+      const blob = await (await fetch(`${VIDEO_HOST}/${n.vertical}`)).blob()
+      const name = `poolean-intel-${date}.mp4`
+      const file = new File([blob], name, { type: "video/mp4" })
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
+      if (nav.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: `${label} in 60 seconds` })
+      else {
+        const a = document.createElement("a")
+        a.href = URL.createObjectURL(blob)
+        a.download = name
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
+      }
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === "AbortError")) setFailed(true)
+    }
+    setBusy(false)
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Dialog>
+        <DialogTrigger render={<Button size="sm" />}>
+          <Play aria-hidden /> The night in 60 seconds <span className="opacity-80">{len(n.seconds)}</span>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogTitle>{label} in 60 seconds</DialogTitle>
+          <video src={`${VIDEO_HOST}/${n.file}`} controls autoPlay muted playsInline preload="auto" className="aspect-video w-full rounded-lg bg-black" aria-label={`The best plays of ${label}`} />
+        </DialogContent>
+      </Dialog>
+      {n.vertical && (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => void share()}>
+          <Smartphone aria-hidden /> {failed ? "That did not work. Try again" : busy ? "Getting the video" : "Story video"}
+        </Button>
+      )}
+    </div>
   )
 }

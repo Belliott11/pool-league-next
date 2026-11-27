@@ -4,6 +4,7 @@
 //   npm run cut-clips                  cut, upload, and list them in src/data/clip-cuts.json
 //   npm run cut-clips -- --dry         cut only, into the work folder, to look at them first
 //   npm run cut-clips -- --trailer-preview   make the season trailer from the cuts already uploaded, into the work folder, and stop
+//   npm run cut-clips -- --night-preview [date]   make a night's reel (the latest by default), wide and vertical, into the work folder
 //
 // Needs ffmpeg and curl. Uploading needs a Cloudflare API token with Workers R2 Storage Edit, in CLOUDFLARE_API_TOKEN (a Claude cloud
 // session's network proxy adds it instead). CLIP_SOURCES can name a folder that already holds the recordings, to skip downloading them,
@@ -37,7 +38,8 @@ fs.writeFileSync(stateFile, JSON.stringify(rows[0].data))
 const planFile = path.join(work, "plan.json")
 const trailerFile = path.join(work, "trailer-keys.json")
 const mixtapeFile = path.join(work, "mixtapes.json")
-execFileSync("npx", ["vitest", "run", "src/lib/clipCuts.plan.test.ts"], { cwd: root, stdio: "ignore", env: { ...process.env, CLIP_STATE: stateFile, CLIP_PLAN: planFile, CLIP_TRAILER: trailerFile, CLIP_MIXTAPES: mixtapeFile } })
+const nightFile = path.join(work, "nights.json")
+execFileSync("npx", ["vitest", "run", "src/lib/clipCuts.plan.test.ts"], { cwd: root, stdio: "ignore", env: { ...process.env, CLIP_STATE: stateFile, CLIP_PLAN: planFile, CLIP_TRAILER: trailerFile, CLIP_MIXTAPES: mixtapeFile, CLIP_NIGHTS: nightFile } })
 const plan = JSON.parse(fs.readFileSync(planFile, "utf8"))
 const manifest = fs.existsSync(MANIFEST) ? JSON.parse(fs.readFileSync(MANIFEST, "utf8")) : {}
 const todo = plan.filter((c) => !manifest[c.key])
@@ -130,7 +132,7 @@ function makeVertical(c, local, out) {
   fs.rmSync(tmp, { recursive: true })
 }
 const save = (file, data) => fs.writeFileSync(file, JSON.stringify(Object.fromEntries(Object.entries(data).sort()), null, 1) + "\n")
-const sourceOf = (url) => {
+function sourceOf(url) {
   const file = decodeURIComponent(new URL(url).pathname.split("/").pop())
   let local = process.env.CLIP_SOURCES ? path.join(process.env.CLIP_SOURCES, file) : ""
   if (!local || !fs.existsSync(local)) {
@@ -141,6 +143,22 @@ const sourceOf = (url) => {
     }
   }
   return { file, local, dir: new URL(url).pathname.split("/").slice(-2, -1)[0], origin: new URL(url).origin }
+}
+
+// --night-preview [date]: make a night's reel, wide and vertical, into the work folder from the recordings, and stop (nothing uploaded).
+const nights = fs.existsSync(nightFile) ? JSON.parse(fs.readFileSync(nightFile, "utf8")) : []
+const nightTitle = (date) => ["POOLEAN INTEL", `${new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" })} in 60 seconds`]
+if (process.argv.includes("--night-preview")) {
+  const want = process.argv[process.argv.indexOf("--night-preview") + 1]
+  const n = nights.find((x) => x.date === want) ?? nights.at(-1)
+  if (!n) (console.log("no night has 3 good plays yet"), process.exit(0))
+  for (const vertical of [false, true]) {
+    const out = path.join(work, `night-${n.date}${vertical ? "-v" : ""}.mp4`)
+    const secs = makeTrailer(n.plays, () => "", out, { title: () => nightTitle(n.date), vertical })
+    console.log(`night preview ${n.date}${vertical ? " vertical" : ""}: ${n.plays.length} plays, ${secs} s, ${out}`)
+  }
+  for (const f of reelSources) if (f.startsWith(work) && fs.existsSync(f)) fs.rmSync(f)
+  process.exit(0)
 }
 
 // 3. One recording at a time: fetch it, cut its clips and pictures, upload them, let it go.
@@ -264,11 +282,51 @@ if (!dry && tapes.length) {
   fs.writeFileSync(MIXTAPES, JSON.stringify(Object.fromEntries(Object.entries(next).sort()), null, 1) + "\n")
 }
 
+// 6. The night in 60 seconds: each filmed night's best plays (up to 6, two from a game at most, none rough, no stills) with the trailer's
+// look, the date on the title card, plus a vertical copy for Instagram stories (captions kept clear of the bottom 250 px Instagram covers).
+// Made again when a night's plays change or NIGHT_STYLE is bumped. Listed in src/data/night-reels.json; the night recap has the buttons.
+const NIGHT_REELS = path.join(root, "src/data/night-reels.json")
+const NIGHT_STYLE = 1
+const hadNights = fs.existsSync(NIGHT_REELS) ? JSON.parse(fs.readFileSync(NIGHT_REELS, "utf8")) : {}
+if (!dry && nights.length) {
+  const origin = new URL(plan[0].url).origin
+  const next = {}
+  for (const n of nights) {
+    const keys = n.plays.map((p) => p.key)
+    const old = hadNights[n.date]
+    if (old && old.style === NIGHT_STYLE && JSON.stringify(old.clips) === JSON.stringify(keys) && process.env.TRAILER_LOOK !== "1") {
+      next[n.date] = old
+      continue
+    }
+    let h = 0x811c9dc5
+    for (const ch of `${NIGHT_STYLE}|${keys.join(",")}`) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0
+    const entry = { file: "", vertical: "", seconds: 0, style: NIGHT_STYLE, clips: keys }
+    for (const vertical of [false, true]) {
+      const out = path.join(work, `night-${n.date}${vertical ? "-v" : ""}.mp4`)
+      const seconds = makeTrailer(n.plays, (k) => `${origin}/${manifest[k]}`, out, { title: () => nightTitle(n.date), vertical })
+      const key = `clips/nights/${n.date}-${h.toString(36)}${vertical ? "-v" : ""}.mp4`
+      upload(out, key, "video/mp4")
+      served(origin, key)
+      fs.rmSync(out)
+      if (vertical) entry.vertical = key
+      else (entry.file = key), (entry.seconds = seconds)
+    }
+    next[n.date] = entry
+    console.log(`\nnight reel for ${n.date}: ${keys.length} plays, ${entry.seconds} s`)
+  }
+  fs.writeFileSync(NIGHT_REELS, JSON.stringify(Object.fromEntries(Object.entries(next).sort()), null, 1) + "\n")
+}
+
 // Builds the trailer from the plays' cuts (fetched from `urlOf`) into `out`, and returns its length in whole seconds. Also run by
 // itself to look at first: node scripts/cut-clips.mjs --trailer-preview (uses the cuts already uploaded).
 // `style`: the title card's lines (given the year) and each play's caption line; the season trailer's by default.
 function makeTrailer(list, urlOf, out, style = {}) {
-  const W = 1280, H = 720, FPS = 30, X = 0.5 // size, frame rate, transition length
+  // `style.vertical`: 720 by 1280 for Instagram stories, each play cut from the recording at 80% of its height around the play (the
+  // follow path, else the editor's crop, else the middle), the captions above the bottom 250 px that Instagram covers.
+  const V = !!style.vertical
+  const W = V ? 720 : 1280, H = V ? 1280 : 720, FPS = 30, X = 0.5 // size, frame rate, transition length
+  const ky = V ? H / 720 : 1, ks = V ? 0.7 : 1 // where card lines sit, and their size, on the vertical frame
+  const capY = V ? 360 : 150, capW = V ? 0.94 : 0.62
   const fonts = path.join(root, "scripts/og-fonts")
   const bold = path.join(fonts, "HankenGrotesk-Bold.ttf"), regular = path.join(fonts, "HankenGrotesk-Regular.ttf"), display = path.join(fonts, "Anybody-Display.ttf")
   const tmp = fs.mkdtempSync(path.join(work, "trailer-"))
@@ -286,8 +344,8 @@ function makeTrailer(list, urlOf, out, style = {}) {
   const look = "eq=contrast=1.06:saturation=1.18:brightness=0.01,vignette=PI/5"
   const card = (file, secs, lines) => {
     // A dark card with a thin accent bar, the lines fading up one after another.
-    const draws = lines.map((l, i) => `drawtext=fontfile=${l.font}:textfile=${text(l.text)}:fontcolor=white:fontsize=${l.size}:x=(w-text_w)/2:y=${l.y}:alpha='min(1,max(0,(t-${0.25 + i * 0.3})/0.45))'`)
-    ff(["-f", "lavfi", "-i", `color=c=0x0b1220:s=${W}x${H}:d=${secs}:r=${FPS}`, "-vf", [`drawbox=x=(iw-160)/2:y=${lines[0].y - 34}:w='min(160,160*t/0.6)':h=6:color=0x2f7de1:t=fill`, ...draws, look].join(","), ...enc, file])
+    const draws = lines.map((l, i) => `drawtext=fontfile=${l.font}:textfile=${text(l.text)}:fontcolor=white:fontsize=${Math.round(l.size * ks)}:x=(w-text_w)/2:y=${Math.round(l.y * ky)}:alpha='min(1,max(0,(t-${0.25 + i * 0.3})/0.45))'`)
+    ff(["-f", "lavfi", "-i", `color=c=0x0b1220:s=${W}x${H}:d=${secs}:r=${FPS}`, "-vf", [`drawbox=x=(iw-160)/2:y=${Math.round(lines[0].y * ky) - 34}:w='min(160,160*t/0.6)':h=6:color=0x2f7de1:t=fill`, ...draws, look].join(","), ...enc, file])
     return { file, secs }
   }
   const parts = []
@@ -303,7 +361,11 @@ function makeTrailer(list, urlOf, out, style = {}) {
       // tight, and the reel should not stop before the basket.
       const rec = sourceOf(p.url).local
       reelSources.add(rec)
-      const vf = p.reelFollow ? ["-vf", `${followCrop(p.reelFollow)},scale=1280:720:flags=lanczos,setsar=1`] : []
+      const vx = p.reelFollow ? along(p.reelFollow.path, "x") : String(p.x ?? 0.5)
+      const vy = p.reelFollow ? along(p.reelFollow.path, "y") : "0.5"
+      const vf = V
+        ? ["-vf", `crop=w=trunc(ih*0.8*9/16/2)*2:h=trunc(ih*0.8/2)*2:x='clip(iw*(${vx})-ow/2,0,iw-ow)':y='clip(ih*(${vy})-oh/2,0,ih-oh)',scale=720:1280:flags=lanczos,setsar=1`]
+        : p.reelFollow ? ["-vf", `${followCrop(p.reelFollow)},scale=1280:720:flags=lanczos,setsar=1`] : []
       ff(["-ss", String(p.reel.start), "-i", rec, "-t", String(Math.max(0.5, p.reel.end - p.reel.start)), ...vf, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", src])
     } else curl(["-o", src, urlOf(p.key)])
     const dur = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src]).toString().trim())
@@ -315,10 +377,10 @@ function makeTrailer(list, urlOf, out, style = {}) {
     const fadeAt = secs - 1.1
     const caption = [
       // The bar slides in, and goes with its words (it used to stay up, empty, after the words faded).
-      `drawbox=x=0:y=ih-150:w='min(iw*0.62,iw*0.62*(t-0.3)/0.35)':h=110:color=black@0.55:t=fill:enable='between(t,0.3,${(fadeAt + 0.15).toFixed(2)})'`,
-      `drawbox=x=0:y=ih-150:w=8:h=110:color=0x2f7de1:t=fill:enable='between(t,0.3,${(fadeAt + 0.15).toFixed(2)})'`,
-      `drawtext=fontfile=${bold}:textfile=${text(style.caption ? style.caption(p) : `${p.label}, ${p.player}`)}:fontcolor=white:fontsize=42:x=36:y=h-136:alpha='min(1,max(0,(t-0.5)/0.3))*min(1,max(0,(${fadeAt}-t)/0.3))'`,
-      `drawtext=fontfile=${regular}:textfile=${text(`${month(p.date)}   Play ${i + 1} of ${list.length}`)}:fontcolor=white@0.85:fontsize=26:x=38:y=h-80:alpha='min(1,max(0,(t-0.65)/0.3))*min(1,max(0,(${fadeAt}-t)/0.3))'`,
+      `drawbox=x=0:y=ih-${capY}:w='min(iw*${capW},iw*${capW}*(t-0.3)/0.35)':h=110:color=black@0.55:t=fill:enable='between(t,0.3,${(fadeAt + 0.15).toFixed(2)})'`,
+      `drawbox=x=0:y=ih-${capY}:w=8:h=110:color=0x2f7de1:t=fill:enable='between(t,0.3,${(fadeAt + 0.15).toFixed(2)})'`,
+      `drawtext=fontfile=${bold}:textfile=${text(style.caption ? style.caption(p) : `${p.label}, ${p.player}`)}:fontcolor=white:fontsize=${V ? 36 : 42}:x=36:y=h-${capY - 14}:alpha='min(1,max(0,(t-0.5)/0.3))*min(1,max(0,(${fadeAt}-t)/0.3))'`,
+      `drawtext=fontfile=${regular}:textfile=${text(`${month(p.date)}   Play ${i + 1} of ${list.length}`)}:fontcolor=white@0.85:fontsize=26:x=38:y=h-${capY - 70}:alpha='min(1,max(0,(t-0.65)/0.3))*min(1,max(0,(${fadeAt}-t)/0.3))'`,
     ]
     const fit = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1`
     const file = path.join(tmp, `play${i}.mp4`)
@@ -352,4 +414,4 @@ function makeTrailer(list, urlOf, out, style = {}) {
 }
 
 for (const f of reelSources) if (f.startsWith(work) && fs.existsSync(f)) fs.rmSync(f)
-console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts, ${needPoster.length} pictures and ${needVertical.length} vertical videos; commit src/data/clip-cuts.json, src/data/clip-shares.json, src/data/trailer.json and src/data/mixtapes.json`)
+console.log(dry ? `\ncut ${done} into ${work}` : `\nuploaded ${done} cuts, ${needPoster.length} pictures and ${needVertical.length} vertical videos; commit src/data/clip-cuts.json, src/data/clip-shares.json, src/data/trailer.json, src/data/mixtapes.json and src/data/night-reels.json`)

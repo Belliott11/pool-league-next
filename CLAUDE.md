@@ -115,6 +115,16 @@ least 3 (`CLIP_MIXTAPES` in the cut plan, `MIXTAPE_STYLE`). Uploaded as `clips/m
 `src/data/mixtapes.json`, which the nightly workflow commits. The Player page's At a glance card has "Watch <name>'s mixtape"
 (`MixtapeButton` in `src/components/ReelButton.tsx`). Nine players had one on 2026-11-26.
 
+### The night in 60 seconds (2026-11-27)
+
+The same script makes each filmed night's reel: its best plays (up to 6, two from a game at most, none rough, no stills, followed where
+set, games in the order they were played by `nightOrder`), for any night with at least 3 (`CLIP_NIGHTS` in the cut plan, `NIGHT_STYLE`),
+with the trailer's look and "<Month day> in 60 seconds" on the title card, plus a vertical copy (`style.vertical` in `makeTrailer`: 720x1280,
+each play cut at 80% of the recording's height around the follow path or the editor's crop, captions above the bottom 250 px Instagram
+covers). Uploaded as `clips/nights/<date>-<hash>.mp4` and `-v.mp4`, listed in `src/data/night-reels.json`, which the nightly workflow
+commits. The night recap shows "The night in 60 seconds" and "Story video" (`NightReelButton` in `src/components/ReelButton.tsx`).
+`npm run cut-clips -- --night-preview [date]` builds both into the work folder without uploading.
+
 ## Score on the game video
 
 `src/components/ScoreOverlay.tsx` (around `GameVideo` in `GameVideoPanel.tsx`), `src/lib/scoreAt.ts`: a score bug in the corner of the

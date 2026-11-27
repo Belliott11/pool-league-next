@@ -24,6 +24,7 @@ import { nightStories } from "@/lib/storylines"
 import { useLabeledState } from "@/lib/labelsContext"
 import { usePublishedNight } from "@/lib/published"
 import type { Update } from "@/lib/store"
+import { NightReelButton } from "@/components/ReelButton"
 import { playerName } from "@/lib/players"
 import { shareNightCard, shareNightStory } from "@/lib/shareCard"
 import { TEAM } from "@/lib/teamColors"
@@ -173,6 +174,7 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
           </Button>
         </div>
       </div>
+      <NightReelButton date={date} label={label} />
 
       {!hasBox && (
         <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
