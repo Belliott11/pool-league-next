@@ -13,23 +13,36 @@ import type { AwardBallot, PooleanState } from "@/lib/types"
 // award_votes table cannot be read by visitors, and the database hands out only vote counts, this phone's own votes, and the picks for
 // awards already revealed (supabase/awards.sql).
 
+export type AwardKind = "single" | "teams" | "duo"
+
 export interface AwardDef {
   key: string
   label: string
+  kind: AwardKind // one winner, the two All-Poolean teams from one ranking, or a pair of players
   description: string // what the award rewards (awardText.ts)
 }
 
-// In reveal order: MVP last, Best Player just before it.
+// Every award last season had in Poolean (pastAwards.ts), in reveal order: the duos first, MVP last. The teams are one vote: a ballot
+// ranks players, places 1 to 3 make the first team and 4 to 6 the second (`places`). A duo ballot ranks pairs ("a|b", sorted ids).
 export const AWARDS: AwardDef[] = (
   [
-    ["mip", "Most Improved"],
-    ["clutch", "Clutch Player"],
-    ["dpoy", "Defensive Player"],
-    ["best-player", "Best Player"],
-    ["mvp", "MVP"],
+    ["worst-duo", "Rough-patch Duo", "duo"],
+    ["best-duo", "Best Duo", "duo"],
+    ["teammate", "Best Teammate", "single"],
+    ["mip-yoy", "Most Improved (year over year)", "single"],
+    ["mip-season", "Most Improved (this season)", "single"],
+    ["clutch", "Clutch Player", "single"],
+    ["dpoy", "Defensive Player", "single"],
+    ["teams", "First and Second Team", "teams"],
+    ["best-player", "Best Player", "single"],
+    ["mvp", "MVP", "single"],
   ] as const
-).map(([key, label]) => ({ key, label, description: AWARD_TEXT[key] }))
+).map(([key, label, kind]) => ({ key, label, kind, description: AWARD_TEXT[key] }))
 export const awardDef = (k: string) => AWARDS.find((a) => a.key === k) ?? null
+
+// A pair's id: both players, sorted, so the same two always make the same pair however they were tapped.
+export const pairId = (a: string, b: string) => [a, b].sort().join("|")
+export const pairOf = (id: string) => id.split("|")
 
 // Anyone with MIN_RANKED games this season can be voted for (the same bar as the award race and the standings).
 export function candidatesFor(state: PooleanState): string[] {
@@ -112,13 +125,33 @@ export function runoff(ballots: string[][]): Tally {
   return { winners: [], rounds, total }
 }
 
+// The order the teams vote puts players in: the instant-runoff winner takes place 1, then is taken off every ballot and the count runs
+// again for place 2, and so on (a tie takes the next places together). Places 1 to 3 are the first team, 4 to 6 the second.
+export function places(ballots: string[][], n = 6): string[][] {
+  const out: string[][] = []
+  let left = ballots.map((b) => [...b])
+  while (out.flat().length < n) {
+    const t = runoff(left)
+    if (!t.winners.length) break
+    out.push(t.winners)
+    left = left.map((b) => b.filter((id) => !t.winners.includes(id))).filter((b) => b.length)
+  }
+  return out
+}
+export function teamsOf(ballots: string[][]): { first: string[]; second: string[] } {
+  const order = places(ballots).flat()
+  return { first: order.slice(0, 3), second: order.slice(3, 6) }
+}
+
 // A ranking after a tap on a player: added at the end, or taken out (the rest move up).
 export function toggleRank(ranking: string[], id: string): string[] {
   return ranking.includes(id) ? ranking.filter((x) => x !== id) : [...ranking, id]
 }
 
 // The rounds in words, for a revealed award: "Ian was knocked out and their ballots moved on." Only when it took more than one round.
-export function roundsInWords(t: Tally, name: (id: string) => string): string[] {
+// A pair reads "Ben and Phillip".
+export function roundsInWords(t: Tally, nameOf: (id: string) => string): string[] {
+  const name = (id: string) => pairOf(id).map(nameOf).join(" and ")
   if (t.rounds.length < 2) return []
   const list = (ids: string[]) => (ids.length === 1 ? name(ids[0]) : `${ids.slice(0, -1).map(name).join(", ")} and ${name(ids.at(-1)!)}`)
   return t.rounds.map((r, i) => {
@@ -129,14 +162,21 @@ export function roundsInWords(t: Tally, name: (id: string) => string): string[] 
 }
 
 // What the numbers say for each award: the award race's leader (awardRace.ts uses the same keys).
+// The award race calls Most Improved "mip"; a duo's leader is the pair's id, to compare with a duo ballot's winner.
 export function numbersPick(state: PooleanState): Record<string, string[]> {
   const out: Record<string, string[]> = {}
-  for (const r of awardRace(state)) if (r.leaders[0]) out[r.key] = r.leaders[0].ids
+  for (const r of awardRace(state)) {
+    const lead = r.leaders[0]
+    if (!lead) continue
+    const key = r.key === "mip" ? "mip-season" : r.key
+    out[key] = key.endsWith("duo") ? [pairId(lead.ids[0], lead.ids[1])] : lead.ids
+  }
   return out
 }
 
 // Did the players agree with the numbers? A plain line for a revealed award.
-export function verdict(t: Tally, numbers: string[] | undefined, name: (id: string) => string): string | null {
+export function verdict(t: Tally, numbers: string[] | undefined, nameOf: (id: string) => string): string | null {
+  const name = (id: string) => pairOf(id).map(nameOf).join(" and ")
   if (!t.winners.length || !numbers?.length) return null
   const n = numbers[0]
   if (t.winners.includes(n)) return t.winners.length === 1 ? `The players and the numbers agree.` : `The numbers had ${name(n)} too.`

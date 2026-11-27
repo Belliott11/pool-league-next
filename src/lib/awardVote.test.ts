@@ -81,3 +81,36 @@ describe("season award votes", () => {
     expect(nextSteps({ ...state, awardBallots: [closeVoting(b)] } as PooleanState, "ben").map((s) => s.key)).not.toContain("awards")
   })
 })
+
+describe("every award from last season is on the ballot", () => {
+  it("has each of Poolean's awards, the two teams as one vote, MVP last", async () => {
+    const { AWARDS } = await import("@/lib/awardVote")
+    const { pastSeasonAwards } = await import("@/lib/pastAwards")
+    const keys = AWARDS.map((a) => a.key)
+    for (const a of pastSeasonAwards()[0].awards) expect(keys).toContain(a.key === "first-team" || a.key === "second-team" ? "teams" : a.key)
+    expect(keys.at(-1)).toBe("mvp")
+    expect(AWARDS.find((a) => a.key === "best-duo")!.kind).toBe("duo")
+    expect(AWARDS.find((a) => a.key === "teams")!.kind).toBe("teams")
+  })
+
+  it("makes the same pair whichever player was tapped first", async () => {
+    const { pairId, pairOf } = await import("@/lib/awardVote")
+    expect(pairId("zach", "ben")).toBe("ben|zach")
+    expect(pairId("ben", "zach")).toBe("ben|zach")
+    expect(pairOf("ben|zach")).toEqual(["ben", "zach"])
+  })
+
+  it("fills the teams place by place, each a ranked-choice count without the players above", async () => {
+    const { places, teamsOf } = await import("@/lib/awardVote")
+    const ballots = [
+      ["a", "b", "c", "d", "e", "f", "g"],
+      ["a", "c", "b", "e", "d", "g", "f"],
+      ["b", "a", "c", "d", "f", "e", "g"],
+    ]
+    expect(places(ballots)[0]).toEqual(["a"]) // 2 of 3 first choices
+    const t = teamsOf(ballots)
+    expect(t.first).toEqual(["a", "b", "c"])
+    expect(t.second).toHaveLength(3)
+    expect(t.second[0]).toBe("d")
+  })
+})

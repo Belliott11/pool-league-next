@@ -19,7 +19,7 @@ import type { PooleanState } from "@/lib/types"
 import { reviewTally } from "@/lib/reviews"
 import shares from "@/data/clip-shares.json"
 import { loadPoty, potyWinners } from "@/lib/playOfYear"
-import { awardDef, finished, loadCounts, runoff } from "@/lib/awardVote"
+import { awardDef, finished, loadCounts, pairOf, runoff, teamsOf } from "@/lib/awardVote"
 
 const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
 
@@ -100,7 +100,15 @@ export function HallOfFame({ state, onBack, onOpenPlayer, onOpenGame }: { state:
     const client = getClient()
     const done = (state.awardBallots ?? []).filter(finished)
     if (!client || !done.length) return
-    void Promise.all(done.map((b) => loadCounts(client, b.id).then((c) => ({ label: b.label, rows: [...b.awards].reverse().map((a) => ({ award: awardDef(a)?.label ?? a, ids: runoff(c.picks[a] ?? []).winners })) })))).then((v) => setVoted(v.reverse()))
+    void Promise.all(done.map((b) => loadCounts(client, b.id).then((c) => ({ label: b.label, rows: [...b.awards].reverse().flatMap((a) => {
+            const ballots = c.picks[a] ?? []
+            if (awardDef(a)?.kind === "teams") {
+              const t = teamsOf(ballots)
+              return [{ award: "First Team", ids: t.first }, { award: "Second Team", ids: t.second }]
+            }
+            // A duo's winner is a pair; a tie lists every tied pair's players.
+            return [{ award: awardDef(a)?.label ?? a, ids: runoff(ballots).winners.flatMap(pairOf) }]
+          }) })))).then((v) => setVoted(v.reverse()))
   }, [state])
   return (
     <div className="anim-page flex flex-col gap-4">

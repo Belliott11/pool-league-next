@@ -484,7 +484,12 @@ until the first basket: each player's go-to kind of shot (5+ shots, not 2s/3s/op
 
 `src/lib/awardVote.ts`, page `#/games/awards` (`src/pages/games/AwardVote.tsx`: `AwardsPage`, the Games home `AwardsCard`, an Explore
 tile, search, a "Next up for you" step while voting is open, and "Voted by the players" in the Hall of Fame). The editor opens a ballot
-(`state.awardBallots`, newest last: label, awards in reveal order `mip`, `clutch`, `dpoy`, `best-player`, `mvp`; what each rewards is
+(`state.awardBallots`, newest last: label, every award Poolean had (asked 2026-11-27), in reveal order `worst-duo` (Rough-patch Duo),
+`best-duo`, `teammate`, `mip-yoy`, `mip-season`, `clutch`, `dpoy`, `teams`, `best-player`, `mvp`. Kinds (`AwardDef.kind`): single;
+`teams`, one ranking of players whose places come from `places` (instant runoff for place 1, that player taken off every ballot, again for
+place 2...; 1 to 3 the first team, 4 to 6 the second, `teamsOf`); and `duo`, a ranking of pairs `pairId` ("a|b", ids sorted; tap two
+players to rank a pair, `DuoBallot`), which `cast_award_vote` checks (two different candidates, neither the voter, sorted with
+`collate "C"` to match JavaScript's sort, checked live in a rolled-back transaction 2026-11-27); what each rewards is
 written once in `src/lib/awardText.ts`, shown on the ballot, the reveal and last season's results: MVP counts attendance, Best Player is
 peak ability without it, asked 2026-11-27; candidates frozen at the start: players
 with `MIN_GAMES` (5) games this season, at least 3). Ranked choice (asked 2026-11-27): each player ranks as many candidates as they like

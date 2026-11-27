@@ -7,7 +7,8 @@
 --
 -- One vote per award per player, cast from the phone that first voted as that player (owner_hash is the hash of the phone's private key,
 -- as in Pick'em), and one player per phone on a ballot, so a phone cannot vote as everyone. Votes are only taken for the newest ballot
--- while it is open, for an award on it, for a candidate on it, as a player in the league, and never for yourself.
+-- while it is open, for an award on it, for a candidate on it, as a player in the league, and never for yourself. Duo awards rank
+-- pairs ("a|b", ids sorted) of two candidates, neither of them the voter.
 
 create table if not exists public.award_votes (
   ballot     text not null,
@@ -45,8 +46,7 @@ begin
      or jsonb_typeof(p_ranking) is distinct from 'array'
      or jsonb_array_length(p_ranking) < 1 or jsonb_array_length(p_ranking) > 30
      or exists (select 1 from jsonb_array_elements(p_ranking) e where jsonb_typeof(e) <> 'string')
-     or (select count(distinct e) from jsonb_array_elements_text(p_ranking) e) <> jsonb_array_length(p_ranking)
-     or p_ranking ? p_voter then
+     or (select count(distinct e) from jsonb_array_elements_text(p_ranking) e) <> jsonb_array_length(p_ranking) then
     return 'no';
   end if;
   select s.data into d from public.league_state s where s.id = 1;
@@ -58,8 +58,23 @@ begin
     return 'closed';
   end if;
   if not (b->'awards') ? p_award
-     or exists (select 1 from jsonb_array_elements_text(p_ranking) e where not (b->'candidates') ? e)
      or not exists (select 1 from jsonb_array_elements(d->'players') p where p->>'id' = p_voter) then
+    return 'no';
+  end if;
+  -- A duo award ranks pairs, "a|b" with the ids sorted: two different candidates, neither of them the voter. Every other award ranks
+  -- candidates, never the voter.
+  if p_award like '%duo' then
+    if exists (
+      select 1 from jsonb_array_elements_text(p_ranking) e
+      where split_part(e, '|', 3) <> '' or split_part(e, '|', 2) = ''
+         or split_part(e, '|', 1) collate "C" >= split_part(e, '|', 2) collate "C"
+         or not (b->'candidates') ? split_part(e, '|', 1) or not (b->'candidates') ? split_part(e, '|', 2)
+         or split_part(e, '|', 1) = p_voter or split_part(e, '|', 2) = p_voter
+    ) then
+      return 'no';
+    end if;
+  elsif p_ranking ? p_voter
+     or exists (select 1 from jsonb_array_elements_text(p_ranking) e where not (b->'candidates') ? e) then
     return 'no';
   end if;
   h := encode(sha256(convert_to(p_key, 'UTF8')), 'hex');

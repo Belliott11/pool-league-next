@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Award, Check, Vote } from "lucide-react"
+import { Award, Check, Vote, X } from "lucide-react"
 import { PastAwards } from "@/components/PastAwards"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { IdentityPrompt } from "@/components/WhoAmI"
@@ -17,6 +17,9 @@ import {
   loadMine,
   newBallot,
   numbersPick,
+  pairId,
+  pairOf,
+  places,
   putBallot,
   reopenVoting,
   revealNext,
@@ -104,14 +107,17 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
   const me = myPlayerId(useWho(), state.players)
   const [problem, setProblem] = useState("")
   const name = (id: string) => playerName(state, id)
+  // A pair's id reads "Ben and Phillip".
+  const label = (id: string) => pairOf(id).map(name).join(" and ")
   const numbers = useMemo(() => numbersPick(state), [state])
+  // On a duo award, the first player tapped waits here for the second.
+  const [half, setHalf] = useState<Record<string, string | null>>({})
 
-  // A tap adds a player to the end of the ranking, or takes them out (the rest move up). Saved after every tap.
-  const tap = async (award: string, id: string) => {
+  // Saves a ballot for one award after every change.
+  const save = async (award: string, next: string[]) => {
     if (!client || !b || !me) return
-    const next = toggleRank(mine[award] ?? [], id)
     if (!next.length) {
-      setProblem("Keep at least one player ranked. Tap someone else first to change your top choice.")
+      setProblem("Keep at least one ranked. Add another first to change your top choice.")
       return
     }
     const before = mine
@@ -128,6 +134,16 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
       )
     } else setProblem("")
     refresh()
+  }
+  // A tap adds a player to the end of the ranking, or takes them out (the rest move up).
+  const tap = (award: string, id: string) => void save(award, toggleRank(mine[award] ?? [], id))
+  // On a duo award: the first tap picks a player, the second makes the pair and ranks it next (or takes it out if it was ranked).
+  const tapDuo = (award: string, id: string) => {
+    const first = half[award]
+    if (!first) return setHalf({ ...half, [award]: id })
+    setHalf({ ...half, [award]: null })
+    if (first === id) return
+    void save(award, toggleRank(mine[award] ?? [], pairId(first, id)))
   }
 
   return (
@@ -152,8 +168,9 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
       {b && b.revealed > 0 && (
         <section aria-label="Revealed awards" className="flex flex-col gap-3">
           {[...b.awards.slice(0, b.revealed)].reverse().map((k) => {
-            const t = runoff(counts.picks[k] ?? [])
             const def = awardDef(k)
+            if (def?.kind === "teams") return <TeamsResult key={k} title={def.label} description={def.description} ballots={counts.picks[k] ?? []} name={name} latest={k === b.awards[b.revealed - 1]} />
+            const t = runoff(counts.picks[k] ?? [])
             const line = verdict(t, numbers[k], name)
             const last = t.rounds.at(-1)
             const words = roundsInWords(t, name)
@@ -168,8 +185,12 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
                     <div className="flex flex-wrap items-center gap-3">
                       {t.winners.map((id) => (
                         <span key={id} className="flex items-center gap-2">
-                          <PlayerAvatar id={id} name={name(id)} />
-                          <span className="font-display text-2xl font-bold">{name(id)}</span>
+                          <span className="flex -space-x-2">
+                            {pairOf(id).map((p) => (
+                              <PlayerAvatar key={p} id={p} name={name(p)} />
+                            ))}
+                          </span>
+                          <span className="font-display text-2xl font-bold">{label(id)}</span>
                         </span>
                       ))}
                       {t.winners.length > 1 && <span className="text-sm text-muted-foreground">tied</span>}
@@ -185,7 +206,7 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
                       <ul className="flex flex-col gap-1 text-sm">
                         {last.counts.map((v) => (
                           <li key={v.id} className="flex items-center gap-2">
-                            <span className="w-24 shrink-0 truncate">{name(v.id)}</span>
+                            <span className="w-28 shrink-0 truncate">{label(v.id)}</span>
                             <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                               <span className="block h-full rounded-full bg-primary" style={{ width: `${(v.n / last.active) * 100}%` }} />
                             </span>
@@ -244,44 +265,52 @@ export function AwardsPage({ state, update, onBack }: { state: PooleanState; upd
                       )}
                     </div>
                     {def && <p className="text-sm text-muted-foreground">{def.description}</p>}
-                    <div role="group" aria-label={`Rank players for ${def?.label ?? k}`} className="flex flex-wrap gap-2">
-                      {b.candidates
-                        .filter((id) => id !== me)
-                        .sort((x, y) => name(x).localeCompare(name(y)))
-                        .map((id) => {
-                          const place = ranking.indexOf(id)
-                          return (
-                            <button
-                              key={id}
-                              type="button"
-                              aria-pressed={place >= 0}
-                              aria-label={place >= 0 ? `${name(id)}, ranked ${place + 1}. Tap to take out.` : `Rank ${name(id)} next`}
-                              onClick={() => void tap(k, id)}
-                              className={cn(
-                                "flex min-h-10 items-center gap-2 rounded-full border px-3 py-1 text-sm",
-                                place >= 0 ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/60",
-                              )}
-                            >
-                              {place >= 0 && (
-                                <span aria-hidden className="grid size-5 place-items-center rounded-full bg-primary-foreground text-xs font-bold text-primary">
-                                  {place + 1}
-                                </span>
-                              )}
-                              {name(id)}
-                            </button>
-                          )
-                        })}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {ranking.length ? `Your order: ${ranking.map((id, i) => `${i + 1}. ${name(id)}`).join("  ")}` : "Tap players in order: your first choice, then your second, and so on."}
-                    </p>
+                    {def?.kind === "duo" ? (
+                      <DuoBallot candidates={b.candidates.filter((id) => id !== me)} ranking={ranking} half={half[k] ?? null} name={name} onTap={(id) => tapDuo(k, id)} onRemove={(pair) => void save(k, ranking.filter((x) => x !== pair))} />
+                    ) : (
+                      <>
+                        <div role="group" aria-label={`Rank players for ${def?.label ?? k}`} className="flex flex-wrap gap-2">
+                          {b.candidates
+                            .filter((id) => id !== me)
+                            .sort((x, y) => name(x).localeCompare(name(y)))
+                            .map((id) => {
+                              const place = ranking.indexOf(id)
+                              return (
+                                <button
+                                  key={id}
+                                  type="button"
+                                  aria-pressed={place >= 0}
+                                  aria-label={place >= 0 ? `${name(id)}, ranked ${place + 1}. Tap to take out.` : `Rank ${name(id)} next`}
+                                  onClick={() => tap(k, id)}
+                                  className={cn(
+                                    "flex min-h-10 items-center gap-2 rounded-full border px-3 py-1 text-sm",
+                                    place >= 0 ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/60",
+                                  )}
+                                >
+                                  {place >= 0 && (
+                                    <span aria-hidden className="grid size-5 place-items-center rounded-full bg-primary-foreground text-xs font-bold text-primary">
+                                      {place + 1}
+                                    </span>
+                                  )}
+                                  {name(id)}
+                                </button>
+                              )
+                            })}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {ranking.length
+                            ? `Your order: ${ranking.map((id, i) => `${i + 1}. ${name(id)}`).join("  ")}${def?.kind === "teams" && ranking.length < 6 ? `. Rank ${6 - ranking.length} more to fill both teams.` : ""}`
+                            : "Tap players in order: your first choice, then your second, and so on."}
+                        </p>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               )
             })
           )}
           {problem && <p className="text-sm text-destructive">{problem}</p>}
-          {me && <p className="text-xs text-muted-foreground">Rank as many players as you like. Tap a ranked player to take them out. You can change your ballot until voting closes, and nobody sees it.</p>}
+          {me && <p className="text-xs text-muted-foreground">Rank as many as you like. Tap a ranked player (or the x on a pair) to take them out. You can change your ballot until voting closes, and nobody sees it.</p>}
         </section>
       )}
       <PastAwards state={state} />
@@ -331,6 +360,96 @@ function EditorControls({ state, update, b }: { state: PooleanState; update: Upd
           <Button variant="ghost" onClick={() => put(undoReveal(b))}>
             Hide the last award again
           </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// A duo ballot: tap two players to make a pair, which is ranked next; ranked pairs are listed with a button to take each out.
+function DuoBallot({ candidates, ranking, half, name, onTap, onRemove }: { candidates: string[]; ranking: string[]; half: string | null; name: (id: string) => string; onTap: (id: string) => void; onRemove: (pair: string) => void }) {
+  return (
+    <>
+      <div role="group" aria-label="Pick two players to make a pair" className="flex flex-wrap gap-2">
+        {[...candidates]
+          .sort((x, y) => name(x).localeCompare(name(y)))
+          .map((id) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={half === id}
+              onClick={() => onTap(id)}
+              className={cn("min-h-10 rounded-full border px-3 py-1 text-sm", half === id ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/60")}
+            >
+              {name(id)}
+            </button>
+          ))}
+      </div>
+      <p className="text-xs text-muted-foreground">{half ? `Now pick ${name(half)}'s partner.` : ranking.length ? "Pick two more to rank another pair." : "Pick two players to make your first pair."}</p>
+      {ranking.length > 0 && (
+        <ol className="flex flex-col gap-1">
+          {ranking.map((pair, i) => (
+            <li key={pair} className="flex items-center gap-2 text-sm">
+              <span aria-hidden className="grid size-5 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                {i + 1}
+              </span>
+              <span className="flex-1">{pairOf(pair).map(name).join(" and ")}</span>
+              <button type="button" aria-label={`Take out ${pairOf(pair).map(name).join(" and ")}`} className="min-h-9 px-2 text-muted-foreground hover:text-foreground" onClick={() => onRemove(pair)}>
+                <X aria-hidden className="size-4" />
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+    </>
+  )
+}
+
+// The teams vote revealed: places 1 to 3 are the first team, 4 to 6 the second, each place found by instant runoff with the players
+// above it taken off every ballot (`places`).
+function TeamsResult({ title, description, ballots, name, latest }: { title: string; description: string; ballots: string[][]; name: (id: string) => string; latest: boolean }) {
+  const order = places(ballots)
+  const flat = order.flat()
+  const team = (ids: string[], label: string) =>
+    ids.length > 0 && (
+      <div className="flex flex-col gap-1.5">
+        <p className="text-sm font-semibold">{label}</p>
+        <div className="flex flex-wrap gap-3">
+          {ids.map((id) => (
+            <span key={id} className="flex items-center gap-2">
+              <PlayerAvatar id={id} name={name(id)} />
+              <span className="font-display text-xl font-bold">{name(id)}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  return (
+    <Card className={cn(latest && "ring-2 ring-gold/60")}>
+      <CardContent className="flex flex-col gap-3">
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+        </div>
+        {flat.length ? (
+          <>
+            {team(flat.slice(0, 3), "First Team")}
+            {team(flat.slice(3, 6), "Second Team")}
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted-foreground">How the count went</summary>
+              <p className="mt-1 text-xs text-muted-foreground">Each place is its own ranked-choice count, with the players already placed taken off every ballot.</p>
+              <ol className="mt-1 flex flex-col gap-0.5">
+                {order.map((ids, i) => (
+                  <li key={ids.join("|")}>
+                    Place {order.slice(0, i).flat().length + 1}: {ids.map(name).join(" and ")}
+                    {ids.length > 1 ? " (tied)" : ""}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nobody voted for this one.</p>
         )}
       </CardContent>
     </Card>
