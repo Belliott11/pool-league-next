@@ -81,3 +81,48 @@ export function WhoPrompt({ state }: { state: PooleanState }) {
     </div>
   )
 }
+
+// The first thing a new visitor sees on the Games home: what the site is and three steps to make it theirs. Picking a player (or "Just
+// looking") ends it; after that the Games home opens with "Next up for you" (src/pages/games/MyCard.tsx) instead.
+export function Welcome({ state }: { state: PooleanState }) {
+  const who = useWho()
+  const id = useId()
+  if (who !== null) return null
+  return (
+    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-4 rounded-2xl border bg-card p-4 sm:p-5">
+      <div>
+        <h2 id={`${id}-h`} className="font-display text-xl font-bold">
+          Welcome to Poolean Intel
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">Scores, stats, film and odds from our pool basketball games, all from the videos.</p>
+      </div>
+      <ol className="flex flex-col gap-3 text-sm">
+        <li className="flex gap-3">
+          <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">1</span>
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <label htmlFor={id} className="font-medium">
+              Tell us who you are
+            </label>
+            <WhoSelect state={state} id={id} />
+            <span className="text-xs text-muted-foreground">No password or account. It is kept on this phone.</span>
+          </div>
+        </li>
+        <li className="flex gap-3">
+          <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full border text-xs font-bold">2</span>
+          <span>
+            <span className="font-medium">The You tab is your page:</span> where you stand, your best plays and your film.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full border text-xs font-bold">3</span>
+          <span>
+            <span className="font-medium">This page has what is on now:</span> live games, Pick'em, the last night and the season teams.
+          </span>
+        </li>
+      </ol>
+      <button type="button" className="min-h-10 self-start text-sm text-muted-foreground underline" onClick={() => setWho(GUEST)}>
+        Just looking
+      </button>
+    </section>
+  )
+}

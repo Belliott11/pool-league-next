@@ -27,3 +27,17 @@ export function jumpToPanel(sectionId: string | null, title: string) {
   }
   go()
 }
+
+// Open a tab of a tabbed page (the Player page's Film tab, say) from somewhere else. The page may not be built yet when it is
+// opened from another tab, so the wish is also kept until the page's useJumpTab picks it up.
+let pending: { page: string; tab: string } | null = null
+export function openPageTab(page: string, tab: string) {
+  pending = { page, tab }
+  document.dispatchEvent(new CustomEvent("page-tab", { detail: { page, tab } }))
+}
+export function takePendingTab(page: string): string | null {
+  if (pending?.page !== page) return null
+  const t = pending.tab
+  pending = null
+  return t
+}

@@ -174,6 +174,17 @@ Two-Way/G and the points, assists, rebounds and true shooting leaders, 3+ games)
 Trends, History, and Models for editors). Both pages use `PageTabs`, `TabGroup` and `useJumpTab` from `src/components/PageTabs.tsx`;
 the tab row pins under the site header by measuring it.
 
+## A player's path through the site (2026-11-27)
+
+First visit: the Games home opens with "Welcome to Poolean Intel" (`Welcome` in `src/components/WhoAmI.tsx`): pick who you are (or "Just
+looking"), what the You tab is, what the Games home holds. The small "Who are you?" bar shows on other pages only. Once a player is
+picked, the Player tab reads "You" (bottom bar and the wide-screen tabs), the Player page has "Back to you" when looking at someone
+else, and the Games home's card (`src/pages/games/MyCard.tsx`) adds "Next up for you" (`src/lib/nextSteps.ts`, at most 4, most pressing
+first: a live game, open Pick'em, opening-night RSVP, their season team, Wrapped in the off-season, their film, their mixtape, the rival's
+head to head). A step opens a Games screen, a tab of their own Player page (`openPageTab` in `src/lib/jump.ts`, picked up by
+`useJumpTab`'s page id even when the page is not built yet) or scrolls to a card (`pickem-card`, `offseason-hub`). The old row of
+buttons is now an "Explore" grid with a line on each (`Explore` in `src/pages/Games.tsx`); "Start a live game" stays a button above it.
+
 ## Search, throwback, app card
 
 - Search (`src/components/SiteSearch.tsx`): players, games and pages, from the bottom bar's Search on a phone, the tab row on a wider

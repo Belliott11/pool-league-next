@@ -1,3 +1,4 @@
+import { takePendingTab } from "@/lib/jump"
 import { useEffect, useState, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
@@ -63,15 +64,24 @@ export function useHeaderHeight() {
 
 // The tab to show, switched when "Jump to a panel" names a group (the `panel-section` event from src/lib/jump.ts). `tabOf` maps a
 // group's element id to its tab.
-export function useJumpTab(first: string, tabOf: (sectionId: string) => string | null) {
-  const [tab, setTab] = useState(first)
+export function useJumpTab(first: string, tabOf: (sectionId: string) => string | null, page?: string) {
+  // A tab asked for from another page (openPageTab in src/lib/jump.ts) before this page was built.
+  const [tab, setTab] = useState(() => (page && takePendingTab(page)) || first)
   useEffect(() => {
     const on = (e: Event) => {
       const t = tabOf(String((e as CustomEvent).detail ?? ""))
       if (t) setTab(t)
     }
+    const onTab = (e: Event) => {
+      const d = (e as CustomEvent<{ page: string; tab: string }>).detail
+      if (page && d?.page === page) setTab(takePendingTab(page) ?? d.tab)
+    }
     document.addEventListener("panel-section", on)
-    return () => document.removeEventListener("panel-section", on)
+    document.addEventListener("page-tab", onTab)
+    return () => {
+      document.removeEventListener("panel-section", on)
+      document.removeEventListener("page-tab", onTab)
+    }
     // tabOf is a module-level mapping on both pages.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

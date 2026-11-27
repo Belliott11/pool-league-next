@@ -397,7 +397,8 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       <div aria-hidden className="lane-rope -mt-2" />
       {/* Not on a shared play or Wrapped: the visitor came for that. */}
       {readOnly && cloud && <SavedCopyNote cloud={cloud} />}
-      {!/^(clip|wrapped)/.test(view.sub) && <WhoPrompt state={state} />}
+      {/* The Games home has the full welcome (Welcome in WhoAmI.tsx) instead. */}
+      {!/^(clip|wrapped)/.test(view.sub) && !(view.tab === "games" && view.sub === "") && <WhoPrompt state={state} />}
       {/* One prompt at a time: the home screen tip waits until "Who are you?" has been answered or put off. */}
       {view.tab === "games" && view.sub === "" && who !== null && <HomeScreenTip />}
       {mode === "admin" && cloud && cloud.sync === "conflict" && (
@@ -460,7 +461,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         <TabsList className="max-sm:hidden">
           <TabsTrigger value="games">Games</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-          <TabsTrigger value="player">Player</TabsTrigger>
+          <TabsTrigger value="player">{me ? "You" : "Player"}</TabsTrigger>
           {!readOnly && <TabsTrigger value="players">Players</TabsTrigger>}
           {!readOnly && <TabsTrigger value="export">Export</TabsTrigger>}
           <button type="button" onClick={() => setSearching(true)} className="ml-1 flex items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground hover:text-foreground">
@@ -521,7 +522,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         )}
       </Tabs>
       </main>
-      <BottomNav tab={tab} onChange={setTab} onSearch={() => setSearching(true)} editor={!readOnly} />
+      <BottomNav tab={tab} onChange={setTab} onSearch={() => setSearching(true)} editor={!readOnly} you={!!me} />
       <SiteSearch state={state} open={searching} onOpenChange={setSearching} go={go} openPlayer={openPlayer} readOnly={readOnly} />
       <p className="text-xs text-muted-foreground">
         {readOnly ? "You are viewing the shared stats. Only the league editor can make changes." : "A subset of the full site, with more stats on the classic site."}

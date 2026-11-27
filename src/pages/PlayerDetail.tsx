@@ -1,3 +1,4 @@
+import { myPlayerId, useWho } from "@/lib/identity"
 import { SITE } from "@/lib/site"
 import { ThreeWorth } from "@/components/ThreeWorth"
 import { PlayerPointsAdded } from "@/components/PointsAdded"
@@ -197,6 +198,7 @@ export function PlayerDetailPage({
 
   // A link names a player by slug. Resolve it forgivingly ("ian" finds "g-ian"); a slug that matches nobody is said so
   // below, never answered with some other player's page.
+  const me = myPlayerId(useWho(), state.players)
   const resolved = playerId ? resolvePlayer(state, playerId) : null
   const unknownLink = !!playerId && !resolved
   const player = resolved ?? (playerId ? null : (state.players[0] ?? null))
@@ -223,7 +225,7 @@ export function PlayerDetailPage({
   }, [pid, version])
 
   // "Jump to a panel" names the group it is in; show that group's tab.
-  const [tab, setTab] = useJumpTab("overview", (id) => (id.startsWith("section-") ? tabOf(id.slice(8)) : null))
+  const [tab, setTab] = useJumpTab("overview", (id) => (id.startsWith("section-") ? tabOf(id.slice(8)) : null), "player")
 
   if (unknownLink) {
     return (
@@ -261,18 +263,25 @@ export function PlayerDetailPage({
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <Select value={pid} onValueChange={(id) => id && onChangePlayer(id)}>
-        <SelectTrigger className="w-56" aria-label="Choose a player">
-          <SelectValue placeholder="Pick a player">{player.name}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {state.players.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={pid} onValueChange={(id) => id && onChangePlayer(id)}>
+          <SelectTrigger className="w-56" aria-label="Choose a player">
+            <SelectValue placeholder="Pick a player">{player.name}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {state.players.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {me && me !== pid && (
+          <Button size="sm" variant="ghost" onClick={() => onChangePlayer(me)}>
+            Back to you
+          </Button>
+        )}
+      </div>
 
       <PlayerHero
         pid={pid}

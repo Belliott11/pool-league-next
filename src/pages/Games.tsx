@@ -21,6 +21,7 @@ import { showHub } from "@/lib/offseason"
 import { OffseasonHub } from "./games/OffseasonHub"
 import { NewSeasonPrompt } from "./games/NewSeasonPrompt"
 import { MyCard } from "./games/MyCard"
+import { Welcome } from "@/components/WhoAmI"
 import { TopPlays } from "./games/TopPlays"
 import { GameAlerts } from "@/components/GameAlerts"
 
@@ -148,56 +149,31 @@ export function GamesPage({
       <div className="flex min-w-0 flex-col gap-4">
         {readOnly && <LiveBanner state={state} onOpen={() => go("live")} />}
         {!readOnly && <NewSeasonPrompt state={state} update={update} />}
-        <div className="flex flex-wrap gap-2">
-          {(!readOnly || (!findLiveGame(state) && getClient())) && (
-            <Button variant={readOnly ? "outline" : "default"} onClick={() => go("live")}>
-              <Radio />
-              {findLiveGame(state) ? "Resume live game" : "Start a live game"}
-            </Button>
-          )}
-          {state.games.length > 0 && (
-            <Button variant="outline" onClick={() => showRecap()}>
-              <CalendarDays />
-              Night recap
-            </Button>
-          )}
-          {state.games.length > 0 && (
-            <Button variant="outline" onClick={() => go("hall")}>
-              <Crown />
-              Hall of fame
-            </Button>
-          )}
-          {((state.seasonTeamSets ?? []).length > 0 || !readOnly) && (
-            <Button variant="outline" onClick={() => go("teams")}>
-              <Shield />
-              Season teams
-            </Button>
-          )}
-          {((state.playOfYear ?? []).length > 0 || !readOnly) && (
-            <Button variant="outline" onClick={() => go("poty")}>
-              <Trophy />
-              Play of the Year
-            </Button>
-          )}
-          {state.players.length > 1 && (
-            <Button variant="outline" onClick={() => go("h2h")}>
-              <Swords />
-              Settle it
-            </Button>
-          )}
-          {state.games.some((g) => g.scoringEvents.length > 0) && (
-            <Button variant="outline" onClick={() => go("how")}>
-              <Calculator />
-              How the numbers work
-            </Button>
-          )}
-        </div>
-        <MyCard state={state} onOpenPlayer={onOpenPlayer} />
+        {(!readOnly || (!findLiveGame(state) && getClient())) && (
+          <Button className="self-start" variant={readOnly ? "outline" : "default"} onClick={() => go("live")}>
+            <Radio />
+            {findLiveGame(state) ? "Resume live game" : "Start a live game"}
+          </Button>
+        )}
+        <Welcome state={state} />
+        <MyCard state={state} onOpenPlayer={onOpenPlayer} go={go} />
+        <Explore
+          tiles={[
+            state.games.length > 0 && { key: "recap", Icon: CalendarDays, title: "Night recap", text: "Every game from the last night, the player of the night and the plays.", onClick: () => showRecap() },
+            ((state.seasonTeamSets ?? []).length > 0 || !readOnly) && { key: "teams", Icon: Shield, title: "Season teams", text: "The teams for the season, the standings and trades.", onClick: () => go("teams") },
+            ((state.playOfYear ?? []).length > 0 || !readOnly) && { key: "poty", Icon: Trophy, title: "Play of the Year", text: "The best plays in a bracket, voted on together.", onClick: () => go("poty") },
+            state.players.length > 1 && { key: "h2h", Icon: Swords, title: "Settle it", text: "Any two players head to head: the record and the tale of the tape.", onClick: () => go("h2h") },
+            state.games.length > 0 && { key: "hall", Icon: Crown, title: "Hall of fame", text: "Records, champions and the best games ever played.", onClick: () => go("hall") },
+            state.games.some((g) => g.scoringEvents.length > 0) && { key: "how", Icon: Calculator, title: "How the numbers work", text: "The odds, runs and Two-Way explained on real moments.", onClick: () => go("how") },
+          ]}
+        />
         <PotyCard state={state} onOpen={() => go("poty")} />
         <TopPlays state={state} />
-        {showHub(state) && <OffseasonHub state={state} onWrapped={() => go("wrapped")} onOpenPlayer={onOpenPlayer} onLive={() => go("live")} onOpenGame={open} />}
+        {showHub(state) && <div id="offseason-hub" className="scroll-mt-24"><OffseasonHub state={state} onWrapped={() => go("wrapped")} onOpenPlayer={onOpenPlayer} onLive={() => go("live")} onOpenGame={open} /></div>}
         <GameAlerts />
-        <PickEmCard state={state} />
+        <div id="pickem-card" className="scroll-mt-24">
+          <PickEmCard state={state} />
+        </div>
         {/* The hub already covers opening night, so the regular next-night card would repeat it. */}
         {!(showHub(state) && upcomingRsvp(state)?.date === state.openingNight?.date) && <NightPreviewCard state={state} update={update} />}
         <GoingIn state={state} update={update} />
@@ -215,5 +191,37 @@ export function GamesPage({
       </div>
       <Sidebar state={state} pastSeasons={pastSeasons} update={update} onOpenPlayer={onOpenPlayer} onOpenGame={open} />
     </div>
+  )
+}
+
+interface Tile {
+  key: string
+  Icon: typeof Trophy
+  title: string
+  text: string
+  onClick: () => void
+}
+
+// The rest of the Games section, each with a line on what it is, so nobody has to open one to find out.
+function Explore({ tiles }: { tiles: (Tile | false)[] }) {
+  const shown = tiles.filter((t): t is Tile => !!t)
+  if (!shown.length) return null
+  return (
+    <section aria-labelledby="explore-h" className="flex flex-col gap-2">
+      <h2 id="explore-h" className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        Explore
+      </h2>
+      <ul className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+        {shown.map(({ key, Icon, title, text, onClick }) => (
+          <li key={key}>
+            <button type="button" onClick={onClick} className="flex h-full w-full flex-col items-start gap-1 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/60 hover:bg-muted/40">
+              <Icon aria-hidden className="size-5 text-primary" />
+              <span className="font-semibold">{title}</span>
+              <span className="text-xs text-muted-foreground">{text}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

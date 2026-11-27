@@ -13,10 +13,14 @@ import { rivalries } from "@/lib/rivalries"
 import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
 import { computeLeaderboard } from "@/lib/stats"
 import type { PooleanState } from "@/lib/types"
+import mixtapes from "@/data/mixtapes.json"
+import { openPageTab } from "@/lib/jump"
+import { nextSteps, type Step } from "@/lib/nextSteps"
+import { ChevronRight } from "lucide-react"
 
 // The top of the Games page for someone who has said who they are: where they stand, what they are close to, who their rival is
 // and whether they are down for the next night. Nothing here is new data; it is the league's numbers with the reader picked out.
-export function MyCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+export function MyCard({ state, onOpenPlayer, go }: { state: PooleanState; onOpenPlayer: (id: string) => void; go: (sub: string) => void }) {
   const me = myPlayerId(useWho(), state.players)
   const d = useMemo(() => {
     if (!me) return null
@@ -33,9 +37,17 @@ export function MyCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPla
       mvp: season.mvp.some((p) => p.id === me) ? season.mvp.filter((p) => p.now > season.mvp.find((x) => x.id === me)!.now).length : -1,
       rival,
       next: upcomingRsvp(state),
+      steps: nextSteps(state, me, { mixtape: me in (mixtapes as Record<string, unknown>), rival: rival ? (rival.a === me ? rival.b : rival.a) : null }),
     }
   }, [state, me])
   if (!me || !d) return null
+  const follow = (s: Step) => {
+    if (s.go.kind === "sub") go(s.go.sub)
+    else if (s.go.kind === "tab") {
+      onOpenPlayer(me)
+      openPageTab("player", s.go.tab)
+    } else document.getElementById(s.go.id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
   const lines: string[] = []
   if (d.row && d.rank) lines.push(`You are ${ordinal(d.rank)} of ${d.ranked} in the standings at ${d.row.twoWayPer25.toFixed(1)} two-way per game, with a ${d.row.wins}-${d.row.losses} record.`)
   else lines.push(`You are not ranked yet. That takes ${MIN_RANKED} filmed games with even teams, and your page has everything so far.`)
@@ -62,6 +74,24 @@ export function MyCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPla
             <li key={l}>{l}</li>
           ))}
         </ul>
+        {d.steps.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Next up for you</h3>
+            <ul className="flex flex-col divide-y rounded-xl border">
+              {d.steps.map((s) => (
+                <li key={s.key}>
+                  <button type="button" onClick={() => follow(s)} className="flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted/50">
+                    <span className="min-w-0 flex-1">{s.text}</span>
+                    <span className="flex shrink-0 items-center gap-0.5 font-medium text-primary">
+                      {s.button}
+                      <ChevronRight aria-hidden className="size-4" />
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <Button size="sm" variant="outline" className="self-start" onClick={() => onOpenPlayer(me)}>
           Open your page
         </Button>

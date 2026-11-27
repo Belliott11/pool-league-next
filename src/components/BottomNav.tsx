@@ -12,7 +12,8 @@ const ITEMS = [
 // tabs stay at the top and this is hidden. It reaches the screen's bottom edge only because the page uses the whole screen
 // (viewport-fit=cover in index.html); without that, iOS stops it above the home indicator and the page shows through below it. Its
 // background also carries on past the edge (::after), for the bounce at the end of a scroll.
-export function BottomNav({ tab, onChange, onSearch, editor = true }: { tab: string; onChange: (tab: string) => void; onSearch: () => void; editor?: boolean }) {
+// The Player tab reads "You" once the visitor has said who they are, since it then opens on them.
+export function BottomNav({ tab, onChange, onSearch, editor = true, you = false }: { tab: string; onChange: (tab: string) => void; onSearch: () => void; editor?: boolean; you?: boolean }) {
   return (
     <nav
       aria-label="Sections"
@@ -29,7 +30,7 @@ export function BottomNav({ tab, onChange, onSearch, editor = true }: { tab: str
             >
               <Icon className="size-5" aria-hidden />
               {/* Six buttons on a phone leave about 65px each, too narrow for "Leaderboard". */}
-              <span className="max-w-full truncate px-0.5">{editor && short ? short : label}</span>
+              <span className="max-w-full truncate px-0.5">{value === "player" && you ? "You" : editor && short ? short : label}</span>
             </button>
           </li>
         ))}
