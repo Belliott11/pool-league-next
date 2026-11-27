@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Clapperboard, ListVideo, MessageSquare, Play
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { clipSource } from "@/lib/clipCuts"
+import { CUT_TAIL, clipSource } from "@/lib/clipCuts"
 import { getClient } from "@/lib/cloud"
 import { ownerHash } from "@/lib/deviceKey"
 import type { PlayValue } from "@/lib/epa"
@@ -21,7 +21,9 @@ import type { Game, PooleanState } from "@/lib/types"
 const signed = (x: number) => (x >= 0 ? `+${x.toFixed(1)}` : x.toFixed(1))
 const pps = (t: Takeaway) => `${t.pps.toFixed(2)} points a shot (${t.shots})`
 const LEAD = 4 // seconds of the play shown before its logged moment
-const TAIL = 3 // and after it
+// and after it: to the end of the play's short cut (CUT_TAIL), since the logged moment is often the release or a late tap and the
+// basket lands after it (3 s cut plays off before they finished, 2026-11-27)
+const TAIL = CUT_TAIL
 const SPEEDS = [1, 0.5, 0.25]
 export const playLink = (p: PlayValue) => `${SITE}#/games/film/${encodeURIComponent(`${p.gameId}.${p.id}`)}`
 
@@ -132,12 +134,19 @@ function FilmViewer({ state, queue, index, onIndex, onClose, notes, pinned = fal
     if (v) v.playbackRate = speed
   }, [speed, index])
   if (!play || !src) return null
+  // At the end of the play (or of the file, when the play's cut ends first): go round again, on to the next play, or stop.
+  const finish = () => {
+    const v = video.current
+    if (!v) return
+    if (loop) {
+      v.currentTime = start
+      void v.play().catch(() => {})
+    } else if (index < queue.length - 1) onIndex(index + 1)
+    else v.pause()
+  }
   const onTime = () => {
     const v = video.current
-    if (!v || v.currentTime < end) return
-    if (loop) v.currentTime = start
-    else if (index < queue.length - 1) onIndex(index + 1)
-    else v.pause()
+    if (v && v.currentTime >= end - 0.05) finish()
   }
   const share = async () => {
     const link = playLink(play)
@@ -171,6 +180,7 @@ function FilmViewer({ state, queue, index, onIndex, onClose, notes, pinned = fal
           void e.currentTarget.play().catch(() => {})
         }}
         onTimeUpdate={onTime}
+        onEnded={finish}
       />
       <p className={cn("px-1 text-sm", pinned && "line-clamp-2")}>
         {describe(play, (id) => playerName(state, id))}{" "}

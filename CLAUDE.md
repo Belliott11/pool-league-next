@@ -446,7 +446,7 @@ directions, points per shot and the plays). Plays are plain sentences (`src/lib/
 "Zach misses a 3 wide open. It goes out of bounds."; no "good"/"no good" verdict, asked 2026-11-27) with
 a small court showing the spot (`spot`, the shot's `shotLocation`).
 Every play opens in the film room's own viewer (`FilmViewer`): from the play's short cut when one exists, else the recording, 4 s before
-to 3 s after the logged moment, muted autoplay, 1x/0.5x/0.25x, Loop, previous/next and "Watch all" (a list back to back), "Send this
+to 6 s after the logged moment (the end of its short cut; 3 s cut plays off, 2026-11-27), muted autoplay, 1x/0.5x/0.25x, Loop, previous/next and "Watch all" (a list back to back), "Send this
 play" (`#/games/film/<game>.<play>`, `src/pages/games/FilmPlayPage.tsx`, share sheet or copied link) and notes. While open it stays pinned on
 every screen size (asked 2026-11-27), just below the site header and the Player page's pinned tab row (`useStickyTop`), slimmed down while
 pinned: the video at most 30% of the screen's height, a two-line caption, notes behind a "Notes" button. Notes (`src/lib/filmNotes.ts`, `supabase/filmNotes.sql`): up to 280 characters on a play, signed with
