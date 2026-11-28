@@ -12,6 +12,9 @@ export interface GroupDef {
 // A panel belongs with the side of the ball it measures: offense next to offense, defense in Defense.
 // A panel that repeats another is dropped. The self-inflicted bars say what Turnover Type Breakdown says in a table, and
 // Season Timeline retells Season Recap and Upset Tracker in order.
+// Player page panels left out because a newer card answers the same question: "Who makes <name> better" (Teammates.tsx) shows each
+// teammate's lift, the passes between them and their record together, leaned for small samples (2026-11-28).
+export const PLAYER_DROP = new Set(["Teammate Synergy (With/Without)"])
 export const LEADERBOARD_DROP = new Set(["Season Timeline", "Self-Inflicted vs. Forced Turnover Rate"])
 
 export const LEADERBOARD_GROUPS: GroupDef[] = [

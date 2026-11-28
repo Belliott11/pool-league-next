@@ -1,4 +1,4 @@
-import { Check, Gift, Radio, Share2, Smartphone, Sparkles } from "lucide-react"
+import { Check, Gift, Radio, Share2, Smartphone } from "lucide-react"
 import { FlipDigits } from "@/components/FlipDigits"
 import { findLiveGame, liveTotals } from "@/lib/live"
 import { scoreOf } from "@/lib/nightRecap"
@@ -174,30 +174,6 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
 
       {!tonight && <Throwback state={state} />}
 
-      <div className="flex flex-col gap-1.5">
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <Sparkles aria-hidden className="size-4 text-gold" /> Predicted players to watch
-        </h3>
-        {picks.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nobody has picked yet. {tonight ? "" : "Pick who makes a jump below."}</p>
-        ) : (
-          <>
-            <p className="text-xs text-muted-foreground">Who the group thinks will make a jump, from {pickers} {pickers === 1 ? "person" : "people"}.</p>
-            <ul className="flex flex-col gap-1 text-sm">
-              {picks.map((r) => (
-                <li key={r.id} className="flex items-center gap-2">
-                  <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left hover:underline" onClick={() => onOpenPlayer(r.id)}>
-                    <PlayerAvatar id={r.id} name={playerName(state, r.id)} size="sm" />
-                    <span className="truncate font-medium">{playerName(state, r.id)}</span>
-                  </button>
-                  <span className="shrink-0 font-display font-bold tabular-nums">{r.votes}</span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
-
       {!tonight && <PlayersToWatch state={state} onOpenPlayer={onOpenPlayer} />}
 
       <Button
@@ -212,7 +188,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
         <Share2 aria-hidden /> {sent === "copied" ? "Copied" : sent === "failed" ? "Could not share" : "Share for the group chat"}
       </Button>
 
-      <JumpPicksCard state={state} p={p} />
+      <JumpPicksCard state={state} p={p} onOpenPlayer={onOpenPlayer} />
       <PredictionsCard state={state} p={p} />
 
       {/* Adam's app, for the parts this site does not do: live power ranking votes at a party, and the official rules. */}

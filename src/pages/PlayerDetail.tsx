@@ -17,7 +17,7 @@ import { resolvePlayer } from "@/lib/players"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PanelBoundary } from "@/components/PanelBoundary"
 import { PanelGroup } from "@/components/PanelGroup"
-import { arrange, PLAYER_GROUPS, placeOf } from "@/lib/panelGroups"
+import { arrange, PLAYER_DROP, PLAYER_GROUPS, placeOf } from "@/lib/panelGroups"
 import { ClipStrip } from "@/components/ClipTile"
 import { PlayerHero } from "@/components/PlayerHero"
 import { bestClips } from "@/lib/clips"
@@ -130,7 +130,7 @@ function PlayerPanel({ spec, pid, version }: { spec: PlayerPanelSpec; pid: strin
 }
 
 function Panels({ section, pid, version }: { section: string; pid: string; version: unknown }) {
-  const layout = useMemo(() => arrange(PANELS, PLAYER_GROUPS), [])
+  const layout = useMemo(() => arrange(PANELS, PLAYER_GROUPS, { drop: PLAYER_DROP }), [])
   const body = (p: PlayerPanelSpec, opened: number) => (p.title === "League Rank" ? <LeagueRank pid={pid} /> : <PlayerPanelBody spec={p} pid={pid} version={version} opened={opened} />)
   const entries = layout.get(section) ?? []
   return (
@@ -167,7 +167,7 @@ const TABS: { key: string; title: string; sections: string[] }[] = [
 ]
 const tabOf = (section: string) => TABS.find((t) => t.sections.includes(section))?.key ?? "overview"
 
-const JUMP_ITEMS: JumpItem[] = PANELS.map((p) => {
+const JUMP_ITEMS: JumpItem[] = PANELS.filter((p) => !PLAYER_DROP.has(p.title)).map((p) => {
   const g = placeOf(p.title, PLAYER_GROUPS)
   const home = g?.home ?? p.section
   return { title: p.title, group: `${SECTIONS.find((s) => s.key === home)?.title ?? "Overview"}${g ? `, ${g.title}` : ""}`, sectionId: `section-${home}`, hint: p.hint }

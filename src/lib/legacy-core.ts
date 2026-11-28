@@ -7833,6 +7833,7 @@ let teammateSynergySort = { key: "gpWith", dir: "desc" };
 function renderTeammateSynergy(playerId) {
   const headerRow = document.getElementById("teammateSynergyHeaderRow");
   const body = document.getElementById("teammateSynergyBody");
+  if (!headerRow || !body) return; // the panel is left off the Player page (PLAYER_DROP in panelGroups.ts)
   renderSortableHeader(headerRow, TEAMMATE_SYNERGY_COLUMNS, teammateSynergySort, () => renderTeammateSynergy(playerId));
   const rows = computeTeammateSynergy(playerId);
   const sortCol = TEAMMATE_SYNERGY_COLUMNS.find(c => c.key === teammateSynergySort.key);

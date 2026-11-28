@@ -730,7 +730,11 @@ Asked to remove redundancies: one Win chance added card (every play, with Clutch
 decided games", though `winProbAdded` in insight.ts still feeds the written reads and the head-to-head page), one fatigue card, and shared
 helpers instead of copies: `signed` in `src/lib/format.ts`, `filmedGames`/`isFilmed` in `src/lib/filmed.ts`, `shareFile`/`shareVideo` in
 `src/lib/shareFile.ts`, `VIDEO_HOST` from `src/lib/clipShare.ts`. `pointsAdded(state, { only })` keeps each game's answer per copy of the
-league data (many cards ask for the same game). Before adding a card, check the Leaderboard and Player tabs for one that already answers
+league data (many cards ask for the same game). Second pass the same day: the off-season home's "Predicted players to watch" tally moved
+into the "Who makes a jump?" card ("What the group picked"; once the season starts the predictions card's "Picked to make a jump" covers
+it); on opening night the predictions card no longer shows in both the hub and the sidebar (the sidebar's waits for `!showHub`); and the
+Player page leaves out the classic "Teammate Synergy (With/Without)" (`PLAYER_DROP` in panelGroups.ts), which "Who makes <name> better"
+replaces. Before adding a card, check the Leaderboard and Player tabs for one that already answers
 the question.
 
 ## Ideas not built

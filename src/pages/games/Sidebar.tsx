@@ -14,7 +14,7 @@ import { SeasonPredictionsCard } from "./Predictions"
 import { PredictionScorecard } from "./PredictionScorecard"
 import { RecordsCard, SeasonStoriesCard } from "./SeasonCards"
 import { distinctNumbers } from "@/lib/format"
-import { isOffseason } from "@/lib/offseason"
+import { showHub } from "@/lib/offseason"
 import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
 import { seasonView } from "@/lib/season"
 import { computeLeaderboard } from "@/lib/stats"
@@ -144,7 +144,7 @@ export function Sidebar({
       <SeasonStoriesCard state={state} update={update} />
       <AwardRaceCard state={state} onOpenPlayer={onOpenPlayer} />
       <ProjectionsCard state={state} onOpenPlayer={onOpenPlayer} />
-      {state.openingNight && !isOffseason(state) && <SeasonPredictionsCard state={state} />}
+      {state.openingNight && !showHub(state) && <SeasonPredictionsCard state={state} />}
       <InjuryBoard state={state} update={update} onOpenPlayer={onOpenPlayer} />
       {/* The smaller cards share one spot with a tab each, so the column is a few cards long, not ten. */}
       <ViewTabs

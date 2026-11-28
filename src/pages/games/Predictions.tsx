@@ -59,8 +59,9 @@ function PlayerSelect({ state, value, onChange, label, taken = [] }: { state: Po
   )
 }
 
-// Before opening night everyone names up to three players they think will make a jump. The group's picks show in the hub.
-export function JumpPicksCard({ state, p }: { state: PooleanState; p: PredictionsData }) {
+// Before opening night everyone names up to three players they think will make a jump; the group's tally shows under the picks. Once the
+// season starts, PredictionsCard's "Picked to make a jump" takes over (with how each is doing).
+export function JumpPicksCard({ state, p, onOpenPlayer }: { state: PooleanState; p: PredictionsData; onOpenPlayer: (id: string) => void }) {
   const { client, season, me, entries, mine, save, open } = p
   const [picked, setPicked] = useState<string[]>([])
   const [status, setStatus] = useState("")
@@ -69,6 +70,7 @@ export function JumpPicksCard({ state, p }: { state: PooleanState; p: Prediction
   useEffect(() => {
     setPicked(savedKey ? savedKey.split(",") : [])
   }, [savedKey])
+  const tally = jumpPicks(entries).filter((r) => state.players.some((x) => x.id === r.id))
   if (!client || !season || !open) return null
   const roster = [...state.players].sort((a, b) => a.name.localeCompare(b.name))
   const toggle = (id: string) => {
@@ -107,6 +109,22 @@ export function JumpPicksCard({ state, p }: { state: PooleanState; p: Prediction
             {mine?.picks.jumps?.length ? "Update my picks" : "Lock in my picks"}
           </Button>
           {status && <p className="text-xs text-muted-foreground">{status}</p>}
+        </div>
+      )}
+      {tally.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-sm font-semibold">What the group picked</p>
+          <ul className="flex flex-col gap-1 text-sm">
+            {tally.map((r) => (
+              <li key={r.id} className="flex items-center gap-2">
+                <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left hover:underline" onClick={() => onOpenPlayer(r.id)}>
+                  <PlayerAvatar id={r.id} name={playerName(state, r.id)} size="sm" />
+                  <span className="truncate font-medium">{playerName(state, r.id)}</span>
+                </button>
+                <span className="shrink-0 font-display font-bold tabular-nums">{r.votes}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </section>
