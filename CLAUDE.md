@@ -440,7 +440,8 @@ everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games ar
 `src/lib/seasonPreview.ts`, page `#/games/preview` (`src/pages/games/SeasonPreviewPage.tsx`; a card on the off-season home, an Explore
 tile while the hub shows, and in search). Every player with `MIN_PARTIES` (3) parties last summer (or 3 games this site's season), most
 parties first: last summer's record, parties, power-ranking #1 nights and best rank (the old site's season card), the voted awards they won
-(pastAwards.ts), their place in last summer's power rankings (`powerRank`: average nightly percentile, the card's `powerPct`, among
+(pastAwards.ts), their place in last summer's power rankings (`powerRank`: average nightly percentile, worked out exactly from the season's nightly `rankings` since the card's `powerPct` is rounded,
+among
 regulars, ties shared; nights ranked first are only ever a count out of their parties, so it never reads as the season's #1; corrected
 2026-11-28 after Ben read as #1 when Phillip is), points a game in filmed games, form rating going in, the trend at the end (improving.ts), and their best partner (the
 teammate lift from teammates.ts at 0.5+, else the best record together over 5+ games). `storyline` turns the strongest one or two facts

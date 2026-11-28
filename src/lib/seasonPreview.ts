@@ -78,10 +78,18 @@ export function seasonPreview(state: PooleanState): PreviewRow[] {
   }
   // Last summer's power rankings: the average nightly percentile, among the players with MIN_PARTIES parties (one great night is not a
   // season). Ties share a place.
+  // The exact average of each night's percentile, from the nightly rankings: the season card rounds it to a whole number, which made Ben
+  // (73.25) and Reilly (72.98) look tied (2026-11-28).
+  const nightly = new Map<string, number[]>()
+  for (const night of season?.rankings ?? []) for (const x of night.players) (nightly.get(x.slug) ?? nightly.set(x.slug, []).get(x.slug)!).push(x.pct)
+  for (const r of out) {
+    const v = nightly.get(r.id)
+    if (v?.length) r.powerPct = v.reduce((a, x) => a + x, 0) / v.length
+  }
   const ranked = out.filter((r) => r.powerPct !== null && r.parties >= MIN_PARTIES)
   for (const r of ranked) {
-    r.powerRank = ranked.filter((x) => x.powerPct! > r.powerPct!).length + 1
-    r.powerTied = ranked.filter((x) => x.powerPct === r.powerPct).length > 1
+    r.powerRank = ranked.filter((x) => x.powerPct! > r.powerPct! + 0.005).length + 1
+    r.powerTied = ranked.filter((x) => Math.abs(x.powerPct! - r.powerPct!) < 0.005).length > 1
   }
   return out.sort((a, b) => b.parties - a.parties || (b.record ? b.record[0] : 0) - (a.record ? a.record[0] : 0))
 }
