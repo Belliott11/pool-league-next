@@ -17,8 +17,10 @@ export interface PreviewRow {
   id: string
   parties: number // nights at last season's parties
   record: [number, number] | null
-  crowns: number // nights at #1 in the party power rankings
-  bestRank: number | null
+  crowns: number // party nights they were ranked first
+  powerRank: number | null // place in last summer's power rankings: average nightly percentile (powerPct), among regulars, ties shared
+  powerPct: number | null
+  powerTied: boolean // another regular has the same place
   awards: string[] // last season's voted awards they won
   ppg: number | null // points a game in filmed games
   filmed: number
@@ -63,7 +65,9 @@ export function seasonPreview(state: PooleanState): PreviewRow[] {
       parties,
       record: c && c.w !== undefined ? [c.w, c.l ?? 0] : null,
       crowns: (c as { crowns?: number } | undefined)?.crowns ?? 0,
-      bestRank: (c as { bestRank?: number } | undefined)?.bestRank ?? null,
+      powerPct: c?.powerPct ?? null,
+      powerRank: null,
+      powerTied: false,
       awards,
       ppg: mine.length ? pts / mine.length : null,
       filmed: mine.length,
@@ -72,16 +76,28 @@ export function seasonPreview(state: PooleanState): PreviewRow[] {
       partner,
     })
   }
+  // Last summer's power rankings: the average nightly percentile, among the players with MIN_PARTIES parties (one great night is not a
+  // season). Ties share a place.
+  const ranked = out.filter((r) => r.powerPct !== null && r.parties >= MIN_PARTIES)
+  for (const r of ranked) {
+    r.powerRank = ranked.filter((x) => x.powerPct! > r.powerPct!).length + 1
+    r.powerTied = ranked.filter((x) => x.powerPct === r.powerPct).length > 1
+  }
   return out.sort((a, b) => b.parties - a.parties || (b.record ? b.record[0] : 0) - (a.record ? a.record[0] : 0))
 }
 
-// The one or two facts that make a player's story, strongest first: awards, nights at #1, a strong or rough record, the trend at the end,
+const ordinal = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`
+
+// The one or two facts that make a player's story, strongest first: awards, last summer's power ranking, a strong or rough record, the trend at the end,
 // the group's jump picks, a goal set for the summer.
 export function storyline(r: PreviewRow, name: (id: string) => string, extra: { jumpVotes?: number; goal?: string } = {}): string {
   const facts: string[] = []
   if (r.awards.length) facts.push(`Voted ${r.awards.slice(0, 2).join(" and ")} last summer`)
-  if (r.crowns >= 2) facts.push(`#1 in the power rankings at ${r.crowns} parties`)
-  else if (r.bestRank === 1) facts.push("topped the power rankings once")
+  // The season's power ranking first; nights ranked first only as a count out of their parties, so it never reads as the season's #1.
+  const firsts = r.crowns ? `, ranked first on ${r.crowns} of ${r.parties} ${r.parties === 1 ? "night" : "nights"}` : ""
+  const place = (n: number) => (r.powerTied ? `tied for ${n === 1 ? "#1" : ordinal(n)}` : n === 1 ? "#1" : ordinal(n))
+  if (r.powerRank !== null && r.powerRank <= 3) facts.push(`${place(r.powerRank)} in last summer's power rankings${firsts}`)
+  else if (r.crowns >= 2) facts.push(`ranked first on ${r.crowns} of ${r.parties} party nights`)
   if (r.record) {
     const [w, l] = r.record
     const share = w / Math.max(1, w + l)
