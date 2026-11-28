@@ -70,7 +70,7 @@ export function Sidebar({
                   </div>
                   <div>
                     <dt className="inline font-semibold text-foreground">Uneven teams: </dt>
-                    <dd className="inline">games like 3 against 2 are left out of the Leaderboard unless you turn on Include Imbalanced Games.</dd>
+                    <dd className="inline">games like 3 against 2 are left out of the Stats page unless you turn on Include Imbalanced Games.</dd>
                   </div>
                 </dl>
               </details>

@@ -461,7 +461,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
       <Tabs className="min-w-0" value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList className="max-sm:hidden">
           <TabsTrigger value="games">Games</TabsTrigger>
-          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+          <TabsTrigger value="leaderboard">Stats</TabsTrigger>
           <TabsTrigger value="player">{me ? "You" : "Player"}</TabsTrigger>
           {!readOnly && <TabsTrigger value="players">Players</TabsTrigger>}
           {!readOnly && <TabsTrigger value="export">Export</TabsTrigger>}
@@ -483,7 +483,7 @@ function AppShell({ initial, mode, cloud }: { initial: PooleanState; mode: Mode;
         </TabsContent>
         <TabsContent value="leaderboard" keepMounted>
           {visited.current.has("leaderboard") && <Frozen active={tab === "leaderboard"} keys={[statsShown, toggles]}>
-          <Suspense fallback={<PageSkeleton label="Loading leaderboard" />}>
+          <Suspense fallback={<PageSkeleton label="Loading stats" />}>
             <LeaderboardPage
             state={statsShown}
             toggles={toggles}

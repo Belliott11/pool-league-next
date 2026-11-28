@@ -51,7 +51,7 @@ export function FiltersMenu({ toggles, setToggles }: { toggles: Toggles; setTogg
                 <Switch checked={!!toggles.currentRules} onCheckedChange={(v) => setToggles({ ...toggles, currentRules: v })} />
               </label>
               <p className="text-xs text-muted-foreground">
-                Poolean's rulebook last changed on {formatDateDisplay(rulesFrom)}. On: the Leaderboard and player pages count only games since then. The Games pages always show every game.
+                Poolean's rulebook last changed on {formatDateDisplay(rulesFrom)}. On: the Stats and player pages count only games since then. The Games pages always show every game.
               </p>
             </li>
           )}

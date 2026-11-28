@@ -137,7 +137,7 @@ function GameCard({
             {game.liveInProgress && <Badge variant="secondary">Live now</Badge>}
             {!game.liveInProgress && liveOnly && <Badge variant="secondary">Live score only</Badge>}
             {!isBalancedGame(game) && (
-              <Badge variant="secondary" title="Excluded from Leaderboard rates unless Include Imbalanced Games is on.">
+              <Badge variant="secondary" title="Excluded from Stats page rates unless Include Imbalanced Games is on.">
                 {game.teamA.length}v{game.teamB.length}
               </Badge>
             )}

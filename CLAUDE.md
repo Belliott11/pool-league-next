@@ -179,6 +179,9 @@ Record and Points added (`epa.ts`) use the same rule.
 
 ## Leaderboard
 
+Shown to visitors as "Stats" since 2026-11-28 (bottom bar, wide-screen tabs, search, notes that point at it); the code, the
+`leaderboard` tab value and every address keep the old name, so links still work. Call it the Stats page in site text.
+
 The same pattern (`src/pages/Leaderboard.tsx`): a "League at a glance" card (`src/pages/leaderboard/LeagueGlance.tsx`: top three by
 Two-Way/G and the points, assists, rebounds and true shooting leaders, 3+ games), then tabs (Overview, Shooting, Defense, Matchups,
 Trends, History, and Models for editors). Both pages use `PageTabs`, `TabGroup` and `useJumpTab` from `src/components/PageTabs.tsx`;

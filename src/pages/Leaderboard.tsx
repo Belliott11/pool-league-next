@@ -135,7 +135,7 @@ export function LeaderboardPage({
         </div>
         <StatLegend />
       </div>
-      <PageTabs id="lb" label="Leaderboard sections" tabs={tabs} value={tab} onChange={setTab}>
+      <PageTabs id="lb" label="Stats sections" tabs={tabs} value={tab} onChange={setTab}>
         {tab === "overview" ? (
           <>
             <SeasonSwitch state={state} toggles={toggles} setToggles={setToggles} />

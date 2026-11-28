@@ -385,7 +385,7 @@ function TwoWay({ state, onOpenGame }: { state: PooleanState; onOpenGame: (id: s
       </div>
       <p>
         {name}'s Two-Way in this game: offense {signed(off)}, defense {signed(dRating)}, total <span className="font-semibold">{signed(off + dRating)}</span>. Games run to different
-        lengths, so the Leaderboard's Two-Way/G scales it to an average game: this one was {(pace / PER).toFixed(2)} average games long, which makes it{" "}
+        lengths, so the Stats page's Two-Way/G scales it to an average game: this one was {(pace / PER).toFixed(2)} average games long, which makes it{" "}
         <span className="font-semibold">{signed(perGame)}</span> per game.
       </p>
       <div>
@@ -495,7 +495,7 @@ function PointsAddedWalk({ state, onOpenGame }: { state: PooleanState; onOpenGam
         <PlayValues epa={epa} />
       </div>
       <p>
-        Points added says who makes good plays whatever the score; Win chance added says whose plays mattered most to the result. Both are on the Leaderboard and each Player page.
+        Points added says who makes good plays whatever the score; Win chance added says whose plays mattered most to the result. Both are on the Stats page and each Player page.
       </p>
     </>
   )
@@ -530,7 +530,7 @@ export function HowItWorks({ state, onBack, onOpenGame }: { state: PooleanState;
       <Section id="how-runs" title="Was that run real?" intro="Every game feels like it has momentum. This checks the runs against chance that knows who gets the ball after a basket.">
         <Runs state={state} onOpenGame={onOpenGame} />
       </Section>
-      <Section id="how-twoway" title="Two-Way, on one real line" intro="The Leaderboard's main number, added up term by term from one player's game, and the rule for which games count as outliers.">
+      <Section id="how-twoway" title="Two-Way, on one real line" intro="The Stats page's main number, added up term by term from one player's game, and the rule for which games count as outliers.">
         <TwoWay state={state} onOpenGame={onOpenGame} />
       </Section>
       <Section id="how-epa" title="Points added, one trip at a time" intro="The idea behind expected points in football, for pool basketball: every play is scored by how far it moves what the trip is worth.">

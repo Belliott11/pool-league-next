@@ -951,10 +951,10 @@ function renderGames() {
       : (needsReview ? '<span class="review-badge-slot"></span>' : '');
     const imbalancedBadge = isBalancedGame(game)
       ? ""
-      : ` <span class="badge badge-imbalanced" title="Team A has ${game.teamA.length}, Team B has ${game.teamB.length}. Excluded from Leaderboard rates and every other computed comparison unless the Include Imbalanced Games toggle on the Leaderboard is on.">${icon("scale")} ${game.teamA.length}v${game.teamB.length}</span>`;
+      : ` <span class="badge badge-imbalanced" title="Team A has ${game.teamA.length}, Team B has ${game.teamB.length}. Excluded from Stats page rates and every other computed comparison unless the Include Imbalanced Games toggle on the Leaderboard is on.">${icon("scale")} ${game.teamA.length}v${game.teamB.length}</span>`;
     const pastSeasonBadge = isCurrentSeasonGame(game)
       ? ""
-      : ` <span class="badge badge-past-season" title="From a season closed out before this one. Excluded from Leaderboard rates and every other computed comparison unless the Include Past Seasons toggle on the Leaderboard is on. See Closed Seasons in This App on each player's page for that season's final numbers.">${icon("calendar")} Past Season</span>`;
+      : ` <span class="badge badge-past-season" title="From a season closed out before this one. Excluded from Stats page rates and every other computed comparison unless the Include Past Seasons toggle on the Leaderboard is on. See Closed Seasons in This App on each player's page for that season's final numbers.">${icon("calendar")} Past Season</span>`;
     const liveBadge = game.liveInProgress
       ? ` <span class="badge badge-review" title="Being scored live right now.">${icon("megaphone")} Live now</span>`
       : liveOnly ? ` <span class="badge badge-review" title="Only who scored was tracked live. Log it from film in Stat Entry for it to count toward stats.">${icon("megaphone")} Live score only</span>` : "";
@@ -10522,7 +10522,7 @@ function appendShotTypeExclusionNote(panelIds) {
   if (left === 0) return;
   panelIds.forEach(id => {
     const wrap = document.getElementById(id);
-    if (wrap) wrap.insertAdjacentHTML("beforeend", `<p class="hint" style="margin:8px 0 0">${left} more tagged shot${left === 1 ? " is" : "s are"} in games left out by the Include Imbalanced Games and Include Past Seasons switches at the top of the Leaderboard. Turn them on to count ${left === 1 ? "it" : "them"}.</p>`);
+    if (wrap) wrap.insertAdjacentHTML("beforeend", `<p class="hint" style="margin:8px 0 0">${left} more tagged shot${left === 1 ? " is" : "s are"} in games left out by the Include Imbalanced Games and Include Past Seasons switches at the top of the Stats page. Turn them on to count ${left === 1 ? "it" : "them"}.</p>`);
   });
 }
 
@@ -12027,7 +12027,7 @@ export const PLAYER_PANELS = [
 
 
 export const EXPORT_PANELS = [
-  { title: "Export All Data", hint: "Full dump of players, games, box scores, and matchups. Give this to your friend to integrate into the website.", tag: null, open: true, section: "exportData", order: 0, html: "\r\n          <div class=\"button-row\">\r\n            <button id=\"exportAllJsonBtn\">Download JSON</button>\r\n            <button id=\"exportBoxScoreCsvBtn\">Download Box Score CSV</button>\r\n            <button id=\"exportScoringLogCsvBtn\">Download Shot Log CSV</button>\r\n            <button id=\"exportShotLocationsCsvBtn\">Download Shot Locations CSV</button>\r\n            <button id=\"exportOtherEventsCsvBtn\">Download Other Events CSV</button>\r\n            <button id=\"exportMatchupCsvBtn\">Download Matchups CSV</button>\r\n            <button id=\"exportReelCsvBtn\">Download Highlight Reel CSV</button>\r\n            <button id=\"exportLeaderboardCsvBtn\">Download Leaderboard CSV</button>\r\n            <button id=\"exportAssistSynergyCsvBtn\">Download Assist Connections CSV</button>\r\n            <button id=\"exportTeammateSynergyCsvBtn\">Download Teammate Synergy CSV</button>\r\n            <button id=\"exportOutOfBoundsCsvBtn\">Download Out-of-Bounds CSV</button>\r\n          </div>\r\n        ", render: () => {  }, wires: [{ id: "exportAllJsonBtn", evt: "click", handler: () => downloadBackup("pool-league-data.json") }, { id: "exportBoxScoreCsvBtn", evt: "click", handler: () => {
+  { title: "Export All Data", hint: "Full dump of players, games, box scores, and matchups. Give this to your friend to integrate into the website.", tag: null, open: true, section: "exportData", order: 0, html: "\r\n          <div class=\"button-row\">\r\n            <button id=\"exportAllJsonBtn\">Download JSON</button>\r\n            <button id=\"exportBoxScoreCsvBtn\">Download Box Score CSV</button>\r\n            <button id=\"exportScoringLogCsvBtn\">Download Shot Log CSV</button>\r\n            <button id=\"exportShotLocationsCsvBtn\">Download Shot Locations CSV</button>\r\n            <button id=\"exportOtherEventsCsvBtn\">Download Other Events CSV</button>\r\n            <button id=\"exportMatchupCsvBtn\">Download Matchups CSV</button>\r\n            <button id=\"exportReelCsvBtn\">Download Highlight Reel CSV</button>\r\n            <button id=\"exportLeaderboardCsvBtn\">Download Stats CSV</button>\r\n            <button id=\"exportAssistSynergyCsvBtn\">Download Assist Connections CSV</button>\r\n            <button id=\"exportTeammateSynergyCsvBtn\">Download Teammate Synergy CSV</button>\r\n            <button id=\"exportOutOfBoundsCsvBtn\">Download Out-of-Bounds CSV</button>\r\n          </div>\r\n        ", render: () => {  }, wires: [{ id: "exportAllJsonBtn", evt: "click", handler: () => downloadBackup("pool-league-data.json") }, { id: "exportBoxScoreCsvBtn", evt: "click", handler: () => {
   const rows = [["game_id", "date", "team", "player", ...STAT_FIELDS,
     "fgm", "fga", "tpm", "tpa", "close_m", "close_a", "mid_m", "mid_a", "tp_arc_m", "tp_arc_a", "tp_deep_m", "tp_deep_a", "ftm", "fta", "efg_pct", "ts_pct", "stocks", "ast_tov",
     "pts_allowed", "opp_fg_pct", "times_beaten", "stops", "off_rating", "two_way_score"]];

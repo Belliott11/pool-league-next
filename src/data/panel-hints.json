@@ -139,7 +139,7 @@
   "tag": "Early / Experimental"
  },
  "Self-Creation Full Accounting": {
-  "hint": "True Self-Creation Rate (Leaderboard, advanced columns) only counts self-created possessions that ended in a shot attempt: a self-creation attempt that instead ends in a lost handle or bad pass just vanishes from that rate's denominator, silently flattering anyone whose creation attempts frequently end in a turnover instead of a shot. This adds every self-inflicted turnover (Bad Pass, Lost Handle, Possession/Decision Error, Drive/Finish Error) back into the denominator as a failed self-creation possession: a stricter, more honest number worth reading alongside the shots-only rate, not instead of it, since they answer slightly different questions."
+  "hint": "True Self-Creation Rate (Stats, advanced columns) only counts self-created possessions that ended in a shot attempt: a self-creation attempt that instead ends in a lost handle or bad pass just vanishes from that rate's denominator, silently flattering anyone whose creation attempts frequently end in a turnover instead of a shot. This adds every self-inflicted turnover (Bad Pass, Lost Handle, Possession/Decision Error, Drive/Finish Error) back into the denominator as a failed self-creation possession: a stricter, more honest number worth reading alongside the shots-only rate, not instead of it, since they answer slightly different questions."
  },
  "Second-Chance Conversion": {
   "hint": "Offensive rebounds that turn into points: the rebounder scores or assists soon after the miss (the time window is in Calibrated Thresholds). Needs video times on both plays."

@@ -56,7 +56,7 @@ export function SiteSearch({ state, open, onOpenChange, go, openPlayer, readOnly
     const page = (key: string, label: string, detail: string, words: string, v: Partial<View>): Hit => ({ key: `page:${key}`, kind: "page", label, detail, words, go: () => go(v) })
     const pages: Hit[] = [
       page("games", "Games", "Every game, newest first", "home results schedule", { tab: "games", sub: "", player: null }),
-      page("leaderboard", "Leaderboard", "Rankings and every stat table", "standings stats ranking two-way", { tab: "leaderboard", sub: "", player: null }),
+      page("leaderboard", "Stats", "Rankings and every stat table", "leaderboard leaders standings stats ranking two-way", { tab: "leaderboard", sub: "", player: null }),
       page("hall", "Hall of fame", "Records and awards", "records awards best ever", { tab: "games", sub: "hall", player: null }),
       page("wrapped", "Season Wrapped", "Each player's season in review", "recap review summary", { tab: "games", sub: "wrapped", player: null }),
       page("poty", "Play of the Year", "Vote on the season's best plays, a bracket at a time", "play of the year bracket vote best plays clips poty", { tab: "games", sub: "poty", player: null }),

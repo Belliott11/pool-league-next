@@ -2,7 +2,7 @@ import { Download, ListChecks, Search, Trophy, User, Users } from "lucide-react"
 
 const ITEMS = [
   { value: "games", label: "Games", Icon: ListChecks },
-  { value: "leaderboard", label: "Leaderboard", short: "Leaders", Icon: Trophy },
+  { value: "leaderboard", label: "Stats", short: "Stats", Icon: Trophy },
   { value: "player", label: "Player", Icon: User },
   { value: "players", label: "Players", Icon: Users },
   { value: "export", label: "Export", Icon: Download },
@@ -29,7 +29,7 @@ export function BottomNav({ tab, onChange, onSearch, editor = true, you = false 
               className={`flex w-full flex-col items-center gap-0.5 py-2 text-xs font-medium ${tab === value ? "text-primary" : "text-muted-foreground"}`}
             >
               <Icon className="size-5" aria-hidden />
-              {/* Six buttons on a phone leave about 65px each, too narrow for "Leaderboard". */}
+              {/* Six buttons on a phone leave about 65px each, too narrow for long labels. */}
               <span className="max-w-full truncate px-0.5">{value === "player" && you ? "You" : editor && short ? short : label}</span>
             </button>
           </li>
