@@ -648,6 +648,14 @@ attendance, 15 parties to 4, the winner announced.
   `close`). Never for test games. Checked live with a call (sends nothing with no live game); delivery to a phone not yet seen.
 - Backups also save `poty_votes` and `season_goals`.
 
+## This season against last (2026-11-28)
+
+`src/lib/yearOverYear.ts`, card `src/components/YearOverYear.tsx` on the Player page's Overview under the form chart. Shows only once a
+season has been closed with `startNewSeason` (needs `currentSeasonStartedAt` and a `seasonHistory` entry; last season runs from that entry's
+`startedAt`). Each season's first n filmed games, n as many as both have: Two-Way, Points added, points, assists, rebounds, steals and
+blocks, turnovers a game and effective shooting, plus the record over the first as many games as both have (every game). On 2026-11-28
+there is one season, so it is hidden; `yearOverYear.test.ts` splits live data at 2026-08-10 to check it.
+
 ## Award odds (2026-11-28)
 
 `src/lib/awardOdds.ts`, a "Chance to win it" line under MVP race, Best player and Defender in the Season award race card

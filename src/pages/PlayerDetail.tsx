@@ -6,6 +6,7 @@ import { PlayerFormCard } from "@/components/FormRating"
 import { NightReportCard } from "@/components/NightReport"
 import { PlayerFatigue } from "@/components/Fatigue"
 import { PlayerTeammates } from "@/components/Teammates"
+import { PlayerYearOverYear } from "@/components/YearOverYear"
 import { PlayerRead } from "@/pages/PlayerRead"
 import { PlayerCompare } from "@/pages/PlayerCompare"
 import { SeasonSwitch } from "@/components/SeasonSwitch"
@@ -318,6 +319,7 @@ export function PlayerDetailPage({
             <PlayerCompare key={pid} state={season} pid={pid} />
             <PlayerPointsAdded state={season} pid={pid} />
             <PlayerFormCard state={state} pid={pid} />
+            <PlayerYearOverYear state={state} pid={pid} />
             <Panels section="overview" pid={pid} version={version} />
             <ScoutingCard state={season} pid={pid} update={update} />
           </>
