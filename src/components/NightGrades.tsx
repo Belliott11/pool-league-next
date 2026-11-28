@@ -21,8 +21,8 @@ export function NightGrades({ state, date, onOpenPlayer }: { state: PooleanState
             <TableRow>
               <TableHead>Player</TableHead>
               <TableHead className="text-right">Grade</TableHead>
-              <TableHead className="text-right">Record</TableHead>
-              <TableHead className="text-right">Pts</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Record</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Pts</TableHead>
               <TableHead className="text-right">Points added</TableHead>
               <TableHead className="text-right">Two-Way</TableHead>
             </TableRow>
@@ -34,10 +34,13 @@ export function NightGrades({ state, date, onOpenPlayer }: { state: PooleanState
                   <button type="button" className="hover:underline" onClick={() => onOpenPlayer(r.pid)}>
                     {playerName(state, r.pid)}
                   </button>
+                  <span className="block text-xs text-muted-foreground sm:hidden">
+                    {r.wins}-{r.losses}, {r.points} pts
+                  </span>
                 </TableCell>
                 <TableCell className={cn("text-right font-display text-base font-bold", r.grade?.startsWith("A") && "text-pos")}>{r.grade ?? <span className="text-xs font-normal italic text-muted-foreground">first</span>}</TableCell>
-                <TableCell className="text-right tabular-nums">{r.wins}-{r.losses}</TableCell>
-                <TableCell className="text-right tabular-nums">{r.points}</TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">{r.wins}-{r.losses}</TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">{r.points}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {signed(r.added)}
                   {r.usual !== null && <span className="block text-xs text-muted-foreground">usual {signed(r.usual)}</span>}

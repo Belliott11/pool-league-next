@@ -217,7 +217,12 @@ buttons is now an "Explore" grid with a line on each (`Explore` in `src/pages/Ga
   (`src/components/Hint.tsx`, in `Panel` and `PanelGroup`); the classic markup's numbers use the site font with tabular figures
   (`--font-mono` points at the sans in `legacy-shadcn.css`) and grid cells are rounded tiles; the classic text and panel notes no longer
   use " -- " as a dash (colons, or commas around a pair).
-- Accessibility: every Leaderboard and Player tab, the Games home and search pass axe (WCAG 2.1 AA) in both themes. Mark thin samples
+- Accessibility: every Leaderboard and Player tab, the Games home and search pass axe (WCAG 2.1 AA) in both themes. Rechecked 2026-11-28 with the newer
+  pages (Rules with the editor's forms, Dream matchup, Season preview, the night recap's grades and reel, Stats Overview and Trends, the
+  Player page's Matchups and Overview): one failure, the faded reel length, fixed. Phone widths the same day: newer tables keep to the
+  screen by hiding secondary columns below `sm` and folding their numbers into a small line under the name (Teammates, Night grades, Form
+  rating, Do players tire?, the rule and trial comparison); the breakdown tables (Points added, Win chance added) scroll with the player
+  column pinned (`sticky left-0 z-10 bg-card`, as DataTable does). Mark thin samples
   with italics or a dashed border, never by fading (fading fails contrast).
 - Home screen tip (`src/components/HomeScreenTip.tsx`): on an iPhone or iPad in the browser (never from the home screen or on a computer),
   from the second visit, after "Who are you?" and the colors tip are done, so only one tip shows at a time. "Got it" hides it for good,

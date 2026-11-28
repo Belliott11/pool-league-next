@@ -42,21 +42,24 @@ export function FatigueCard({ state, onOpenPlayer }: { state: PooleanState; onOp
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Game of the night</TableHead>
-              <TableHead className="text-right">Points a shot</TableHead>
+              <TableHead>Game</TableHead>
+              <TableHead className="text-right">Pts a shot</TableHead>
               <TableHead className="text-right">Made</TableHead>
-              <TableHead className="text-right">Turnovers / 10 trips</TableHead>
-              <TableHead className="text-right">Games</TableHead>
+              <TableHead className="text-right">TO / 10 trips</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Games</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {f.buckets.map((b) => (
               <TableRow key={b.label}>
-                <TableCell>{b.label}</TableCell>
+                <TableCell>
+                  {b.label.replace("Game ", "")}
+                  <span className="block text-xs text-muted-foreground sm:hidden">{b.games} games</span>
+                </TableCell>
                 <TableCell className="text-right tabular-nums">{b.pps.toFixed(2)}</TableCell>
                 <TableCell className="text-right tabular-nums">{Math.round(b.fg * 100)}%</TableCell>
                 <TableCell className="text-right tabular-nums">{b.turnovers.toFixed(1)}</TableCell>
-                <TableCell className="text-right tabular-nums">{b.games}</TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">{b.games}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -77,13 +80,16 @@ function DayLoad({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
   return (
     <details className="text-sm">
       <summary className="cursor-pointer font-medium">Win-loss by game of the day, every result</summary>
+      <p className="mt-1 text-xs text-muted-foreground">Columns: how many games the player had already played that day.</p>
       <div className="table-scroll mt-2 overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Player</TableHead>
               {BANDS.map((b) => (
-                <TableHead key={b.key} className="text-right">{b.label}</TableHead>
+                <TableHead key={b.key} className="text-right">
+                  Games {b.key}
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>

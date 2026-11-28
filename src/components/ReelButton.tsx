@@ -51,7 +51,7 @@ export function NightReelButton({ date, label }: { date: string; label: string }
     <div className="flex flex-wrap gap-2">
       <Dialog>
         <DialogTrigger render={<Button size="sm" />}>
-          <Play aria-hidden /> The night in 60 seconds <span className="opacity-80">{len(n.seconds)}</span>
+          <Play aria-hidden /> The night in 60 seconds <span className="tabular-nums">({len(n.seconds)})</span>
         </DialogTrigger>
         <DialogContent className="sm:max-w-3xl">
           <DialogTitle>{label} in 60 seconds</DialogTitle>

@@ -33,19 +33,26 @@ export function PlayerTeammates({ state, pid }: { state: PooleanState; pid: stri
               <TableRow>
                 <TableHead>Teammate</TableHead>
                 <TableHead className="text-right">Lift</TableHead>
-                <TableHead className="text-right">Record together</TableHead>
-                <TableHead className="text-right">Filmed together</TableHead>
-                <TableHead className="text-right">Assists between</TableHead>
+                <TableHead className="text-right">Together</TableHead>
+                <TableHead className="hidden text-right sm:table-cell">Filmed together</TableHead>
+                <TableHead className="hidden text-right sm:table-cell">Assists between</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((f) => (
                 <TableRow key={f.id}>
-                  <TableCell>{playerName(state, f.id)}</TableCell>
+                  <TableCell>
+                    {playerName(state, f.id)}
+                    {f.together > 0 && (
+                      <span className="block text-xs text-muted-foreground sm:hidden">
+                        {f.together} filmed, {f.assists} {f.assists === 1 ? "assist" : "assists"} between
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right tabular-nums">{f.lift === null ? <span className="italic text-muted-foreground">{f.together ? "too few" : "no film"}</span> : signed(f.lift)}</TableCell>
                   <TableCell className="text-right tabular-nums">{f.record[0] + f.record[1] ? `${f.record[0]}-${f.record[1]}` : ""}</TableCell>
-                  <TableCell className="text-right tabular-nums">{f.together}</TableCell>
-                  <TableCell className="text-right tabular-nums">{f.together ? f.assists : ""}</TableCell>
+                  <TableCell className="hidden text-right tabular-nums sm:table-cell">{f.together}</TableCell>
+                  <TableCell className="hidden text-right tabular-nums sm:table-cell">{f.together ? f.assists : ""}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

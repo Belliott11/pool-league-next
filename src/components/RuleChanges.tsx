@@ -50,7 +50,7 @@ export function ImpactRowsTable({ rows, before = "Before", after = "After" }: { 
             <TableHead>Measure</TableHead>
             <TableHead className="text-right">{before}</TableHead>
             <TableHead className="text-right">{after}</TableHead>
-            <TableHead>Change</TableHead>
+            <TableHead className="hidden sm:table-cell">Change</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -59,10 +59,13 @@ export function ImpactRowsTable({ rows, before = "Before", after = "After" }: { 
               <TableCell className="min-w-32 whitespace-normal">
                 {r.label}
                 <span className="block text-xs text-muted-foreground">{r.group}</span>
+                <span className={cn("block text-xs sm:hidden", r.verdict === "clear" ? "font-semibold" : r.verdict === "early" ? "italic text-muted-foreground" : "")}>
+                  {r.change}: {VERDICT_LABEL[r.verdict].toLowerCase()}
+                </span>
               </TableCell>
               <TableCell className="text-right tabular-nums">{r.before}</TableCell>
               <TableCell className="text-right tabular-nums">{r.after}</TableCell>
-              <TableCell className="min-w-28 whitespace-normal">
+              <TableCell className="hidden min-w-28 whitespace-normal sm:table-cell">
                 {r.change}
                 <span className={cn("block text-xs", r.verdict === "clear" ? "font-semibold" : r.verdict === "early" ? "italic text-muted-foreground" : "")}>{VERDICT_LABEL[r.verdict]}</span>
               </TableCell>

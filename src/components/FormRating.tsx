@@ -50,9 +50,9 @@ export function FormRatingCard({ state, onOpenPlayer }: { state: PooleanState; o
             <TableRow>
               <TableHead>Player</TableHead>
               <TableHead className="text-right">Form</TableHead>
-              <TableHead className="text-right">Likely range</TableHead>
-              <TableHead className="text-right">Average so far</TableHead>
-              <TableHead className="text-right">Games</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Likely range</TableHead>
+              <TableHead className="text-right">Average</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Games</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -62,13 +62,16 @@ export function FormRatingCard({ state, onOpenPlayer }: { state: PooleanState; o
                   <button type="button" className="hover:underline" onClick={() => onOpenPlayer(r.id)}>
                     {playerName(state, r.id)}
                   </button>
+                  <span className="block text-xs text-muted-foreground sm:hidden">
+                    {signed(r.low)} to {signed(r.high)}, {r.games} {r.games === 1 ? "game" : "games"}
+                  </span>
                 </TableCell>
                 <TableCell className={cn("text-right font-semibold tabular-nums", r.mean > 0.05 && "text-pos")}>{signed(r.mean)}</TableCell>
-                <TableCell className="text-right tabular-nums text-muted-foreground">
+                <TableCell className="hidden text-right tabular-nums text-muted-foreground sm:table-cell">
                   {signed(r.low)} to {signed(r.high)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{signed(average(r))}</TableCell>
-                <TableCell className="text-right tabular-nums">{r.games}</TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">{r.games}</TableCell>
               </TableRow>
             ))}
           </TableBody>

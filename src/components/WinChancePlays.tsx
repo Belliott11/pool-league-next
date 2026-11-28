@@ -61,7 +61,7 @@ function EveryPlay({ state, w, onOpenPlayer }: { state: PooleanState; w: ReturnT
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Player</TableHead>
+              <TableHead className="sticky left-0 z-10 bg-card">Player</TableHead>
               <TableHead className="text-right">Every play</TableHead>
               <TableHead className="text-right">Per game</TableHead>
               <TableHead className="text-right">Shots</TableHead>
@@ -74,7 +74,7 @@ function EveryPlay({ state, w, onOpenPlayer }: { state: PooleanState; w: ReturnT
           <TableBody>
             {w.rows.map((r) => (
               <TableRow key={r.id} className={r.games < MIN_RANKED ? "italic" : ""}>
-                <TableCell>
+                <TableCell className="sticky left-0 z-10 bg-card">
                   <button type="button" className="hover:underline" onClick={() => onOpenPlayer(r.id)}>
                     {playerName(state, r.id)}
                   </button>

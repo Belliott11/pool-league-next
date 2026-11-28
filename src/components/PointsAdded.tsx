@@ -125,7 +125,7 @@ export function PointsAddedCard({ state, onOpenPlayer }: { state: PooleanState; 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Player</TableHead>
+              <TableHead className="sticky left-0 z-10 bg-card">Player</TableHead>
               <TableHead className="text-right">Per game</TableHead>
               {wins.show && <TableHead className="text-right">Wins added</TableHead>}
               <TableHead className="text-right">Per trip used</TableHead>
@@ -139,7 +139,7 @@ export function PointsAddedCard({ state, onOpenPlayer }: { state: PooleanState; 
           <TableBody>
             {epa.rows.map((r) => (
               <TableRow key={r.id} className={cn(r.used < THIN_TRIPS && "italic")}>
-                <TableCell>
+                <TableCell className="sticky left-0 z-10 bg-card">
                   {onOpenPlayer ? (
                     <button className="underline-offset-2 hover:underline" onClick={() => onOpenPlayer(r.id)}>
                       {playerName(state, r.id)}
