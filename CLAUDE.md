@@ -332,7 +332,10 @@ what the games show and each dropping off by itself once the rulebook text match
 where missed 3s and 2s go, points a shot for 3s against 2s, replay verdicts, fouls and roughness free throws), then the whole rulebook with
 the league's clarifications under each section (`state.ruleNotes`, type `RuleNote`, tied to a section by title; the editor adds and
 removes them on the page). Each open question has "Answer it" for the editor: the answer is filed as a clarification under the
-question's section (`Gap.section`) with `gap` set to its key, which takes it off the list. Suggestions only: the rulebook itself is Poolean's. On 2026-11-28: 3s are worth 0.50 points a shot against
+question's section (`Gap.section`) with `gap` set to its key, which takes it off the list. Suggestions only: the rulebook itself is Poolean's. This site cannot write to it (2026-11-28: Adam's
+`/poolean/save-rules` is admin-only on his PocketBase and replaces the whole rulebook), so the editor gets "Send these to Adam"
+(`rulesForAdam`: every clarification grouped by section in rulebook order, through the share sheet or clipboard) to paste into his rules
+editor; once he publishes, scripts/rulebook.mjs picks it up within the hour. A real suggestion inbox would need an endpoint in his app. On 2026-11-28: 3s are worth 0.50 points a shot against
 0.80 for 2s, and 44% of missed 3s go out of bounds against 21% of 2s.
 
 ## Rulebook and rule changes

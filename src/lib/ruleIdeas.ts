@@ -164,3 +164,19 @@ export function ruleIdeas(state: PooleanState): Idea[] {
   })
   return out
 }
+
+// The league's clarifications as a message for Adam, grouped by rulebook section in the rulebook's order, ready to paste into Poolean's
+// rules editor (his app is the only place the rules can change: its save is admin-only and replaces the whole rulebook).
+export function rulesForAdam(state: PooleanState): string | null {
+  const notes = state.ruleNotes ?? []
+  if (!notes.length) return null
+  const order = (currentRules()?.sections ?? []).map((s) => s.title)
+  const sections = [...new Set(notes.map((n) => n.section))].sort((a, b) => order.indexOf(a) - order.indexOf(b))
+  const lines = ["Rule clarifications from Poolean Intel, for the rulebook:", ""]
+  for (const s of sections) {
+    lines.push(`${s}:`)
+    for (const n of notes.filter((x) => x.section === s)) lines.push(`- ${n.text}`)
+    lines.push("")
+  }
+  return lines.join("\n").trim()
+}

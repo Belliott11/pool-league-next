@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { ruleGaps, rulesText } from "@/lib/ruleIdeas"
+import { ruleGaps, rulesForAdam, rulesText } from "@/lib/ruleIdeas"
 import { searchRules } from "@/lib/rulesLookup"
 import type { PooleanState } from "@/lib/types"
 
@@ -30,5 +30,17 @@ describe("rule gaps", () => {
     const answered = { ...empty, ruleNotes: [{ id: "n", section: "Possession", text: "Shoot for it from the line.", date: "2026-11-28", gap: "first-ball" }] }
     expect(ruleGaps(empty).some((g) => g.key === "first-ball")).toBe(true)
     expect(ruleGaps(answered).some((g) => g.key === "first-ball")).toBe(false)
+  })
+})
+
+describe("rules for Adam", () => {
+  it("groups the clarifications by section, in rulebook order", () => {
+    expect(rulesForAdam(empty)).toBeNull()
+    const text = rulesForAdam({ ...empty, ruleNotes: [
+      { id: "a", section: "Fouls and penalties", text: "Free throws are dead balls.", date: "2026-11-28" },
+      { id: "b", section: "Scoring", text: "First to 21, win by 2.", date: "2026-11-28" },
+    ] })!
+    expect(text.indexOf("Scoring:")).toBeLessThan(text.indexOf("Fouls and penalties:"))
+    expect(text).toContain("- First to 21, win by 2.")
   })
 })

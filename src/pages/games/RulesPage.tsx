@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react"
-import { ArrowLeft, Lightbulb, Trash2 } from "lucide-react"
+import { ArrowLeft, Lightbulb, Send, Trash2 } from "lucide-react"
 import { RulesLookup } from "@/components/RulesLookup"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay, uid } from "@/lib/format"
 import { useReadOnly } from "@/lib/mode"
 import { currentRules } from "@/lib/rulebook"
-import { ruleGaps, ruleIdeas } from "@/lib/ruleIdeas"
+import { ruleGaps, ruleIdeas, rulesForAdam } from "@/lib/ruleIdeas"
+import { shareText } from "@/lib/shareText"
 import type { Update } from "@/lib/store"
 import type { PooleanState } from "@/lib/types"
 
@@ -51,6 +52,8 @@ export function RulesPage({ state, update, onBack }: { state: PooleanState; upda
   const gaps = useMemo(() => ruleGaps(state), [state])
   const ideas = useMemo(() => ruleIdeas(state), [state])
   const notes = state.ruleNotes ?? []
+  const [sent, setSent] = useState("")
+  const forAdam = rulesForAdam(state)
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
       <div className="flex items-center gap-2">
@@ -102,6 +105,25 @@ export function RulesPage({ state, update, onBack }: { state: PooleanState; upda
             )}
           </CardContent>
         </Card>
+      )}
+
+      {editor && forAdam && (
+        <div className="flex flex-col gap-1.5 rounded-xl border p-3 text-sm">
+          <p>
+            {notes.length} league {notes.length === 1 ? "clarification" : "clarifications"} so far. The official rulebook only changes in Adam's Poolean app, so send them to him to
+            add there. Once he publishes, the site picks up the new rulebook within the hour, and any open question it answers leaves the list.
+          </p>
+          <Button
+            variant="outline"
+            className="self-start"
+            onClick={async () => {
+              setSent(await shareText(forAdam))
+              setTimeout(() => setSent(""), 2500)
+            }}
+          >
+            <Send aria-hidden /> {sent === "copied" ? "Copied: paste it to Adam" : sent === "failed" ? "Could not share" : sent === "shared" ? "Sent" : "Send these to Adam"}
+          </Button>
+        </div>
       )}
 
       {rules && (
