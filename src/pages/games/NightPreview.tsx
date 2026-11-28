@@ -1,4 +1,5 @@
 import { CalendarClock, Share2 } from "lucide-react"
+import { AddToCalendar } from "@/components/AddToCalendar"
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { shareText } from "@/lib/shareText"
@@ -48,6 +49,9 @@ export function NightPreviewCard({ state, update }: { state: PooleanState; updat
             </span>
           )}
         </p>
+      )}
+      {rsvp && rsvp.date > new Date().toLocaleDateString("en-CA") && (
+        <AddToCalendar night={{ date: rsvp.date, time: rsvp.time, title: "Pool basketball" }} />
       )}
       <div className="flex flex-wrap gap-1.5">
         {coming.map((id) => (

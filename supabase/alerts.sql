@@ -31,6 +31,9 @@ alter table public.push_sent enable row level security;
 -- 'close': one "close game" alert per game, sent when a live game is tight near the end (added 2026-11-26).
 alter table public.push_sent drop constraint if exists push_sent_kind_check;
 alter table public.push_sent add constraint push_sent_kind_check check (kind in ('live', 'final', 'close'));
+-- 'reminder': "Game night tomorrow", once per night, sent by the daily night-reminder workflow (added 2026-11-28); game_id holds night-<date>.
+alter table public.push_sent drop constraint if exists push_sent_kind_check;
+alter table public.push_sent add constraint push_sent_kind_check check (kind in ('live', 'final', 'close', 'reminder'));
 
 create table if not exists public.push_vapid (
   id int primary key default 1 check (id = 1),

@@ -21,6 +21,7 @@ import { shareText } from "@/lib/shareText"
 import type { Game, PooleanState } from "@/lib/types"
 import { useEvening } from "@/lib/weather"
 import { Countdown } from "./Countdown"
+import { AddToCalendar } from "@/components/AddToCalendar"
 import { Throwback } from "./Throwback"
 import { PlayersToWatch } from "./PlayersToWatch"
 import { jumpPicks } from "@/lib/predictions"
@@ -86,6 +87,7 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
         </h2>
         <p className="text-xs text-muted-foreground">Cherry Hill time.</p>
         <Countdown date={o.date} time={o.time} className="font-display text-xl font-bold tabular-nums text-accent" />
+        {!tonight && <AddToCalendar night={{ date: o.date, time: o.time, title: "Pool basketball: opening night" }} />}
         {weather && (
           <p className="text-sm text-muted-foreground">
             Cherry Hill, {hourLabel(weather.from)} to {hourLabel(weather.to)}: {weather.label}, <span className="tabular-nums">{weather.tempF}°F</span>, <span className="tabular-nums">{weather.rainPct}%</span> chance of rain

@@ -53,6 +53,42 @@ function clipPages(): Plugin {
 
 // The link preview picture (scripts/og-image.mjs), made from the current league data on each build and saved as og/<date>.png, so chat apps
 // that cache by address pick up a new one each day. If the data cannot be fetched, the page keeps the plain icon.
+// The live league data, fetched once per build for the plugins that draw from it (the link preview picture, the calendar feed).
+let leagueData: Promise<unknown> | null = null
+function fetchLeague(): Promise<unknown> {
+  leagueData ??= (async () => {
+    const cfg = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "public/cloud-config.json"), "utf8")) as { url: string; anonKey: string }
+    const res = await fetch(`${cfg.url}/rest/v1/league_state?select=data&id=eq.1`, { headers: { apikey: cfg.anonKey, Authorization: `Bearer ${cfg.anonKey}` }, signal: AbortSignal.timeout(8000) })
+    const rows = (await res.json()) as { data: unknown }[]
+    if (!res.ok || !rows[0]) throw new Error(`league data ${res.status}`)
+    return rows[0].data
+  })()
+  return leagueData
+}
+
+// nights.ics: every upcoming game night as a calendar feed (src/lib/calendar.ts), so a subscribed phone picks up new nights. Rebuilt on every
+// deploy, which also runs daily. Without the league data it writes an empty calendar rather than leave the address broken.
+function nightsFeed(): Plugin {
+  let ics = ""
+  return {
+    name: "nights-feed",
+    apply: "build",
+    async buildStart() {
+      const cal = await import("./src/lib/calendar.ts")
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" })
+      try {
+        ics = cal.icsFor(cal.gameNights((await fetchLeague()) as Parameters<typeof cal.gameNights>[0], today))
+      } catch (e) {
+        ics = cal.icsFor([])
+        this.warn(`Calendar feed written empty: ${e instanceof Error ? e.message : e}`)
+      }
+    },
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName: "nights.ics", source: ics })
+    },
+  }
+}
+
 function ogImage(): Plugin {
   let file: string | null = null
   let png: Buffer | null = null
@@ -61,12 +97,9 @@ function ogImage(): Plugin {
     apply: "build",
     async buildStart() {
       try {
-        const cfg = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "public/cloud-config.json"), "utf8")) as { url: string; anonKey: string }
-        const res = await fetch(`${cfg.url}/rest/v1/league_state?select=data&id=eq.1`, { headers: { apikey: cfg.anonKey, Authorization: `Bearer ${cfg.anonKey}` }, signal: AbortSignal.timeout(8000) })
-        const rows = (await res.json()) as { data: unknown }[]
-        if (!res.ok || !rows[0]) throw new Error(`league data ${res.status}`)
+        const data = await fetchLeague()
         const og = await import("./scripts/og-image.mjs")
-        png = og.renderOg(rows[0].data)
+        png = og.renderOg(data)
         file = `og/${og.cherryHillDate(new Date())}.png`
       } catch (e) {
         this.warn(`Link preview picture skipped, keeping the icon: ${e instanceof Error ? e.message : e}`)
@@ -125,7 +158,7 @@ function securityHeaders(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   base: BASE,
-  plugins: [react(), tailwindcss(), clipPages(), ogImage(), securityHeaders()],
+  plugins: [react(), tailwindcss(), clipPages(), ogImage(), nightsFeed(), securityHeaders()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

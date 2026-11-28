@@ -435,6 +435,19 @@ whose player adds d points over an average game (PER points) gets half plus d/(2
 point mix to the usual target turns that into a win chance (about 6% a game per point, to 16). Editors see it now, marked as a preview;
 everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games are in italics.
 
+## Game night calendar (2026-11-28)
+
+`src/lib/calendar.ts` (no imports, so vite.config.ts uses it too): `gameNights` (opening night and the editor's nights, `state.rsvps`, today
+on) and `icsFor` (an iCalendar file: times in America/New_York with its VTIMEZONE block, 3 hours long, all-day when no time, a reminder
+the afternoon before, no address on purpose). "Add to calendar" (`src/components/AddToCalendar.tsx`) on the off-season hub (opening night)
+and the night preview card saves that night's file, with "Or subscribe to every game night" (`webcal://intel.poolean.net/nights.ics`).
+The `nightsFeed` plugin in vite.config.ts writes `nights.ics` on every build from the live league data (one shared fetch with the link
+preview picture, `fetchLeague`), empty if the data cannot be fetched; deploy.yml runs daily, so the feed is at most a day behind.
+The reminder alert: the `game-alerts` function, version 7, `POST {reminder}` sends "Game night tomorrow" (or "Opening night is tomorrow
+at 4 PM") once per night to every phone with alerts on (`push_sent` kind `reminder`, game_id `night-<date>`; `supabase/alerts.sql`), called
+daily at 3:37 PM Eastern by `.github/workflows/night-reminder.yml`. `{reminder, dry: true, on: "YYYY-MM-DD"}` returns what would go out
+and sends nothing (checked 2026-11-28). Push subscriptions have no player, so it goes to everyone, not just the people who have not answered.
+
 ## Game alerts, summaries, odds check, tagging
 
 - Game alerts (web push): "Game alerts" on the Games home (`src/components/GameAlerts.tsx`, `src/lib/alerts.ts`) asks for permission on a

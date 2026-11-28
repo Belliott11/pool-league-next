@@ -1,0 +1,28 @@
+name: Game night reminder
+
+# Once a day, asks the game-alerts function to send "Game night tomorrow" (or "Opening night is tomorrow") to every phone with game alerts
+# on, when tomorrow in Cherry Hill is opening night or a night set up under Set Up Tonight. The function checks the league data itself and
+# sends each night's reminder once (push_sent), so an extra run sends nothing. Alerts carry no player, so it cannot pick out only the
+# people who have not answered; the reminder asks everyone to say if they're in.
+on:
+  schedule:
+    - cron: "37 20 * * *" # 3:37 PM Eastern (4:37 in summer), the afternoon before
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Send tomorrow's reminder, if there is a night
+        run: |
+          url="$(jq -r .url public/cloud-config.json)/functions/v1/game-alerts"
+          for i in 1 2 3; do
+            out=$(curl -sS --fail-with-body -X POST "$url" -H 'content-type: application/json' -d '{"reminder":true}') && { echo "$out"; exit 0; }
+            echo "try $i failed: $out"
+            sleep $((i * 10))
+          done
+          exit 1
