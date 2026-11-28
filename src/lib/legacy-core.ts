@@ -6566,14 +6566,33 @@ function alphaVectorFor(globalAlpha, astAlpha) {
 
 let winSharesWeightsCache = null;
 
+// The fit takes about 0.1 s (more on a phone) and only changes when the games behind it do, so the phone keeps the last fit with a
+// fingerprint of the exact rows it came from and reuses it while they match: the numbers are the same as fitting again (2026-11-28).
+const WIN_SHARES_FIT_KEY = "pooleanWinSharesFit";
+function winSharesRowsKey(rows) {
+  let h = 0x811c9dc5;
+  const text = JSON.stringify(rows.map(r => [r.features, r.margin]));
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193) >>> 0;
+  return `${rows.length}:${text.length}:${h.toString(36)}`;
+}
 function computeWinSharesWeights() {
   if (winSharesWeightsCache !== null) return winSharesWeightsCache;
-  winSharesWeightsCache = computeWinSharesWeightsUncached();
+  const rows = winSharesRegressionRows();
+  const key = winSharesRowsKey(rows);
+  try {
+    const kept = JSON.parse(localStorage.getItem(WIN_SHARES_FIT_KEY) || "null");
+    if (kept && kept.key === key && kept.fit) return (winSharesWeightsCache = kept.fit);
+  } catch { /* no storage: fit as usual */ }
+  winSharesWeightsCache = computeWinSharesWeightsUncached(rows);
+  try {
+    const fit = winSharesWeightsCache;
+    const finite = fit && Number.isFinite(fit.intercept) && Object.values(fit.weights).every(Number.isFinite);
+    if (finite) localStorage.setItem(WIN_SHARES_FIT_KEY, JSON.stringify({ key, fit }));
+  } catch { /* storage full or blocked: nothing to keep */ }
   return winSharesWeightsCache;
 }
 
-function computeWinSharesWeightsUncached() {
-  const rows = winSharesRegressionRows();
+function computeWinSharesWeightsUncached(rows = winSharesRegressionRows()) {
   if (rows.length < WIN_SHARES_FEATURES.length + 1) return null;
 
   // Stage 1: one shared alpha for every feature (assists included, at this stage) -- same search

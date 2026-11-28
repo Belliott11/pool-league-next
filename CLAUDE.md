@@ -263,7 +263,9 @@ editor's (`knownEditor`) never shows the saved copy first.
 The race math (`raceWin`, `deuce` in `src/lib/race.ts`) and the live odds' pre-game share (`shareFor` in live.ts) keep their answers
 (bounded tables), and the deuce loop stops once settled: a game page used to freeze about 3 s on a phone re-running them (the game
 summary's work went from 692 ms to 36 ms, 2026-11-26). The heaviest remaining first-visit work is the classic win-share weights fit
-(`computeWinSharesWeights`, about 100 ms, cached after the first time).
+(`computeWinSharesWeights`, about 100 ms). Since 2026-11-28 the phone keeps the fit in localStorage (`pooleanWinSharesFit`) with a
+fingerprint of the exact regression rows, and reuses it while they match (same weights, about 1 ms); a new game changes the rows and
+refits. Fonts are one Google stylesheet with `display=swap` and preconnects, nothing to gain there.
 The odds with the ball (`ballOdds` in liveBall.ts) solve each table without repeating the whole thing (2026-11-28): the two values at a
 score (A's ball, B's ball) are solved together, since an empty trip only hands the ball over, the win-by-2 corner (both teams past
 `floor`) settles on its own, and then one pass from the top is exact. Same answers to six decimals; drama for every game went from 4.9 s
