@@ -648,6 +648,17 @@ attendance, 15 parties to 4, the winner announced.
   `close`). Never for test games. Checked live with a call (sends nothing with no live game); delivery to a phone not yet seen.
 - Backups also save `poty_votes` and `season_goals`.
 
+## Dream matchup (2026-11-28)
+
+`src/lib/dreamMatchup.ts`, page `#/games/dream/<a,b>.<c,d>` (`src/pages/games/DreamMatchupPage.tsx`; teams split by a dot since ids have
+hyphens; an Explore tile and in search; no address starts from the last game's teams). Anyone on either team (A/B toggles per player).
+The chance is the live odds at the tip (`winProbabilityWithBall` at 0-0, the pre-game read at `PREGAME_WEIGHT_LIVE`, `DEFAULT_TARGET`),
+with the read's own factors listed. One game is played out trip by trip with a seeded draw (mulberry32 on the matchup and the "Play it
+again" count, so a link shows everyone the same game): each team's trip rate from `gapFor` (exported from liveBall.ts) so the simulated
+games win as often as the chance says (`dreamMatchup.test.ts` checks 600 games against it), a 2 or 3 at the league's mix, the scorer by
+each player's made 2s or 3s a filmed game and the passer by the league's assisted share and each teammate's assists a game, all leaned on
+the league average by `LEAN` 3 games. Shows the final, lead changes, the last lead-taking baskets, both box scores and a share text.
+
 ## Voice scoring (2026-11-28)
 
 "Say the basket" on both live screens (`src/components/VoiceScore.tsx`, under the team columns; hidden where the browser has no speech

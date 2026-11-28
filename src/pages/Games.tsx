@@ -2,7 +2,7 @@ import { Suspense, type ReactNode } from "react"
 import { PotyCard } from "./games/PlayOfYear"
 import { AwardsCard } from "./games/AwardVote"
 import { lazyPage } from "@/lib/lazyPage"
-import { Award, Calculator, CalendarDays, Crown, Radio, Shield, Swords, Trophy } from "lucide-react"
+import { Award, Calculator, CalendarDays, Crown, Dices, Radio, Shield, Swords, Trophy } from "lucide-react"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { getClient } from "@/lib/cloud"
 import { Button } from "@/components/ui/button"
@@ -41,6 +41,7 @@ const Wrapped = lazyPage(() => import("./games/Wrapped").then((m) => ({ default:
 const FilmPlayPage = lazyPage(() => import("./games/FilmPlayPage").then((m) => ({ default: m.FilmPlayPage })))
 const AwardsPage = lazyPage(() => import("./games/AwardVote").then((m) => ({ default: m.AwardsPage })))
 const PlayOfYearPage = lazyPage(() => import("./games/PlayOfYear").then((m) => ({ default: m.PlayOfYearPage })))
+const DreamMatchupPage = lazyPage(() => import("./games/DreamMatchupPage").then((m) => ({ default: m.DreamMatchupPage })))
 const HeadToHeadPage = lazyPage(() => import("./games/HeadToHeadPage").then((m) => ({ default: m.HeadToHeadPage })))
 const ClipPage = lazyPage(() => import("./games/ClipPage").then((m) => ({ default: m.ClipPage })))
 const Lazy = ({ children }: { children: ReactNode }) => <Suspense fallback={<PageSkeleton label="Loading" />}>{children}</Suspense>
@@ -86,6 +87,10 @@ export function GamesPage({
 
   if (kind === "h2h") {
     return <Lazy><HeadToHeadPage state={state} ids={arg} onBack={goBack} onOpenGame={open} onOpenPlayer={onOpenPlayer} onPick={(ids) => go("h2h:" + ids, true)} /></Lazy>
+  }
+
+  if (kind === "dream") {
+    return <Lazy><DreamMatchupPage state={state} matchup={arg} onBack={goBack} onOpenPlayer={onOpenPlayer} onPick={(key) => go("dream:" + key, true)} /></Lazy>
   }
 
   if (kind === "teams") {
@@ -168,6 +173,7 @@ export function GamesPage({
             ((state.playOfYear ?? []).length > 0 || !readOnly) && { key: "poty", Icon: Trophy, title: "Play of the Year", text: "The best plays in a bracket, voted on together.", onClick: () => go("poty") },
             { key: "awards", Icon: Award, title: "Season awards", text: "The players vote MVP and more. Last season's results are here too.", onClick: () => go("awards") },
             state.players.length > 1 && { key: "h2h", Icon: Swords, title: "Settle it", text: "Any two players head to head: the record and the tale of the tape.", onClick: () => go("h2h") },
+            state.players.length > 1 && { key: "dream", Icon: Dices, title: "Dream matchup", text: "Pick any two teams: who wins, and one game played out.", onClick: () => go("dream") },
             state.games.length > 0 && { key: "hall", Icon: Crown, title: "Hall of fame", text: "Records, champions and the best games ever played.", onClick: () => go("hall") },
             state.games.some((g) => g.scoringEvents.length > 0) && { key: "how", Icon: Calculator, title: "How the numbers work", text: "The odds, runs and Two-Way explained on real moments.", onClick: () => go("how") },
           ]}

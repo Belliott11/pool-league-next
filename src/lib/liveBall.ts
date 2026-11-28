@@ -69,7 +69,7 @@ export function ballOdds(target: number, pA: number, pB: number, share3: number)
 
 // The gap in trip scoring that makes A's chance at the tip (who has the ball unknown, so the two cases averaged) equal `pre`.
 const gaps = new Map<string, number>()
-function gapFor(target: number, pre: number, r: BallRates): number {
+export function gapFor(target: number, pre: number, r: BallRates): number {
   const key = `${target}|${pre.toFixed(4)}|${r.p.toFixed(4)}|${r.share3.toFixed(3)}`
   const kept = gaps.get(key)
   if (kept !== undefined) return kept
