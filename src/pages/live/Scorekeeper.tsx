@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { getClient } from "@/lib/cloud"
 import { haptic } from "@/lib/haptics"
+import { VoiceScore } from "@/components/VoiceScore"
 import { uid } from "@/lib/format"
 import { DEFAULT_TARGET } from "@/lib/live"
 import { pregamePrediction } from "@/lib/scorecard"
@@ -113,6 +114,7 @@ export function Scorekeeper({ game, state, pops, a, b, children }: { game: Game;
           <TeamColumn side="A" ids={game.teamA} total={side(game.teamA)} other={side(game.teamB)} {...col} />
           <TeamColumn side="B" ids={game.teamB} total={side(game.teamB)} other={side(game.teamA)} {...col} />
         </div>
+        <VoiceScore state={state} ids={[...game.teamA, ...game.teamB]} add={col.add} />
         {waiting.length > 0 && (
           <p role="status" className="text-center text-xs text-muted-foreground">
             {offline ? "No signal. " : ""}{waiting.length} basket{waiting.length === 1 ? "" : "s"} sending{offline ? ", will keep trying" : ""}.

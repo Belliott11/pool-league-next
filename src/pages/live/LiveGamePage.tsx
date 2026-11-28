@@ -2,6 +2,7 @@ import { gameOver, raceLine } from "@/lib/race"
 import { GuardPlanCard } from "@/components/GuardPlan"
 import { PregameFilm } from "@/components/PregameFilm"
 import { Announcer } from "@/components/Announcer"
+import { VoiceScore } from "@/components/VoiceScore"
 import { LiveStream } from "@/components/LiveStream"
 import { StreamLink } from "@/components/StreamLink"
 import type { PlayerControl } from "@/components/YouTubePlayer"
@@ -390,6 +391,7 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
         <TeamColumn side="A" ids={game.teamA} total={a} other={b} {...col} />
         <TeamColumn side="B" ids={game.teamB} total={b} other={a} {...col} />
       </div>
+      {!over && <VoiceScore state={state} ids={[...game.teamA, ...game.teamB]} add={add} />}
       <LivePickem state={state} game={game} />
       <LiveProps state={state} game={game} />
       <GuardPlanCard state={state} game={game} />

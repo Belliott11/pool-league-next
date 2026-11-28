@@ -265,6 +265,11 @@ html { overscroll-behavior-y: contain; }
     animation: lane-head 450ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 }
+/* The voice scoring countdown bar (VoiceScore.tsx). */
+@keyframes shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
 @keyframes lane-grow {
   from { left: var(--lane-zero); width: 0; }
 }

@@ -648,6 +648,17 @@ attendance, 15 parties to 4, the winner announced.
   `close`). Never for test games. Checked live with a call (sends nothing with no live game); delivery to a phone not yet seen.
 - Backups also save `poty_votes` and `season_goals`.
 
+## Voice scoring (2026-11-28)
+
+"Say the basket" on both live screens (`src/components/VoiceScore.tsx`, under the team columns; hidden where the browser has no speech
+recognition): one tap listens, "Zach three" or "two for Ben" becomes the basket after a 2.5 s countdown with Add and Cancel, through the
+same `add(pid, points)` as the swipes (the editor's `addLiveScore`, friends' queued `sendBasket`). `src/lib/voiceScore.ts` (`parseCall`)
+matches only the players in the game, forgives misheard names (one letter off from 4 letters, two from 6, so "Riley" finds Reilly), needs
+the letter when two share a first name ("Logan W", "Logan double you"; "Logan two" asks "Which Logan?"), reads points from the words that
+are not names (homophones "to", "tree", "won"; "from deep", "free throw"), and hears a passer after "off" but does not save it (live scoring
+keeps baskets only). Headless Chromium has its own `SpeechRecognition`, so a test stub must replace both it and the webkit name. Not yet
+tried on a real phone at the pool.
+
 ## Announcer mode and the story picture (2026-11-26)
 
 - Announcer (`src/components/Announcer.tsx`, wording in `src/lib/announcer.ts`): an "Announcer" button on both live screens (above the
