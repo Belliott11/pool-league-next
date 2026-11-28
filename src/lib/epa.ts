@@ -116,8 +116,15 @@ const TYPE: Record<string, string> = { catchAndShoot: "Catch and shoot", drive: 
 // One game's Points added is asked for by many cards (form rating, fatigue, teammates, the night grade, season teams, the game summary),
 // so each copy of the league data keeps its per-game answers.
 const perGameCache = new WeakMap<PooleanState, Map<string, Epa>>()
+const wholeCache = new WeakMap<PooleanState, Epa>() // the whole league's, which several cards on one page ask for
 export function pointsAdded(state: PooleanState, opts: { only?: string } = {}): Epa {
-  if (!opts.only) return computePointsAdded(state, opts)
+  if (!opts.only) {
+    const kept = wholeCache.get(state)
+    if (kept) return kept
+    const e = computePointsAdded(state, opts)
+    wholeCache.set(state, e)
+    return e
+  }
   const kept = perGameCache.get(state) ?? perGameCache.set(state, new Map()).get(state)!
   if (!kept.has(opts.only)) kept.set(opts.only, computePointsAdded(state, opts))
   return kept.get(opts.only)!

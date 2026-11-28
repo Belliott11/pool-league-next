@@ -45,22 +45,31 @@ export function ballOdds(target: number, pA: number, pB: number, share3: number)
   }
   const a2 = ra * (1 - share3), a3 = ra * share3, a0 = 1 - ra
   const b2 = rb * (1 - share3), b3 = rb * share3, b0 = 1 - rb
+  // One score's update. Scores near the end, where both teams are past `floor`, fold back into each other (win by 2) and need repeating
+  // until they settle; every other score only depends on higher scores, so after that corner settles one pass from the top is exact.
+  const update = (a: number, b: number): number => {
+    if (gameOver(a, b, target)) return 0
+    const [fa, fb] = fold(a, b)
+    if (fa !== a || fb !== b) return 0
+    // o = 1: A has the ball. After A's trip the ball is B's (o = 0), and the other way round. An empty trip hands the ball over at
+    // the same score, so the two values at this score feed each other: x = sA + a0 y and y = sB + b0 x, solved together here rather
+    // than by repeating (that loop was most of the work: drama for every game took about 5 s, 2026-11-28). The answers are unchanged.
+    const sA = a2 * at(a + 2, b, 0) + a3 * at(a + 3, b, 0)
+    const sB = b2 * at(a, b + 2, 1) + b3 * at(a, b + 3, 1)
+    const withA = (sA + a0 * sB) / (1 - a0 * b0)
+    const withB = sB + b0 * withA
+    const moved = Math.max(Math.abs(v[idx(a, b, 1)] - withA), Math.abs(v[idx(a, b, 0)] - withB))
+    v[idx(a, b, 1)] = withA
+    v[idx(a, b, 0)] = withB
+    return moved
+  }
+  const corner = Math.max(0, floor)
   for (let it = 0; it < 5000; it++) {
     let moved = 0
-    for (let a = size - 1; a >= 0; a--)
-      for (let b = size - 1; b >= 0; b--) {
-        if (gameOver(a, b, target)) continue
-        const [fa, fb] = fold(a, b)
-        if (fa !== a || fb !== b) continue
-        // o = 1: A has the ball. After A's trip the ball is B's (o = 0), and the other way round.
-        const withA = a2 * at(a + 2, b, 0) + a3 * at(a + 3, b, 0) + a0 * at(a, b, 0)
-        const withB = b2 * at(a, b + 2, 1) + b3 * at(a, b + 3, 1) + b0 * at(a, b, 1)
-        moved = Math.max(moved, Math.abs(v[idx(a, b, 1)] - withA), Math.abs(v[idx(a, b, 0)] - withB))
-        v[idx(a, b, 1)] = withA
-        v[idx(a, b, 0)] = withB
-      }
-    if (moved < 1e-10) break
+    for (let a = size - 1; a >= corner; a--) for (let b = size - 1; b >= corner; b--) moved = Math.max(moved, update(a, b))
+    if (moved < 1e-12) break
   }
+  for (let a = size - 1; a >= 0; a--) for (let b = size - 1; b >= 0; b--) update(a, b)
   const f = (a: number, b: number, ballA: boolean) => at(a, b, ballA ? 1 : 0)
   if (tables.size > 3000) tables.clear()
   tables.set(key, f)

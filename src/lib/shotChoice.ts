@@ -97,8 +97,12 @@ export function possessionOdds(target: number, t2: number, t3: number): (a: numb
     for (let a = size - 1; a >= 0; a--)
       for (let b = size - 1; b >= 0; b--) {
         if (over(a, b) || fold(a, b)[0] !== a || fold(a, b)[1] !== b) continue
-        const ours = t2 * at(a + 2, b, 0) + t3 * at(a + 3, b, 0) + none * at(a, b, 0)
-        const theirs = t2 * at(a, b + 2, 1) + t3 * at(a, b + 3, 1) + none * at(a, b, 1)
+        // An empty trip hands the ball over at the same score, so the two values here are solved together (x = sO + none y,
+        // y = sT + none x) instead of by repeating; same answers, far fewer passes (2026-11-28).
+        const sO = t2 * at(a + 2, b, 0) + t3 * at(a + 3, b, 0)
+        const sT = t2 * at(a, b + 2, 1) + t3 * at(a, b + 3, 1)
+        const ours = (sO + none * sT) / (1 - none * none)
+        const theirs = sT + none * ours
         moved = Math.max(moved, Math.abs(v[idx(a, b, 1)] - ours), Math.abs(v[idx(a, b, 0)] - theirs))
         v[idx(a, b, 1)] = ours
         v[idx(a, b, 0)] = theirs

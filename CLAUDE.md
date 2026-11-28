@@ -259,6 +259,11 @@ The race math (`raceWin`, `deuce` in `src/lib/race.ts`) and the live odds' pre-g
 (bounded tables), and the deuce loop stops once settled: a game page used to freeze about 3 s on a phone re-running them (the game
 summary's work went from 692 ms to 36 ms, 2026-11-26). The heaviest remaining first-visit work is the classic win-share weights fit
 (`computeWinSharesWeights`, about 100 ms, cached after the first time).
+The odds with the ball (`ballOdds` in liveBall.ts) solve each table without repeating the whole thing (2026-11-28): the two values at a
+score (A's ball, B's ball) are solved together, since an empty trip only hands the ball over, the win-by-2 corner (both teams past
+`floor`) settles on its own, and then one pass from the top is exact. Same answers to six decimals; drama for every game went from 4.9 s
+to 0.07 s cold. `possessionOdds` (shotChoice.ts) solves its pairs the same way. `pointsAdded(state)` for the whole league is kept per copy
+of the league data like the per-game answers.
 Avatars use 160px WebP copies (`public/photos/sm`, `playerThumbUrl`); run `scripts/photo-thumbs.sh` after adding a photo. The league
 data is fetched with a plain request (`fetchPublic` in `src/lib/cloud.ts`) while the database library loads.
 
