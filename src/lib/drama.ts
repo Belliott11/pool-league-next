@@ -41,11 +41,20 @@ export function gameDrama(game: Game, state: PooleanState): Drama | null {
   return { gameId: game.id, date: game.date, score, comeback: lowest, leadChanges: changes, lateDoubt, winner }
 }
 
-// Every finished game with enough baskets, most dramatic first.
-export function dramaRanking(state: PooleanState): Drama[] {
+// Each game's drama, kept per copy of the league data: the odds with the ball are costly to work out the first time (about 5 s for every
+// game at once on 2026-11-28), so a page that needs one night asks for that night only.
+const cache = new WeakMap<PooleanState, Map<string, Drama | null>>()
+const dramaOf = (g: Game, state: PooleanState) => {
+  const kept = cache.get(state) ?? cache.set(state, new Map()).get(state)!
+  if (!kept.has(g.id)) kept.set(g.id, gameDrama(g, state))
+  return kept.get(g.id)!
+}
+
+// Every finished game with enough baskets (or only one night's, with `date`), most dramatic first.
+export function dramaRanking(state: PooleanState, date?: string): Drama[] {
   return state.games
-    .filter((g) => !g.liveInProgress && !g.test)
-    .map((g) => gameDrama(g, state))
+    .filter((g) => !g.liveInProgress && !g.test && (!date || g.date === date))
+    .map((g) => dramaOf(g, state))
     .filter((d): d is Drama => !!d)
     .sort((a, b) => b.score - a.score)
 }

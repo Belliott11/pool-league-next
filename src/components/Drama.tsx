@@ -24,8 +24,7 @@ export function GameDrama({ state, game }: { state: PooleanState; game: Game }) 
 
 // The most dramatic games, for the Hall of Fame and the night recap.
 export function DramaList({ state, onOpenGame, date, limit = 5, names }: { state: PooleanState; onOpenGame: (id: string) => void; date?: string; limit?: number; names: (g: Game) => string }) {
-  const ranking = useMemo(() => dramaRanking(state), [state])
-  const rows = (date ? ranking.filter((d) => d.date === date) : ranking).slice(0, limit)
+  const rows = useMemo(() => dramaRanking(state, date), [state, date]).slice(0, limit)
   if (!rows.length) return null
   return (
     <ol className="flex flex-col gap-1.5">

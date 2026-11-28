@@ -14,7 +14,7 @@ export function NightGrades({ state, date, onOpenPlayer }: { state: PooleanState
   return (
     <section className="flex flex-col gap-1.5" aria-label="Night grades">
       <h3 className="font-display text-lg font-bold">Night grades</h3>
-      <p className="text-xs text-muted-foreground">Each player against their own usual level, so an A is a great night for them, not a ranking. A first filmed night has no grade yet.</p>
+      <p className="text-xs text-muted-foreground">Each player against their own usual level, half on Points added and half on Two-Way a game, so an A is a great night for them, not a ranking. A first filmed night has no grade yet.</p>
       <div className="table-scroll overflow-x-auto">
         <Table>
           <TableHeader>
@@ -23,8 +23,8 @@ export function NightGrades({ state, date, onOpenPlayer }: { state: PooleanState
               <TableHead className="text-right">Grade</TableHead>
               <TableHead className="text-right">Record</TableHead>
               <TableHead className="text-right">Pts</TableHead>
-              <TableHead className="text-right">Added a game</TableHead>
-              <TableHead className="text-right">Usual</TableHead>
+              <TableHead className="text-right">Points added</TableHead>
+              <TableHead className="text-right">Two-Way</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -38,8 +38,14 @@ export function NightGrades({ state, date, onOpenPlayer }: { state: PooleanState
                 <TableCell className={cn("text-right font-display text-base font-bold", r.grade?.startsWith("A") && "text-pos")}>{r.grade ?? <span className="text-xs font-normal italic text-muted-foreground">first</span>}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.wins}-{r.losses}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.points}</TableCell>
-                <TableCell className="text-right tabular-nums">{signed(r.added)}</TableCell>
-                <TableCell className="text-right tabular-nums text-muted-foreground">{r.usual === null ? "" : signed(r.usual)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {signed(r.added)}
+                  {r.usual !== null && <span className="block text-xs text-muted-foreground">usual {signed(r.usual)}</span>}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {r.twoWay === null ? "" : signed(r.twoWay)}
+                  {r.twoUsual !== null && <span className="block text-xs text-muted-foreground">usual {signed(r.twoUsual)}</span>}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

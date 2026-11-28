@@ -517,6 +517,12 @@ that night, the best play (as shooter or passer, with video) and one to fix (as 
 alerts carry no grade: a push subscription has no player attached. Every night (asked 2026-11-28): `nightReport(state, pid, date)` grades any filmed night, the card has a
 night picker (`nightsOf`, newest first, "(last)" on the latest), and the night recap lists every player's grade for its night ("Night
 grades", `nightGrades`, `src/components/NightGrades.tsx`: best grade first, first nights marked "first").
+Half and half since 2026-11-28 (asked): the grade's score is the Points added side above plus the same done for Two-Way (tonight's
+Two-Way a game against their own games before the night, leaned on the league average by `TWO_PRIOR` 8 games, the same small step up for
+anyone below the league average, scaled by the pooled game-to-game swing), averaged and rescaled by how closely the two move together
+(`rho` from every filmed player-game, `twoWayModel`), so the grades stay as spread out as before. The card and the night grades table show
+both numbers with each usual. The drama ranking is kept per game and asked for one night where that is all a page needs
+(`dramaRanking(state, date)`): working out every game's odds-with-the-ball cold took about 5 s, one night about 1.5 s.
 
 ## What if (2026-11-27)
 
