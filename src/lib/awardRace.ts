@@ -1,8 +1,9 @@
 import { sizeAllowed } from "@/lib/filters"
-import { distinctNumbers } from "@/lib/format"
+import { distinctNumbers, signed } from "@/lib/format"
 import { playerLine, scoreOf } from "@/lib/nightRecap"
 import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
 import { computeLeaderboard, defensiveRating, gameDefenseStats, getGameStats, isCurrentSeasonGame } from "@/lib/stats"
+import { teammateFit } from "@/lib/teammates"
 import type { Game, PooleanState } from "@/lib/types"
 
 // Who leads each award so far this season, from this app's own games (the games since the season started). The
@@ -65,6 +66,12 @@ export function awardRace(state: PooleanState): RaceRow[] {
     rows.push({ key: "best-player", label: "Best player", basis: "Two-way per game", field: byTwoWay.length, leaders: top(byTwoWay.map((r, i) => ({ ids: [r.player.id], value: `${text[i]} per game` }))) })
   }
 
+  // First and second team: the six best by two-way per game, places 1 to 3 the first team and 4 to 6 the second, like the vote.
+  if (byTwoWay.length >= 4) {
+    const text = distinctNumbers(byTwoWay.map((r) => r.twoWayPer25))
+    rows.push({ key: "teams", label: "First and second team", basis: "Two-way per game, places 1 to 3 and 4 to 6", field: byTwoWay.length, leaders: byTwoWay.slice(0, 6).map((r, i) => ({ ids: [r.player.id], value: `${i < 3 ? "first" : "second"} team, ${text[i]}` })) })
+  }
+
   // Defender: total defensive score.
   const byDefense = [...boxed].sort((x, y) => y[1].defense - x[1].defense)
   if (byDefense.length) rows.push({ key: "dpoy", label: "Defender", basis: "Total defensive score", field: byDefense.length, leaders: top(byDefense.map(([id, t]) => ({ ids: [id], value: `${t.defense.toFixed(1)} over ${t.gp} games` }))) })
@@ -101,6 +108,35 @@ export function awardRace(state: PooleanState): RaceRow[] {
     .filter((x) => x.delta > 0)
     .sort((a, b) => b.delta - a.delta)
   if (improved.length) rows.push({ key: "mip", label: "Most improved", basis: "Later games against earlier ones, two-way per game", field: improvers.length, leaders: top(improved.map((x) => ({ ids: [x.id], value: `up ${x.delta.toFixed(1)} a game` }))) })
+
+  // Most improved since last season: two-way per game this season against the season before (seasonHistory), 3+ box scores in each.
+  const prev = (state.seasonHistory ?? []).at(-1)
+  if (state.currentSeasonStartedAt && prev) {
+    const before = state.games.filter((g) => !g.liveInProgress && g.date && g.date < state.currentSeasonStartedAt! && (!prev.startedAt || g.date >= prev.startedAt) && sizeAllowed(g))
+    const avgOf = (gs: Game[], id: string) => {
+      const v = gs.filter((g) => g.scoringEvents.length > 0 && (g.teamA.includes(id) || g.teamB.includes(id))).map((g) => playerLine(g, id).twoWay).filter((x): x is number => x !== null)
+      return v.length >= 3 ? v.reduce((a, x) => a + x, 0) / v.length : null
+    }
+    const yoy = [...played.keys()]
+      .filter(eligible)
+      .map((id) => ({ id, now: avgOf(games, id), then: avgOf(before, id) }))
+      .filter((x): x is { id: string; now: number; then: number } => x.now !== null && x.then !== null)
+    const up = yoy.map((x) => ({ id: x.id, delta: x.now - x.then })).filter((x) => x.delta > 0).sort((a, b) => b.delta - a.delta)
+    if (up.length) rows.push({ key: "mip-yoy", label: "Most improved since last season", basis: `Two-way per game against ${prev.label}`, field: yoy.length, leaders: top(up.map((x) => ({ ids: [x.id], value: `up ${x.delta.toFixed(1)} a game` }))) })
+  }
+
+  // Teammate: how much better their teammates play with them on the team than without (Points added a game, leaned for small samples;
+  // teammates.ts), averaged over the teammates it can be measured for, at least 2 of them.
+  const lifts = [...played.keys()]
+    .filter(eligible)
+    .map((id) => {
+      const mates = new Set(games.flatMap((g) => (g.teamA.includes(id) ? g.teamA : g.teamB.includes(id) ? g.teamB : [])).filter((m) => m !== id))
+      const v = [...mates].map((m) => teammateFit(season, m).find((f) => f.id === id)?.lift).filter((x): x is number => x !== null && x !== undefined)
+      return { id, lift: v.length >= 2 ? v.reduce((a, x) => a + x, 0) / v.length : null, n: v.length }
+    })
+    .filter((x): x is { id: string; lift: number; n: number } => x.lift !== null)
+    .sort((a, b) => b.lift - a.lift)
+  if (lifts.length) rows.push({ key: "teammate", label: "Teammate", basis: "How much better teammates play with them than without, Points added a game", field: lifts.length, leaders: top(lifts.map((x) => ({ ids: [x.id], value: `${signed(x.lift)} for ${x.n} teammates` }))) })
 
   // Duos: record together, pulled toward even by 5 phantom games so 9-1 beats 3-0.
   const duos = new Map<string, { w: number; gp: number; ids: string[] }>()

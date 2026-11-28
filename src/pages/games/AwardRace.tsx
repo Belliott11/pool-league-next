@@ -1,26 +1,44 @@
 import { Medal } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import { ClipButton } from "@/components/ClipTile"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { awardRace, shownAwards } from "@/lib/awardRace"
 import { awardOdds, ODDS_KEYS, type OddsKey } from "@/lib/awardOdds"
 import { isOffseason } from "@/lib/offseason"
+import { useReadOnly } from "@/lib/mode"
+import { projectSeason } from "@/lib/projections"
 import { bestClips, clipKey, type Clip } from "@/lib/clips"
 import { playerName } from "@/lib/players"
 import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
 import type { PooleanState } from "@/lib/types"
 
-const FIRST = 3 // awards shown before "Show all"
 const RUNS_TEXT = "4,000 times"
+const AFTER = 6 // nights played out between seasons, for "had the season kept going"
+const SHOWN = 4
+const pct = (p: number) => (p >= 0.995 ? "99%+" : p < 0.005 ? "under 1%" : `${Math.round(p * 100)}%`)
 const MIN_TEXT = `${MIN_RANKED} games`
 
 // Who leads each award so far this season, from this season's own games.
 export function AwardRaceCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const all = useMemo(() => shownAwards(awardRace(state)), [state]) // races with fewer than three in them are left out
-  const [open, setOpen] = useState(false)
-  // Each player's chance of winning the measured awards once the season's nights are played (awardOdds.ts), only while it is under way.
-  const odds = useMemo(() => (isOffseason(state) ? null : awardOdds(state)), [state])
+  // Projected finish, editors only (odds on who wins are a lot to put in front of the people being ranked; kept that way 2026-11-28): each
+  // player's chance of leading the measured awards once the season's nights are played (awardOdds.ts), or between seasons had it run
+  // AFTER more nights, plus the projected vote and the next points milestones (projections.ts).
+  const visitor = useReadOnly()
+  const over = isOffseason(state)
+  const odds = useMemo(() => {
+    if (visitor) return null
+    const now = awardOdds(state)
+    if (!now) return null
+    return now.nightsLeft > 0 && !over ? now : awardOdds(state, { planned: now.nightsPlayed + AFTER })
+  }, [state, visitor, over])
   const live = odds && odds.nightsLeft > 0 ? odds : null
+  const proj = useMemo(() => (visitor ? null : projectSeason(state, 20)), [state, visitor])
+  const voteOf = (key: string) => {
+    const rows = key === "mvp" ? proj?.mvp : key === "dpoy" ? proj?.defender : undefined
+    if (!rows || rows.length < 2) return null
+    return [...rows].sort((a, b) => b.vote - a.vote).filter((r) => r.vote >= 0.01).slice(0, 3).map((r) => `${playerName(state, r.id)} ${pct(r.vote)}`).join(", ") || "too close to call"
+  }
   // The leader's best play, when a recording has one, so an award can be seen as well as read.
   const clipOf = useMemo(() => {
     // Defense awards show a stop, the rest a bucket, and no play is used twice on the page.
@@ -38,7 +56,7 @@ export function AwardRaceCard({ state, onOpenPlayer }: { state: PooleanState; on
     return out
   }, [all, state])
   if (all.length === 0) return null
-  const rows = open ? all : all.slice(0, FIRST)
+  const rows = all
   return (
     <Card>
       <CardHeader>
@@ -71,27 +89,52 @@ export function AwardRaceCard({ state, onOpenPlayer }: { state: PooleanState; on
               ))}
             </ol>
             {live && (ODDS_KEYS as readonly string[]).includes(r.key) && live.odds[r.key as OddsKey].length > 0 && (
-              <p className="text-xs">
-                <span className="text-muted-foreground">Chance to win it: </span>
-                {live.odds[r.key as OddsKey]
-                  .filter((x) => x.chance >= 0.02)
-                  .slice(0, 4)
-                  .map((x) => `${playerName(state, x.id)} ${Math.round(x.chance * 100)}%`)
-                  .join(", ")}
-              </p>
+              <div className="mt-1 flex flex-col gap-0.5 rounded-md border border-dashed p-2 text-xs">
+                <p className="font-medium">{over ? `Had it run ${AFTER} more nights` : "Projected finish"}</p>
+                <p>
+                  <span className="text-muted-foreground">Chance to lead it at the end: </span>
+                  {live.odds[r.key as OddsKey]
+                    .filter((x) => x.chance >= 0.02)
+                    .slice(0, SHOWN)
+                    .map((x) => `${playerName(state, x.id)} ${pct(x.chance)}`)
+                    .join(", ")}
+                </p>
+                {voteOf(r.key) && (
+                  <p>
+                    <span className="text-muted-foreground">Projected vote: </span>
+                    {voteOf(r.key)}
+                  </p>
+                )}
+              </div>
             )}
           </section>
         ))}
-        {live && (
-          <p className="text-xs text-muted-foreground">
-            Chances come from playing out the {live.nightsLeft} nights left (of {live.nightsPlayed + live.nightsLeft} planned) {RUNS_TEXT}, from each player's attendance, games a night
-            and level so far, with the usual swings from game to game. Someone not in the race yet can still win it by getting to {MIN_TEXT}.
-          </p>
+        {live && !over && proj && proj.milestones.length > 0 && (
+          <section aria-label="Next points milestone" className="flex flex-col gap-0.5 rounded-md border border-dashed p-2 text-xs">
+            <p className="font-medium">Next points milestone, if the season runs 20 more filmed games</p>
+            {proj.milestones.slice(0, SHOWN).map((m) => (
+              <p key={m.id} className="flex justify-between gap-2">
+                <button type="button" className="hover:underline" onClick={() => onOpenPlayer(m.id)}>
+                  {playerName(state, m.id)}
+                </button>
+                <span className="tabular-nums text-muted-foreground">
+                  {m.next - m.pts} from {m.next}, {pct(m.chance)}
+                </span>
+              </p>
+            ))}
+          </section>
         )}
-        {all.length > FIRST && (
-          <button type="button" className="self-start text-sm font-medium text-accent hover:underline" onClick={() => setOpen(!open)}>
-            {open ? "Show fewer" : `Show all ${all.length} awards`}
-          </button>
+        {live && (
+          <details className="text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground">How the projected finish is worked out (editors only)</summary>
+            <p className="mt-1">
+              The chance to lead comes from playing out the {live.nightsLeft} nights {over ? "after the season" : `left (of ${live.nightsPlayed + live.nightsLeft} planned)`} {RUNS_TEXT}, from each
+              player's attendance, games a night and level so far, with the usual swings from game to game. Someone not in the race yet can still
+              lead it by getting to {MIN_TEXT}. Awards are voted, so the projected vote runs 2,000 sample ballots on the totals so far: every
+              player with 3 or more games ranks three others for 3, 2 and 1 points, with some disagreement built in. It shows who is best placed,
+              not who will win. Visitors see the race without any chances.
+            </p>
+          </details>
         )}
       </CardContent>
     </Card>

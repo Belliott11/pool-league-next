@@ -658,16 +658,22 @@ season has been closed with `startNewSeason` (needs `currentSeasonStartedAt` and
 blocks, turnovers a game and effective shooting, plus the record over the first as many games as both have (every game). On 2026-11-28
 there is one season, so it is hidden; `yearOverYear.test.ts` splits live data at 2026-08-10 to check it.
 
-## Award odds (2026-11-28)
+## Award race and projected finish (2026-11-28)
 
-`src/lib/awardOdds.ts`, a "Chance to win it" line under MVP race, Best player and Defender in the Season award race card
-(`src/pages/games/AwardRace.tsx`), only in season with nights left. 4,000 seeded runs of the nights left (planned: the open season-team
-set's `nights`, else `DEFAULT_NIGHTS` 12): each player comes at their attendance so far (leaned on the league's by `LEAN_NIGHTS` 2 nights),
-plays their usual games a night, each filmed at this season's filmed share, and a filmed game adds a two-way line and a defensive score
-drawn from their level (leaned on the league by `LEAN` 4 games, the level drawn once per run with its own uncertainty) plus the pooled
-game-to-game spread. The same measures and eligibility as awardRace.ts (`MIN_RANKED` games, 2 box scores); Best player starts from the
-board's `twoWayPer25`. Ties share. `awardOdds.test.ts`: with no nights left the race leader has 100%, and the chances add to 1. On live data
-with 8 nights added: Ben about 47% MVP, Evan 29% (not yet eligible, but likely to be).
+The Season award race card (`src/pages/games/AwardRace.tsx`, `awardRace` in `src/lib/awardRace.ts`) shows every award, no fold: MVP race,
+Best player, First and second team (`teams`: the six best by two-way per game, 1 to 3 and 4 to 6, like the vote), Defender, Clutch, Most
+improved, Most improved since last season (`mip-yoy`: two-way per game against the previous season in `seasonHistory`, 3+ box scores in
+each; only once a season has been closed), Teammate (how much better teammates play with them than without, the average of each
+teammate's lift from teammates.ts over the season's games, 2+ teammates measured), Best duo and Worst Duo. Races with fewer than 3 in them
+still hide (`MIN_FIELD`). The old "Projected season" card (Projections.tsx) is gone: its parts sit inside the award race card as an
+editor-only "Projected finish" under MVP, Best player and Defender (the user kept odds editors-only, 2026-11-28; visitors see the race with
+no chances), plus the next points milestones at the bottom. "Chance to lead it at the end" is `src/lib/awardOdds.ts`: 4,000 seeded runs of
+the nights left (planned: the open season-team set's `nights`, else `DEFAULT_NIGHTS` 12; between seasons, "had it run" `AFTER` 6 more
+nights): each player comes at their attendance so far (leaned on the league's by `LEAN_NIGHTS` 2), plays their usual games a night, each
+filmed at this season's share, and a filmed game adds a two-way line and a defensive score from their level (leaned on the league by `LEAN`
+4 games, drawn once per run with its uncertainty) plus the pooled game-to-game spread, under awardRace.ts's eligibility. "Projected vote"
+(MVP and Defender) is `projectSeason`'s sample ballots (projections.ts). `awardOdds.test.ts`: no nights left gives the leader 100%, chances
+add to 1.
 
 ## Dream matchup (2026-11-28)
 
