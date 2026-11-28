@@ -26,4 +26,9 @@ describe("rule gaps", () => {
     expect(ruleGaps(empty, text).some((g) => g.key === "length")).toBe(true)
     expect(ruleGaps(empty, text + " games are first to 21, win by 2.").some((g) => g.key === "length")).toBe(false)
   })
+  it("drops a question the league answered with a clarification", () => {
+    const answered = { ...empty, ruleNotes: [{ id: "n", section: "Possession", text: "Shoot for it from the line.", date: "2026-11-28", gap: "first-ball" }] }
+    expect(ruleGaps(empty).some((g) => g.key === "first-ball")).toBe(true)
+    expect(ruleGaps(answered).some((g) => g.key === "first-ball")).toBe(false)
+  })
 })

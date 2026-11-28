@@ -14,25 +14,25 @@ import type { PooleanState } from "@/lib/types"
 // rulebook with the league's own clarifications under each section (state.ruleNotes; the editor adds and removes them here). The rulebook
 // itself is Poolean's (Adam's app), copied hourly by scripts/rulebook.mjs, so a change to the rules is made there.
 
-function AddNote({ section, update }: { section: string; update: Update }) {
+function AddNote({ section, update, gap, label = "Add a clarification", placeholder }: { section: string; update: Update; gap?: string; label?: string; placeholder?: string }) {
   const [text, setText] = useState("")
   const [open, setOpen] = useState(false)
   if (!open)
     return (
       <button type="button" className="self-start text-xs font-medium text-accent hover:underline" onClick={() => setOpen(true)}>
-        Add a clarification
+        {label}
       </button>
     )
   const save = () => {
     const t = text.trim()
     if (!t) return
-    update((s) => ({ ...s, ruleNotes: [...(s.ruleNotes ?? []), { id: uid("rn"), section, text: t, date: new Date().toLocaleDateString("en-CA") }] }))
+    update((s) => ({ ...s, ruleNotes: [...(s.ruleNotes ?? []), { id: uid("rn"), section, text: t, date: new Date().toLocaleDateString("en-CA"), ...(gap ? { gap } : {}) }] }))
     setText("")
     setOpen(false)
   }
   return (
     <div className="flex flex-col gap-1.5">
-      <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={400} rows={2} className="rounded-md border bg-background p-2 text-sm" placeholder={`How the league reads ${section.toLowerCase()}, such as a ruling from a game`} aria-label={`Clarification for ${section}`} />
+      <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={400} rows={2} className="rounded-md border bg-background p-2 text-sm" placeholder={placeholder ?? `How the league reads ${section.toLowerCase()}, such as a ruling from a game`} aria-label={`Clarification for ${section}`} />
       <div className="flex gap-2">
         <Button size="sm" onClick={save} disabled={!text.trim()}>
           Save
@@ -79,10 +79,11 @@ export function RulesPage({ state, update, onBack }: { state: PooleanState; upda
                       <span className="font-medium">{g.topic}</span>
                       <span>{g.ask}</span>
                       {g.why && <span className="text-xs text-muted-foreground">{g.why}</span>}
+                      {editor && <div className="mt-1"><AddNote section={g.section} update={update!} gap={g.key} label="Answer it" placeholder={`The league's answer. It is filed under ${g.section}.`} /></div>}
                     </li>
                   ))}
                 </ul>
-                <p className="text-xs text-muted-foreground">Each one drops off this list by itself once the rulebook answers it.</p>
+                <p className="text-xs text-muted-foreground">Each one drops off this list once the rulebook answers it{editor ? ", or once you answer it here (filed as a league clarification under its section)" : ""}.</p>
               </section>
             )}
             {ideas.length > 0 && (

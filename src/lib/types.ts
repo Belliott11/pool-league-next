@@ -132,6 +132,7 @@ export interface RuleNote {
   section: string // the rulebook section's title, such as "Boundaries"
   text: string
   date: string // when it was added, YYYY-MM-DD
+  gap?: string // the open question it answers (ruleGaps' key), which then leaves "Not in the rulebook yet"
 }
 
 export interface Review {

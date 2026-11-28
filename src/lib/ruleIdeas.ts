@@ -9,6 +9,7 @@ import type { PooleanState } from "@/lib/types"
 
 export interface Gap {
   key: string
+  section: string // where an answer is filed as a league clarification
   topic: string
   ask: string
   why: string | null // what the games show, when they show anything
@@ -37,6 +38,7 @@ export function ruleGaps(state: PooleanState, text = rulesText()): Gap[] {
   const all: (Gap & { covered: RegExp })[] = [
     {
       key: "length",
+      section: "Scoring",
       topic: "Game length",
       ask: "What score wins a game, and does it have to be won by 2?",
       why: targets.length ? `Games here have been played to ${joinNames(targets.map(String)).replace(/ and ([^ ]+)$/, " or $1")}, and the site's odds assume win by 2.` : "The site's odds assume first to 21, win by 2.",
@@ -44,6 +46,7 @@ export function ruleGaps(state: PooleanState, text = rulesText()): Gap[] {
     },
     {
       key: "uneven",
+      section: "General principle",
       topic: "Uneven teams",
       ask: "With an odd number of players (3 against 2), is anything different: a head start, a sub, a shorter game?",
       why: uneven ? `${uneven} ${uneven === 1 ? "game has" : "games have"} had uneven teams.` : null,
@@ -51,6 +54,7 @@ export function ruleGaps(state: PooleanState, text = rulesText()): Gap[] {
     },
     {
       key: "first-ball",
+      section: "Possession",
       topic: "First possession",
       ask: "Who starts with the ball?",
       why: null,
@@ -58,6 +62,7 @@ export function ruleGaps(state: PooleanState, text = rulesText()): Gap[] {
     },
     {
       key: "after-ft",
+      section: "Fouls and penalties",
       topic: "After free throws",
       ask: "Whose ball is it after free throws, made or missed? Do they count toward the winning score?",
       why: fts ? `${fts} free ${fts === 1 ? "throw has" : "throws have"} been logged in filmed games.` : null,
@@ -65,6 +70,7 @@ export function ruleGaps(state: PooleanState, text = rulesText()): Gap[] {
     },
     {
       key: "held",
+      section: "Possession",
       topic: "Held ball",
       ask: "When two players both hold the ball and neither lets go, whose is it?",
       why: null,
@@ -72,13 +78,16 @@ export function ruleGaps(state: PooleanState, text = rulesText()): Gap[] {
     },
     {
       key: "stall",
+      section: "General principle",
       topic: "Stalling",
       ask: "Is there any limit on holding the ball without shooting?",
       why: null,
       covered: /shot clock|stall|seconds to shoot|count/,
     },
   ]
-  return all.filter((g) => !g.covered.test(text)).map(({ covered, ...g }) => (void covered, g))
+  // Answered either by the rulebook's own words or by a league clarification filed against the question.
+  const answered = new Set((state.ruleNotes ?? []).map((n) => n.gap).filter(Boolean))
+  return all.filter((g) => !g.covered.test(text) && !answered.has(g.key)).map(({ covered, ...g }) => (void covered, g))
 }
 
 export function ruleIdeas(state: PooleanState): Idea[] {

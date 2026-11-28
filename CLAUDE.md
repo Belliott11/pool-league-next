@@ -331,7 +331,8 @@ questions the rulebook does not answer yet, game length, uneven teams, first pos
 what the games show and each dropping off by itself once the rulebook text matches its pattern; `ruleIdeas`, numbers with a suggestion:
 where missed 3s and 2s go, points a shot for 3s against 2s, replay verdicts, fouls and roughness free throws), then the whole rulebook with
 the league's clarifications under each section (`state.ruleNotes`, type `RuleNote`, tied to a section by title; the editor adds and
-removes them on the page). Suggestions only: the rulebook itself is Poolean's. On 2026-11-28: 3s are worth 0.50 points a shot against
+removes them on the page). Each open question has "Answer it" for the editor: the answer is filed as a clarification under the
+question's section (`Gap.section`) with `gap` set to its key, which takes it off the list. Suggestions only: the rulebook itself is Poolean's. On 2026-11-28: 3s are worth 0.50 points a shot against
 0.80 for 2s, and 44% of missed 3s go out of bounds against 21% of 2s.
 
 ## Rulebook and rule changes
