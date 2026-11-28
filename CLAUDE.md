@@ -463,7 +463,9 @@ share of their own nights it would beat (`normalCdf`) and a grade (`GRADES`, A+ 
 no grade (nothing to compare with yet). Also their record and points
 that night, the best play (as shooter or passer, with video) and one to fix (as shooter or who lost the ball), both in the film viewer
 (`PlaysToWatch`), the form rating before and after the night, and a link when they played in the game of the night (drama.ts). The game
-alerts carry no grade: a push subscription has no player attached.
+alerts carry no grade: a push subscription has no player attached. Every night (asked 2026-11-28): `nightReport(state, pid, date)` grades any filmed night, the card has a
+night picker (`nightsOf`, newest first, "(last)" on the latest), and the night recap lists every player's grade for its night ("Night
+grades", `nightGrades`, `src/components/NightGrades.tsx`: best grade first, first nights marked "first").
 
 ## What if (2026-11-27)
 

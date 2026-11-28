@@ -1,18 +1,22 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlaysToWatch } from "@/components/FilmRoom"
 import { formatDateDisplay, signed } from "@/lib/format"
 import { myPlayerId, useWho } from "@/lib/identity"
-import { nightReport, playLine } from "@/lib/nightReport"
+import { nightReport, nightsOf, playLine } from "@/lib/nightReport"
 import { playerName } from "@/lib/players"
 import { cn } from "@/lib/utils"
 import type { PooleanState } from "@/lib/types"
 
 
-// A player's last filmed night, graded (nightReport.ts), near the top of their page. "Your night" on your own page.
+// A player's filmed night, graded (nightReport.ts), near the top of their page: the last one, or any earlier one from the picker. "Your
+// night" on your own page.
 export function NightReportCard({ state, pid }: { state: PooleanState; pid: string }) {
   const me = myPlayerId(useWho(), state.players)
-  const r = useMemo(() => nightReport(state, pid), [state, pid])
+  const nights = useMemo(() => nightsOf(state, pid), [state, pid])
+  const [picked, setPicked] = useState<{ pid: string; date: string } | null>(null)
+  const date = picked?.pid === pid && nights.includes(picked.date) ? picked.date : nights[0]
+  const r = useMemo(() => (date ? nightReport(state, pid, date) : null), [state, pid, date])
   if (!r) return null
   const name = (id: string) => playerName(state, id)
   const own = me === pid
@@ -20,9 +24,22 @@ export function NightReportCard({ state, pid }: { state: PooleanState; pid: stri
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{own ? "Your night" : `${name(pid)}'s last night`}: {formatDateDisplay(r.date)}</CardTitle>
+        <CardTitle>{own ? "Your night" : `${name(pid)}'s ${r.date === nights[0] ? "last " : ""}night`}: {formatDateDisplay(r.date)}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">
+        {nights.length > 1 && (
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            Night
+            <select className="h-9 rounded-md border bg-background px-2 text-sm text-foreground" value={r.date} onChange={(e) => setPicked({ pid, date: e.target.value })}>
+              {nights.map((d, i) => (
+                <option key={d} value={d}>
+                  {formatDateDisplay(d)}
+                  {i === 0 ? " (last)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="flex items-center gap-4">
           {r.grade && <span className={cn("font-display text-5xl font-bold", r.grade.startsWith("A") ? "text-pos" : "")}>{r.grade}</span>}
           <p>

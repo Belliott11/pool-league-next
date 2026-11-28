@@ -32,6 +32,7 @@ export const GRADES: [number, string][] = [
 export const gradeFor = (beat: number) => GRADES.find(([at]) => beat >= at)![1]
 
 export interface NightReport {
+  pid: string
   date: string
   games: string[]
   wins: number
@@ -63,10 +64,26 @@ function nightValues(state: PooleanState): Map<string, number> {
   return new Map([...per].map(([k, v]) => [k, v.sum / v.n]))
 }
 
-export function nightReport(state: PooleanState, pid: string): NightReport | null {
+// The filmed nights a player played, newest first.
+export function nightsOf(state: PooleanState, pid: string): string[] {
+  return [...new Set(filmedGames(state).filter((g) => g.teamA.includes(pid) || g.teamB.includes(pid)).map((g) => g.date))].sort().reverse()
+}
+
+// Every player's report for one filmed night (the night recap's "Night grades"), best grade first, first nights (no grade) last.
+export function nightGrades(state: PooleanState, date: string): NightReport[] {
+  const ids = [...new Set(filmedGames(state).filter((g) => g.date === date).flatMap((g) => [...g.teamA, ...g.teamB]))]
+  return ids
+    .map((id) => ({ id, r: nightReport(state, id, date) }))
+    .filter((x): x is { id: string; r: NightReport } => !!x.r)
+    .sort((a, b) => (b.r.grade ? b.r.beat : -1) - (a.r.grade ? a.r.beat : -1))
+    .map((x) => x.r)
+}
+
+// A player's night, graded: their last filmed night, or the one named.
+export function nightReport(state: PooleanState, pid: string, on?: string): NightReport | null {
   const mine = filmedGames(state).filter((g) => g.teamA.includes(pid) || g.teamB.includes(pid))
-  const date = mine.map((g) => g.date).sort().at(-1)
-  if (!date) return null
+  const date = on ?? mine.map((g) => g.date).sort().at(-1)
+  if (!date || !mine.some((g) => g.date === date)) return null
   const tonight = mine.filter((g) => g.date === date)
   const values = nightValues(state)
   const added = values.get(`${pid}|${date}`) ?? 0
@@ -79,7 +96,7 @@ export function nightReport(state: PooleanState, pid: string): NightReport | nul
   const spread = prior ? Math.sqrt((gameNoise * gameNoise) / tonight.length + prior.sd * prior.sd) : 1
   const bar = prior ? barFor(prior.mean) : 0
   const beat = prior ? normalCdf((added - bar) / spread) : 0.5
-  const nights = new Set(mine.map((g) => g.date)).size
+  const nights = new Set(mine.filter((g) => g.date <= date).map((g) => g.date)).size
   let wins = 0
   let losses = 0
   let points = 0
@@ -101,7 +118,7 @@ export function nightReport(state: PooleanState, pid: string): NightReport | nul
   const after = row?.history.filter((h) => h.date <= date).at(-1)?.mean ?? null
   const night = dramaRanking(state).filter((d) => d.date === date)[0]
   const gameOfNight = night && tonight.some((g) => g.id === night.gameId) && dramaRanking(state).filter((d) => d.date === date).length > 1 ? night.gameId : null
-  return { date, games: tonight.map((g) => g.id), wins, losses, points, added, usual: prior?.mean ?? null, bar: prior ? bar : null, beat, grade: prior ? gradeFor(beat) : null, nights, best, fix, formBefore: before, formAfter: after, gameOfNight }
+  return { pid, date, games: tonight.map((g) => g.id), wins, losses, points, added, usual: prior?.mean ?? null, bar: prior ? bar : null, beat, grade: prior ? gradeFor(beat) : null, nights, best, fix, formBefore: before, formAfter: after, gameOfNight }
 }
 
 export const playLine = (p: PlayValue, name: Name) => describe(p, name)

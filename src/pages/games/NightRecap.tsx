@@ -25,6 +25,7 @@ import { useLabeledState } from "@/lib/labelsContext"
 import { usePublishedNight } from "@/lib/published"
 import type { Update } from "@/lib/store"
 import { NightReelButton } from "@/components/ReelButton"
+import { NightGrades } from "@/components/NightGrades"
 import { playerName } from "@/lib/players"
 import { shareNightCard, shareNightStory } from "@/lib/shareCard"
 import { TEAM } from "@/lib/teamColors"
@@ -243,6 +244,8 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
           </button>
         ))}
       </section>
+
+      {date && <NightGrades state={state} date={date} onOpenPlayer={onOpenPlayer} />}
 
       <div className="flex flex-wrap gap-2">
         {s.topScorer && (
