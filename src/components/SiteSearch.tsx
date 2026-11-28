@@ -62,6 +62,7 @@ export function SiteSearch({ state, open, onOpenChange, go, openPlayer, readOnly
       page("poty", "Play of the Year", "Vote on the season's best plays, a bracket at a time", "play of the year bracket vote best plays clips poty", { tab: "games", sub: "poty", player: null }),
       page("awards", "Season awards", "The players vote MVP, Defensive Player and more", "season awards vote mvp defensive player most improved clutch ballot", { tab: "games", sub: "awards", player: null }),
       ...(readOnly && !SEASON_TEAMS_PUBLIC ? [] : [page("teams", "Season teams", "Standings, the draft and rivalry games", "season teams standings draft captains rivalry club", { tab: "games", sub: "teams", player: null })]),
+      page("preview", "Season preview", "Every regular's story going into opening night", "season preview opening night storylines summer outlook", { tab: "games", sub: "preview", player: null }),
       page("rules", "Rules", "Look up a rule, the league's rulings and ideas to improve them", "rules rulebook rule foul out of bounds goaltend hug timeout ruling clarification", { tab: "games", sub: "rules", player: null }),
       page("dream", "Dream matchup", "Any two teams: who wins and one game played out", "dream matchup simulate fantasy hypothetical what if teams odds", { tab: "games", sub: "dream", player: null }),
       page("h2h", "Settle it", "Any two players side by side", "debate versus vs compare head to head who is better argument", { tab: "games", sub: "h2h", player: null }),

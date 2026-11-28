@@ -435,6 +435,16 @@ whose player adds d points over an average game (PER points) gets half plus d/(2
 point mix to the usual target turns that into a win chance (about 6% a game per point, to 16). Editors see it now, marked as a preview;
 everyone sees it from `WINS_SHOW_AT` (15) filmed games. Players under 8 games are in italics.
 
+## Season preview (2026-11-28)
+
+`src/lib/seasonPreview.ts`, page `#/games/preview` (`src/pages/games/SeasonPreviewPage.tsx`; a card on the off-season home, an Explore
+tile while the hub shows, and in search). Every player with `MIN_PARTIES` (3) parties last summer (or 3 games this site's season), most
+parties first: last summer's record, parties, power-ranking #1 nights and best rank (the old site's season card), the voted awards they won
+(pastAwards.ts), points a game in filmed games, form rating going in, the trend at the end (improving.ts), and their best partner (the
+teammate lift from teammates.ts at 0.5+, else the best record together over 5+ games). `storyline` turns the strongest one or two facts
+into a sentence, adding the phone-owned parts the page loads: preseason jump picks (`usePredictions`) and a summer goal (`loadGoals`).
+Opening night and a countdown at the top, "Share the preview" for the group chat. No odds (editors only).
+
 ## Game night calendar (2026-11-28)
 
 `src/lib/calendar.ts` (no imports, so vite.config.ts uses it too): `gameNights` (opening night and the editor's nights, `state.rsvps`, today

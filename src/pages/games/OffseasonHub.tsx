@@ -1,4 +1,4 @@
-import { Check, Gift, Radio, Share2, Smartphone } from "lucide-react"
+import { Check, Gift, Newspaper, Radio, Share2, Smartphone } from "lucide-react"
 import { FlipDigits } from "@/components/FlipDigits"
 import { findLiveGame, liveTotals } from "@/lib/live"
 import { scoreOf } from "@/lib/nightRecap"
@@ -174,6 +174,15 @@ export function OffseasonHub({ state, onWrapped, onOpenPlayer, onLive, onOpenGam
         </Button>
       )}
 
+      {!tonight && (
+        <a href="#/games/preview" className="flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-muted">
+          <Newspaper aria-hidden className="size-5 shrink-0 text-accent" />
+          <span className="flex min-w-0 flex-col">
+            <span className="font-semibold">Season preview</span>
+            <span className="text-xs text-muted-foreground">Every regular's story going into opening night.</span>
+          </span>
+        </a>
+      )}
       {!tonight && <Throwback state={state} />}
 
       {!tonight && <PlayersToWatch state={state} onOpenPlayer={onOpenPlayer} />}
