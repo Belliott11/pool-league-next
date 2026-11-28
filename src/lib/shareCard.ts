@@ -7,6 +7,8 @@ import type { Game, PooleanState } from "@/lib/types"
 import { bestClips, type Clip } from "@/lib/clips"
 import shares from "@/data/clip-shares.json"
 import { clipIdOf } from "@/lib/clipShare"
+import { shareFile } from "@/lib/shareFile"
+import { VIDEO_HOST } from "@/lib/clipShare"
 
 // A post-game picture to send to the group chat: the final score in the team colors, who played, and who
 // scored most. Drawn on a canvas in the app's own colors and fonts, then shared or downloaded.
@@ -149,21 +151,7 @@ export async function drawGameCard(state: PooleanState, game: Game): Promise<HTM
 async function shareCanvas(canvas: HTMLCanvasElement, fileName: string, title: string): Promise<void> {
   const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"))
   if (!blob) throw new Error("Could not make the picture.")
-  const file = new File([blob], fileName, { type: "image/png" })
-  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
-  if (nav.canShare?.({ files: [file] })) {
-    try {
-      await nav.share({ files: [file], title })
-      return
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return
-    }
-  }
-  const a = document.createElement("a")
-  a.href = URL.createObjectURL(file)
-  a.download = file.name
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  await shareFile(new File([blob], fileName, { type: "image/png" }), title)
 }
 
 export async function shareGameCard(state: PooleanState, game: Game): Promise<void> {
@@ -171,7 +159,6 @@ export async function shareGameCard(state: PooleanState, game: Game): Promise<vo
 }
 
 // ---- the night recap picture: every game's result and the night's top scorers.
-const VIDEO_HOST = "https://pub-fe959ca0159c462e9b4e69082ac20db5.r2.dev" // where the clip pictures are (see vite.config.ts)
 
 // The night's best play with a saved picture (src/data/clip-shares.json), never one that goes badly for anyone, and its picture. The
 // picture only loads where the video host allows it to be drawn (the live site); anywhere else the card is drawn without it.

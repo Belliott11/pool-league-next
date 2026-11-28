@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/EmptyState"
 import { TeamChip } from "@/components/TeamChip"
 import { PlayerAvatar } from "@/components/PlayerAvatar"
 import { allTimeRecord } from "@/lib/debate"
-import { formatDateDisplay } from "@/lib/format"
+import { formatDateDisplay, signed } from "@/lib/format"
 import { useReadOnly } from "@/lib/mode"
 import { playerName } from "@/lib/players"
 import { captainOrder, currentSet, draftPick, MIN_COUNTED, movePlayer, newSet, nextNewcomerTeam, undoMove, finals, startFinals, FINAL_WINS, type Series, onTheClock, putSet, RIVALRY_WEIGHT, standings, teamStrength, THIN_NIGHTS, undoPick, type TeamLine } from "@/lib/seasonTeams"
@@ -27,7 +27,6 @@ import type { Game, PooleanState, SeasonTeam, SeasonTeamSet } from "@/lib/types"
 // sets the teams up here and runs the captains' draft (src/lib/seasonTeams.ts has the scoring).
 
 const one = (v: number) => `${v < -0.005 ? "−" : ""}${Math.abs(v).toFixed(2)}`
-const signed = (v: number) => `${v > 0.005 ? "+" : v < -0.005 ? "−" : ""}${Math.abs(v).toFixed(1)}`
 
 // ---------- setup ----------
 

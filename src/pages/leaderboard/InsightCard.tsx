@@ -2,11 +2,9 @@ import { Lightbulb } from "lucide-react"
 import { useMemo } from "react"
 import { ViewTabs } from "@/components/PanelGroup"
 import { Section } from "@/components/Section"
-import { FACTORS, FACTOR_HINT, FACTOR_LABEL, marginBreakdown, passBlame, shotsCreated, turnoverCost, winProbAdded, type Breakdown } from "@/lib/insight"
+import { FACTORS, FACTOR_HINT, FACTOR_LABEL, marginBreakdown, passBlame, shotsCreated, turnoverCost, type Breakdown } from "@/lib/insight"
 import { PER } from "@/lib/per"
-import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
-import { formatDateDisplay } from "@/lib/format"
 import { DecidedPlayers } from "./PlayerTables"
 import { trustOf } from "@/lib/trust"
 import { Grid, Hint, TrustChip, Who } from "./parts"
@@ -90,33 +88,6 @@ function Created({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (
   )
 }
 
-function Chance({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
-  const w = useMemo(() => winProbAdded(state), [state])
-  const rows = w.rows.filter((r) => r.games >= 2)
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">Shows up once finished games are logged shot by shot.</p>
-  return (
-    <div className="flex flex-col gap-3">
-      <Hint>
-        Each made basket moves the scoring team's chance of winning, more late and in close games. The scorer gets the credit (65% of it when a pass led to the basket, 35% to the passer), and defenders on that shot share what was allowed. Each game is played as a race to its own target score (16 or 21, as logged), won by 2; a game with no target falls back to the usual total of {w.expectedTotal} points. Shown in points of win chance per {PER} points, so +10 is ten percentage points of win chance.
-      </Hint>
-      <Grid
-        head={["Player", "Added", "Allowed", "Net", "Sample"]}
-        rows={rows.map((r) => ({ key: r.id, cells: [<Who key={r.id} state={state} id={r.id} onOpenPlayer={onOpenPlayer} />, (r.added25 * 100).toFixed(0), (r.allowed25 * 100).toFixed(0), sign(r.net25 * 100, 0), <TrustChip key="t" t={trustOf(r.games, "games")} />] }))}
-      />
-      {w.swings.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold">Biggest baskets</p>
-          {w.swings.map((s, i) => (
-            <p key={i} className="text-sm">
-              <span className="font-medium">{playerName(state, s.id)}</span> {s.points === 3 ? "three" : "basket"}, {Math.round(s.from * 100)}% to {Math.round(s.to * 100)}% <span className="text-xs text-muted-foreground">{formatDateDisplay(s.date)}</span>
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function Cost({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const t = useMemo(() => turnoverCost(state), [state])
   const rows = t.rows.filter((r) => r.games >= 2)
@@ -139,11 +110,10 @@ function Cost({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id:
 // League view: four tabs from the same logged games. A collapsed section like Game flow, built only when opened.
 export function InsightCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   return (
-    <Section id="lb-insight" title="What decided games" icon={Lightbulb} teaser="Why games went the way they did, who sets up shots, win chance and what turnovers cost.">
+    <Section id="lb-insight" title="What decided games" icon={Lightbulb} teaser="Why games went the way they did, who sets up shots and what turnovers cost.">
       <ViewTabs
         tabs={[
           { value: "decided", label: "What decided games", node: <Decided state={state} onOpenPlayer={onOpenPlayer} /> },
-          { value: "chance", label: "Win chance added", node: <Chance state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "cost", label: "Turnover cost", node: <Cost state={state} onOpenPlayer={onOpenPlayer} /> },
           { value: "created", label: "Shots set up", node: <Created state={state} onOpenPlayer={onOpenPlayer} /> },
         ]}

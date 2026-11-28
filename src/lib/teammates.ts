@@ -2,6 +2,7 @@ import { pointsAdded } from "@/lib/epa"
 import { pairRecord } from "@/lib/headToHead"
 import { realSeasonsInOrder } from "@/lib/real"
 import type { PooleanState } from "@/lib/types"
+import { filmedGames } from "@/lib/filmed"
 
 // Who makes you better: for a player and each teammate they have played beside in filmed games, the player's Points added a game with
 // that teammate on their team against without (leaning toward no difference by LEAN games of each, so two good nights together are not
@@ -23,19 +24,6 @@ export interface Fit {
   record: [number, number] // wins and losses together, every result
 }
 
-const filmed = (state: PooleanState) => state.games.filter((g) => g.scoringEvents.length > 0 && !g.liveInProgress && !g.test)
-
-// Every player's Points added in each filmed game, worked out once per copy of the league data.
-const cache = new WeakMap<PooleanState, Map<string, Map<string, number>>>()
-function perGame(state: PooleanState): Map<string, Map<string, number>> {
-  const kept = cache.get(state)
-  if (kept) return kept
-  const out = new Map<string, Map<string, number>>() // game id -> player -> Points added
-  for (const g of filmed(state)) out.set(g.id, new Map(pointsAdded(state, { only: g.id }).rows.map((r) => [r.id, r.total])))
-  cache.set(state, out)
-  return out
-}
-
 const fitCache = new WeakMap<PooleanState, Map<string, Fit[]>>()
 export function teammateFit(state: PooleanState, pid: string): Fit[] {
   const kept = fitCache.get(state) ?? fitCache.set(state, new Map()).get(state)!
@@ -44,8 +32,7 @@ export function teammateFit(state: PooleanState, pid: string): Fit[] {
 }
 
 function fitFor(state: PooleanState, pid: string): Fit[] {
-  const pa = perGame(state)
-  const mine = filmed(state).filter((g) => g.teamA.includes(pid) || g.teamB.includes(pid))
+  const mine = filmedGames(state).filter((g) => g.teamA.includes(pid) || g.teamB.includes(pid))
   const ids = new Set(state.players.map((p) => p.id))
   const mean = (xs: number[]) => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0)
   const out: Fit[] = []
@@ -57,7 +44,7 @@ function fitFor(state: PooleanState, pid: string): Fit[] {
     let assists = 0
     for (const g of mine) {
       const team = g.teamA.includes(pid) ? g.teamA : g.teamB
-      const v = pa.get(g.id)?.get(pid) ?? 0
+      const v = pointsAdded(state, { only: g.id }).rows.find((r) => r.id === pid)?.total ?? 0
       if (team.includes(m)) {
         withG.push(v)
         assists += g.scoringEvents.filter((e) => e.made !== false && ((e.scorerId === pid && e.assistId === m) || (e.scorerId === m && e.assistId === pid))).length

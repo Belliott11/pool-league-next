@@ -7,7 +7,7 @@ import { backtestPick } from "@/lib/matchup"
 import { liveTargetOf, PREGAME_WEIGHT_LIVE, winProbabilityFrom } from "@/lib/live"
 import { gameOver } from "@/lib/race"
 import { basketsOf, leagueMomentum, oneIn, type Basket } from "@/lib/momentum"
-import { formatDateDisplay } from "@/lib/format"
+import { formatDateDisplay, signed } from "@/lib/format"
 import { playerName } from "@/lib/players"
 import { PER, gamePace } from "@/lib/per"
 import { insideFences, OUTLIER_MIN_GAMES } from "@/lib/filters"
@@ -25,7 +25,6 @@ import type { Game, PooleanState } from "@/lib/types"
 // data, so it can never drift from the numbers on the other pages.
 
 const pct = (p: number) => `${Math.round(p * 100)}%`
-const signed = (n: number, digits = 1) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(digits)}`
 
 function Section({ id, title, intro, children }: { id: string; title: string; intro: ReactNode; children: ReactNode }) {
   return (

@@ -6,6 +6,7 @@ import { defenseTable, playerDefense } from "@/lib/playerDefense"
 import { realSeasonsInOrder } from "@/lib/real"
 import { computeLeaderboard } from "@/lib/stats"
 import type { Game, PooleanState } from "@/lib/types"
+import { signed } from "@/lib/format"
 
 // "Settle it": two players side by side for an argument. Every row is a stat the site already works out, with a minimum sample before
 // it counts, and the verdict is simply how many rows each one wins. Nothing here is new math.
@@ -46,7 +47,6 @@ export function allTimeRecord(id: string): [number, number] {
 
 const pct = (v: number) => `${Math.round(v * 100)}%`
 const one = (v: number) => v.toFixed(1)
-const signed = (v: number) => `${v > 0.05 ? "+" : v < -0.05 ? "−" : ""}${Math.abs(v).toFixed(1)}`
 
 export function taleOfTheTape(state: PooleanState, a: string, b: string): Tape {
   const board = computeLeaderboard(state)

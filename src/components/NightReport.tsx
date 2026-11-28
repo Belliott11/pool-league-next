@@ -1,17 +1,13 @@
 import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlaysToWatch } from "@/components/FilmRoom"
-import { formatDateDisplay } from "@/lib/format"
+import { formatDateDisplay, signed } from "@/lib/format"
 import { myPlayerId, useWho } from "@/lib/identity"
 import { nightReport, playLine } from "@/lib/nightReport"
 import { playerName } from "@/lib/players"
 import { cn } from "@/lib/utils"
 import type { PooleanState } from "@/lib/types"
 
-const signed = (n: number) => {
-  const r = Number(n.toFixed(1))
-  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r).toFixed(1)}`
-}
 
 // A player's last filmed night, graded (nightReport.ts), near the top of their page. "Your night" on your own page.
 export function NightReportCard({ state, pid }: { state: PooleanState; pid: string }) {

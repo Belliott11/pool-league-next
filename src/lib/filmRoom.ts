@@ -1,6 +1,7 @@
 import { playValues, type PlayValue } from "@/lib/epa"
 import { shotSentence, turnoverSentence, type Name } from "@/lib/playWords"
 import type { PooleanState } from "@/lib/types"
+import { filmedGames } from "@/lib/filmed"
 
 // The film room: which plays to watch to learn and adjust, for a game (each team's) or a player (their own, their defense, and against
 // one opponent). Plays are valued by Points added (epa.ts `playValues`, the same model as everywhere on the site): "what worked" are the
@@ -115,7 +116,7 @@ const pps = (ps: PlayValue[]) => {
 // A player's film over every filmed game: their own plays (as shooter, passer on a make, or who turned it over), their defense, and,
 // with `vs`, what happened when they met that opponent (their shots against them, and that player's shots against them).
 export function playerFilm(state: PooleanState, pid: string, vs: string | null = null): PlayerFilm {
-  const filmed = state.games.filter((g) => !g.liveInProgress && !g.test && g.scoringEvents.length > 0).map((g) => g.id)
+  const filmed = filmedGames(state).map((g) => g.id)
   const plays = playValues(state, filmed)
   const mine = plays.filter((p) => p.player === pid || p.passer === pid)
   const guarded = plays.filter((p) => p.defenders.includes(pid))
@@ -149,7 +150,7 @@ export function playerFilm(state: PooleanState, pid: string, vs: string | null =
 
 // Who a player has met most on the other side, for the opponent picker (shots between them either way).
 export function opponentsOf(state: PooleanState, pid: string): { id: string; n: number }[] {
-  const filmed = state.games.filter((g) => !g.liveInProgress && !g.test && g.scoringEvents.length > 0).map((g) => g.id)
+  const filmed = filmedGames(state).map((g) => g.id)
   const m = new Map<string, number>()
   for (const p of playValues(state, filmed)) {
     if (p.kind !== "shot") continue
@@ -172,7 +173,7 @@ export interface BeatenBy {
 const HOW_LABEL: Record<string, string> = { drive: "on the drive", move: "off a move", catchAndShoot: "off the catch", deepHeave: "with a heave", dunk: "with a dunk" }
 
 export function beatenBy(state: PooleanState, pid: string): BeatenBy[] {
-  const filmed = state.games.filter((g) => !g.liveInProgress && !g.test && g.scoringEvents.length > 0).map((g) => g.id)
+  const filmed = filmedGames(state).map((g) => g.id)
   const m = new Map<string, PlayValue[]>()
   for (const p of playValues(state, filmed)) if (p.kind === "shot" && p.contest === "beat" && p.defenders.includes(pid)) m.set(p.player, [...(m.get(p.player) ?? []), p])
   return [...m]
@@ -202,7 +203,7 @@ export interface Scout {
 }
 
 export function scoutGame(state: PooleanState, ids: string[]): Scout[] {
-  const filmed = state.games.filter((g) => !g.liveInProgress && !g.test && g.scoringEvents.length > 0).map((g) => g.id)
+  const filmed = filmedGames(state).map((g) => g.id)
   const plays = playValues(state, filmed)
   const out: Scout[] = []
   for (const id of ids) {

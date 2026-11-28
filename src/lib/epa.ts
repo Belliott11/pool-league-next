@@ -113,7 +113,17 @@ export interface Epa {
 const CONTEST: Record<string, string> = { none: "No contest", beat: "Defender beaten", light: "Light contest", medium: "Medium contest", heavy: "Heavy contest" }
 const TYPE: Record<string, string> = { catchAndShoot: "Catch and shoot", drive: "Drive", move: "Move", dunk: "Dunk", deepHeave: "Deep heave" }
 
+// One game's Points added is asked for by many cards (form rating, fatigue, teammates, the night grade, season teams, the game summary),
+// so each copy of the league data keeps its per-game answers.
+const perGameCache = new WeakMap<PooleanState, Map<string, Epa>>()
 export function pointsAdded(state: PooleanState, opts: { only?: string } = {}): Epa {
+  if (!opts.only) return computePointsAdded(state, opts)
+  const kept = perGameCache.get(state) ?? perGameCache.set(state, new Map()).get(state)!
+  if (!kept.has(opts.only)) kept.set(opts.only, computePointsAdded(state, opts))
+  return kept.get(opts.only)!
+}
+
+function computePointsAdded(state: PooleanState, opts: { only?: string }): Epa {
   const gs = games(state)
   // What a trip is worth comes from the games under the newest scoring, possession and out-of-bounds rules (rulebook.ts), once
   // they have enough games; until then from every game.

@@ -5,11 +5,8 @@ import { Hint } from "@/components/Hint"
 import { LEAN, MIN_TOGETHER, strongPairs, teammateFit, recordTogether } from "@/lib/teammates"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
+import { signed } from "@/lib/format"
 
-const signed = (n: number) => {
-  const r = Number(n.toFixed(1))
-  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r).toFixed(1)}`
-}
 
 // Who makes you better (teammates.ts), on the Player page's Matchups tab: each teammate's lift on the player's Points added, the assists
 // between them and their record together.

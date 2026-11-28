@@ -8,8 +8,8 @@ import trailer from "@/data/trailer.json"
 import { bestClips } from "@/lib/clips"
 import { seasonState } from "@/lib/offseason"
 import type { PooleanState } from "@/lib/types"
+import { VIDEO_HOST } from "@/lib/clipShare"
 
-const VIDEO_HOST = "https://pub-fe959ca0159c462e9b4e69082ac20db5.r2.dev" // the video bucket (see vite.config.ts)
 
 // The season trailer: the season's best plays joined into one short video by the nightly clip run (scripts/cut-clips.mjs), only loaded
 // once opened.

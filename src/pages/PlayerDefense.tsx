@@ -6,15 +6,12 @@ import { playerName } from "@/lib/players"
 import { ordinalOf } from "@/lib/ordinal"
 import { cn } from "@/lib/utils"
 import type { PooleanState } from "@/lib/types"
+import { signed } from "@/lib/format"
 
 // The Defense tab's first card: who this player stops and who scores on them, against what the same shooters score on everyone else,
 // and the same from the other side (who holds this player down). The math is in src/lib/playerDefense.ts.
 
 const THIN = 8 // fewer shots than this between two players is an early read, in italics
-const signed = (n: number, d = 1) => {
-  const r = Number(n.toFixed(d))
-  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r).toFixed(d)}`
-}
 const shots = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 
 function Tile({ label, value, note, good }: { label: string; value: string; note?: string; good?: boolean }) {

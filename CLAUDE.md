@@ -355,7 +355,7 @@ Win chance added (insight.ts) uses the race to the target from the pre-game read
 alone, without the live odds' learning which team is better (that would credit early baskets twice; measured 2026-11-26: first-third
 baskets +13.9 with the learning against +9.2 without, last third +13.1 against +13.2).
 Win chance added, every play (asked 2026-11-27; `src/lib/wpaPlays.ts`, card `src/components/WinChancePlays.tsx` on the Leaderboard
-Overview, a line in the Player page's "Win chance added" tab): the win chance from `possessionOdds` (shotChoice.ts, knows who has the
+Overview, the Player page's "Win chance added" tab, which falls back to baskets only for a player with no play-by-play games): the win chance from `possessionOdds` (shotChoice.ts, knows who has the
 ball, first to the game's target, win by 2, the league's trip rates, even teams, no pre-game read), applied to every play from
 `playValues` in video-time order with the free throws. Splits like Points added: shooter 65/35 with the passer, the defenders (and a
 blocker) take the other side of the shot, an in-bounds miss is valued at the usual miss (`keep2`/`keep3`) and the rebound settles the
@@ -367,8 +367,8 @@ Clutch squared (asked 2026-11-27, "weighted by stakes"; moved onto the every-pla
 `winChancePlays`' rows (wpaPlays.ts). Each credit adds its share of the play times the play's whole swing (`d * |whole| * 100`), so the
 sign stays with the play (a turnover at game point takes a lot away) and a shared play is not squared smaller; a 30-point swing is 9
 clutch points and counts 36 times a 5-point one. Also `bigPlays` (swings of `BIG_SWING` 0.15 or more their team's way, with them in the
-play) and `biggest`. Card `src/components/ClutchSquared.tsx` on the Leaderboard Overview and a line in the Player page's "Win chance
-added" tab. On 2026-11-27: Evan 8.5, Adam 6.8 ... Viraj -7.1.
+play) and `biggest`. `ClutchSquaredTable` (`src/components/ClutchSquared.tsx`) is the second view of the Win chance added card, and a line in the Player
+page's "Win chance added" tab. On 2026-11-27: Evan 8.5, Adam 6.8 ... Viraj -7.1.
 Form rating (asked 2026-11-27, DARKO-style; `src/lib/form.ts`, `src/components/FormRating.tsx`: a card on the Leaderboard Overview and a
 chart on the Player page's Overview): each part of Points added per game (shots, passes, turnovers, offensive rebounds, defense, from
 `pointsAdded(state, { only })` per filmed game) followed with a Kalman filter (`filter`): start at the league average with the talent
@@ -390,7 +390,8 @@ too few. Switch the ranking only if form leads at 30, and check closeness of gam
 Do players tire? (asked 2026-11-27; `src/lib/fatigue.ts`, `src/components/Fatigue.tsx`: a card on the Leaderboard's Trends tab and
 "Early or late?" on the Player page's History tab): each night's games in order (`nightOrder`: live `startedAt` when every game has one,
 else the recording's part number parsed from its name, "pt 2" after "pt 1", since recordings store no start time, then `videoStart`),
-then the league's points a shot, made share and turnovers per 10 trips by game number (1, 2, 3, 4+), early (games 1 to `EARLY` 2)
+then the league's points a shot, made share and turnovers per 10 trips by game number (1, 2, 3, 4+), with the old win-loss table by games
+already played that day over every result folded inside (`dayLoad.ts`, once its own Situational panel), early (games 1 to `EARLY` 2)
 against late with a twice-the-standard-error check, and each player's Points added a game early against late, leaned toward no
 difference by `LEAN` 3 games. On 2026-11-27: 0.71 against 0.68 points a shot, within chance; Zach better late, Ben and Evan early.
 Who makes you better (asked 2026-11-27; `src/lib/teammates.ts`, `src/components/Teammates.tsx`): on the Player page's Matchups tab, each
@@ -722,6 +723,15 @@ The 50 games on Adam's old site that are not among this site's own games (summer
 `src/data/poolean-seasons.json` (`src/lib/real.ts`): results only, used for old-site records, head-to-heads and the Hall of Fame. Never
 import them into `league_state`, which would count them twice. There is no video and no usable recording for them, so no scores, shots or
 other stats can ever be added: do not suggest filming, stat entry or clip work for them.
+
+## Streamlined (2026-11-28)
+
+Asked to remove redundancies: one Win chance added card (every play, with Clutch squared as a view; the baskets-only view left "What
+decided games", though `winProbAdded` in insight.ts still feeds the written reads and the head-to-head page), one fatigue card, and shared
+helpers instead of copies: `signed` in `src/lib/format.ts`, `filmedGames`/`isFilmed` in `src/lib/filmed.ts`, `shareFile`/`shareVideo` in
+`src/lib/shareFile.ts`, `VIDEO_HOST` from `src/lib/clipShare.ts`. `pointsAdded(state, { only })` keeps each game's answer per copy of the
+league data (many cards ask for the same game). Before adding a card, check the Leaderboard and Player tabs for one that already answers
+the question.
 
 ## Ideas not built
 

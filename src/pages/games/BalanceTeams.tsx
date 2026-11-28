@@ -24,7 +24,7 @@ import {
   teamWinRateAdjustment,
   type BalanceOption,
 } from "@/lib/balance"
-import { formatDateDisplay, uid } from "@/lib/format"
+import { formatDateDisplay, uid, signed } from "@/lib/format"
 import { predictRealMatchup, predictTeamWinChances, getRealMatchupModel, realMatchupAccuracyText } from "@/lib/matchup"
 import { playerName } from "@/lib/players"
 import { poolNameOf } from "@/lib/real"
@@ -233,7 +233,7 @@ function OptionCard({
       </div>
       <p className="text-xs text-muted-foreground">
         Form rating:{" "}
-        {option.teams.map((t, ti) => `Team ${ti + 1} ${signedForm(teamForm(state, t))}`).join(", ")} (points added a game, added up; shown beside the odds, not used to rank yet)
+        {option.teams.map((t, ti) => `Team ${ti + 1} ${signed(teamForm(state, t))}`).join(", ")} (points added a game, added up; shown beside the odds, not used to rank yet)
       </p>
       <PairNote state={state} teams={option.teams} />
       <div className="flex flex-wrap gap-2">
@@ -441,4 +441,3 @@ export function BalanceTeams({
   )
 }
 
-const signedForm = (n: number) => `${n > 0.05 ? "+" : n < -0.05 ? "−" : ""}${Math.abs(n).toFixed(1)}`

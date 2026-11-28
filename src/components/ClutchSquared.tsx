@@ -1,5 +1,4 @@
 import { useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Hint } from "@/components/Hint"
 import { BIG_SWING, winChancePlays } from "@/lib/wpaPlays"
@@ -8,17 +7,14 @@ import { MIN_GAMES as MIN_RANKED } from "@/lib/ratings"
 import type { PooleanState } from "@/lib/types"
 
 // Clutch squared (wpaPlays.ts, `clutch2`): every play weighted by how far it moved the win chance, squared with its sign, so the plays
-// that decided games count far more than a pile of early ones, good or bad. A season total, like the MVP race.
-export function ClutchSquaredCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+// that decided games count far more than a pile of early ones, good or bad. A season total, like the MVP race. A view of the Win chance
+// added card (WinChancePlays.tsx).
+export function ClutchSquaredTable({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const w = useMemo(() => winChancePlays(state), [state])
   const rows = w.rows.filter((r) => r.clutch2 !== 0).sort((a, b) => b.clutch2 - a.clutch2)
-  if (rows.length < 3) return null
+  if (rows.length < 3) return <p className="text-sm text-muted-foreground">Shows up once three players have plays in games with every play in order.</p>
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Clutch squared</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+    <>
         <Hint
           text={<>
           Every play weighted by the stakes: how many points of win chance it moved, squared, so a play that swings a game by 30 points
@@ -57,7 +53,6 @@ export function ClutchSquaredCard({ state, onOpenPlayer }: { state: PooleanState
           Big plays swung the win chance {Math.round(BIG_SWING * 100)} points or more their team's way with them in the play (a basket, a pass, a
           stop, a rebound). Biggest is the largest of those swings, in points of win chance.
         </p>
-      </CardContent>
-    </Card>
+    </>
   )
 }

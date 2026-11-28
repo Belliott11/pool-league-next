@@ -5,11 +5,8 @@ import { improving, LATELY, PART_LABEL } from "@/lib/improving"
 import { playerName } from "@/lib/players"
 import { cn } from "@/lib/utils"
 import type { PooleanState } from "@/lib/types"
+import { signed } from "@/lib/format"
 
-const signed = (n: number) => {
-  const r = Number(n.toFixed(1))
-  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r).toFixed(1)}`
-}
 
 // Who's improving (improving.ts): the form rating's climb over each player's last few games, and the part of their game behind it.
 export function ImprovingCard({ state, onOpenPlayer, limit }: { state: PooleanState; onOpenPlayer?: (id: string) => void; limit?: number }) {

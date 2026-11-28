@@ -6,12 +6,9 @@ import { currentForm, FORM_MEASURE_AT, PRIOR_GAMES, type FormRow } from "@/lib/f
 import { playerName } from "@/lib/players"
 import { cn } from "@/lib/utils"
 import type { PooleanState } from "@/lib/types"
+import { signed } from "@/lib/format"
 
 // The form rating (form.ts), a DARKO-style estimate of how many points a player adds a game right now, with its likely range.
-const signed = (n: number) => {
-  const r = Number(n.toFixed(1))
-  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r).toFixed(1)}`
-}
 
 function HowItWorks({ measured, games }: { measured: boolean; games: number }) {
   return (

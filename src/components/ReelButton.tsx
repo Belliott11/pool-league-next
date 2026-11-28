@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import mixtapes from "@/data/mixtapes.json"
 import nightReels from "@/data/night-reels.json"
+import { shareVideo } from "@/lib/shareFile"
+import { VIDEO_HOST } from "@/lib/clipShare"
 
-const VIDEO_HOST = "https://pub-fe959ca0159c462e9b4e69082ac20db5.r2.dev" // the video bucket (see vite.config.ts)
 const table = mixtapes as Record<string, { file: string; seconds: number }>
 const len = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
 
@@ -40,20 +41,9 @@ export function NightReelButton({ date, label }: { date: string; label: string }
     setBusy(true)
     setFailed(false)
     try {
-      const blob = await (await fetch(`${VIDEO_HOST}/${n.vertical}`)).blob()
-      const name = `poolean-intel-${date}.mp4`
-      const file = new File([blob], name, { type: "video/mp4" })
-      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
-      if (nav.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: `${label} in 60 seconds` })
-      else {
-        const a = document.createElement("a")
-        a.href = URL.createObjectURL(blob)
-        a.download = name
-        a.click()
-        setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
-      }
-    } catch (e) {
-      if (!(e instanceof DOMException && e.name === "AbortError")) setFailed(true)
+      await shareVideo(`${VIDEO_HOST}/${n.vertical}`, `poolean-intel-${date}.mp4`, `${label} in 60 seconds`)
+    } catch {
+      setFailed(true)
     }
     setBusy(false)
   }

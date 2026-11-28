@@ -4,6 +4,7 @@ import { currentForm } from "@/lib/form"
 import { dramaRanking } from "@/lib/drama"
 import type { Name } from "@/lib/playWords"
 import type { PooleanState } from "@/lib/types"
+import { filmedGames } from "@/lib/filmed"
 
 // A player's last filmed night, graded against their own usual level only, never against anyone else (asked 2026-11-27, so a newer or
 // weaker player is not marked down for being newer or weaker): their Points added per game that night (epa.ts) against their form rating
@@ -49,12 +50,10 @@ export interface NightReport {
   gameOfNight: string | null // the night's most dramatic game, when they played in it
 }
 
-const filmed = (state: PooleanState) => state.games.filter((g) => g.scoringEvents.length > 0 && !g.liveInProgress && !g.test)
-
 // Every player-night's Points added per game, for the grade's scale.
 function nightValues(state: PooleanState): Map<string, number> {
   const per = new Map<string, { sum: number; n: number }>()
-  for (const g of filmed(state))
+  for (const g of filmedGames(state))
     for (const r of pointsAdded(state, { only: g.id }).rows) {
       const k = `${r.id}|${g.date}`
       const v = per.get(k) ?? per.set(k, { sum: 0, n: 0 }).get(k)!
@@ -65,7 +64,7 @@ function nightValues(state: PooleanState): Map<string, number> {
 }
 
 export function nightReport(state: PooleanState, pid: string): NightReport | null {
-  const mine = filmed(state).filter((g) => g.teamA.includes(pid) || g.teamB.includes(pid))
+  const mine = filmedGames(state).filter((g) => g.teamA.includes(pid) || g.teamB.includes(pid))
   const date = mine.map((g) => g.date).sort().at(-1)
   if (!date) return null
   const tonight = mine.filter((g) => g.date === date)

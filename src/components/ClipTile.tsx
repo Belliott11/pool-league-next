@@ -12,6 +12,7 @@ import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
 import { gameVideoUrl, isDirectVideoUrl } from "@/lib/video"
 import { cn } from "@/lib/utils"
+import { shareVideo } from "@/lib/shareFile"
 
 const LEAD = 5 // seconds of run-up before the play, as the game page's Watch buttons
 
@@ -103,7 +104,7 @@ function ShareClip({ id, title }: { id: string; title: string }) {
   )
 }
 
-// The play as a vertical video (9:16, captioned, with sound) for an Instagram story or reel: handed to the phone's share sheet as a file
+// The play as a vertical video (9:16, captioned; the recordings have no sound) for an Instagram story or reel: handed to the phone's share sheet as a file
 // where it can take one (iPhone, Android), else saved as a download.
 function VerticalClip({ url, title }: { url: string; title: string }) {
   const [busy, setBusy] = useState(false)
@@ -112,21 +113,10 @@ function VerticalClip({ url, title }: { url: string; title: string }) {
     setBusy(true)
     setFailed(false)
     try {
-      const blob = await (await fetch(url)).blob()
       const name = `${title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "play"}.mp4`
-      const file = new File([blob], name, { type: "video/mp4" })
-      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
-      if (nav.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title })
-      } else {
-        const a = document.createElement("a")
-        a.href = URL.createObjectURL(blob)
-        a.download = name
-        a.click()
-        setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
-      }
-    } catch (e) {
-      if (!(e instanceof DOMException && e.name === "AbortError")) setFailed(true)
+      await shareVideo(url, name, title)
+    } catch {
+      setFailed(true)
     }
     setBusy(false)
   }

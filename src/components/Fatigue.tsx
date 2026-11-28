@@ -3,15 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Hint } from "@/components/Hint"
 import { EARLY, fatigue, LEAN } from "@/lib/fatigue"
+import { BANDS, fatigue as dayLoad, LOW_SAMPLE } from "@/lib/dayLoad"
 import { playerName } from "@/lib/players"
 import type { PooleanState } from "@/lib/types"
+import { signed } from "@/lib/format"
 
-const signed = (n: number) => {
-  const r = Number(n.toFixed(1))
-  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r).toFixed(1)}`
-}
 
-// Do players tire? (fatigue.ts): the league's shooting by game number in a night, and who plays better early or late.
+// Do players tire? (fatigue.ts): the league's shooting by game number in a night, and who plays better early or late. Also, folded, the
+// win-loss record by how many games a player had already played that day over every result (dayLoad.ts; it was its own panel).
 export function FatigueCard({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
   const f = useMemo(() => fatigue(state), [state])
   if (f.buckets.length < 2) return null
@@ -65,8 +64,51 @@ export function FatigueCard({ state, onOpenPlayer }: { state: PooleanState; onOp
         {late.length > 0 && <p><span className="text-muted-foreground">Better later in a night: </span>{who(late)}</p>}
         {early.length > 0 && <p><span className="text-muted-foreground">Better early: </span>{who(early)}</p>}
         <p className="text-xs text-muted-foreground">Player numbers are Points added a game, later games less early ones, leaned toward no difference.</p>
+        <DayLoad state={state} onOpenPlayer={onOpenPlayer} />
       </CardContent>
     </Card>
+  )
+}
+
+// Win-loss by games already played that day, over every result (old site included, so unfilmed games count).
+function DayLoad({ state, onOpenPlayer }: { state: PooleanState; onOpenPlayer: (id: string) => void }) {
+  const rows = useMemo(() => dayLoad(state), [state])
+  if (!rows.length) return null
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer font-medium">Win-loss by game of the day, every result</summary>
+      <div className="table-scroll mt-2 overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Player</TableHead>
+              {BANDS.map((b) => (
+                <TableHead key={b.key} className="text-right">{b.label}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.id || "all"}>
+                <TableCell>
+                  {r.id === "" ? <span className="font-medium">Everyone</span> : <button type="button" className="hover:underline" onClick={() => onOpenPlayer(r.id)}>{playerName(state, r.id)}</button>}
+                </TableCell>
+                {BANDS.map((b) => {
+                  const v = r.bands[b.key]
+                  const n = v.w + v.l
+                  return (
+                    <TableCell key={b.key} className={`text-right tabular-nums ${n > 0 && n < LOW_SAMPLE ? "italic" : ""}`}>
+                      {n === 0 ? "" : `${v.w}-${v.l}`}
+                    </TableCell>
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">Italics: fewer than {LOW_SAMPLE} games. Winners tend to stay on and play more games in a row, so this flatters the later columns.</p>
+    </details>
   )
 }
 

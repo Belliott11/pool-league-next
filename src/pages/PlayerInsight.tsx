@@ -105,26 +105,26 @@ export function PlayerInsight({ state, pid }: { state: PooleanState; pid: string
             label: "Win chance added",
             node: (
               <>
-                <Hint>How their baskets and passes moved their team's chance of winning, and what shots scored against them while they defended gave up. In points of win chance per {PER} points. Every play counts misses, rebounds, turnovers and stops too, with a win chance that knows who has the ball (a season total). Clutch squared weights every play by its swing, squared, so the plays that decided games count most, good or bad.</Hint>
-                {mw ? (
+                <Hint>How their plays moved their team's chance of winning, in points of win chance (100 is one whole win), over the season. Every play counts: shots, passes, rebounds, stops and turnovers, with a win chance that knows who has the ball. Clutch squared weights every play by its swing, squared, so the plays that decided games count most, good or bad.</Hint>
+                {mp ? (
                   <>
+                    <Line
+                      label="Every play"
+                      value={sign(mp.total * 100, 0)}
+                      sub={`shots ${sign(mp.shots * 100, 0)}, passes ${sign(mp.passes * 100, 0)}, boards ${sign(mp.boards * 100, 0)}, defense ${sign(mp.defense * 100, 0)}, turnovers ${sign(mp.turnovers * 100, 0)}, over ${mp.games} ${mp.games === 1 ? "game" : "games"}`}
+                    />
+                    <Line
+                      label="Clutch squared"
+                      value={`${mp.clutch2 < 0 ? "−" : ""}${Math.abs(mp.clutch2).toFixed(1)}`}
+                      sub={`${mp.bigPlays} ${mp.bigPlays === 1 ? "play" : "plays"} that swung it ${Math.round(BIG_SWING * 100)}+ points their team's way${mp.bigPlays ? `, biggest ${Math.round(mp.biggest * 100)}` : ""}`}
+                    />
+                  </>
+                ) : mw ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">Their games are not logged play by play yet, so this counts baskets only, per {PER} points.</p>
                     <Line label="Added" value={(mw.added25 * 100).toFixed(0)} sub={`${mw.baskets} baskets in ${mw.games} games`} />
                     <Line label="Allowed" value={(mw.allowed25 * 100).toFixed(0)} />
                     <Line label="Net" value={sign(mw.net25 * 100, 0)} />
-                    {mp && (
-                      <Line
-                        label="Every play"
-                        value={sign(mp.total * 100, 0)}
-                        sub={`shots ${sign(mp.shots * 100, 0)}, passes ${sign(mp.passes * 100, 0)}, boards ${sign(mp.boards * 100, 0)}, defense ${sign(mp.defense * 100, 0)}, turnovers ${sign(mp.turnovers * 100, 0)}, over ${mp.games} ${mp.games === 1 ? "game" : "games"} (season total)`}
-                      />
-                    )}
-                    {mp && (
-                      <Line
-                        label="Clutch squared"
-                        value={`${mp.clutch2 < 0 ? "−" : ""}${Math.abs(mp.clutch2).toFixed(1)}`}
-                        sub={`every play's swing squared; ${mp.bigPlays} ${mp.bigPlays === 1 ? "play" : "plays"} that swung it ${Math.round(BIG_SWING * 100)}+ points their team's way${mp.bigPlays ? `, biggest ${Math.round(mp.biggest * 100)}` : ""}`}
-                      />
-                    )}
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">No baskets logged yet.</p>

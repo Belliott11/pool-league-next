@@ -50,3 +50,9 @@ export function tiedRanks(values: number[]): string[] {
 
 // "A", "A and B", "A, B and C".
 export const joinNames = (xs: string[]) => (xs.length < 2 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`)
+
+// A number with its sign, rounded to `digits` places: "+1.2", "−0.4", "0.0" (a true minus sign; no sign once it rounds to zero).
+export function signed(n: number, digits = 1): string {
+  const r = Number(n.toFixed(digits))
+  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r).toFixed(digits)}`
+}

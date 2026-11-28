@@ -21,10 +21,8 @@ import { SeasonRates } from "./leaderboard/SeasonRates"
 import { GameFlowCard } from "./leaderboard/GameFlowCard"
 import { InsightCard } from "./leaderboard/InsightCard"
 import { DeepDiveCard } from "./leaderboard/DeepDiveCard"
-import { FatiguePanel } from "./leaderboard/FatiguePanel"
 import { ThreeWorth } from "@/components/ThreeWorth"
 import { PointsAddedCard } from "@/components/PointsAdded"
-import { ClutchSquaredCard } from "@/components/ClutchSquared"
 import { WinChancePlaysCard } from "@/components/WinChancePlays"
 import { FormRatingCard } from "@/components/FormRating"
 import { RuleChangeCard } from "@/components/RuleChanges"
@@ -125,7 +123,6 @@ export function LeaderboardPage({
         {k === "style" && <CalibrationCard state={state} />}
         {k === "style" && <FormVsReadCard state={state} />}
         <LegacyPanels state={season} section={k} onOpenPlayer={onOpenPlayer} version={version} />
-        {k === "situational" && <FatiguePanel state={state} onOpenPlayer={onOpenPlayer} />}
       </TabGroup>
     )
   }
@@ -162,9 +159,6 @@ export function LeaderboardPage({
             </Later>
             <Later id="lb-wpa-plays">
               <WinChancePlaysCard state={season} onOpenPlayer={onOpenPlayer} />
-            </Later>
-            <Later id="lb-clutch2">
-              <ClutchSquaredCard state={season} onOpenPlayer={onOpenPlayer} />
             </Later>
           </>
         ) : (

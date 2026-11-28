@@ -1,5 +1,6 @@
 import { playValues, pointsAdded } from "@/lib/epa"
 import type { Game, PooleanState } from "@/lib/types"
+import { filmedGames } from "@/lib/filmed"
 
 // Do players tire? Each filmed night's games in the order they were played, then how the league shot and looked after the ball by game
 // number (first game of the night, second, third, fourth or later), and for each player their Points added a game early in the night
@@ -58,11 +59,9 @@ export interface Fatigue {
   players: PlayerFatigue[]
 }
 
-const filmed = (g: Game) => g.scoringEvents.length > 0 && !g.liveInProgress && !g.test
-
 export function fatigue(state: PooleanState): Fatigue {
   const num = gameNumbers(state)
-  const games = state.games.filter(filmed)
+  const games = filmedGames(state)
   const plays = playValues(state, games.map((g) => g.id))
   const key = (n: number) => (n >= 4 ? 4 : n)
   const agg = new Map<number, { games: Set<string>; pts: number[]; tov: number; trips: number }>()
