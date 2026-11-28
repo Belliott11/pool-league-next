@@ -26,6 +26,7 @@ import { usePublishedNight } from "@/lib/published"
 import type { Update } from "@/lib/store"
 import { NightReelButton } from "@/components/ReelButton"
 import { NightGrades } from "@/components/NightGrades"
+import { trialOn } from "@/lib/ruleTrials"
 import { playerName } from "@/lib/players"
 import { shareNightCard, shareNightStory } from "@/lib/shareCard"
 import { TEAM } from "@/lib/teamColors"
@@ -176,6 +177,15 @@ export function NightRecap({ state, update, onBack, onOpenGame, onStatEntry, onO
         </div>
       </div>
       <NightReelButton date={date} label={label} />
+      {trialOn(state, date) && (
+        <p className="rounded-lg border border-dashed px-3 py-2 text-sm">
+          Played under a trial rule: <span className="font-medium">{trialOn(state, date)!.name}</span>
+          {trialOn(state, date)!.detail ? ` (${trialOn(state, date)!.detail})` : ""}.{" "}
+          <a className="underline" href="#/games/rules">
+            See what it changed
+          </a>
+        </p>
+      )}
 
       {!hasBox && (
         <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">

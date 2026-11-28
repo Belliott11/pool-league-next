@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { ArrowLeft, Lightbulb, Send, Trash2 } from "lucide-react"
 import { RulesLookup } from "@/components/RulesLookup"
+import { RuleTrials } from "@/components/RuleTrials"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateDisplay, uid } from "@/lib/format"
@@ -106,6 +107,8 @@ export function RulesPage({ state, update, onBack }: { state: PooleanState; upda
           </CardContent>
         </Card>
       )}
+
+      <RuleTrials state={state} update={editor ? update : undefined} />
 
       {editor && forAdam && (
         <div className="flex flex-col gap-1.5 rounded-xl border p-3 text-sm">

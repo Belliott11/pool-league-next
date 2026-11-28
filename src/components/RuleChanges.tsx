@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDateDisplay } from "@/lib/format"
 import { VERDICT_LABEL } from "@/lib/gameFlow"
 import { currentRules, KIND_LABEL, ruleChanges, type RuleChange } from "@/lib/rulebook"
-import { MIN_SIDE_GAMES, ruleImpact } from "@/lib/ruleImpact"
+import { MIN_SIDE_GAMES, ruleImpact, type ImpactRow } from "@/lib/ruleImpact"
 import { cn } from "@/lib/utils"
 import type { PooleanState } from "@/lib/types"
 
@@ -40,6 +40,40 @@ function ChangeLines({ change }: { change: RuleChange }) {
   )
 }
 
+// Two sets of games side by side (ruleImpact.ts compareGames): a rulebook change's before and after, or a trial rule's nights against the rest.
+export function ImpactRowsTable({ rows, before = "Before", after = "After" }: { rows: ImpactRow[]; before?: string; after?: string }) {
+  return (
+    <div className="table-scroll overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Measure</TableHead>
+            <TableHead className="text-right">{before}</TableHead>
+            <TableHead className="text-right">{after}</TableHead>
+            <TableHead>Change</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow key={r.label}>
+              <TableCell className="min-w-32 whitespace-normal">
+                {r.label}
+                <span className="block text-xs text-muted-foreground">{r.group}</span>
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{r.before}</TableCell>
+              <TableCell className="text-right tabular-nums">{r.after}</TableCell>
+              <TableCell className="min-w-28 whitespace-normal">
+                {r.change}
+                <span className={cn("block text-xs", r.verdict === "clear" ? "font-semibold" : r.verdict === "early" ? "italic text-muted-foreground" : "")}>{VERDICT_LABEL[r.verdict]}</span>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
 export function ImpactTable({ state, change }: { state: PooleanState; change: RuleChange }) {
   const impact = useMemo(() => ruleImpact(state, change), [state, change])
   if (!impact) return null
@@ -54,32 +88,7 @@ export function ImpactTable({ state, change }: { state: PooleanState; change: Ru
       <p className="mb-2">
         {impact.before} filmed games under the old rules against {impact.after} since {formatDateDisplay(change.version.from!)}.
       </p>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Measure</TableHead>
-            <TableHead className="text-right">Before</TableHead>
-            <TableHead className="text-right">After</TableHead>
-            <TableHead>Change</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {impact.rows.map((r) => (
-            <TableRow key={r.label}>
-              <TableCell>
-                {r.label}
-                <span className="block text-xs text-muted-foreground">{r.group}</span>
-              </TableCell>
-              <TableCell className="text-right tabular-nums">{r.before}</TableCell>
-              <TableCell className="text-right tabular-nums">{r.after}</TableCell>
-              <TableCell>
-                {r.change}
-                <span className={cn("block text-xs", r.verdict === "clear" ? "font-semibold" : r.verdict === "early" ? "italic text-muted-foreground" : "")}>{VERDICT_LABEL[r.verdict]}</span>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <ImpactRowsTable rows={impact.rows} />
       <p className="mt-1 text-xs text-muted-foreground">Counts are per 10 trips (turns with the ball), so longer games do not look rougher. Each change says how sure it is.</p>
     </div>
   )

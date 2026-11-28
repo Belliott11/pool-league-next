@@ -135,6 +135,14 @@ export interface RuleNote {
   gap?: string // the open question it answers (ruleGaps' key), which then leaves "Not in the rulebook yet"
 }
 
+// A rule the league tries on some nights (the Rules page): what it is, and the nights played under it.
+export interface RuleTrial {
+  id: string
+  name: string // "3-point line moved in"
+  detail: string // what exactly changes
+  dates: string[] // the nights played under it, YYYY-MM-DD
+}
+
 export interface Review {
   id: string
   at: number // when it was flagged, ms since 1970
@@ -193,6 +201,8 @@ export interface PooleanState {
   awardBallots?: AwardBallot[]
   // The league's own rulings on Poolean's rules (rulesLookup.ts), each tied to a rulebook section by its title.
   ruleNotes?: RuleNote[]
+  // Rules tried for a night or more before asking for them in the rulebook (ruleTrials.ts).
+  ruleTrials?: RuleTrial[]
   // The first night of next season. While it is in the future the app is in the offseason.
   openingNight?: { date: string; time?: string } | null
   [key: string]: unknown

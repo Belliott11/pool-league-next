@@ -338,6 +338,15 @@ question's section (`Gap.section`) with `gap` set to its key, which takes it off
 editor; once he publishes, scripts/rulebook.mjs picks it up within the hour. A real suggestion inbox would need an endpoint in his app. On 2026-11-28: 3s are worth 0.50 points a shot against
 0.80 for 2s, and 44% of missed 3s go out of bounds against 21% of 2s.
 
+## Trial rules (2026-11-28)
+
+`src/lib/ruleTrials.ts`, card `src/components/RuleTrials.tsx` on the Rules page (editor starts a trial with a name, what changes and a first
+night, adds or removes nights, deletes it; visitors see trials and results). `state.ruleTrials` (type `RuleTrial`: name, detail, dates).
+A trial's nights' filmed games against every filmed game under no trial, through `compareGames` (pulled out of ruleImpact.ts so the
+rulebook card and trials share it; it now also has "3s made" and "Shots that are 3s"), shown with `ImpactRowsTable` (RuleChanges.tsx)
+headed Usual and Trial, after `MIN_SIDE_GAMES` (3) filmed trial games. A night belongs to one trial at most. The night recap notes a trial
+night with a link to the Rules page (`trialOn`).
+
 ## Rulebook and rule changes
 
 Poolean's rulebook (Adam's app) is tracked in `src/data/rulebook.json` by `scripts/rulebook.mjs`, run hourly by

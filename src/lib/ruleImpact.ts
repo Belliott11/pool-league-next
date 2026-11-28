@@ -41,11 +41,13 @@ interface Side {
   beaten: Rate // shots with a contest level: made = the defender got beaten
   oreb: Rate // in-bounds misses: made = the shooting team got it back
   out: Rate // misses: made = out of bounds
+  threes: Rate // 3s taken: made = went in
+  threeShare: Rate // shots: made = it was a 3
   ppt: Mean // points per trip, one value per game
   length: Mean // trips per game
 }
 
-const blank = (): Side => ({ games: 0, trips: 0, fouls: 0, ft: 0, steals: 0, liveTov: 0, shots: { made: 0, att: 0 }, contested: { made: 0, att: 0 }, beaten: { made: 0, att: 0 }, oreb: { made: 0, att: 0 }, out: { made: 0, att: 0 }, ppt: { sum: 0, sq: 0, n: 0 }, length: { sum: 0, sq: 0, n: 0 } })
+const blank = (): Side => ({ games: 0, trips: 0, fouls: 0, ft: 0, steals: 0, liveTov: 0, shots: { made: 0, att: 0 }, contested: { made: 0, att: 0 }, beaten: { made: 0, att: 0 }, oreb: { made: 0, att: 0 }, out: { made: 0, att: 0 }, threes: { made: 0, att: 0 }, threeShare: { made: 0, att: 0 }, ppt: { sum: 0, sq: 0, n: 0 }, length: { sum: 0, sq: 0, n: 0 } })
 const addMean = (m: Mean, x: number) => {
   m.sum += x
   m.sq += x * x
@@ -69,6 +71,12 @@ function tally(gs: Game[]): Side {
       if (!isShot(e)) continue
       trips++
       s.shots.att++
+      s.threeShare.att++
+      if (e.points === 3) {
+        s.threeShare.made++
+        s.threes.att++
+        if (made(e)) s.threes.made++
+      }
       if (made(e)) {
         s.shots.made++
         points += e.points
@@ -121,6 +129,11 @@ export function ruleImpact(state: PooleanState, change: RuleChange | undefined =
   const next = ruleChanges().find((c) => (c.version.from ?? "") > from)
   const afterGames = all.filter((g) => (g.date || "") >= from && (!next?.version.from || (g.date || "") < next.version.from))
   if (beforeGames.length < MIN_SIDE_GAMES || afterGames.length < MIN_SIDE_GAMES) return { change, before: beforeGames.length, after: afterGames.length, rows: [] }
+  return { change, before: beforeGames.length, after: afterGames.length, rows: compareGames(beforeGames, afterGames) }
+}
+
+// Two sets of filmed games side by side on what rules move: also used for trial rules (ruleTrials.ts).
+export function compareGames(beforeGames: Game[], afterGames: Game[]): ImpactRow[] {
   const a = tally(beforeGames)
   const b = tally(afterGames)
   // A count per trip, as a rate, so games of different lengths compare fairly.
@@ -138,22 +151,19 @@ export function ruleImpact(state: PooleanState, change: RuleChange | undefined =
     const c = compareMeans(x, y)
     return { group: label === "Trips per game" ? "Game shape" : "Scoring", label, before: avg(x, d), after: avg(y, d), change: c.diff === null ? "too few to compare" : `${c.diff > 0 ? "+" : c.diff < 0 ? "−" : ""}${Math.abs(c.diff).toFixed(d)} ${unit}`, verdict: c.verdict }
   }
-  return {
-    change,
-    before: a.games,
-    after: b.games,
-    rows: [
-      perTrip("Fouls called", a.fouls, b.fouls),
-      perTrip("Roughness free throws", a.ft, b.ft),
-      perTrip("Steals", a.steals, b.steals),
-      perTrip("Live-ball turnovers", a.liveTov, b.liveTov),
-      rate("Defense and contact", "Shots heavily contested", a.contested, b.contested),
-      rate("Defense and contact", "Shots where the defender got beaten", a.beaten, b.beaten),
-      rate("Scoring", "Shots made (2s and 3s)", a.shots, b.shots),
-      mean("Points per trip", a.ppt, b.ppt, 2, "points"),
-      rate("Scoring", "Missed shots the shooting team got back", a.oreb, b.oreb),
-      rate("Scoring", "Missed shots out of bounds", a.out, b.out),
-      mean("Trips per game", a.length, b.length, 1, "trips"),
-    ],
-  }
+  return [
+    perTrip("Fouls called", a.fouls, b.fouls),
+    perTrip("Roughness free throws", a.ft, b.ft),
+    perTrip("Steals", a.steals, b.steals),
+    perTrip("Live-ball turnovers", a.liveTov, b.liveTov),
+    rate("Defense and contact", "Shots heavily contested", a.contested, b.contested),
+    rate("Defense and contact", "Shots where the defender got beaten", a.beaten, b.beaten),
+    rate("Scoring", "Shots made (2s and 3s)", a.shots, b.shots),
+    rate("Scoring", "3s made", a.threes, b.threes),
+    rate("Scoring", "Shots that are 3s", a.threeShare, b.threeShare),
+    mean("Points per trip", a.ppt, b.ppt, 2, "points"),
+    rate("Scoring", "Missed shots the shooting team got back", a.oreb, b.oreb),
+    rate("Scoring", "Missed shots out of bounds", a.out, b.out),
+    mean("Trips per game", a.length, b.length, 1, "trips"),
+  ]
 }
