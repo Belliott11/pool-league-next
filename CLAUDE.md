@@ -648,6 +648,17 @@ attendance, 15 parties to 4, the winner announced.
   `close`). Never for test games. Checked live with a call (sends nothing with no live game); delivery to a phone not yet seen.
 - Backups also save `poty_votes` and `season_goals`.
 
+## Award odds (2026-11-28)
+
+`src/lib/awardOdds.ts`, a "Chance to win it" line under MVP race, Best player and Defender in the Season award race card
+(`src/pages/games/AwardRace.tsx`), only in season with nights left. 4,000 seeded runs of the nights left (planned: the open season-team
+set's `nights`, else `DEFAULT_NIGHTS` 12): each player comes at their attendance so far (leaned on the league's by `LEAN_NIGHTS` 2 nights),
+plays their usual games a night, each filmed at this season's filmed share, and a filmed game adds a two-way line and a defensive score
+drawn from their level (leaned on the league by `LEAN` 4 games, the level drawn once per run with its own uncertainty) plus the pooled
+game-to-game spread. The same measures and eligibility as awardRace.ts (`MIN_RANKED` games, 2 box scores); Best player starts from the
+board's `twoWayPer25`. Ties share. `awardOdds.test.ts`: with no nights left the race leader has 100%, and the chances add to 1. On live data
+with 8 nights added: Ben about 47% MVP, Evan 29% (not yet eligible, but likely to be).
+
 ## Dream matchup (2026-11-28)
 
 `src/lib/dreamMatchup.ts`, page `#/games/dream/<a,b>.<c,d>` (`src/pages/games/DreamMatchupPage.tsx`; teams split by a dot since ids have
