@@ -2,7 +2,7 @@ import { Suspense, type ReactNode } from "react"
 import { PotyCard } from "./games/PlayOfYear"
 import { AwardsCard } from "./games/AwardVote"
 import { lazyPage } from "@/lib/lazyPage"
-import { Award, Calculator, CalendarDays, Crown, Dices, Radio, Shield, Swords, Trophy } from "lucide-react"
+import { Award, BookOpen, Calculator, CalendarDays, Crown, Dices, Radio, Shield, Swords, Trophy } from "lucide-react"
 import { PageSkeleton } from "@/components/PageSkeleton"
 import { getClient } from "@/lib/cloud"
 import { Button } from "@/components/ui/button"
@@ -42,6 +42,7 @@ const FilmPlayPage = lazyPage(() => import("./games/FilmPlayPage").then((m) => (
 const AwardsPage = lazyPage(() => import("./games/AwardVote").then((m) => ({ default: m.AwardsPage })))
 const PlayOfYearPage = lazyPage(() => import("./games/PlayOfYear").then((m) => ({ default: m.PlayOfYearPage })))
 const DreamMatchupPage = lazyPage(() => import("./games/DreamMatchupPage").then((m) => ({ default: m.DreamMatchupPage })))
+const RulesPage = lazyPage(() => import("./games/RulesPage").then((m) => ({ default: m.RulesPage })))
 const HeadToHeadPage = lazyPage(() => import("./games/HeadToHeadPage").then((m) => ({ default: m.HeadToHeadPage })))
 const ClipPage = lazyPage(() => import("./games/ClipPage").then((m) => ({ default: m.ClipPage })))
 const Lazy = ({ children }: { children: ReactNode }) => <Suspense fallback={<PageSkeleton label="Loading" />}>{children}</Suspense>
@@ -109,6 +110,10 @@ export function GamesPage({
     return <Lazy><PlayOfYearPage state={state} update={update} onBack={goBack} /></Lazy>
   }
 
+  if (kind === "rules") {
+    return <Lazy><RulesPage state={state} update={update} onBack={goBack} /></Lazy>
+  }
+
   if (kind === "how") {
     return <Lazy><HowItWorks state={state} onBack={goBack} onOpenGame={(id) => go("game:" + id)} /></Lazy>
   }
@@ -174,6 +179,7 @@ export function GamesPage({
             { key: "awards", Icon: Award, title: "Season awards", text: "The players vote MVP and more. Last season's results are here too.", onClick: () => go("awards") },
             state.players.length > 1 && { key: "h2h", Icon: Swords, title: "Settle it", text: "Any two players head to head: the record and the tale of the tape.", onClick: () => go("h2h") },
             state.players.length > 1 && { key: "dream", Icon: Dices, title: "Dream matchup", text: "Pick any two teams: who wins, and one game played out.", onClick: () => go("dream") },
+            { key: "rules", Icon: BookOpen, title: "Rules", text: "Look up a rule mid-argument, the league's rulings, and ideas to make them better.", onClick: () => go("rules") },
             state.games.length > 0 && { key: "hall", Icon: Crown, title: "Hall of fame", text: "Records, champions and the best games ever played.", onClick: () => go("hall") },
             state.games.some((g) => g.scoringEvents.length > 0) && { key: "how", Icon: Calculator, title: "How the numbers work", text: "The odds, runs and Two-Way explained on real moments.", onClick: () => go("how") },
           ]}

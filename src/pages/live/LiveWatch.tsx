@@ -3,6 +3,7 @@ import { GuardPlanCard } from "@/components/GuardPlan"
 import { PregameFilm } from "@/components/PregameFilm"
 import { Announcer } from "@/components/Announcer"
 import { ReviewThat } from "@/components/ReviewThat"
+import { RulesLookup } from "@/components/RulesLookup"
 import { flagReview, setStream } from "@/lib/scorekeeper"
 import { LiveStream } from "@/components/LiveStream"
 import { StreamLink } from "@/components/StreamLink"
@@ -152,6 +153,7 @@ export function LiveWatch({ state, onClose, onRecap }: { state: PooleanState; on
       {isLive && <PregameFilm state={state} game={game} />}
       {isLive && <LiveOdds game={game} />}
       {isLive && <StreamLink current={game.streamUrl} onSave={async (url) => (await setStream(game.id, url)).ok} />}
+      {isLive && <RulesLookup state={state} compact onAll={() => (window.location.hash = "#/games/rules")} />}
       {isLive && <ReviewThat count={(game.reviews ?? []).length} onFlag={async (at, note) => (await flagReview(game.id, at, note, myPlayerId(who, state.players), game.streamUrl ? stream.current?.time() : null)).ok} />}
       <Button variant="outline" onClick={() => setTv(true)}>
         <Tv aria-hidden /> Big scoreboard for a TV

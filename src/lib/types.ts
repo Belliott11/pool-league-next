@@ -126,6 +126,14 @@ export interface Rsvp {
 }
 
 // One recording that several games share (a whole night). Each game keeps its own start and end inside it.
+// A clarification of a rule: how the league reads it, added by the editor on the Rules page.
+export interface RuleNote {
+  id: string
+  section: string // the rulebook section's title, such as "Boundaries"
+  text: string
+  date: string // when it was added, YYYY-MM-DD
+}
+
 export interface Review {
   id: string
   at: number // when it was flagged, ms since 1970
@@ -182,6 +190,8 @@ export interface PooleanState {
   playOfYear?: PlayOfYear[]
   // Season awards voted by the players (awardVote.ts), newest last. Votes live in the award_votes table, never here.
   awardBallots?: AwardBallot[]
+  // The league's own rulings on Poolean's rules (rulesLookup.ts), each tied to a rulebook section by its title.
+  ruleNotes?: RuleNote[]
   // The first night of next season. While it is in the future the app is in the offseason.
   openingNight?: { date: string; time?: string } | null
   [key: string]: unknown

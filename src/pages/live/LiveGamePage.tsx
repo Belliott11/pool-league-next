@@ -3,6 +3,7 @@ import { GuardPlanCard } from "@/components/GuardPlan"
 import { PregameFilm } from "@/components/PregameFilm"
 import { Announcer } from "@/components/Announcer"
 import { VoiceScore } from "@/components/VoiceScore"
+import { RulesLookup } from "@/components/RulesLookup"
 import { LiveStream } from "@/components/LiveStream"
 import { StreamLink } from "@/components/StreamLink"
 import type { PlayerControl } from "@/components/YouTubePlayer"
@@ -399,6 +400,7 @@ function Board({ game, state, update, onClose, onRecap }: { game: Game; state: P
       <LiveOdds game={game} />
       {game.streamUrl && <LiveStream url={game.streamUrl} control={stream} />}
       <StreamLink current={game.streamUrl} onSave={(url) => (update((s) => ({ ...s, games: s.games.map((g) => (g.id === game.id ? { ...g, streamUrl: url } : g)) })), true)} />
+      <RulesLookup state={state} compact onAll={() => (window.location.hash = "#/games/rules")} />
       <ReviewThat count={(game.reviews ?? []).length} onFlag={(at, note) => (update((s) => addReview(s, game.id, newReview(at, note, myPlayerId(who, state.players), game.streamUrl ? stream.current?.time() : null))), true)} />
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline" className="h-12" disabled={!(game.liveScores ?? []).length} onClick={() => {

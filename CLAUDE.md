@@ -321,6 +321,19 @@ the bottom net, Team B at the top one; both share the whole court, each spot mea
 halfway) (filled for a make, a ring for a miss, team
 colours), the score after it, play at 1x or 2x, step, a slider and a Watch link.
 
+## Rules page (2026-11-28)
+
+`#/games/rules` (`src/pages/games/RulesPage.tsx`, an Explore tile and in search): a search box (`src/components/RulesLookup.tsx`,
+`searchRules` in `src/lib/rulesLookup.ts`: plain word matching over every line of the current rulebook plus the league's clarifications,
+with the words people say widened to the rulebook's, "oob" to out of bounds, "hug" to the cuddle bear rule, "and one" to fouls), the same
+box compact on both live screens (above "Review that", with "All the rules"), "Make the rules better" (`src/lib/ruleIdeas.ts`: `ruleGaps`,
+questions the rulebook does not answer yet, game length, uneven teams, first possession, after free throws, held ball, stalling, each with
+what the games show and each dropping off by itself once the rulebook text matches its pattern; `ruleIdeas`, numbers with a suggestion:
+where missed 3s and 2s go, points a shot for 3s against 2s, replay verdicts, fouls and roughness free throws), then the whole rulebook with
+the league's clarifications under each section (`state.ruleNotes`, type `RuleNote`, tied to a section by title; the editor adds and
+removes them on the page). Suggestions only: the rulebook itself is Poolean's. On 2026-11-28: 3s are worth 0.50 points a shot against
+0.80 for 2s, and 44% of missed 3s go out of bounds against 21% of 2s.
+
 ## Rulebook and rule changes
 
 Poolean's rulebook (Adam's app) is tracked in `src/data/rulebook.json` by `scripts/rulebook.mjs`, run hourly by
